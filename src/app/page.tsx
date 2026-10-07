@@ -277,7 +277,7 @@ export default function POSPage() {
         return { ...oldItem, qty: item ? oldItem.qty - item.qty : oldItem.qty };
       });
 
-      setReceiptData({
+      const newReceipt = {
         isDraft: isDraftOnly,
         isRevision: isRevision,
         addedItems: addedItems,
@@ -291,7 +291,9 @@ export default function POSPage() {
         tableName: payload.tableId ? tableData.find(t => t.id === payload.tableId)?.nomor : null,
         items: finalItems,
         total: finalTotal
-      });
+      };
+      
+      setReceiptData(newReceipt);
 
       resetCart();
       setOrderType("Dine-in");
@@ -299,6 +301,12 @@ export default function POSPage() {
       setView('meja');
       setIsPaymentModalOpen(false);
       loadData();
+
+      if (status === 'paid') {
+        setTimeout(() => {
+          handlePrint('all', newReceipt);
+        }, 500);
+      }
     } catch (err: any) {
       alert("Error: " + err.message);
     }
@@ -323,7 +331,46 @@ export default function POSPage() {
     });
   };
 
-  const handlePrint = (mode: 'all' | 'food' | 'drink') => {
+  const generateRawBTText = (receipt: any, mode: string) => {
+    let txt = "        ANGKRINGAN POS        \n";
+    txt += "--------------------------------\n";
+    txt += `Tgl: ${receipt.date}\n`;
+    txt += `Antrean: ${receipt.orderId === "-" ? "-" : "A-" + receipt.orderId}\n`;
+    txt += `Tamu: ${receipt.customerName || "Tamu"} [${receipt.orderType}]\n`;
+    if (receipt.tableName) txt += `Meja: ${receipt.tableName}\n`;
+    if (receipt.notes) txt += `Catatan: ${receipt.notes}\n`;
+    txt += "--------------------------------\n";
+    
+    let total = 0;
+    receipt.items.forEach((item: any) => {
+      if (mode === 'food' && isDrinkCategory(item.kategori)) return;
+      if (mode === 'drink' && !isDrinkCategory(item.kategori)) return;
+      
+      let itemName = item.nama.substring(0, 20).padEnd(20, " ");
+      let itemQtyStr = (item.qty + "x").padEnd(4, " ");
+      let subtotal = item.qty * item.harga;
+      total += subtotal;
+      txt += `${itemName}\n${itemQtyStr}Rp ${item.harga.toLocaleString('id-ID').padStart(7, " ")}\n`;
+    });
+    txt += "--------------------------------\n";
+    if (mode === 'all') {
+      txt += `TOTAL: Rp ${total.toLocaleString('id-ID')}\n`;
+      txt += `Metode: ${receipt.paymentMethod}\n`;
+    }
+    txt += "\n     Terima Kasih     \n\n\n";
+    return btoa(txt);
+  };
+
+  const handlePrint = (mode: 'all' | 'food' | 'drink', autoReceiptData?: any) => {
+    const dataToPrint = autoReceiptData || receiptData;
+    const isAndroid = /android/i.test(navigator.userAgent);
+    
+    if (isAndroid && dataToPrint) {
+       const base64 = generateRawBTText(dataToPrint, mode);
+       window.location.href = `intent:${base64}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
+       return;
+    }
+    
     setPrintMode(mode);
     setTimeout(() => {
       window.print();
