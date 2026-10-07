@@ -191,17 +191,19 @@ export default function AdminPage() {
   const currentOrderData = filteredOrders.slice((orderCurrentPage - 1) * 20, orderCurrentPage * 20);
 
   const exportToCSV = () => {
-    let csvContent = "Waktu,Tipe Order,Nama Pelanggan,No. WhatsApp,Total (Rp),Metode Pembayaran\n";
+    let csvContent = "No. Nota,Waktu,Tipe Order,Meja,Nama Pelanggan,Catatan,Metode Pembayaran,Total (Rp)\n";
     
     filteredOrders.forEach(order => {
+      const nota = `A-${order.id}`;
       const date = new Date(order.createdAt).toLocaleString('id-ID');
       const type = order.orderType || "Dine-in";
+      const meja = order.tableId ? (tables.find(t => t.id === order.tableId)?.nomor || "-") : "-";
       const name = order.customerName || "";
-      const phone = order.customerPhone || "";
+      const notes = order.notes || "";
+      const method = order.paymentMethod || "";
       const total = order.total;
-      const method = order.paymentMethod;
       
-      csvContent += `"${date}","${type}","${name}","${phone}","${total}","${method}"\n`;
+      csvContent += `"${nota}","${date}","${type}","${meja}","${name}","${notes}","${method}","${total}"\n`;
     });
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
