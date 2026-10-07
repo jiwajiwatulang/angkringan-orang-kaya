@@ -1,0 +1,11 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/admin/page": "/admin",
+  "/api/menus/reorder/route": "/api/menus/reorder",
+  "/api/menus/route": "/api/menus",
+  "/api/orders/route": "/api/orders",
+  "/api/tables/route": "/api/tables",
+  "/favicon.ico/route": "/favicon.ico",
+  "/page": "/"
+}

@@ -1,0 +1,11 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/api/menus/reorder/route": "app/api/menus/reorder/route.js",
+  "/api/menus/route": "app/api/menus/route.js",
+  "/api/orders/route": "app/api/orders/route.js",
+  "/api/tables/route": "app/api/tables/route.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/page": "app/page.js"
+}
