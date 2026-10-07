@@ -12,7 +12,6 @@
     "@capacitor/android": "^8.5.2",
     "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
-    "@opennextjs/cloudflare": "^1.20.8",
     "@prisma/adapter-d1": "^5.22.0",
     "dexie": "^4.4.6",
     "dexie-react-hooks": "^4.4.0",
@@ -21,7 +20,6 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "@cloudflare/next-on-pages": "^1.13.16",
     "@prisma/client": "^5.22.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
