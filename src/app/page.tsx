@@ -644,7 +644,7 @@ export default function POSPage() {
         <div className="flex-1 flex flex-col border-r border-gray-200 dark:border-gray-700 h-[55vh] md:h-auto overflow-hidden transition-colors">
           <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center transition-colors">
                                                 <div className="flex items-center space-x-3">
-              <img src="/logo.jpg" alt="Logo" className="w-12 h-12 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm object-cover hidden md:block" />
+              <img src="/logo.jpg" alt="Logo" className="w-12 h-12 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm object-cover" />
               <div>
                 <h1 className="text-xl md:text-2xl font-black text-gray-800 dark:text-white leading-tight">Angkringan <span className="text-yellow-600 dark:text-yellow-500">Orang Kaya</span></h1>
               </div>
