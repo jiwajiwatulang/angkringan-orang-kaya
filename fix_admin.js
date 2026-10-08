@@ -1,5 +1,7 @@
-const fs = require('fs');
-let code = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
-code = code.replace(/<Link href="\/" className="text-sm text-gray-500 hover:text-gray-700">.*?Kembali ke Kasir<\/Link>/, '<Link href="/" className="text-sm text-gray-500 hover:text-gray-700">← Kembali ke Kasir</Link>');
-fs.writeFileSync('src/app/admin/page.tsx', code, 'utf8');
-console.log('Fixed admin typo');
+﻿const fs = require('fs');
+let c = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+
+c = c.replace(/import \{ useState, useEffect \} from 'react';/, `import { useState, useEffect } from 'react';\nimport { Printer } from '@capgo/capacitor-printer';`);
+
+c = c.replace(/window\.print\(\);/g, `Printer.printWebView({ name: 'Nota_Angkringan' });`);
+fs.writeFileSync('src/app/admin/page.tsx', c, 'utf8');

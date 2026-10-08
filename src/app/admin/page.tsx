@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
+
 
 type MenuItem = { id: number; nama: string; harga: number; kategori: string; isSoldOut: boolean; };
 
@@ -25,10 +27,61 @@ export default function AdminPage() {
   const [reorderItems, setReorderItems] = useState<MenuItem[]>([]);
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
 
-  const handlePrint = (mode: 'all' | 'food' | 'drink') => {
+  const generateRawBTText = (receipt: any, mode: string) => {
+    let txt = "        ANGKRINGAN POS        \n";
+    txt += "--------------------------------\n";
+    txt += `Tgl: ${receipt.date}\n`;
+    txt += `Antrean: ${receipt.orderId === "-" ? "-" : "A-" + receipt.orderId}\n`;
+    txt += `Tamu: ${receipt.customerName || "Tamu"} [${receipt.orderType}]\n`;
+    if (receipt.tableName) txt += `Meja: ${receipt.tableName}\n`;
+    if (receipt.notes) txt += `Catatan: ${receipt.notes}\n`;
+    txt += "--------------------------------\n";
+    
+    let total = 0;
+    receipt.items.forEach((item: any) => {
+      if (mode === 'food' && isDrinkCategory(item.kategori)) return;
+      if (mode === 'drink' && !isDrinkCategory(item.kategori)) return;
+      
+      let itemName = item.nama.substring(0, 20).padEnd(20, " ");
+      let itemQtyStr = (item.qty + "x").padEnd(4, " ");
+      let subtotal = item.qty * item.harga;
+      total += subtotal;
+      txt += `${itemName}\n${itemQtyStr}Rp ${item.harga.toLocaleString('id-ID').padStart(7, " ")}\n`;
+    });
+    txt += "--------------------------------\n";
+    if (mode === 'all') {
+      txt += `TOTAL: Rp ${total.toLocaleString('id-ID')}\n`;
+      txt += `Metode: ${receipt.paymentMethod}\n`;
+    }
+    txt += "\n     Terima Kasih     \n\n\n";
+    return txt;
+  };
+
+  const handlePrint = async (mode: 'all' | 'food' | 'drink') => {
+    const isAndroid = /android/i.test(navigator.userAgent);
     setPrintMode(mode);
-    setTimeout(() => {
-      try { await Printer.printWebView({ name: 'Nota_Angkringan' }); } catch (e) { alert('Print error: ' + e); }
+    
+    setTimeout(async () => {
+      try {
+        const mac = localStorage.getItem('bt_printer_mac');
+        if (isAndroid && mac && receiptData) {
+          const textToPrint = generateRawBTText(receiptData, mode);
+          
+          try {
+             await BluetoothSerial.connect({ address: mac });
+          } catch(e) {}
+          
+          await BluetoothSerial.write({ value: textToPrint });
+          alert("Berhasil dicetak langsung ke Printer!");
+        } else {
+          await Printer.printWebView({ name: 'Nota_Angkringan' });
+        }
+      } catch (e: any) {
+        alert('Gagal memanggil print: ' + JSON.stringify(e));
+        try {
+           await Printer.printWebView({ name: 'Nota_Angkringan' });
+        } catch(e2) {}
+      }
       setPrintMode('all');
     }, 100);
   };
@@ -47,6 +100,37 @@ export default function AdminPage() {
       setIsAuthenticated(true);
     }
   }, []);
+
+    const [btDevices, setBtDevices] = useState<any[]>([]);
+  const [selectedMac, setSelectedMac] = useState("");
+  const [isScanning, setIsScanning] = useState(false);
+  
+  useEffect(() => {
+    const savedMac = localStorage.getItem('bt_printer_mac');
+    if(savedMac) setSelectedMac(savedMac);
+  }, []);
+  
+  const scanBluetooth = async () => {
+    setIsScanning(true);
+    try {
+      const isEnabled = await BluetoothSerial.isEnabled();
+      if (!isEnabled.enabled) {
+        alert("Bluetooth belum aktif. Nyalakan bluetooth HP Anda.");
+        await BluetoothSerial.enable();
+      }
+      const devices = await BluetoothSerial.list();
+      setBtDevices(devices.devices || []);
+    } catch(e) {
+      alert("Gagal mencari bluetooth: " + JSON.stringify(e));
+    }
+    setIsScanning(false);
+  };
+  
+  const savePrinter = (mac: string) => {
+    localStorage.setItem('bt_printer_mac', mac);
+    setSelectedMac(mac);
+    alert("Printer berhasil disimpan!");
+  };
 
   const [tables, setTables] = useState<any[]>([]);
   const [newTableName, setNewTableName] = useState("");
