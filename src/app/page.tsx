@@ -187,7 +187,11 @@ export default function POSPage() {
   const totalPrice = cart.reduce((sum, item) => sum + (item.harga * item.qty), 0);
   const selectedTableObj = tableData.find(t => t.id.toString() === selectedTable);
   const selectedTableStatus = selectedTableObj ? getTableStatus(selectedTableObj) : null;
-  const isDrinkCategory = (cat: string) => cat.toLowerCase().includes('minuman') || cat.toLowerCase().includes('kopi') || cat.toLowerCase().includes('tea') || cat.toLowerCase().includes('matcha');
+  const isDrinkCategory = (cat: string) => {
+    if(!cat) return false;
+    const c = cat.toLowerCase();
+    return c.includes('minuman') || c.includes('kopi') || c.includes('tea') || c.includes('matcha') || c.includes('drink') || c.includes('coffee') || c.includes('milkshake') || c.includes('beverage') || c.includes('juice');
+  };
 
   const processPayment = async (isDraftOnly = false, status = 'paid') => {
     if (cart.length === 0) return;

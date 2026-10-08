@@ -87,8 +87,11 @@ export default function AdminPage() {
     }, 100);
   };
 
-  const isDrinkCategory = (kategori: string) => {
-    return ['Minuman', 'Soft Drink', 'Coffee', 'Milkshake', 'Matcha', 'Tea & Refreshers'].includes(kategori);
+  const isDrinkCategory = (cat: string) => {
+    if(!cat) return false;
+    const c = cat.toLowerCase();
+    return c.includes('minuman') || c.includes('kopi') || c.includes('tea') || c.includes('matcha') || c.includes('drink') || c.includes('coffee') || c.includes('milkshake') || c.includes('beverage') || c.includes('juice');
+  };
   };
 
   // Auth state
