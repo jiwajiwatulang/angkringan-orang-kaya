@@ -18,6 +18,7 @@ export default function POSPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [isDark, setIsDark] = useState(false);
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   useEffect(() => {
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       setIsDark(true); document.documentElement.classList.add('dark');
@@ -645,7 +646,7 @@ export default function POSPage() {
       )}      <div className="flex-1 flex flex-col md:flex-row w-full print:hidden">
         
         {/* Left Panel */}
-        <div className="flex-1 flex flex-col border-r border-gray-200 dark:border-gray-700 h-[55vh] md:h-auto overflow-hidden transition-colors">
+        <div className="flex-1 flex flex-col border-r border-gray-200 dark:border-gray-700 h-full pb-20 md:pb-0 overflow-hidden transition-colors">
           <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center transition-colors">
                                                 <div className="flex items-center space-x-3">
               <img src="/logo.jpg" alt="Logo" className="w-12 h-12 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm object-cover" />
@@ -716,11 +717,36 @@ export default function POSPage() {
           )}
         </div>
 
-        {/* Right Panel (Cart) */}
-        <div className="w-full md:w-96 bg-white dark:bg-gray-800 flex flex-col border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-700 shadow-2xl h-[45vh] md:h-auto z-10 transition-colors">
+        
+          {/* Floating Cart Button (Mobile) */}
+          {(!isMobileCartOpen && (cart.length > 0 || selectedTable)) && (
+            <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-30">
+              <button 
+                onClick={() => setIsMobileCartOpen(true)}
+                className="w-full bg-blue-600 text-white rounded-xl py-3 px-4 flex justify-between items-center shadow-lg active:scale-95 transition-transform"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="bg-white/20 px-2 py-1 rounded-lg text-sm font-bold">{cart.reduce((s, i) => s + i.qty, 0)} Item</div>
+                  <span className="font-semibold">{selectedTableObj ? `Meja ${selectedTableObj.nomor}` : 'Tanpa Meja'}</span>
+                </div>
+                <div className="font-black text-lg">
+                  Rp {totalPrice.toLocaleString('id-ID')}
+                </div>
+              </button>
+            </div>
+          )}
+          
+          {/* Right Panel (Cart) */}
+
+        <div className={`bg-white dark:bg-gray-800 flex-col md:border-t-0 md:border-l border-gray-200 dark:border-gray-700 shadow-2xl z-40 transition-colors md:flex md:static md:w-96 md:h-auto ${isMobileCartOpen ? 'fixed inset-0 h-full w-full flex' : 'hidden'}`}>
           <div className="p-4 md:p-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 transition-colors">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-bold text-gray-800 dark:text-white">{editingOrderId ? 'Edit Open Bill' : 'Keranjang Pesanan'}</h2>
+              <div className="flex items-center gap-2">
+                  <button onClick={() => setIsMobileCartOpen(false)} className="md:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                  </button>
+                  <h2 className="text-lg font-bold text-gray-800 dark:text-white">{editingOrderId ? 'Edit Open Bill' : 'Keranjang Pesanan'}</h2>
+                </div>
               {selectedTable && <button onClick={() => { resetCart(); setSelectedTable(""); }} className="text-xs text-gray-500 hover:text-red-500 underline">Lepas meja</button>}
             </div>
             {selectedTableObj && (
