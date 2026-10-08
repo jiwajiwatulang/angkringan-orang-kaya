@@ -72,7 +72,7 @@ export default function AdminPage() {
              await BluetoothSerial.connect({ address: mac });
           } catch(e) {}
           
-          await BluetoothSerial.write({ value: textToPrint });
+          await BluetoothSerial.write({ address: mac, value: textToPrint });
           alert("Berhasil dicetak langsung ke Printer!");
         } else {
           await Printer.printWebView({ name: 'Nota_Angkringan' });
@@ -91,7 +91,6 @@ export default function AdminPage() {
     if(!cat) return false;
     const c = cat.toLowerCase();
     return c.includes('minuman') || c.includes('kopi') || c.includes('tea') || c.includes('matcha') || c.includes('drink') || c.includes('coffee') || c.includes('milkshake') || c.includes('beverage') || c.includes('juice');
-  };
   };
 
   // Auth state
