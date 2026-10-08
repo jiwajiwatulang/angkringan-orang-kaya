@@ -373,7 +373,7 @@ export default function POSPage() {
     
     setPrintMode(mode);
     setTimeout(() => {
-      window.print();
+      Printer.printWebView({ name: 'Nota_Angkringan' });
       setPrintMode('all');
     }, 100);
   };
@@ -394,7 +394,7 @@ export default function POSPage() {
 
       {/* Payment Modal */}
       {isPaymentModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center md:items-start md:pt-10 justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl w-full max-w-md shadow-2xl relative flex flex-col max-h-[90vh]">
             <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">Selesaikan Pembayaran</h2>
             <div className="flex-1 overflow-y-auto pr-2">
@@ -619,7 +619,7 @@ export default function POSPage() {
 
       {/* Variant Modal */}
       {activeVariantGroup && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-start pt-10 justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl w-full max-w-sm shadow-2xl relative">
             <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white text-center">Pilih Varian {activeVariantGroup.title}</h2>
             <div className="space-y-3">

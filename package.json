@@ -12,6 +12,8 @@
     "@capacitor/android": "^8.5.2",
     "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
+    "@capacitor/keyboard": "^8.0.6",
+    "@capgo/capacitor-printer": "^8.1.4",
     "@prisma/adapter-d1": "^5.22.0",
     "dexie": "^4.4.6",
     "dexie-react-hooks": "^4.4.0",
