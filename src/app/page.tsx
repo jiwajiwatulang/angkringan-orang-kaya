@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { Printer } from '@capgo/capacitor-printer';
+import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
 
 type MenuItem = { id: number; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; };
 type CartItem = MenuItem & { qty: number };
