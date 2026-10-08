@@ -363,19 +363,17 @@ export default function POSPage() {
 
   const handlePrint = (mode: 'all' | 'food' | 'drink', autoReceiptData?: any) => {
     const dataToPrint = autoReceiptData || receiptData;
-    const isAndroid = /android/i.test(navigator.userAgent);
-    
-    if (isAndroid && dataToPrint) {
-       const base64 = generateRawBTText(dataToPrint, mode);
-       window.location.href = `intent:${base64}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
-       return;
-    }
+    // RawBT intent removed to allow Capacitor Printer Plugin to trigger native print dialog
     
     setPrintMode(mode);
-    setTimeout(() => {
-      Printer.printWebView({ name: 'Nota_Angkringan' });
-      setPrintMode('all');
-    }, 100);
+    setTimeout(async () => {
+        try {
+          await Printer.printWebView({ name: 'Nota_Angkringan' });
+        } catch (e) {
+          alert('Gagal memanggil print: ' + e);
+        }
+        setPrintMode('all');
+      }, 100);
   };
   const closeReceipt = () => setReceiptData(null);
 

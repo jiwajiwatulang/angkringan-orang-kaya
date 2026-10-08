@@ -28,7 +28,7 @@ export default function AdminPage() {
   const handlePrint = (mode: 'all' | 'food' | 'drink') => {
     setPrintMode(mode);
     setTimeout(() => {
-      Printer.printWebView({ name: 'Nota_Angkringan' });
+      try { await Printer.printWebView({ name: 'Nota_Angkringan' }); } catch (e) { alert('Print error: ' + e); }
       setPrintMode('all');
     }, 100);
   };
