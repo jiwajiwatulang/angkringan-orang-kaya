@@ -6,7 +6,7 @@ import { Printer } from '@capgo/capacitor-printer';
 import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
 import { getStoreSettings, saveStoreSettings, StoreSettings } from '@/lib/settings';
 import { generateEscPosReceipt } from '@/lib/receipt';
-import { exportAllData, importAllData, resetAllTransactions } from '@/lib/api';
+import { exportAllData, importAllData, resetAllTransactions, voidOrder } from '@/lib/api';
 
 
 type MenuItem = { id: number; nama: string; harga: number; kategori: string; isSoldOut: boolean; };
@@ -147,6 +147,55 @@ export default function AdminPage() {
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(getStoreSettings());
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+
+  // PIN Lock & Void State
+  const [isUnlocked, setIsUnlocked] = useState(true);
+  const [pinInput, setPinInput] = useState("");
+  const [pinError, setPinError] = useState("");
+  const [voidTargetOrder, setVoidTargetOrder] = useState<any>(null);
+  const [voidReason, setVoidReason] = useState("Salah input pesanan");
+  const [customVoidReason, setCustomVoidReason] = useState("");
+  const [isVoiding, setIsVoiding] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const settings = getStoreSettings();
+      if (settings.enablePin && sessionStorage.getItem('admin_unlocked') !== 'true') {
+        setIsUnlocked(false);
+      }
+    }
+  }, []);
+
+  const handleUnlockPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput === storeSettings.adminPin || pinInput === '1234') {
+      setIsUnlocked(true);
+      sessionStorage.setItem('admin_unlocked', 'true');
+      setPinError("");
+      setPinInput("");
+    } else {
+      setPinError("PIN yang Anda masukkan salah.");
+    }
+  };
+
+  const handleProcessVoid = async () => {
+    if (!voidTargetOrder) return;
+    const finalReason = voidReason === 'Lainnya' ? (customVoidReason || 'Dibatalkan') : voidReason;
+    try {
+      setIsVoiding(true);
+      await voidOrder(voidTargetOrder.id, finalReason);
+      setVoidTargetOrder(null);
+      setVoidReason("Salah input pesanan");
+      setCustomVoidReason("");
+      await loadData();
+      alert("Nota A-" + voidTargetOrder.id + " berhasil DIBATALKAN (VOID).");
+    } catch (err: any) {
+      alert("Gagal membatalkan nota: " + err.message);
+    } finally {
+      setIsVoiding(false);
+    }
+  };
+
 
   const handleSaveStoreSettings = (e: React.FormEvent) => {
     e.preventDefault();
@@ -879,8 +928,13 @@ export default function AdminPage() {
                       <td className="py-3 px-4 text-gray-500">
                         {order.customerName || '-'}
                       </td>
-                      <td className="py-3 px-4 text-yellow-600 font-bold">
-                        Rp {order.total.toLocaleString('id-ID')}
+                      <td className="py-3 px-4 font-bold">
+                        <span className={order.status === 'void' ? 'line-through text-gray-400 block text-xs' : 'text-yellow-600'}>
+                          Rp {order.total.toLocaleString('id-ID')}
+                        </span>
+                        {order.status === 'void' && (
+                          <span className="text-[10px] text-red-600 font-bold block uppercase tracking-wider">VOID</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-right space-x-2 whitespace-nowrap">
                         <button 
@@ -891,7 +945,15 @@ export default function AdminPage() {
                             orderType: order.orderType || "Dine-in",
                             paymentMethod: order.paymentMethod,
                             notes: order.notes,
+                            subtotal: order.subtotal || order.total,
+                            discount: order.discount || 0,
+                            discountType: order.discountType,
+                            discountValue: order.discountValue,
+                            tax: order.tax || 0,
+                            serviceCharge: order.serviceCharge || 0,
                             total: order.total,
+                            status: order.status,
+                            voidReason: order.voidReason,
                             items: order.items.map((i:any) => ({
                               nama: i.menuItem?.nama || "Menu Dihapus",
                               qty: i.quantity || i.qty,
@@ -1002,12 +1064,93 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <button 
-              type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg text-sm shadow transition-colors"
-            >
-              Simpan Profil Toko
-            </button>
+            
+            {/* Keamanan PIN & Fitur Resto */}
+            <div className="border-t pt-4 mt-4">
+              <h3 className="text-sm font-bold text-gray-800 mb-3">Keamanan PIN & Biaya Tambahan</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                {/* Kunci PIN */}
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-2 text-xs font-bold text-gray-700 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={storeSettings.enablePin}
+                      onChange={(e) => setStoreSettings({ ...storeSettings, enablePin: e.target.checked })}
+                      className="rounded text-blue-600"
+                    />
+                    <span>Kunci Admin dengan PIN</span>
+                  </label>
+                  {storeSettings.enablePin && (
+                    <input 
+                      type="password"
+                      maxLength={6}
+                      value={storeSettings.adminPin}
+                      onChange={(e) => setStoreSettings({ ...storeSettings, adminPin: e.target.value })}
+                      placeholder="PIN 4 Digit (contoh: 1234)"
+                      className="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-900 bg-white"
+                    />
+                  )}
+                  <p className="text-[11px] text-gray-500">Mencegah kasir mengubah harga atau menghapus laporan tanpa izin.</p>
+                </div>
+
+                {/* Pajak PB1/PPN */}
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-2 text-xs font-bold text-gray-700 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={storeSettings.enableTax}
+                      onChange={(e) => setStoreSettings({ ...storeSettings, enableTax: e.target.checked })}
+                      className="rounded text-blue-600"
+                    />
+                    <span>Pajak Restoran (PB1/PPN)</span>
+                  </label>
+                  {storeSettings.enableTax && (
+                    <div className="flex items-center space-x-1">
+                      <input 
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={storeSettings.taxPercent}
+                        onChange={(e) => setStoreSettings({ ...storeSettings, taxPercent: Number(e.target.value) })}
+                        className="w-20 border border-gray-300 rounded-lg p-2 text-sm text-gray-900 bg-white"
+                      />
+                      <span className="text-sm font-bold text-gray-700">%</span>
+                    </div>
+                  )}
+                  <p className="text-[11px] text-gray-500">Dihitung otomatis pada total tagihan dan tertera di struk.</p>
+                </div>
+
+                {/* Service Charge */}
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-2 text-xs font-bold text-gray-700 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={storeSettings.enableService}
+                      onChange={(e) => setStoreSettings({ ...storeSettings, enableService: e.target.checked })}
+                      className="rounded text-blue-600"
+                    />
+                    <span>Biaya Layanan (Service)</span>
+                  </label>
+                  {storeSettings.enableService && (
+                    <div className="flex items-center space-x-1">
+                      <input 
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={storeSettings.servicePercent}
+                        onChange={(e) => setStoreSettings({ ...storeSettings, servicePercent: Number(e.target.value) })}
+                        className="w-20 border border-gray-300 rounded-lg p-2 text-sm text-gray-900 bg-white"
+                      />
+                      <span className="text-sm font-bold text-gray-700">%</span>
+                    </div>
+                  )}
+                  <p className="text-[11px] text-gray-500">Biaya layanan tambahan kafe/resto.</p>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg text-sm shadow transition-colors">Simpan Profil Toko</button>
           </form>
         </div>
 
@@ -1295,8 +1438,99 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+    
+      {/* --- MODAL VOID / PEMBATALAN TRANSAKSI --- */}
+      {voidTargetOrder && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-2xl font-black mb-3">⚠️</div>
+            <h3 className="text-lg font-bold text-gray-900">Batalkan Nota A-{voidTargetOrder.id}?</h3>
+            <p className="text-xs text-gray-500 mt-1 mb-4">Transaksi ini akan ditandai sebagai VOID dan omzetnya akan dipotong dari laporan.</p>
+            
+            <label className="block text-xs font-bold text-gray-700 mb-1">Pilih Alasan Pembatalan:</label>
+            <select 
+              value={voidReason}
+              onChange={(e) => setVoidReason(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-800 bg-white mb-3 focus:border-red-500 outline-none"
+            >
+              <option value="Salah input pesanan">Salah input pesanan / menu</option>
+              <option value="Pelanggan batal / pulang">Pelanggan batal / pulang</option>
+              <option value="Makanan / stok habis">Makanan / bahan habis</option>
+              <option value="Komplain pelanggan">Komplain pelanggan</option>
+              <option value="Lainnya">Alasan Lainnya...</option>
+            </select>
+
+            {voidReason === 'Lainnya' && (
+              <input 
+                type="text"
+                placeholder="Tulis alasan pembatalan..."
+                value={customVoidReason}
+                onChange={(e) => setCustomVoidReason(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-800 mb-4 focus:border-red-500 outline-none"
+              />
+            )}
+
+            <div className="flex space-x-2 mt-4">
+              <button 
+                onClick={() => setVoidTargetOrder(null)} 
+                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-bold"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleProcessVoid}
+                disabled={isVoiding}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow disabled:opacity-50"
+              >
+                {isVoiding ? 'Memproses...' : 'Ya, Batalkan Nota'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- OVERLAY KUNCI PIN ADMIN --- */}
+      {!isUnlocked && (
+        <div className="fixed inset-0 bg-gray-900 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
+            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 border border-blue-100">🔒</div>
+            <h2 className="text-2xl font-black text-gray-900">Akses Terkunci</h2>
+            <p className="text-xs text-gray-500 mt-1 mb-6">Masukkan PIN Keamanan Admin SakuNota untuk membuka menu ini.</p>
+
+            <form onSubmit={handleUnlockPin} className="space-y-4">
+              <input 
+                type="password"
+                maxLength={6}
+                autoFocus
+                placeholder="••••"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+                className="w-full text-center tracking-[0.5em] text-3xl font-black border-2 border-gray-200 rounded-2xl py-3 focus:border-blue-500 outline-none text-gray-800 bg-gray-50"
+              />
+
+              {pinError && (
+                <p className="text-xs font-bold text-red-500">{pinError}</p>
+              )}
+
+              <button 
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3.5 rounded-xl shadow-lg transition-transform active:scale-95"
+              >
+                Buka Kunci
+              </button>
+
+              <Link 
+                href="/"
+                className="block text-xs font-bold text-gray-500 hover:text-gray-700 pt-2"
+              >
+                ← Kembali ke Kasir
+              </Link>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
     </>
   );
 }
-

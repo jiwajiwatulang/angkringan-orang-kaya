@@ -39,6 +39,13 @@ export function generateEscPosReceipt(receipt: any, mode: 'all' | 'food' | 'drin
 
   txt += doubleDivider;
 
+  // Indikator status VOID
+  if (receipt.status === 'void') {
+    txt += center("!!! NOTA BATAL / VOID !!!");
+    if (receipt.voidReason) txt += center("Alasan: " + receipt.voidReason);
+    txt += divider;
+  }
+
   // 2. Info Pesanan
   txt += lineTwoCols(`Tgl: ${receipt.date || new Date().toLocaleString('id-ID')}`, "");
   txt += lineTwoCols(
@@ -55,7 +62,7 @@ export function generateEscPosReceipt(receipt: any, mode: 'all' | 'food' | 'drin
   txt += divider;
 
   // 3. Daftar Item
-  let calculatedTotal = 0;
+  let calculatedSubtotal = 0;
   const isDrinkCategory = (cat: string) => {
     if (!cat) return false;
     const c = cat.toLowerCase();
@@ -69,7 +76,7 @@ export function generateEscPosReceipt(receipt: any, mode: 'all' | 'food' | 'drin
     if (mode === 'drink' && !isDrink) return;
 
     const subtotal = item.qty * item.harga;
-    calculatedTotal += subtotal;
+    calculatedSubtotal += subtotal;
 
     if (mode === 'all') {
       const left = `${item.qty}x ${item.nama}`;
@@ -84,7 +91,25 @@ export function generateEscPosReceipt(receipt: any, mode: 'all' | 'food' | 'drin
 
   // 4. Pembayaran (Hanya mode 'all')
   if (mode === 'all') {
-    const total = receipt.total || calculatedTotal;
+    const subtotal = receipt.subtotal || calculatedSubtotal;
+    const hasExtras = (receipt.discount && receipt.discount > 0) || (receipt.serviceCharge && receipt.serviceCharge > 0) || (receipt.tax && receipt.tax > 0);
+
+    if (hasExtras) {
+      txt += lineTwoCols("Subtotal:", formatCurrency(subtotal));
+      if (receipt.discount && receipt.discount > 0) {
+        const discLabel = receipt.discountType === 'percent' ? `Diskon (${receipt.discountValue}%):` : "Diskon:";
+        txt += lineTwoCols(discLabel, "-" + formatCurrency(receipt.discount));
+      }
+      if (receipt.serviceCharge && receipt.serviceCharge > 0) {
+        txt += lineTwoCols("Layanan:", formatCurrency(receipt.serviceCharge));
+      }
+      if (receipt.tax && receipt.tax > 0) {
+        txt += lineTwoCols("Pajak:", formatCurrency(receipt.tax));
+      }
+      txt += divider;
+    }
+
+    const total = receipt.total || calculatedSubtotal;
     txt += lineTwoCols("TOTAL:", formatCurrency(total));
     txt += lineTwoCols("Metode:", receipt.paymentMethod || "Tunai");
 
@@ -104,9 +129,9 @@ export function generateEscPosReceipt(receipt: any, mode: 'all' | 'food' | 'drin
       });
     }
 
-    // Watermark Promosi
+    // Watermark Promosi SakuNota
     if (cfg.enableWatermark) {
-      txt += "\n" + center("[ Aplikasi Kasir Gratis - PosPoint ]");
+      txt += "\n" + center("[ Aplikasi Kasir Gratis - SakuNota ]");
     }
   }
 

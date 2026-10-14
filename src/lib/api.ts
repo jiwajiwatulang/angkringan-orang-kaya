@@ -192,7 +192,15 @@ export async function createOrder(data: any) {
   return await db.transaction('rw', 'orders', 'orderItems', async () => {
     const orderId = await db.table('orders').add({
       tableId: data.tableId || null,
+      subtotal: data.subtotal || data.total,
+      discount: data.discount || 0,
+      discountType: data.discountType || null,
+      discountValue: data.discountValue || 0,
+      tax: data.tax || 0,
+      serviceCharge: data.serviceCharge || 0,
       total: data.total,
+      cashTendered: data.cashTendered || null,
+      change: data.change || null,
       status: data.status || 'paid',
       customerName: data.customerName,
       customerPhone: data.customerPhone,
@@ -218,7 +226,15 @@ export async function createOrder(data: any) {
 export async function updateOrder(id: number, data: any) {
   return await db.transaction('rw', 'orders', 'orderItems', async () => {
     await db.table('orders').update(id, {
+      subtotal: data.subtotal || data.total,
+      discount: data.discount || 0,
+      discountType: data.discountType || null,
+      discountValue: data.discountValue || 0,
+      tax: data.tax || 0,
+      serviceCharge: data.serviceCharge || 0,
       total: data.total,
+      cashTendered: data.cashTendered || null,
+      change: data.change || null,
       status: data.status || 'paid',
       customerName: data.customerName,
       customerPhone: data.customerPhone,
@@ -244,6 +260,24 @@ export async function updateOrder(id: number, data: any) {
     await db.table('orderItems').bulkAdd(itemsToInsert);
     return { id };
   });
+}
+
+
+export async function voidOrder(orderId: number, reason: string) {
+  const order = await db.table('orders').get(orderId);
+  if (!order) throw new Error('Nota tidak ditemukan.');
+  
+  await db.table('orders').update(orderId, {
+    status: 'void',
+    voidReason: reason || 'Dibatalkan oleh kasir/admin',
+    voidedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+
+  if (order.tableId) {
+    await refreshTableStatus(order.tableId);
+  }
+  return true;
 }
 
 export async function deleteOrders(ids: number[]) {

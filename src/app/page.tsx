@@ -22,6 +22,11 @@ export default function POSPage() {
   const [isDark, setIsDark] = useState(false);
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(getStoreSettings());
   const [cashTendered, setCashTendered] = useState<string>("");
+  const [discountType, setDiscountType] = useState<'percent' | 'nominal'>('percent');
+  const [discountValue, setDiscountValue] = useState<number>(0);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+  const [tempDiscountVal, setTempDiscountVal] = useState("");
+
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   useEffect(() => {
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -131,6 +136,7 @@ export default function POSPage() {
     setCart(loadedCart);
     setOldCart(JSON.parse(JSON.stringify(loadedCart)));
     setCustomerName(order.customerName || "");
+    if (order.discountValue) { setDiscountValue(order.discountValue); setDiscountType(order.discountType || 'percent'); }
     setNotes(order.notes || "");
     setPaymentMethod(order.paymentMethod || "Cash");
     setEditingOrderId(order.id);
@@ -191,10 +197,21 @@ export default function POSPage() {
     setNotes("");
     setPaymentMethod("Cash");
     setCashTendered("");
+    setDiscountValue(0);
+    setDiscountType('percent');
     setEditingOrderId(null);
   };
 
-  const totalPrice = cart.reduce((sum, item) => sum + (item.harga * item.qty), 0);
+    const rawSubtotal = cart.reduce((sum, item) => sum + (item.harga * item.qty), 0);
+  const discountAmount = discountValue > 0 ? (
+    discountType === 'percent' 
+      ? Math.round(rawSubtotal * (Number(discountValue) / 100))
+      : Math.min(rawSubtotal, Number(discountValue))
+  ) : 0;
+  const afterDiscount = Math.max(0, rawSubtotal - discountAmount);
+  const serviceAmount = storeSettings.enableService ? Math.round(afterDiscount * ((storeSettings.servicePercent || 0) / 100)) : 0;
+  const taxAmount = storeSettings.enableTax ? Math.round((afterDiscount + serviceAmount) * ((storeSettings.taxPercent || 0) / 100)) : 0;
+  const totalPrice = afterDiscount + serviceAmount + taxAmount;
   const selectedTableObj = tableData.find(t => t.id.toString() === selectedTable);
   const selectedTableStatus = selectedTableObj ? getTableStatus(selectedTableObj) : null;
   const isDrinkCategory = (cat: string) => {
@@ -226,6 +243,12 @@ export default function POSPage() {
 
       const payload: any = {
         items: finalItems,
+        subtotal: rawSubtotal,
+        discount: discountAmount,
+        discountType,
+        discountValue,
+        tax: taxAmount,
+        serviceCharge: serviceAmount,
         total: finalTotal,
         customerName,
         customerPhone: "",
@@ -299,6 +322,12 @@ export default function POSPage() {
       const newReceipt = {
         cashTendered: tenderAmount,
         change: changeAmount,
+        subtotal: rawSubtotal,
+        discount: discountAmount,
+        discountType,
+        discountValue,
+        tax: taxAmount,
+        serviceCharge: serviceAmount,
         isDraft: isDraftOnly,
         isRevision: isRevision,
         addedItems: addedItems,
@@ -472,6 +501,57 @@ export default function POSPage() {
       </div>
 
       <div className={`${isMobile ? 'p-6 pb-8' : 'p-5'} bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-[0_-4px_10px_rgba(0,0,0,0.02)]`}>
+        
+        {/* Rincian Diskon & Biaya */}
+        {cart.length > 0 && (
+          <div className="mb-3 space-y-1.5 text-xs text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 pb-3">
+            <div className="flex justify-between items-center">
+              <span>Subtotal:</span>
+              <span className="font-semibold">Rp {rawSubtotal.toLocaleString('id-ID')}</span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              {discountAmount > 0 ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-green-600 dark:text-green-400 font-bold">
+                    🏷️ Diskon ({discountType === 'percent' ? discountValue + '%' : 'Rp'}):
+                  </span>
+                  <button 
+                    onClick={() => { setDiscountValue(0); setTempDiscountVal(""); }}
+                    className="text-red-500 hover:text-red-700 text-[10px] underline"
+                  >
+                    Hapus
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setIsDiscountModalOpen(true)}
+                  className="text-blue-600 dark:text-blue-400 font-bold hover:underline flex items-center gap-1"
+                >
+                  + Tambah Diskon / Promo
+                </button>
+              )}
+              {discountAmount > 0 && (
+                <span className="font-bold text-green-600 dark:text-green-400">-Rp {discountAmount.toLocaleString('id-ID')}</span>
+              )}
+            </div>
+
+            {storeSettings.enableService && serviceAmount > 0 && (
+              <div className="flex justify-between items-center">
+                <span>Layanan ({storeSettings.servicePercent}%):</span>
+                <span>Rp {serviceAmount.toLocaleString('id-ID')}</span>
+              </div>
+            )}
+
+            {storeSettings.enableTax && taxAmount > 0 && (
+              <div className="flex justify-between items-center">
+                <span>Pajak Resto ({storeSettings.taxPercent}%):</span>
+                <span>Rp {taxAmount.toLocaleString('id-ID')}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex justify-between items-end mb-4">
           <span className="text-gray-500 dark:text-gray-400 font-bold text-sm uppercase tracking-wider">Total Pembayaran</span>
           <span className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white leading-none tracking-tight">Rp {totalPrice.toLocaleString('id-ID')}</span>
@@ -623,6 +703,22 @@ export default function POSPage() {
               </div>
             </div>
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+              
+                {cart.length > 0 && (discountAmount > 0 || serviceAmount > 0 || taxAmount > 0) && (
+                  <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl space-y-1 text-xs text-gray-600 dark:text-gray-400 border border-gray-100 dark:border-gray-800">
+                    <div className="flex justify-between"><span>Subtotal</span><span>Rp {rawSubtotal.toLocaleString('id-ID')}</span></div>
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-green-600 font-semibold"><span>Diskon</span><span>-Rp {discountAmount.toLocaleString('id-ID')}</span></div>
+                    )}
+                    {serviceAmount > 0 && (
+                      <div className="flex justify-between"><span>Biaya Layanan ({storeSettings.servicePercent}%)</span><span>Rp {serviceAmount.toLocaleString('id-ID')}</span></div>
+                    )}
+                    {taxAmount > 0 && (
+                      <div className="flex justify-between"><span>Pajak Resto ({storeSettings.taxPercent}%)</span><span>Rp {taxAmount.toLocaleString('id-ID')}</span></div>
+                    )}
+                  </div>
+                )}
+
               <div className="flex justify-between items-center mb-6">
                 <span className="text-gray-600 dark:text-gray-400 font-medium text-lg">Total</span>
                 <span className="text-3xl font-black text-yellow-600 dark:text-yellow-400">Rp {totalPrice.toLocaleString('id-ID')}</span>
@@ -995,7 +1091,65 @@ export default function POSPage() {
             </div>
           )}
         </div>
-</div>
-</>
+
+      {/* Modal Input Diskon */}
+      {isDiscountModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-xs w-full shadow-2xl">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Beri Diskon / Promo</h3>
+            
+            <div className="flex rounded-xl bg-gray-100 dark:bg-gray-700 p-1 mb-4">
+              <button
+                type="button"
+                onClick={() => setDiscountType('percent')}
+                className={'flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ' + (discountType === 'percent' ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-white shadow-sm' : 'text-gray-500')}
+              >
+                Persen (%)
+              </button>
+              <button
+                type="button"
+                onClick={() => setDiscountType('nominal')}
+                className={'flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ' + (discountType === 'nominal' ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-white shadow-sm' : 'text-gray-500')}
+              >
+                Nominal (Rp)
+              </button>
+            </div>
+
+            <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">
+              {discountType === 'percent' ? 'Masukkan Persen Diskon:' : 'Masukkan Nominal Diskon (Rp):'}
+            </label>
+            <input 
+              type="number"
+              placeholder={discountType === 'percent' ? 'Contoh: 10' : 'Contoh: 10000'}
+              value={tempDiscountVal}
+              onChange={(e) => setTempDiscountVal(e.target.value)}
+              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl p-3 text-lg font-black text-gray-900 dark:text-white mb-4 outline-none focus:border-blue-500"
+            />
+
+            <div className="flex space-x-2">
+              <button 
+                type="button"
+                onClick={() => setIsDiscountModalOpen(false)}
+                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-bold text-xs"
+              >
+                Batal
+              </button>
+              <button 
+                type="button"
+                onClick={() => {
+                  setDiscountValue(Number(tempDiscountVal) || 0);
+                  setIsDiscountModalOpen(false);
+                }}
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow"
+              >
+                Terapkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+    </>
   );
 }

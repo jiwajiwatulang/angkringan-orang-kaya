@@ -12,7 +12,7 @@ export interface MenuItem {
 export interface Table {
   id?: number;
   nomor: string;
-  status: string; // 'kosong' | 'terisi'
+  status: string; // 'kosong' | 'open' | 'lunas'
 }
 
 export interface OrderItem {
@@ -27,12 +27,23 @@ export interface OrderItem {
 export interface Order {
   id?: number;
   tableId: number | null;
+  subtotal?: number;
+  discount?: number;
+  discountType?: 'percent' | 'nominal';
+  discountValue?: number;
+  tax?: number;
+  serviceCharge?: number;
   total: number;
-  status: string;
+  cashTendered?: number;
+  change?: number;
+  status: string; // 'paid' | 'unpaid' | 'void'
+  voidReason?: string;
+  voidedAt?: string;
   customerName: string | null;
   customerPhone: string | null;
   paymentMethod: string;
   orderType: string;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
   items?: OrderItem[]; // Joined property
