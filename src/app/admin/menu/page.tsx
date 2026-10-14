@@ -146,6 +146,16 @@ export default function AdminMenuPage() {
     customKategori,
   ]);
 
+  // Sort & Pagination State
+  const [sortBy, setSortBy] = useState<"nama_asc" | "nama_desc" | "harga_asc" | "harga_desc" | "stok_first">("nama_asc");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(12);
+
+  // Reset pagination on filter or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, sortBy, itemsPerPage]);
+
   const categories = ["Semua", ...Array.from(new Set(menus.map((m) => m.kategori).filter(Boolean)))];
 
   const filteredMenus = menus.filter((m) => {
@@ -157,6 +167,22 @@ export default function AdminMenuPage() {
     return matchesSearch && matchesCategory;
   });
 
+  const sortedMenus = [...filteredMenus].sort((a, b) => {
+    if (sortBy === "nama_asc") return a.nama.localeCompare(b.nama, "id");
+    if (sortBy === "nama_desc") return b.nama.localeCompare(a.nama, "id");
+    if (sortBy === "harga_asc") return a.harga - b.harga;
+    if (sortBy === "harga_desc") return b.harga - a.harga;
+    if (sortBy === "stok_first") {
+      if (Boolean(a.isSoldOut) === Boolean(b.isSoldOut)) return a.nama.localeCompare(b.nama, "id");
+      return a.isSoldOut ? 1 : -1;
+    }
+    return 0;
+  });
+
+  const totalPages = itemsPerPage === 0 ? 1 : Math.max(1, Math.ceil(sortedMenus.length / itemsPerPage));
+  const startIndex = itemsPerPage === 0 ? 0 : (currentPage - 1) * itemsPerPage;
+  const paginatedMenus = itemsPerPage === 0 ? sortedMenus : sortedMenus.slice(startIndex, startIndex + itemsPerPage);
+
   // Multi-selection helpers
   const handleToggleSelectMenu = (id: number) => {
     setSelectedMenuIds((prev) =>
@@ -165,17 +191,17 @@ export default function AdminMenuPage() {
   };
 
   const handleSelectAllFiltered = () => {
-    const filteredIds = filteredMenus.map((m) => m.id);
-    const allSelected = filteredIds.every((id) => selectedMenuIds.includes(id));
+    const allFilteredIds = sortedMenus.map((m) => m.id);
+    const allSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedMenuIds.includes(id));
     if (allSelected) {
-      setSelectedMenuIds((prev) => prev.filter((id) => !filteredIds.includes(id)));
+      setSelectedMenuIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
     } else {
-      setSelectedMenuIds((prev) => Array.from(new Set([...prev, ...filteredIds])));
+      setSelectedMenuIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])));
     }
   };
 
   const isAllFilteredSelected =
-    filteredMenus.length > 0 && filteredMenus.every((m) => selectedMenuIds.includes(m.id));
+    sortedMenus.length > 0 && sortedMenus.every((m) => selectedMenuIds.includes(m.id));
 
   // --- SINGLE MENU ACTIONS ---
   const handleOpenAdd = () => {
@@ -528,8 +554,50 @@ export default function AdminMenuPage() {
           ))}
         </div>
 
+        {/* Sort & Pagination Controls */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-gray-100 dark:border-gray-800 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Sort Selector */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-gray-400 font-bold">Urut:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="py-1.5 px-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 font-bold text-gray-700 dark:text-gray-300 outline-none"
+              >
+                <option value="nama_asc">🔤 Nama (A - Z)</option>
+                <option value="nama_desc">🔤 Nama (Z - A)</option>
+                <option value="harga_asc">💰 Harga (Termurah)</option>
+                <option value="harga_desc">💰 Harga (Termahal)</option>
+                <option value="stok_first">🟢 Stok Tersedia Dahulu</option>
+              </select>
+            </div>
+
+            {/* Items Per Page Selector */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-gray-400 font-bold">Tampil:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="py-1.5 px-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 font-bold text-gray-700 dark:text-gray-300 outline-none"
+              >
+                <option value={12}>12 / hal</option>
+                <option value={24}>24 / hal</option>
+                <option value={48}>48 / hal</option>
+                <option value={0}>Semua ({sortedMenus.length})</option>
+              </select>
+            </div>
+          </div>
+
+          {selectedMenuIds.length > 0 && (
+            <span className="text-emerald-600 dark:text-emerald-400 font-black">
+              {selectedMenuIds.length} menu dipilih
+            </span>
+          )}
+        </div>
+
         {/* Selection Bar / Select All row */}
-        {filteredMenus.length > 0 && (
+        {sortedMenus.length > 0 && (
           <div className="flex items-center justify-between px-2 py-1 text-xs text-gray-600 dark:text-gray-400">
             <label className="flex items-center gap-2 cursor-pointer font-bold select-none">
               <input
@@ -538,11 +606,12 @@ export default function AdminMenuPage() {
                 onChange={handleSelectAllFiltered}
                 className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 rounded border-gray-300"
               />
-              <span>Pilih Semua yang Tampil ({filteredMenus.length})</span>
+              <span>Pilih Semua {sortedMenus.length} Menu</span>
             </label>
-            {selectedMenuIds.length > 0 && (
-              <span className="text-emerald-600 dark:text-emerald-400 font-black">
-                {selectedMenuIds.length} menu dipilih
+
+            {itemsPerPage > 0 && sortedMenus.length > itemsPerPage && (
+              <span className="text-[11px] text-gray-400 font-semibold">
+                Halaman {currentPage} dari {totalPages}
               </span>
             )}
           </div>
@@ -552,101 +621,156 @@ export default function AdminMenuPage() {
       {/* Menu Cards / Grid */}
       {isLoading ? (
         <div className="py-12 text-center text-gray-400 text-xs">Memuat daftar menu...</div>
-      ) : filteredMenus.length === 0 ? (
+      ) : sortedMenus.length === 0 ? (
         <div className="py-12 text-center bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 p-8">
           <div className="text-4xl mb-2">🍽️</div>
           <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">Tidak ada menu yang cocok</h3>
           <p className="text-xs text-gray-400 mt-1">Coba ganti kata kunci pencarian atau kategori filter.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filteredMenus.map((menu) => {
-            const isSelected = selectedMenuIds.includes(menu.id);
-            return (
-              <div
-                key={menu.id}
-                onClick={() => handleToggleSelectMenu(menu.id)}
-                className={`p-4 rounded-2xl sm:rounded-3xl bg-white dark:bg-gray-900 border transition-all flex flex-col justify-between cursor-pointer relative select-none ${
-                  isSelected
-                    ? "border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20 ring-2 ring-emerald-500/30"
-                    : menu.isSoldOut
-                    ? "border-rose-200 dark:border-rose-900/40 bg-rose-50/20"
-                    : "border-gray-200/80 dark:border-gray-800 hover:border-emerald-500/50"
-                }`}
-              >
-                <div>
-                  <div className="flex justify-between items-start gap-2 mb-1.5">
-                    <div className="flex items-start gap-2.5">
-                      {/* Checkbox */}
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => {}} // handled by parent onClick
-                        className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer pointer-events-none"
-                      />
-                      <div>
-                        <h4 className="font-black text-sm text-gray-900 dark:text-white leading-snug">
-                          {menu.nama}
-                        </h4>
-                        {menu.sku && (
-                          <span className="text-[10px] text-gray-400 font-mono">
-                            {menu.sku}
-                          </span>
-                        )}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {paginatedMenus.map((menu) => {
+              const isSelected = selectedMenuIds.includes(menu.id);
+              return (
+                <div
+                  key={menu.id}
+                  onClick={() => handleToggleSelectMenu(menu.id)}
+                  className={`p-4 rounded-2xl sm:rounded-3xl bg-white dark:bg-gray-900 border transition-all flex flex-col justify-between cursor-pointer relative select-none ${
+                    isSelected
+                      ? "border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20 ring-2 ring-emerald-500/30"
+                      : menu.isSoldOut
+                      ? "border-rose-200 dark:border-rose-900/40 bg-rose-50/20"
+                      : "border-gray-200/80 dark:border-gray-800 hover:border-emerald-500/50"
+                  }`}
+                >
+                  <div>
+                    <div className="flex justify-between items-start gap-2 mb-1.5">
+                      <div className="flex items-start gap-2.5">
+                        {/* Checkbox */}
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {}} // handled by parent onClick
+                          className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer pointer-events-none"
+                        />
+                        <div>
+                          <h4 className="font-black text-sm text-gray-900 dark:text-white leading-snug">
+                            {menu.nama}
+                          </h4>
+                          {menu.sku && (
+                            <span className="text-[10px] text-gray-400 font-mono">
+                              {menu.sku}
+                            </span>
+                          )}
+                        </div>
                       </div>
+
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 shrink-0">
+                        {menu.kategori}
+                      </span>
                     </div>
 
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 shrink-0">
-                      {menu.kategori}
-                    </span>
+                    <div className="text-base font-black text-emerald-700 dark:text-emerald-400 ml-6">
+                      Rp {menu.harga.toLocaleString("id-ID")}
+                    </div>
                   </div>
 
-                  <div className="text-base font-black text-emerald-700 dark:text-emerald-400 ml-6">
-                    Rp {menu.harga.toLocaleString("id-ID")}
-                  </div>
-                </div>
-
-                {/* Actions & Stock Toggle */}
-                <div
-                  className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2"
-                  onClick={(e) => e.stopPropagation()} // don't toggle selection when clicking buttons
-                >
-                  {/* 1-Tap Stock Toggle Button */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleStock(menu)}
-                    className={`px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all active:scale-95 ${
-                      menu.isSoldOut
-                        ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 hover:bg-rose-200"
-                        : "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200"
-                    }`}
-                    title="Klik untuk ubah stok di kasir"
+                  {/* Actions & Stock Toggle */}
+                  <div
+                    className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2"
+                    onClick={(e) => e.stopPropagation()} // don't toggle selection when clicking buttons
                   >
-                    <span>{menu.isSoldOut ? "🔴 Habis" : "🟢 Tersedia"}</span>
-                  </button>
+                    {/* 1-Tap Stock Toggle Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleStock(menu)}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all active:scale-95 ${
+                        menu.isSoldOut
+                          ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 hover:bg-rose-200"
+                          : "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200"
+                      }`}
+                      title="Klik untuk ubah stok di kasir"
+                    >
+                      <span>{menu.isSoldOut ? "🔴 Habis" : "🟢 Tersedia"}</span>
+                    </button>
 
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEdit(menu)}
-                      className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center text-xs font-bold transition-colors"
-                      title="Edit Menu"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMenuToDelete(menu)}
-                      className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xs font-bold transition-colors"
-                      title="Hapus Menu"
-                    >
-                      🗑️
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEdit(menu)}
+                        className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center text-xs font-bold transition-colors"
+                        title="Edit Menu"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMenuToDelete(menu)}
+                        className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xs font-bold transition-colors"
+                        title="Hapus Menu"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+
+          {/* Pagination Navigation Bar */}
+          {itemsPerPage > 0 && totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-gray-200 dark:border-gray-800 text-xs">
+              <span className="text-gray-500 dark:text-gray-400 font-semibold">
+                Menampilkan {Math.min(startIndex + 1, sortedMenus.length)} - {Math.min(startIndex + itemsPerPage, sortedMenus.length)} dari {sortedMenus.length} menu
+              </span>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 disabled:opacity-40 font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 transition-all active:scale-95"
+                >
+                  ← Sebelumnya
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                  .map((p, idx, arr) => {
+                    const prev = arr[idx - 1];
+                    return (
+                      <React.Fragment key={p}>
+                        {prev && p - prev > 1 && (
+                          <span className="px-1 text-gray-400">...</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage(p)}
+                          className={`w-8 h-8 rounded-xl font-black text-xs transition-all ${
+                            currentPage === p
+                              ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+                              : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 disabled:opacity-40 font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 transition-all active:scale-95"
+                >
+                  Berikutnya →
+                </button>
               </div>
-            );
-          })}
+            </div>
+          )}
         </div>
       )}
 

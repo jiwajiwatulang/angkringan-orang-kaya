@@ -634,7 +634,7 @@ export async function recordPayment(data: {
         action: 'UPLOAD_PROOF',
         orderId: data.orderId,
         amount: payAmount,
-        reason: `Upload bukti bayar split (${data.paymentMethod}): ${data.proof.fileName || 'bukti_bayar.jpg'}`,
+        reason: `Upload bukti bayar split (${data.paymentMethod}): ${proofPayload.fileName || 'bukti_bayar.jpg'}`,
         operator: data.operatorName || 'Kasir',
         timestamp: new Date().toISOString()
       });

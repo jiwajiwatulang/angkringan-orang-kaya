@@ -40,6 +40,11 @@ export default function AdminTransaksiPage() {
   const [paymentFilter, setPaymentFilter] = useState("Semua");
   const [verificationFilter, setVerificationFilter] = useState("Semua");
 
+  // Sort & Pagination State
+  const [sortBy, setSortBy] = useState<"waktu_desc" | "waktu_asc" | "total_desc" | "total_asc">("waktu_desc");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(15);
+
   // Selection for Bulk Actions
   const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
 
@@ -156,6 +161,33 @@ export default function AdminTransaksiPage() {
 
     return true;
   });
+
+  // Reset pagination on filter or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, dateFilter, customStartDate, customEndDate, paymentFilter, verificationFilter, activeTab, sortBy, itemsPerPage]);
+
+  const sortedOrders = [...filteredOrders].sort((a, b) => {
+    if (sortBy === "waktu_asc") {
+      const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+      const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+      return dateA - dateB;
+    }
+    if (sortBy === "total_desc") {
+      return (b.total || 0) - (a.total || 0);
+    }
+    if (sortBy === "total_asc") {
+      return (a.total || 0) - (b.total || 0);
+    }
+    // Default: waktu_desc
+    const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+    const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+    return dateB - dateA;
+  });
+
+  const totalPages = itemsPerPage === 0 ? 1 : Math.ceil(sortedOrders.length / itemsPerPage);
+  const startIndex = itemsPerPage === 0 ? 0 : (currentPage - 1) * itemsPerPage;
+  const paginatedOrders = itemsPerPage === 0 ? sortedOrders : sortedOrders.slice(startIndex, startIndex + itemsPerPage);
 
   // Checkbox helpers
   const handleToggleSelectAll = () => {
@@ -529,7 +561,7 @@ export default function AdminTransaksiPage() {
 
       {/* --- FILTER & SEARCH BAR --- */}
       <div className="bg-white dark:bg-gray-900 p-4 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
           {/* Search */}
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
@@ -581,6 +613,34 @@ export default function AdminTransaksiPage() {
               <option value="terverifikasi">✓ Terverifikasi</option>
               <option value="menunggu_verifikasi">⏳ Menunggu Verifikasi</option>
               <option value="menunggu_bukti">⚠️ Menunggu Bukti</option>
+            </select>
+          </div>
+
+          {/* Sort Filter */}
+          <div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="w-full py-2.5 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 outline-none"
+            >
+              <option value="waktu_desc">⏱️ Waktu (Terbaru)</option>
+              <option value="waktu_asc">⏱️ Waktu (Terlama)</option>
+              <option value="total_desc">💰 Total (Tertinggi)</option>
+              <option value="total_asc">💰 Total (Terendah)</option>
+            </select>
+          </div>
+
+          {/* Items Per Page */}
+          <div>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              className="w-full py-2.5 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 outline-none"
+            >
+              <option value={15}>📄 15 Nota / Hal</option>
+              <option value={30}>📄 30 Nota / Hal</option>
+              <option value={50}>📄 50 Nota / Hal</option>
+              <option value={0}>📄 Tampilkan Semua</option>
             </select>
           </div>
         </div>
@@ -668,7 +728,7 @@ export default function AdminTransaksiPage() {
             <span>Total Nilai: Rp {filteredOrders.filter(o => o.status !== 'void').reduce((s, o) => s + (o.total || 0), 0).toLocaleString('id-ID')}</span>
           </div>
 
-          {filteredOrders.map((order) => {
+          {paginatedOrders.map((order) => {
             const isVoid = order.status === "void";
             const dateDisplay = new Date(order.createdAt).toLocaleString("id-ID", {
               day: "numeric",
@@ -801,6 +861,59 @@ export default function AdminTransaksiPage() {
               </div>
             );
           })}
+
+          {/* Pagination Navigation Bar */}
+          {itemsPerPage > 0 && totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-gray-200 dark:border-gray-800 text-xs">
+              <span className="text-gray-500 dark:text-gray-400 font-semibold">
+                Menampilkan {Math.min(startIndex + 1, sortedOrders.length)} - {Math.min(startIndex + itemsPerPage, sortedOrders.length)} dari {sortedOrders.length} nota
+              </span>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 disabled:opacity-40 font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 transition-all active:scale-95"
+                >
+                  ← Sebelumnya
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                  .map((p, idx, arr) => {
+                    const prev = arr[idx - 1];
+                    return (
+                      <React.Fragment key={p}>
+                        {prev && p - prev > 1 && (
+                          <span className="px-1 text-gray-400">...</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage(p)}
+                          className={`w-8 h-8 rounded-xl font-black text-xs transition-all ${
+                            currentPage === p
+                              ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+                              : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 disabled:opacity-40 font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 transition-all active:scale-95"
+                >
+                  Berikutnya →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

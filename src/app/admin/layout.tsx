@@ -92,7 +92,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       setPinError("");
       showToast("Selamat datang di Admin Backoffice", "success");
     } else {
-      setPinError("PIN salah! Default: 1234");
+      setPinError("PIN otorisasi salah. Silakan coba lagi.");
     }
   };
 
@@ -152,6 +152,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+
+  const isDefaultPin = (storeSettings.adminPin || "1234") === "1234";
 
   const isActiveLink = (href: string) => {
     if (href === "/admin") return pathname === "/admin";
@@ -259,6 +261,24 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
         </header>
+
+        {/* Security Reminder if PIN is still default */}
+        {isDefaultPin && (
+          <div className="bg-amber-50 dark:bg-amber-950/50 border-b border-amber-200 dark:border-amber-900/60 px-4 py-2.5 flex items-center justify-between text-xs text-amber-900 dark:text-amber-200">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🔒</span>
+              <span>
+                <strong>Pemberitahuan Keamanan:</strong> Anda masih menggunakan PIN bawaan sistem. Disarankan segera mengganti PIN pribadi Anda.
+              </span>
+            </div>
+            <Link
+              href="/admin/pengaturan/keamanan"
+              className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shrink-0 ml-2 transition-colors"
+            >
+              Ganti PIN
+            </Link>
+          </div>
+        )}
 
         {/* Page Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 max-w-7xl w-full mx-auto">

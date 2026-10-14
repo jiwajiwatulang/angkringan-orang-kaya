@@ -92,14 +92,48 @@ export default function AdminPengaturanHubPage() {
         ))}
       </div>
 
-      {/* App Architecture Info Banner */}
-      <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/40 text-xs text-emerald-900 dark:text-emerald-300 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <span className="text-xl">🛡️</span>
-          <div>
-            <span className="font-bold block">SakuNota POS v2.1 • Offline-First Native</span>
-            <span className="text-[11px] opacity-80">Seluruh data tersimpan aman di Dexie IndexedDB lokal perangkat Anda.</span>
+      {/* App Architecture & Version Info Card */}
+      <div className="p-5 rounded-3xl bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 space-y-3">
+        <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-2.5">
+            <span className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl">
+              ℹ️
+            </span>
+            <div>
+              <h3 className="font-black text-sm text-gray-900 dark:text-white">Tentang Aplikasi SakuNota</h3>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">Informasi versi rilis dan integritas build sistem.</p>
+            </div>
           </div>
+          <span className="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-black text-xs">
+            v2.2.0
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/60">
+            <span className="text-[10px] text-gray-400 font-bold uppercase block">Versi Rilis</span>
+            <strong className="text-gray-900 dark:text-white font-mono">v2.2.0-prod</strong>
+          </div>
+
+          <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/60">
+            <span className="text-[10px] text-gray-400 font-bold uppercase block">Git Commit</span>
+            <strong className="text-emerald-600 dark:text-emerald-400 font-mono">19d1ca0</strong>
+          </div>
+
+          <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/60">
+            <span className="text-[10px] text-gray-400 font-bold uppercase block">Basis Data</span>
+            <strong className="text-gray-900 dark:text-white font-mono">Dexie DB v8</strong>
+          </div>
+
+          <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/60">
+            <span className="text-[10px] text-gray-400 font-bold uppercase block">Arsitektur</span>
+            <strong className="text-gray-900 dark:text-white font-mono">100% Offline</strong>
+          </div>
+        </div>
+
+        <div className="pt-2 text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed flex items-center gap-1.5">
+          <span>🛡️</span>
+          <span>Seluruh transaksi, menu, meja, dan bukti pembayaran tersimpan secara lokal di IndexedDB perangkat Anda.</span>
         </div>
       </div>
     </div>
