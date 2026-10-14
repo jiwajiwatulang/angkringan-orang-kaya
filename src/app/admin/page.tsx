@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Printer } from '@capgo/capacitor-printer';
 import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
+import { getStoreSettings, saveStoreSettings, StoreSettings } from '@/lib/settings';
+import { generateEscPosReceipt } from '@/lib/receipt';
+import { exportAllData, importAllData, resetAllTransactions } from '@/lib/api';
 
 
 type MenuItem = { id: number; nama: string; harga: number; kategori: string; isSoldOut: boolean; };
@@ -66,7 +69,7 @@ export default function AdminPage() {
       try {
         const mac = localStorage.getItem('bt_printer_mac');
         if (isAndroid && mac && receiptData) {
-          const textToPrint = generateRawBTText(receiptData, mode);
+          const textToPrint = generateEscPosReceipt(receiptData, mode, storeSettings);
           
           try {
              await BluetoothSerial.connect({ address: mac });
@@ -121,8 +124,13 @@ export default function AdminPage() {
         alert("Bluetooth belum aktif. Nyalakan bluetooth HP Anda.");
         await BluetoothSerial.enable();
       }
-      const devices = await BluetoothSerial.list();
-      setBtDevices(devices.devices || []);
+      const paired = await BluetoothSerial.getPairedDevices();
+      let list: any[] = paired.devices || [];
+      if (list.length === 0) {
+        const scanned = await BluetoothSerial.scan();
+        list = (scanned.devices || []).map((d: any) => ({ name: d.name, address: d.address }));
+      }
+      setBtDevices(list);
     } catch(e) {
       alert("Gagal mencari bluetooth: " + JSON.stringify(e));
     }
@@ -133,6 +141,76 @@ export default function AdminPage() {
     localStorage.setItem('bt_printer_mac', mac);
     setSelectedMac(mac);
     alert("Printer berhasil disimpan!");
+  };
+
+  
+  const [storeSettings, setStoreSettings] = useState<StoreSettings>(getStoreSettings());
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleSaveStoreSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveStoreSettings(storeSettings);
+    setIsSavingSettings(true);
+    setTimeout(() => setIsSavingSettings(false), 2000);
+  };
+
+  const handleExportBackup = async () => {
+    try {
+      const data = await exportAllData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const date = new Date().toISOString().split('T')[0];
+      link.href = url;
+      link.download = "Backup_POS_" + (storeSettings.storeName || 'Toko').replace(/\s+/g, '_') + "_" + date + ".json";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert("Gagal membuat cadangan: " + err.message);
+    }
+  };
+
+  const handleImportBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!window.confirm("Peringatan: Memulihkan cadangan akan menimpa menu dan riwayat penjualan yang ada saat ini. Lanjutkan?")) {
+      e.target.value = "";
+      return;
+    }
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      await importAllData(json);
+      setStoreSettings(getStoreSettings());
+      await loadData();
+      alert("Data berhasil dipulihkan!");
+    } catch (err: any) {
+      alert("Gagal memulihkan cadangan: " + err.message);
+    }
+    e.target.value = "";
+  };
+
+  const handleResetTransactions = async () => {
+    const confirm1 = window.confirm("Apakah Anda yakin ingin MENGHAPUS SEMUA riwayat transaksi penjualan (nota)?\n\nMenu makanan dan meja TIDAK AKAN terhapus.");
+    if (!confirm1) return;
+    const confirm2 = window.prompt("Ketik kata 'RESET' untuk mengonfirmasi pembersihan transaksi:");
+    if (confirm2 !== 'RESET') {
+      alert("Penghapusan dibatalkan.");
+      return;
+    }
+    try {
+      setIsResetting(true);
+      await resetAllTransactions();
+      await loadData();
+      alert("Semua riwayat transaksi berhasil dibersihkan! Toko siap mulai dari awal.");
+    } catch (err: any) {
+      alert("Gagal mereset transaksi: " + err.message);
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const [tables, setTables] = useState<any[]>([]);
@@ -847,7 +925,191 @@ export default function AdminPage() {
       </div>
       </div>
 
-      {/* Modal Resi / Nota (Untuk Cetak Ulang) */}
+      
+        {/* --- PENGATURAN TOKO & STRUK --- */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8 mt-8">
+          <div className="flex justify-between items-center mb-6 border-b pb-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-800">Profil Usaha & Pengaturan Struk</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Identitas ini akan otomatis dicetak pada kepala nota belanja pelanggan.</p>
+            </div>
+            {isSavingSettings && (
+              <span className="text-xs font-bold text-green-700 bg-green-50 px-3 py-1.5 rounded-full border border-green-200">
+                ✓ Tersimpan!
+              </span>
+            )}
+          </div>
+
+          <form onSubmit={handleSaveStoreSettings} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Nama Toko / Usaha</label>
+                <input 
+                  type="text" 
+                  value={storeSettings.storeName}
+                  onChange={(e) => setStoreSettings({ ...storeSettings, storeName: e.target.value })}
+                  placeholder="Contoh: Kopi Janji Santai"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-blue-500 outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Nomor Telepon / WhatsApp</label>
+                <input 
+                  type="text" 
+                  value={storeSettings.storePhone}
+                  onChange={(e) => setStoreSettings({ ...storeSettings, storePhone: e.target.value })}
+                  placeholder="Contoh: 081234567890"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-blue-500 outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Alamat Toko</label>
+              <input 
+                type="text" 
+                value={storeSettings.storeAddress}
+                onChange={(e) => setStoreSettings({ ...storeSettings, storeAddress: e.target.value })}
+                placeholder="Contoh: Jl. Ahmad Yani No. 12, Jakarta"
+                className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-blue-500 outline-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Ukuran Kertas Thermal</label>
+                <select 
+                  value={storeSettings.paperWidth}
+                  onChange={(e) => setStoreSettings({ ...storeSettings, paperWidth: e.target.value as any })}
+                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 bg-white focus:border-blue-500 outline-none"
+                >
+                  <option value="58mm">58mm (Printer Mini / Standar Kasir)</option>
+                  <option value="80mm">80mm (Printer Besar Restoran)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Catatan Kaki Struk (Footer)</label>
+                <input 
+                  type="text" 
+                  value={storeSettings.receiptFooter}
+                  onChange={(e) => setStoreSettings({ ...storeSettings, receiptFooter: e.target.value })}
+                  placeholder="Contoh: Terima Kasih, Jangan Lupa Senyum"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-blue-500 outline-none"
+                />
+              </div>
+            </div>
+
+            <button 
+              type="submit"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg text-sm shadow transition-colors"
+            >
+              Simpan Profil Toko
+            </button>
+          </form>
+        </div>
+
+        {/* --- PENGATURAN PRINTER BLUETOOTH --- */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
+          <h2 className="text-xl font-bold mb-1 text-gray-800">Koneksi Printer Bluetooth</h2>
+          <p className="text-xs text-gray-500 mb-4">Sambungkan aplikasi langsung ke mesin printer thermal Panda, Eppos, atau printer Bluetooth lainnya.</p>
+          
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <span className="text-sm text-gray-700 bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg font-mono">
+              Printer Aktif: <strong>{selectedMac || 'Belum dipilih'}</strong>
+            </span>
+            <button 
+              onClick={scanBluetooth} 
+              disabled={isScanning} 
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm"
+            >
+              {isScanning ? 'Mencari Perangkat...' : '🔍 Cari Perangkat Bluetooth'}
+            </button>
+          </div>
+          
+          {btDevices.length > 0 && (
+            <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
+              <h3 className="font-bold text-sm text-gray-700 mb-2">Pilih Printer Anda:</h3>
+              <ul className="space-y-2">
+                {btDevices.map((d: any) => (
+                  <li key={d.address} className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                    <div>
+                      <p className="font-bold text-sm text-gray-800">{d.name || 'Perangkat Tanpa Nama'}</p>
+                      <p className="text-xs text-gray-500 font-mono">{d.address}</p>
+                    </div>
+                    <button 
+                      onClick={() => savePrinter(d.address)} 
+                      className={'px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ' + (selectedMac === d.address ? 'bg-green-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800')}
+                    >
+                      {selectedMac === d.address ? '✓ Terpilih' : 'Pilih Ini'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* --- CADANGKAN & PULIHKAN DATA (BACKUP & RESTORE) --- */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-12">
+          <h2 className="text-xl font-bold mb-1 text-gray-800">Pencadangan Data & Pemeliharaan</h2>
+          <p className="text-xs text-gray-500 mb-6">Amankan data menu dan riwayat omzet Anda ke dalam file cadangan sebelum mengganti perangkat atau mereset HP.</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Download Backup */}
+            <div className="border border-blue-100 bg-blue-50/50 p-4 rounded-xl flex flex-col justify-between">
+              <div>
+                <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold mb-2 text-lg">💾</div>
+                <h3 className="font-bold text-sm text-blue-900">Cadangkan Data (Backup)</h3>
+                <p className="text-xs text-blue-700 mt-1 mb-4 leading-relaxed">Unduh semua data menu, meja, dan riwayat transaksi ke dalam file JSON di HP Anda.</p>
+              </div>
+              <button 
+                onClick={handleExportBackup}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 rounded-lg transition-colors shadow-sm"
+              >
+                Unduh Cadangan (.JSON)
+              </button>
+            </div>
+
+            {/* Restore Backup */}
+            <div className="border border-green-100 bg-green-50/50 p-4 rounded-xl flex flex-col justify-between">
+              <div>
+                <div className="w-9 h-9 rounded-lg bg-green-100 text-green-700 flex items-center justify-center font-bold mb-2 text-lg">📂</div>
+                <h3 className="font-bold text-sm text-green-900">Pulihkan Data (Restore)</h3>
+                <p className="text-xs text-green-700 mt-1 mb-4 leading-relaxed">Masukkan kembali file cadangan .JSON untuk memulihkan toko di perangkat baru.</p>
+              </div>
+              <label className="w-full bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2.5 rounded-lg text-center cursor-pointer transition-colors shadow-sm block">
+                Pilih File Cadangan
+                <input 
+                  type="file" 
+                  accept=".json"
+                  onChange={handleImportBackup}
+                  className="hidden" 
+                />
+              </label>
+            </div>
+
+            {/* Reset Demo Transactions */}
+            <div className="border border-red-100 bg-red-50/50 p-4 rounded-xl flex flex-col justify-between">
+              <div>
+                <div className="w-9 h-9 rounded-lg bg-red-100 text-red-700 flex items-center justify-center font-bold mb-2 text-lg">🧹</div>
+                <h3 className="font-bold text-sm text-red-900">Bersihkan Nota Uji Coba</h3>
+                <p className="text-xs text-red-700 mt-1 mb-4 leading-relaxed">Hapus semua transaksi tes untuk mulai jualan resmi. Menu dan meja tetap aman.</p>
+              </div>
+              <button 
+                onClick={handleResetTransactions}
+                disabled={isResetting}
+                className="w-full bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2.5 rounded-lg transition-colors shadow-sm disabled:opacity-50"
+              >
+                {isResetting ? 'Membersihkan...' : 'Reset Transaksi Saja'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+{/* Modal Resi / Nota (Untuk Cetak Ulang) */}
       {receiptData && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <style dangerouslySetInnerHTML={{__html: `
@@ -878,9 +1140,9 @@ export default function AdminPage() {
             <div id="printable-receipt" className="font-mono text-sm leading-tight p-2">
               <div className="text-center mb-4 border-b border-dashed border-gray-400 pb-4">
                 <h2 className="text-xl font-bold uppercase">
-                  {printMode === 'all' ? 'Angkringan Orang Kaya' : printMode === 'food' ? 'DAPUR - MAKANAN' : 'BAR - MINUMAN'}
+                  {printMode === 'all' ? storeSettings.storeName : printMode === 'food' ? 'DAPUR - MAKANAN' : 'BAR - MINUMAN'}
                 </h2>
-                <p className="text-[10px] uppercase leading-tight mt-1">Jl. Raya Kerobokan No.5<br/>Kerobokan Kelod, Kuta Utara, Bali 80361</p>
+                <p className="text-[10px] uppercase leading-tight mt-1">{storeSettings.storeAddress}<br/>{storeSettings.storePhone ? "Telp: " + storeSettings.storePhone : ""}</p>
                 <p className="text-xs mt-1">Cetak Ulang - {receiptData.date}</p>
               </div>
 

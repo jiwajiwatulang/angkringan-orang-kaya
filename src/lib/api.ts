@@ -131,7 +131,7 @@ export async function countUnpaidOrdersForTable(tableId: number) {
 }
 
 // Hitung ulang status meja setelah transaksi
-export async function refreshTableStatus(tableId: number, justPaid: boolean) {
+export async function refreshTableStatus(tableId: number, justPaid: boolean = false) {
   const unpaid = await countUnpaidOrdersForTable(tableId);
   if (unpaid > 0) {
     await setTableStatus(tableId, 'open');
@@ -256,3 +256,92 @@ export async function deleteOrders(ids: number[]) {
 }
 
 
+
+
+// --- FITUR CADANGAN (BACKUP) & PEMULIHAN (RESTORE) ---
+
+export async function exportAllData() {
+  const menus = await db.table('menuItems').toArray();
+  const tables = await db.table('tables').toArray();
+  const orders = await db.table('orders').toArray();
+  const orderItems = await db.table('orderItems').toArray();
+  
+  let settings = null;
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('pos_store_settings');
+      if (raw) settings = JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  return {
+    version: 1,
+    appName: 'POS Kasir UMKM',
+    exportedAt: new Date().toISOString(),
+    settings,
+    menus,
+    tables,
+    orders,
+    orderItems
+  };
+}
+
+export async function importAllData(data: any) {
+  if (!data || !Array.isArray(data.menus)) {
+    throw new Error('Format file cadangan tidak valid.');
+  }
+
+  await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems'], async () => {
+    // 1. Bersihkan data lama
+    await db.table('orderItems').clear();
+    await db.table('orders').clear();
+    await db.table('tables').clear();
+    await db.table('menuItems').clear();
+
+    // 2. Masukkan data baru
+    if (data.menus && data.menus.length > 0) {
+      const cleanMenus = data.menus.map((m: any) => ({
+        id: m.id,
+        nama: m.nama,
+        harga: Number(m.harga),
+        kategori: m.kategori || 'Umum',
+        isSoldOut: Boolean(m.isSoldOut),
+        urutan: Number(m.urutan || 0)
+      }));
+      await db.table('menuItems').bulkAdd(cleanMenus);
+    }
+
+    if (data.tables && data.tables.length > 0) {
+      await db.table('tables').bulkAdd(data.tables);
+    }
+
+    if (data.orders && data.orders.length > 0) {
+      await db.table('orders').bulkAdd(data.orders);
+    }
+
+    if (data.orderItems && data.orderItems.length > 0) {
+      await db.table('orderItems').bulkAdd(data.orderItems);
+    }
+  });
+
+  // 3. Pulihkan pengaturan jika ada
+  if (data.settings && typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('pos_store_settings', JSON.stringify(data.settings));
+    } catch (e) {}
+  }
+
+  return true;
+}
+
+export async function resetAllTransactions() {
+  await db.transaction('rw', ['orders', 'orderItems', 'tables'], async () => {
+    await db.table('orderItems').clear();
+    await db.table('orders').clear();
+    const tables = await db.table('tables').toArray();
+    for (const t of tables) {
+      await db.table('tables').update(t.id, { status: 'kosong' });
+    }
+  });
+  return true;
+}

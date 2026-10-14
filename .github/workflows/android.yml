@@ -1,4 +1,4 @@
-﻿name: Build Android APK
+name: Build Android APK & AAB
 
 on:
   push:
@@ -36,12 +36,20 @@ jobs:
       working-directory: ./android
       run: chmod +x gradlew
 
-    - name: Build APK
+    - name: Build APK & Bundle AAB
       working-directory: ./android
-      run: ./gradlew assembleDebug
+      run: |
+        ./gradlew assembleDebug
+        ./gradlew bundleDebug
 
-    - name: Upload APK
+    - name: Upload APK (For Testing)
       uses: actions/upload-artifact@v4
       with:
-        name: angkringan-pos-apk
+        name: pos-cashier-apk
         path: android/app/build/outputs/apk/debug/app-debug.apk
+
+    - name: Upload AAB (For Google Play Store)
+      uses: actions/upload-artifact@v4
+      with:
+        name: pos-cashier-aab
+        path: android/app/build/outputs/bundle/debug/app-debug.aab

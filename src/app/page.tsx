@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Printer } from '@capgo/capacitor-printer';
 import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
+import { getStoreSettings, StoreSettings } from '@/lib/settings';
+import { generateEscPosReceipt } from '@/lib/receipt';
 
 type MenuItem = { id: number; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; };
 type CartItem = MenuItem & { qty: number };
@@ -18,6 +20,8 @@ export default function POSPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [isDark, setIsDark] = useState(false);
+  const [storeSettings, setStoreSettings] = useState<StoreSettings>(getStoreSettings());
+  const [cashTendered, setCashTendered] = useState<string>("");
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   useEffect(() => {
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -52,6 +56,7 @@ export default function POSPage() {
   const [activeVariantGroup, setActiveVariantGroup] = useState<any>(null);
 
   const loadData = async () => {
+    setStoreSettings(getStoreSettings());
     const { getMenus, getOrders, getTables } = await import('@/lib/api');
     const menus = await getMenus();
     const tables = await getTables();
@@ -185,6 +190,7 @@ export default function POSPage() {
     setCustomerName("");
     setNotes("");
     setPaymentMethod("Cash");
+    setCashTendered("");
     setEditingOrderId(null);
   };
 
@@ -287,7 +293,12 @@ export default function POSPage() {
         return { ...oldItem, qty: item ? oldItem.qty - item.qty : oldItem.qty };
       });
 
+      const tenderAmount = paymentMethod === 'Cash' ? (Number(cashTendered) || finalTotal) : finalTotal;
+      const changeAmount = paymentMethod === 'Cash' ? Math.max(0, tenderAmount - finalTotal) : 0;
+
       const newReceipt = {
+        cashTendered: tenderAmount,
+        change: changeAmount,
         isDraft: isDraftOnly,
         isRevision: isRevision,
         addedItems: addedItems,
@@ -371,19 +382,33 @@ export default function POSPage() {
     return btoa(txt);
   };
 
-  const handlePrint = (mode: 'all' | 'food' | 'drink', autoReceiptData?: any) => {
+    const handlePrint = async (mode: 'all' | 'food' | 'drink', autoReceiptData?: any) => {
     const dataToPrint = autoReceiptData || receiptData;
-    // RawBT intent removed to allow Capacitor Printer Plugin to trigger native print dialog
-    
     setPrintMode(mode);
+    
     setTimeout(async () => {
+      try {
+        const mac = localStorage.getItem('bt_printer_mac');
+        const isAndroid = /android/i.test(navigator.userAgent);
+        
+        if (isAndroid && mac && dataToPrint) {
+          const rawText = generateEscPosReceipt(dataToPrint, mode, storeSettings);
+          try {
+            await BluetoothSerial.connect({ address: mac });
+          } catch (e) {}
+          await BluetoothSerial.write({ address: mac, value: rawText });
+        } else {
+          await Printer.printWebView({ name: 'Nota_POS' });
+        }
+      } catch (e) {
         try {
-          await Printer.printWebView({ name: 'Nota_Angkringan' });
-        } catch (e) {
+          await Printer.printWebView({ name: 'Nota_POS' });
+        } catch (e2) {
           alert('Gagal memanggil print: ' + e);
         }
-        setPrintMode('all');
-      }, 100);
+      }
+      setPrintMode('all');
+    }, 100);
   };
   const closeReceipt = () => setReceiptData(null);
 
@@ -551,6 +576,50 @@ export default function POSPage() {
                     ))}
                   </div>
                 </div>
+                  {/* Kalkulator Uang Masuk & Kembalian */}
+                  {paymentMethod === "Cash" && (
+                    <div className="mt-4 p-3.5 bg-gray-50 dark:bg-gray-900/80 rounded-xl border border-gray-200 dark:border-gray-700">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label className="text-xs font-bold text-gray-700 dark:text-gray-300">Uang Diterima (Rp)</label>
+                        <button 
+                          type="button"
+                          onClick={() => setCashTendered(totalPrice.toString())}
+                          className="text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline"
+                        >
+                          Uang Pas
+                        </button>
+                      </div>
+                      <input 
+                        type="number"
+                        placeholder={totalPrice.toString()}
+                        value={cashTendered}
+                        onChange={(e) => setCashTendered(e.target.value)}
+                        className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 text-lg font-black text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-colors"
+                      />
+                      
+                      {/* Tombol Cepat Pecahan Uang */}
+                      <div className="grid grid-cols-4 gap-1.5 mt-2">
+                        {[10000, 20000, 50000, 100000].map(amt => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setCashTendered(amt.toString())}
+                            className="py-1 px-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                          >
+                            {amt >= 1000 ? (amt / 1000) + 'rb' : amt}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Indikator Kembalian */}
+                      <div className="mt-3 pt-2.5 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Kembalian:</span>
+                        <span className={'text-base font-black ' + ((Number(cashTendered) || 0) >= totalPrice ? 'text-green-600 dark:text-green-400' : 'text-red-500')}>
+                          Rp {Math.max(0, (Number(cashTendered) || 0) - totalPrice).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    </div>
+                  )}
               </div>
             </div>
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
@@ -586,9 +655,9 @@ export default function POSPage() {
                   </div>
                 )}
                 <div className="text-center mb-4 border-b border-dashed border-gray-400 pb-4">
-                  <h2 className="text-xl font-bold uppercase">{receiptData.isDraft ? 'PREVIEW DRAFT' : printMode === 'all' ? 'ANGKRINGAN ORANG KAYA' : printMode === 'food' ? 'DAPUR - MAKANAN' : 'BAR - MINUMAN'}</h2>
+                  <h2 className="text-xl font-bold uppercase">{receiptData.isDraft ? 'PREVIEW DRAFT' : printMode === 'all' ? storeSettings.storeName : printMode === 'food' ? 'DAPUR - MAKANAN' : 'BAR - MINUMAN'}</h2>
                   {printMode === 'all' && (
-                    <p className="text-[10px] uppercase leading-tight mt-1">Jl. Raya Kerobokan No.5<br/>Kerobokan Kelod, Kuta Utara, Bali 80361<br/>{receiptData.date}</p>
+                    <p className="text-[10px] uppercase leading-tight mt-1">{storeSettings.storeAddress}<br/>{storeSettings.storePhone ? 'Telp: ' + storeSettings.storePhone + ' | ' : ''}{receiptData.date}</p>
                   )}
                   {printMode !== 'all' && <p className="text-xs">{receiptData.date}</p>}
                 </div>
@@ -663,6 +732,12 @@ export default function POSPage() {
                   <div className="border-t border-dashed border-gray-400 pt-2 mb-4 text-xs">
                     <div className="flex justify-between font-bold text-sm"><span>TOTAL</span><span>Rp {receiptData.total.toLocaleString('id-ID')}</span></div>
                     <div className="flex justify-between mt-1"><span>Metode</span><span>{receiptData.paymentMethod}</span></div>
+                    {printMode === 'all' && receiptData.cashTendered > 0 && receiptData.paymentMethod === 'Cash' && (
+                      <>
+                        <div className="flex justify-between mt-1 text-gray-600"><span>Bayar Tunai</span><span>Rp {Number(receiptData.cashTendered).toLocaleString('id-ID')}</span></div>
+                        <div className="flex justify-between mt-1 text-green-700 font-bold"><span>Kembalian</span><span>Rp {Number(receiptData.change || 0).toLocaleString('id-ID')}</span></div>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -670,7 +745,10 @@ export default function POSPage() {
                   {receiptData.isDraft ? (
                     <p>MOHON BAYAR DI KASIR SEBELUM PULANG</p>
                   ) : printMode === 'all' ? (
-                    <><p>Terima Kasih</p><p>Silakan tunggu pesanan Anda</p></>
+                    <>
+                      <div className="whitespace-pre-line">{storeSettings.receiptFooter}</div>
+                      {storeSettings.enableWatermark && <p className="mt-2 text-[9px] text-gray-400">[ Aplikasi Kasir PosPoint ]</p>}
+                    </>
                   ) : (
                     <p>--- BATAS PESANAN ---</p>
                   )}
