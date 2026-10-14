@@ -41,10 +41,32 @@ export interface OrderItem {
   id?: number;
   orderId: number;
   menuItemId: number;
+  namaMenu?: string;     // Snapshot nama menu saat transaksi (immutable)
+  kategoriMenu?: string; // Snapshot kategori menu saat transaksi
   qty: number;
-  hargaSatuan: number;
-  selectedModifiers?: SelectedModifier[]; // Catatan add-on terpilih
-  menuItem?: MenuItem; // Joined property
+  paidQty?: number;      // Jumlah porsi yang sudah terbayar via Split by Item
+  hargaSatuan: number;   // Snapshot harga dasar satuan
+  selectedModifiers?: SelectedModifier[]; // Snapshot catatan add-on terpilih
+  menuItem?: MenuItem;   // Joined property (backward compatibility)
+}
+
+export interface Payment {
+  id?: number;
+  orderId: number;
+  shiftId?: number | null;
+  paymentMethod: 'Cash' | 'QRIS' | 'Transfer';
+  amount: number;
+  cashTendered?: number;
+  change?: number;
+  splitType: 'full' | 'item' | 'equal' | 'partial';
+  itemsPaid?: { menuItemId: number; itemKey?: string; nama: string; qty: number; harga: number }[];
+  paidAt: string;
+  operatorName: string;
+  notes?: string;
+  status: 'completed' | 'refunded';
+  refundReason?: string;
+  refundedAt?: string;
+  refundOperator?: string;
 }
 
 export interface Order {
@@ -59,6 +81,8 @@ export interface Order {
   tax?: number;
   serviceCharge?: number;
   total: number;
+  paidAmount?: number;       // Akumulasi total yang sudah terbayar
+  remainingBalance?: number; // Sisa tagihan yang belum terbayar (total - paidAmount)
   cashTendered?: number;
   change?: number;
   status: string; // 'paid' | 'unpaid' | 'void'
@@ -75,11 +99,12 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   items?: OrderItem[]; // Joined property
+  payments?: Payment[]; // Joined property
 }
 
 export interface AuditLog {
   id?: number;
-  action: 'VOID' | 'REFUND' | 'DELETE' | 'RESET' | 'OPEN_SHIFT' | 'CLOSE_SHIFT' | 'CASH_IN' | 'CASH_OUT';
+  action: 'VOID' | 'REFUND' | 'DELETE' | 'RESET' | 'OPEN_SHIFT' | 'CLOSE_SHIFT' | 'CASH_IN' | 'CASH_OUT' | 'PARTIAL_PAYMENT' | 'PARTIAL_REFUND';
   orderId?: number;
   amount: number;
   reason: string;
@@ -125,6 +150,40 @@ db.version(5).stores({
   auditLogs: '++id, orderId, action, timestamp',
   shifts: '++id, status, startTime, operatorName',
   cashMovements: '++id, shiftId, type, timestamp'
+});
+
+db.version(6).stores({
+  menuItems: '++id, nama, kategori, isSoldOut, urutan',
+  tables: '++id, nomor, status',
+  orders: '++id, shiftId, idempotencyKey, tableId, status, createdAt',
+  orderItems: '++id, orderId, menuItemId',
+  payments: '++id, orderId, shiftId, paymentMethod, status, paidAt',
+  auditLogs: '++id, orderId, action, timestamp',
+  shifts: '++id, status, startTime, operatorName',
+  cashMovements: '++id, shiftId, type, timestamp'
+}).upgrade(async tx => {
+  const orders = await tx.table('orders').toArray();
+  const existingPayments: any[] = [];
+  for (const o of orders) {
+    if (o.status === 'paid' && o.total > 0) {
+      existingPayments.push({
+        orderId: o.id,
+        shiftId: o.shiftId || null,
+        paymentMethod: o.paymentMethod || 'Cash',
+        amount: o.total,
+        cashTendered: o.cashTendered || o.total,
+        change: o.change || 0,
+        splitType: 'full',
+        paidAt: o.createdAt || new Date().toISOString(),
+        operatorName: 'Kasir',
+        status: o.isRefunded ? 'refunded' : 'completed',
+        notes: o.notes || 'Pembayaran Penuh'
+      });
+    }
+  }
+  if (existingPayments.length > 0) {
+    await tx.table('payments').bulkAdd(existingPayments);
+  }
 });
 
 export { db };

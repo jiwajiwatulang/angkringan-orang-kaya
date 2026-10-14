@@ -1,12 +1,8 @@
 import { StoreSettings, getStoreSettings } from './settings';
 
-export function formatCurrency(amount: number): string {
-  return "Rp " + Math.round(amount).toLocaleString('id-ID');
-}
-
-export function generateEscPosReceipt(receipt: any, mode: 'all' | 'food' | 'drink', settings?: StoreSettings): string {
+export function generateEscPosReceipt(receipt: any, mode: 'all' | 'food' | 'drink' = 'all', settings?: StoreSettings): string {
   const cfg = settings || getStoreSettings();
-  const width = cfg.paperWidth === '80mm' ? 48 : 32;
+  const width = cfg.paperWidth === '80mm' ? 48 : 32; // Karakter per baris (58mm = 32 col, 80mm = 48 col)
   const divider = "-".repeat(width) + "\n";
   const doubleDivider = "=".repeat(width) + "\n";
 
@@ -19,34 +15,35 @@ export function generateEscPosReceipt(receipt: any, mode: 'all' | 'food' | 'drin
   const lineTwoCols = (left: string, right: string): string => {
     const space = width - left.length - right.length;
     if (space <= 0) {
-      return left + "\n" + " ".repeat(Math.max(0, width - right.length)) + right + "\n";
+      return `${left}\n${right.padStart(width, " ")}\n`;
     }
-    return left + " ".repeat(space) + right + "\n";
+    return `${left}${" ".repeat(space)}${right}\n`;
   };
+
+  const formatCurrency = (val: number): string => `Rp ${val.toLocaleString('id-ID')}`;
 
   let txt = "";
 
-  // 1. Header Toko
+  // 1. Header Struk
   if (mode === 'all') {
-    txt += center(cfg.storeName.toUpperCase());
+    txt += center(cfg.storeName || "SAKUNOTA");
     if (cfg.storeAddress) txt += center(cfg.storeAddress);
-    if (cfg.storePhone) txt += center("Telp: " + cfg.storePhone);
-  } else if (mode === 'food') {
-    txt += center("*** DAPUR - MAKANAN ***");
+    if (cfg.storePhone) txt += center(`Telp: ${cfg.storePhone}`);
+    if ((cfg as any).receiptHeader) {
+      const headerLines = (cfg as any).receiptHeader.split("\n");
+      headerLines.forEach((l: string) => {
+        if (l.trim()) txt += center(l.trim());
+      });
+    }
   } else {
-    txt += center("*** BAR - MINUMAN ***");
+    // Mode Dapur atau Bar
+    const title = mode === 'food' ? "*** STRUK DAPUR (KITCHEN) ***" : "*** STRUK BAR (MINUMAN) ***";
+    txt += center(title);
   }
 
   txt += doubleDivider;
 
-  // Indikator status VOID
-  if (receipt.status === 'void') {
-    txt += center("!!! NOTA BATAL / VOID !!!");
-    if (receipt.voidReason) txt += center("Alasan: " + receipt.voidReason);
-    txt += divider;
-  }
-
-  // 2. Info Pesanan
+  // 2. Info Transaksi
   txt += lineTwoCols(`Tgl: ${receipt.date || new Date().toLocaleString('id-ID')}`, "");
   txt += lineTwoCols(
     `No: A-${receipt.orderId || '-'}`,
@@ -71,7 +68,7 @@ export function generateEscPosReceipt(receipt: any, mode: 'all' | 'food' | 'drin
   };
 
   (receipt.items || []).forEach((item: any) => {
-    const isDrink = isDrinkCategory(item.kategori);
+    const isDrink = isDrinkCategory(item.kategori || item.kategoriMenu);
     if (mode === 'food' && isDrink) return;
     if (mode === 'drink' && !isDrink) return;
 
@@ -79,11 +76,11 @@ export function generateEscPosReceipt(receipt: any, mode: 'all' | 'food' | 'drin
     calculatedSubtotal += subtotal;
 
     if (mode === 'all') {
-      const left = `${item.qty}x ${item.nama}`;
+      const left = `${item.qty}x ${item.nama || item.namaMenu}`;
       const right = formatCurrency(subtotal);
       txt += lineTwoCols(left, right);
     } else {
-      txt += `${item.qty}x ${item.nama}\n`;
+      txt += `${item.qty}x ${item.nama || item.namaMenu}\n`;
     }
 
     // Cetak rincian Modifier / Add-on (Level pedas, extra topping, es, dll)
@@ -118,13 +115,43 @@ export function generateEscPosReceipt(receipt: any, mode: 'all' | 'food' | 'drin
     }
 
     const total = receipt.total || calculatedSubtotal;
-    txt += lineTwoCols("TOTAL:", formatCurrency(total));
-    txt += lineTwoCols("Metode:", receipt.paymentMethod || "Tunai");
+    txt += lineTwoCols("TOTAL TAGIHAN:", formatCurrency(total));
 
-    if (receipt.cashTendered && receipt.cashTendered > 0) {
-      txt += lineTwoCols("Bayar Tunai:", formatCurrency(receipt.cashTendered));
-      const change = Math.max(0, receipt.cashTendered - total);
-      txt += lineTwoCols("Kembalian:", formatCurrency(change));
+    // Rincian Pembayaran (Dukungan Split Bill & Mixed Payments)
+    if (receipt.payments && receipt.payments.length > 0) {
+      txt += divider;
+      txt += "Rincian Pembayaran:\n";
+      receipt.payments.forEach((p: any, idx: number) => {
+        const isRef = p.status === 'refunded';
+        const pLabel = ` ${idx + 1}. ${p.paymentMethod}${isRef ? ' (REFUND)' : ''}`;
+        txt += lineTwoCols(pLabel, formatCurrency(p.amount));
+        if (p.itemsPaid && p.itemsPaid.length > 0) {
+          p.itemsPaid.forEach((it: any) => {
+            txt += `    • ${it.qty}x ${it.nama}\n`;
+          });
+        }
+      });
+      txt += divider;
+      const completedTotal = receipt.payments.filter((p: any) => p.status === 'completed').reduce((sum: number, p: any) => sum + p.amount, 0);
+      txt += lineTwoCols("Total Terbayar:", formatCurrency(completedTotal));
+      const remaining = Math.max(0, total - completedTotal);
+      if (remaining > 0) {
+        txt += lineTwoCols("SISA TAGIHAN:", formatCurrency(remaining));
+        txt += doubleDivider;
+        txt += center("⏳ STATUS: BELUM LUNAS");
+      } else {
+        txt += doubleDivider;
+        txt += center("✅ LUNAS");
+      }
+    } else {
+      txt += lineTwoCols("Metode:", receipt.paymentMethod || "Tunai");
+      if (receipt.cashTendered && receipt.cashTendered > 0) {
+        txt += lineTwoCols("Bayar Tunai:", formatCurrency(receipt.cashTendered));
+        const change = Math.max(0, receipt.cashTendered - total);
+        txt += lineTwoCols("Kembalian:", formatCurrency(change));
+      }
+      txt += doubleDivider;
+      txt += center("✅ LUNAS");
     }
 
     txt += divider;
@@ -139,11 +166,86 @@ export function generateEscPosReceipt(receipt: any, mode: 'all' | 'food' | 'drin
 
     // Watermark Promosi SakuNota
     if (cfg.enableWatermark) {
-      txt += "\n" + center("[ Aplikasi Kasir Gratis - SakuNota ]");
+      txt += "\n" + center("[ SakuNota - Kasir Pintar UMKM ]");
     }
   }
 
   txt += "\n\n\n"; // Feed paper
+  return txt;
+}
+
+export function generatePartialPaymentReceipt(order: any, payment: any, settings?: StoreSettings): string {
+  const cfg = settings || getStoreSettings();
+  const width = cfg.paperWidth === '80mm' ? 48 : 32;
+  const divider = "-".repeat(width) + "\n";
+  const doubleDivider = "=".repeat(width) + "\n";
+
+  const center = (text: string): string => {
+    if (text.length >= width) return text.substring(0, width) + "\n";
+    const pad = Math.floor((width - text.length) / 2);
+    return " ".repeat(pad) + text + "\n";
+  };
+
+  const lineTwoCols = (left: string, right: string): string => {
+    const space = width - left.length - right.length;
+    if (space <= 0) return `${left}\n${right.padStart(width, " ")}\n`;
+    return `${left}${" ".repeat(space)}${right}\n`;
+  };
+
+  const formatCurrency = (val: number): string => `Rp ${val.toLocaleString('id-ID')}`;
+
+  let txt = "";
+  txt += center(cfg.storeName || "SAKUNOTA");
+  if (cfg.storeAddress) txt += center(cfg.storeAddress);
+  if (cfg.storePhone) txt += center(`Telp: ${cfg.storePhone}`);
+  txt += doubleDivider;
+  txt += center("BUKTI PEMBAYARAN PARSIAL");
+  txt += divider;
+
+  txt += lineTwoCols(`Tgl: ${payment.paidAt ? new Date(payment.paidAt).toLocaleString('id-ID') : new Date().toLocaleString('id-ID')}`, "");
+  txt += lineTwoCols(`No: A-${order.id || '-'}`, order.tableId ? `Meja: ${order.tableId}` : `[${order.orderType || 'Dine-in'}]`);
+  if (order.customerName) txt += lineTwoCols(`Pelanggan: ${order.customerName}`, "");
+  txt += lineTwoCols(`Kasir: ${payment.operatorName || 'Kasir'}`, payment.shiftId ? `Shift #${payment.shiftId}` : "");
+  txt += divider;
+
+  // Tipe Split
+  const splitLabel = payment.splitType === 'item' ? 'Split by Item (Per Menu)' :
+                     payment.splitType === 'equal' ? 'Split Equally (Bagi Rata)' : 'Pembayaran Cicil / Parsial';
+  txt += `Tipe: ${splitLabel}\n`;
+
+  if (payment.itemsPaid && payment.itemsPaid.length > 0) {
+    txt += "Menu yang dibayar:\n";
+    payment.itemsPaid.forEach((it: any) => {
+      txt += lineTwoCols(` • ${it.qty}x ${it.nama}`, formatCurrency(it.harga * it.qty));
+    });
+  }
+
+  txt += divider;
+  txt += lineTwoCols("Nominal Dibayar:", formatCurrency(payment.amount));
+  txt += lineTwoCols("Metode Bayar:", payment.paymentMethod);
+  if (payment.paymentMethod === 'Cash' && payment.cashTendered) {
+    txt += lineTwoCols("Uang Diterima:", formatCurrency(payment.cashTendered));
+    txt += lineTwoCols("Kembalian:", formatCurrency(payment.change || 0));
+  }
+
+  txt += divider;
+  txt += lineTwoCols("Total Tagihan Nota:", formatCurrency(order.total));
+  const remaining = order.remainingBalance !== undefined ? order.remainingBalance : Math.max(0, order.total - (order.paidAmount || payment.amount));
+  txt += lineTwoCols("SISA TAGIHAN:", formatCurrency(remaining));
+  txt += doubleDivider;
+  
+  if (remaining > 0) {
+    txt += center("⏳ STATUS: BELUM LUNAS");
+    txt += center("Harap simpan bukti pembayaran ini");
+  } else {
+    txt += center("✅ STATUS: LUNAS");
+  }
+
+  if (cfg.enableWatermark) {
+    txt += "\n" + center("[ SakuNota - Kasir Pintar UMKM ]");
+  }
+
+  txt += "\n\n\n";
   return txt;
 }
 
@@ -162,51 +264,68 @@ export function generateZReportReceipt(stats: any, settings?: StoreSettings): st
   const lineTwoCols = (left: string, right: string): string => {
     const space = width - left.length - right.length;
     if (space <= 0) {
-      return left + "\n" + " ".repeat(Math.max(0, width - right.length)) + right + "\n";
+      return `${left}\n${right.padStart(width, " ")}\n`;
     }
-    return left + " ".repeat(space) + right + "\n";
+    return `${left}${" ".repeat(space)}${right}\n`;
   };
 
+  const formatCurrency = (val: number): string => `Rp ${val.toLocaleString('id-ID')}`;
+
   let txt = "";
-  txt += center(cfg.storeName.toUpperCase());
-  if (cfg.storeAddress) txt += center(cfg.storeAddress);
-  txt += doubleDivider;
-  txt += center("LAPORAN TUTUP SHIFT");
-  txt += center("(Z-REPORT)");
+
+  txt += center(cfg.storeName || "SAKUNOTA");
+  txt += center("*** LAPORAN TUTUP SHIFT (Z-REPORT) ***");
   txt += doubleDivider;
 
-  txt += lineTwoCols("Operator:", stats.operatorName || 'Kasir');
-  txt += lineTwoCols("Buka:", new Date(stats.startTime).toLocaleString('id-ID'));
-  txt += lineTwoCols("Tutup:", stats.endTime ? new Date(stats.endTime).toLocaleString('id-ID') : new Date().toLocaleString('id-ID'));
-  txt += lineTwoCols("Jml Transaksi:", (stats.totalTransactions || 0) + " nota");
+  txt += lineTwoCols("Shift ID:", `#${stats.id || '-'}`);
+  txt += lineTwoCols("Kasir/Operator:", stats.operatorName || "Kasir");
+  txt += lineTwoCols("Waktu Buka:", stats.startTime ? new Date(stats.startTime).toLocaleString('id-ID') : "-");
+  txt += lineTwoCols("Waktu Tutup:", stats.endTime ? new Date(stats.endTime).toLocaleString('id-ID') : new Date().toLocaleString('id-ID'));
   txt += divider;
 
-  txt += lineTwoCols("Modal Awal Kas:", formatCurrency(stats.startingCash || 0));
-  txt += lineTwoCols("Penjualan Tunai:", formatCurrency(stats.cashSales || 0));
-  txt += lineTwoCols("Penjualan Non-Tunai:", formatCurrency(stats.nonCashSales || 0));
-  if (stats.cashIn > 0) txt += lineTwoCols("Kas Masuk (+):", formatCurrency(stats.cashIn));
-  if (stats.cashOut > 0) txt += lineTwoCols("Kas Keluar (-):", "-" + formatCurrency(stats.cashOut));
-  if (stats.cashRefunds > 0) txt += lineTwoCols("Refund Tunai (-):", "-" + formatCurrency(stats.cashRefunds));
+  // Rincian Kas Fisik Laci
+  txt += center("--- REKONSILIASI KAS LACI ---");
+  txt += lineTwoCols("1. Modal Awal:", formatCurrency(stats.startingCash || 0));
+  txt += lineTwoCols("2. Penjualan Tunai:", `+${formatCurrency(stats.cashSales || 0)}`);
+  if (stats.cashIn && stats.cashIn > 0) {
+    txt += lineTwoCols("3. Kas Masuk:", `+${formatCurrency(stats.cashIn)}`);
+  }
+  if (stats.cashOut && stats.cashOut > 0) {
+    txt += lineTwoCols("4. Kas Keluar:", `-${formatCurrency(stats.cashOut)}`);
+  }
+  if (stats.cashRefunds && stats.cashRefunds > 0) {
+    txt += lineTwoCols("5. Refund Tunai:", `-${formatCurrency(stats.cashRefunds)}`);
+  }
   txt += divider;
-
-  txt += lineTwoCols("Kas Seharusnya:", formatCurrency(stats.expectedCash || 0));
-  txt += lineTwoCols("Fisik Dihitung:", formatCurrency(stats.actualCash || 0));
-  txt += divider;
-
-  const diff = stats.cashDifference || 0;
-  const statusStr = diff === 0 ? "[ PAS ]" : diff > 0 ? ("+ " + formatCurrency(diff)) : ("- " + formatCurrency(Math.abs(diff)));
-  txt += lineTwoCols("SELISIH KAS:", statusStr);
+  txt += lineTwoCols("KAS FISIK SEHARUSNYA:", formatCurrency(stats.expectedCash || 0));
+  txt += lineTwoCols("HASIL HITUNG FISIK:", formatCurrency(stats.actualCash !== undefined ? stats.actualCash : stats.expectedCash));
+  
+  const diff = stats.cashDifference !== undefined ? stats.cashDifference : 0;
+  let diffLabel = "SELISIH: Rp 0 (PAS)";
+  if (diff > 0) diffLabel = `SELISIH: +${formatCurrency(diff)} (LEBIH)`;
+  if (diff < 0) diffLabel = `SELISIH: -${formatCurrency(Math.abs(diff))} (KURANG)`;
+  txt += center(diffLabel);
   txt += doubleDivider;
+
+  // Info Non-Tunai (Rekonsiliasi Bank/Merchant)
+  txt += center("--- NON-TUNAI (BANK / QRIS) ---");
+  txt += lineTwoCols("QRIS / Transfer:", formatCurrency(stats.nonCashSales || 0));
+  txt += center("(Langsung masuk rekening/bank)");
+  txt += divider;
 
   if (stats.notes) {
-    txt += "Catatan: " + stats.notes + "\n";
+    txt += `Catatan: ${stats.notes}\n`;
     txt += divider;
   }
 
-  txt += center("Kasir / Supervisor:");
+  txt += center("Tanda Tangan Kasir,");
   txt += "\n\n\n";
-  txt += center("( " + (stats.operatorName || 'Kasir') + " )");
-  txt += "\n\n\n";
+  txt += center(`( ${stats.operatorName || "Kasir"} )`);
 
+  if (cfg.enableWatermark) {
+    txt += "\n" + center("[ SakuNota - Kasir Pintar UMKM ]");
+  }
+
+  txt += "\n\n\n";
   return txt;
 }

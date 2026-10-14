@@ -5,9 +5,9 @@ import Link from "next/link";
 import { Printer } from '@capgo/capacitor-printer';
 import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
 import { getStoreSettings, StoreSettings } from '@/lib/settings';
-import { getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement } from '@/lib/api';
+import { getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement, recordPayment, refundPartialPayment, getOrderPayments } from '@/lib/api';
 import { generateZReportReceipt } from '@/lib/receipt';
-import { generateEscPosReceipt } from '@/lib/receipt';
+import { generateEscPosReceipt, generatePartialPaymentReceipt } from '@/lib/receipt';
 
 type MenuItem = { id: number; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; modifiers?: any[]; };
 type CartItem = MenuItem & { qty: number; selectedModifiers?: { groupName: string; optionName: string; harga: number }[]; itemKey?: string };
@@ -41,6 +41,22 @@ export default function POSPage() {
   const [shiftNotes, setShiftNotes] = useState("");
   const [countedPhysicalCash, setCountedPhysicalCash] = useState("");
   const [closingShiftNotes, setClosingShiftNotes] = useState("");
+
+  // --- SPLIT BILL & PARSIAL PAYMENT STATES ---
+  const [isSplitBillModalOpen, setIsSplitBillModalOpen] = useState(false);
+  const [splitBillTargetOrder, setSplitBillTargetOrder] = useState<any>(null);
+  const [splitTab, setSplitTab] = useState<'item' | 'equal' | 'partial'>('item');
+  const [splitSelectedItems, setSplitSelectedItems] = useState<Record<number, number>>({});
+  const [splitNumPeople, setSplitNumPeople] = useState<number>(2);
+  const [splitCustomAmount, setSplitCustomAmount] = useState<string>("");
+  const [splitPaymentMethod, setSplitPaymentMethod] = useState<string>("Cash");
+  const [splitCashTendered, setSplitCashTendered] = useState<string>("");
+  const [splitNotes, setSplitNotes] = useState<string>("");
+  const [isSplitProcessing, setIsSplitProcessing] = useState<boolean>(false);
+  const [isRefundModalOpen, setIsRefundModalOpen] = useState<boolean>(false);
+  const [refundTargetPayment, setRefundTargetPayment] = useState<any>(null);
+  const [refundPinInput, setRefundPinInput] = useState<string>("");
+  const [refundReasonInput, setRefundReasonInput] = useState<string>("");
 
   // Form states for Cash Movement
   const [cashMovementType, setCashMovementType] = useState<'in' | 'out'>('out');
@@ -329,6 +345,246 @@ export default function POSPage() {
     }
   };
 
+  // --- SPLIT BILL FUNCTIONS ---
+  const openSplitBillForOrder = async (orderId: number) => {
+    try {
+      const { getOrders } = await import('@/lib/api');
+      const orders = await getOrders();
+      const target = orders.find(o => o.id === orderId);
+      if (!target) {
+        alert("Nota tidak ditemukan.");
+        return;
+      }
+      setSplitBillTargetOrder(target);
+      setSplitTab('item');
+      setSplitSelectedItems({});
+      const remaining = target.remainingBalance !== undefined ? target.remainingBalance : target.total;
+      setSplitCustomAmount(remaining.toString());
+      setSplitPaymentMethod('Cash');
+      setSplitCashTendered('');
+      setSplitNotes('');
+      setIsPaymentModalOpen(false);
+      setIsSplitBillModalOpen(true);
+    } catch (err: any) {
+      alert("Gagal membuka Split Bill: " + err.message);
+    }
+  };
+
+  const handleOpenSplitBillFromCart = async () => {
+    if (editingOrderId) {
+      await openSplitBillForOrder(editingOrderId);
+      return;
+    }
+    if (selectedTable) {
+      const existing = activeOrders.find(o => o.tableId === parseInt(selectedTable));
+      if (existing) {
+        await openSplitBillForOrder(existing.id);
+        return;
+      }
+    }
+    if (cart.length > 0) {
+      if (!customerName.trim()) {
+        alert("Mohon isi Nama Pelanggan terlebih dahulu.");
+        setIsPaymentModalOpen(true);
+        return;
+      }
+      const saved: any = await processPayment(true, 'unpaid');
+      if (saved && saved.id) {
+        await openSplitBillForOrder(saved.id);
+      }
+    }
+  };
+
+  const handleOpenSplitBillFromPaymentModal = async () => {
+    let targetOrderId = editingOrderId;
+    if (!targetOrderId && selectedTable) {
+      const existing = activeOrders.find(o => o.tableId === parseInt(selectedTable));
+      if (existing) targetOrderId = existing.id;
+    }
+    if (targetOrderId) {
+      await openSplitBillForOrder(targetOrderId);
+      return;
+    }
+    const saved: any = await processPayment(true, 'unpaid');
+    if (saved && saved.id) {
+      await openSplitBillForOrder(saved.id);
+    }
+  };
+
+  const calculateSplitItemTotal = () => {
+    if (!splitBillTargetOrder || !splitBillTargetOrder.items) return 0;
+    let selectedSum = 0;
+    const rawSubtotal = splitBillTargetOrder.subtotal || splitBillTargetOrder.total;
+
+    splitBillTargetOrder.items.forEach((item: any) => {
+      const qty = splitSelectedItems[item.id] || 0;
+      if (qty > 0) {
+        const itemUnitPrice = item.hargaSatuan || item.harga || 0;
+        const modSum = (item.selectedModifiers || []).reduce((s: number, m: any) => s + (m.harga || 0), 0);
+        selectedSum += qty * (itemUnitPrice + modSum);
+      }
+    });
+
+    if (selectedSum === 0) return 0;
+    if (!rawSubtotal || rawSubtotal === 0) return selectedSum;
+
+    const ratio = selectedSum / rawSubtotal;
+    const discountPortion = Math.round((splitBillTargetOrder.discount || 0) * ratio);
+    const servicePortion = Math.round((splitBillTargetOrder.serviceCharge || 0) * ratio);
+    const taxPortion = Math.round((splitBillTargetOrder.tax || 0) * ratio);
+
+    const calculated = selectedSum - discountPortion + servicePortion + taxPortion;
+    const remaining = splitBillTargetOrder.remainingBalance !== undefined ? splitBillTargetOrder.remainingBalance : splitBillTargetOrder.total;
+    return Math.max(100, Math.min(remaining, calculated));
+  };
+
+  const handleExecuteSplitPayment = async () => {
+    if (!splitBillTargetOrder) return;
+    if (isSplitProcessing) return;
+
+    const remaining = splitBillTargetOrder.remainingBalance !== undefined ? splitBillTargetOrder.remainingBalance : splitBillTargetOrder.total;
+    if (remaining <= 0) {
+      alert("Nota ini sudah lunas sepenuhnya.");
+      return;
+    }
+
+    let nominalToPay = 0;
+    let itemsPaidPayload: any[] = [];
+
+    if (splitTab === 'item') {
+      nominalToPay = calculateSplitItemTotal();
+      if (nominalToPay <= 0) {
+        alert("Pilih minimal 1 menu yang ingin dibayar.");
+        return;
+      }
+      splitBillTargetOrder.items.forEach((item: any) => {
+        const qty = splitSelectedItems[item.id] || 0;
+        if (qty > 0) {
+          itemsPaidPayload.push({
+            menuItemId: item.menuItemId || item.id,
+            nama: item.namaMenu || item.nama || 'Item',
+            qty: qty,
+            harga: item.hargaSatuan || item.harga || 0
+          });
+        }
+      });
+    } else if (splitTab === 'equal') {
+      const baseShare = Math.floor(remaining / splitNumPeople);
+      const remainder = remaining % splitNumPeople;
+      nominalToPay = baseShare + remainder; // Orang pertama mengambil sisa pembulatan
+    } else {
+      nominalToPay = Number(splitCustomAmount) || 0;
+      if (nominalToPay <= 0) {
+        alert("Masukkan nominal pembayaran yang valid (lebih dari Rp 0).");
+        return;
+      }
+    }
+
+    nominalToPay = Math.min(nominalToPay, remaining);
+
+    if (splitPaymentMethod === 'Cash') {
+      const tendered = Number(splitCashTendered) || nominalToPay;
+      if (tendered < nominalToPay) {
+        alert("Uang yang diterima kasir (Rp " + tendered.toLocaleString('id-ID') + ") kurang dari nominal tagihan (Rp " + nominalToPay.toLocaleString('id-ID') + ")!");
+        return;
+      }
+    }
+
+    setIsSplitProcessing(true);
+    try {
+      const tendered = splitPaymentMethod === 'Cash' ? (Number(splitCashTendered) || nominalToPay) : nominalToPay;
+      const res = await recordPayment({
+        orderId: splitBillTargetOrder.id,
+        shiftId: activeShift ? activeShift.id : null,
+        paymentMethod: splitPaymentMethod as any,
+        amount: nominalToPay,
+        cashTendered: tendered,
+        change: Math.max(0, tendered - nominalToPay),
+        splitType: splitTab,
+        itemsPaid: itemsPaidPayload,
+        operatorName: activeShift ? activeShift.operatorName : 'Kasir',
+        notes: splitNotes
+      });
+
+      // Buat struk pembayaran parsial
+      const paymentRecord = {
+        amount: nominalToPay,
+        paymentMethod: splitPaymentMethod,
+        cashTendered: tendered,
+        change: Math.max(0, tendered - nominalToPay),
+        splitType: splitTab,
+        itemsPaid: itemsPaidPayload,
+        paidAt: new Date().toISOString(),
+        operatorName: activeShift ? activeShift.operatorName : 'Kasir',
+        shiftId: activeShift ? activeShift.id : null
+      };
+
+      const partialReceiptText = generatePartialPaymentReceipt(
+        { ...splitBillTargetOrder, remainingBalance: res.remainingBalance },
+        paymentRecord,
+        storeSettings
+      );
+
+      printReceiptText(partialReceiptText, 'Bukti_Bayar_Parsial');
+
+      await refreshShiftData();
+      await loadData();
+
+      if (res.isFullyPaid) {
+        alert("🎉 Selamat! Seluruh tagihan Nota #A-" + splitBillTargetOrder.id + " telah LUNAS.");
+        setIsSplitBillModalOpen(false);
+        setSplitBillTargetOrder(null);
+        resetCart();
+        setSelectedTable("");
+        setView('meja');
+      } else {
+        alert("Pembayaran Rp " + nominalToPay.toLocaleString('id-ID') + " berhasil disimpan! Sisa tagihan: Rp " + res.remainingBalance.toLocaleString('id-ID'));
+        await openSplitBillForOrder(splitBillTargetOrder.id);
+      }
+    } catch (err: any) {
+      alert("Gagal memproses pembayaran: " + err.message);
+    } finally {
+      setIsSplitProcessing(false);
+    }
+  };
+
+  const handleRequestRefundPayment = (payment: any) => {
+    setRefundTargetPayment(payment);
+    setRefundPinInput("");
+    setRefundReasonInput("");
+    setIsRefundModalOpen(true);
+  };
+
+  const handleConfirmRefundPayment = async () => {
+    if (!refundTargetPayment) return;
+
+    if (storeSettings.enablePin) {
+      const correctPin = storeSettings.adminPin || "1234";
+      if (refundPinInput !== correctPin) {
+        alert("PIN Otorisasi Admin SALAH!");
+        return;
+      }
+    }
+
+    try {
+      const res = await refundPartialPayment(refundTargetPayment.id, {
+        reason: refundReasonInput || "Refund atas permintaan pelanggan",
+        operator: activeShift ? activeShift.operatorName : "Admin"
+      });
+
+      alert("Pembayaran Rp " + res.refundedAmount.toLocaleString('id-ID') + " berhasil di-refund. Sisa tagihan telah disesuaikan kembali.");
+      setIsRefundModalOpen(false);
+      setRefundTargetPayment(null);
+      await refreshShiftData();
+      await loadData();
+      if (splitBillTargetOrder) {
+        await openSplitBillForOrder(splitBillTargetOrder.id);
+      }
+    } catch (err: any) {
+      alert("Gagal memproses refund: " + err.message);
+    }
+  };
+
   const openModifierModal = (item: any) => {
     setActiveModItem(item);
     const defaults: Record<string, any[]> = {};
@@ -609,6 +865,7 @@ export default function POSPage() {
           handlePrint('all', newReceipt);
         }, 500);
       }
+      return { id: resultId };
     } catch (err: any) {
       alert("Error: " + err.message);
     }
@@ -821,9 +1078,18 @@ export default function POSPage() {
         </div>
         <div className="flex gap-2">
           {editingOrderId && (
-            <button onClick={handleShowDraftBill} className="w-1/3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white py-4 rounded-2xl font-bold text-sm shadow-sm active:scale-95 transition-all">📝 Draft</button>
+            <button onClick={handleShowDraftBill} className="w-1/4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white py-4 rounded-2xl font-bold text-xs shadow-sm active:scale-95 transition-all">📝 Draft</button>
           )}
-          <button onClick={() => setIsPaymentModalOpen(true)} className={`${editingOrderId ? 'w-2/3' : 'w-full'} bg-yellow-500 hover:bg-yellow-400 text-gray-900 py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all`} disabled={cart.length === 0}>
+          {(editingOrderId || (orderType === "Dine-in" && selectedTable && activeOrders.some(o => o.tableId === parseInt(selectedTable)))) && (
+            <button 
+              type="button"
+              onClick={handleOpenSplitBillFromCart} 
+              className="w-1/3 bg-amber-500 hover:bg-amber-400 text-gray-950 py-4 rounded-2xl font-black text-xs md:text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-1"
+            >
+              ✂️ Split Bill
+            </button>
+          )}
+          <button onClick={() => setIsPaymentModalOpen(true)} className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-gray-900 py-4 rounded-2xl font-black text-base md:text-lg shadow-lg active:scale-95 transition-all" disabled={cart.length === 0}>
             Bayar Pesanan
           </button>
         </div>
@@ -990,9 +1256,16 @@ export default function POSPage() {
                 <button onClick={() => setIsPaymentModalOpen(false)} className="px-4 py-3 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600 font-semibold transition-colors">Batal</button>
                 {orderType === "Dine-in" && selectedTable && (
                   <button onClick={() => processPayment(true, 'unpaid')} className="flex-1 py-3 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold transition-colors shadow-md text-sm">
-                    📥 Simpan Open Bill
+                    📥 Open Bill
                   </button>
                 )}
+                <button 
+                  type="button" 
+                  onClick={handleOpenSplitBillFromPaymentModal} 
+                  className="flex-1 py-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-900 font-black transition-colors shadow-md text-sm flex items-center justify-center gap-1"
+                >
+                  ✂️ Split Bill
+                </button>
                 <button onClick={() => processPayment(false, 'paid')} className="flex-1 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-colors shadow-md text-sm">
                   💸 Bayar Lunas
                 </button>
@@ -1823,6 +2096,413 @@ export default function POSPage() {
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-lg"
               >
                 Selesai & Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL SPLIT BILL & PEMBAYARAN PARSIAL */}
+      {isSplitBillModalOpen && splitBillTargetOrder && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-6 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 md:p-7 max-w-xl w-full shadow-2xl border border-gray-200 dark:border-gray-700 my-6 flex flex-col max-h-[92vh]">
+            
+            {/* Header Modal */}
+            <div className="flex justify-between items-start pb-3 border-b border-gray-100 dark:border-gray-700">
+              <div>
+                <span className="text-[10px] font-bold tracking-widest text-amber-600 dark:text-amber-400 uppercase">Sistem Pembayaran Fleksibel</span>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+                  <span>✂️ Split Bill & Cicil Tagihan</span>
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Nota #A-{splitBillTargetOrder.id} • {splitBillTargetOrder.tableName || (splitBillTargetOrder.tableId ? 'Meja ' + splitBillTargetOrder.tableId : splitBillTargetOrder.orderType)} • Tamu: <span className="font-bold text-gray-800 dark:text-gray-200">{splitBillTargetOrder.customerName || 'Tamu'}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSplitBillModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white flex items-center justify-center text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4 pt-3">
+              
+              {/* Metric Card: Real-time Balances */}
+              <div className="grid grid-cols-3 gap-2 bg-gray-50 dark:bg-gray-900/60 p-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-center">
+                <div>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400 block font-bold">Total Nota</span>
+                  <span className="text-xs md:text-sm font-black text-gray-800 dark:text-gray-100">
+                    Rp {splitBillTargetOrder.total.toLocaleString('id-ID')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block font-bold">Sudah Terbayar</span>
+                  <span className="text-xs md:text-sm font-black text-emerald-600 dark:text-emerald-400">
+                    Rp {(splitBillTargetOrder.paidAmount || 0).toLocaleString('id-ID')}
+                  </span>
+                </div>
+                <div className="bg-amber-100/60 dark:bg-amber-950/40 rounded-xl py-1 px-1 border border-amber-300 dark:border-amber-800">
+                  <span className="text-[10px] text-amber-800 dark:text-amber-300 block font-bold uppercase">Sisa Tagihan</span>
+                  <span className="text-xs md:text-sm font-black text-amber-700 dark:text-amber-400">
+                    Rp {(splitBillTargetOrder.remainingBalance !== undefined ? splitBillTargetOrder.remainingBalance : splitBillTargetOrder.total).toLocaleString('id-ID')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Tab Selector 3 Metode Split */}
+              <div className="flex rounded-2xl bg-gray-100 dark:bg-gray-700 p-1">
+                <button
+                  type="button"
+                  onClick={() => setSplitTab('item')}
+                  className={'flex-1 py-2 rounded-xl text-xs font-bold transition-all ' + (splitTab === 'item' ? 'bg-white dark:bg-gray-800 text-amber-700 dark:text-amber-400 shadow-sm' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200')}
+                >
+                  🍱 Split per Menu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSplitTab('equal')}
+                  className={'flex-1 py-2 rounded-xl text-xs font-bold transition-all ' + (splitTab === 'equal' ? 'bg-white dark:bg-gray-800 text-amber-700 dark:text-amber-400 shadow-sm' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200')}
+                >
+                  👥 Bagi Rata
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSplitTab('partial')}
+                  className={'flex-1 py-2 rounded-xl text-xs font-bold transition-all ' + (splitTab === 'partial' ? 'bg-white dark:bg-gray-800 text-amber-700 dark:text-amber-400 shadow-sm' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200')}
+                >
+                  💵 Cicil / Parsial
+                </button>
+              </div>
+
+              {/* TAB 1: SPLIT PER MENU */}
+              {splitTab === 'item' && (
+                <div className="space-y-2 bg-gray-50 dark:bg-gray-900/40 p-3 rounded-2xl border border-gray-200 dark:border-gray-700">
+                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                    Pilih menu yang ingin dibayar pelanggan saat ini:
+                  </span>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {(splitBillTargetOrder.items || []).map((item: any) => {
+                      const totalQty = item.qty || 1;
+                      const paidQty = item.paidQty || 0;
+                      const unpaidQty = Math.max(0, totalQty - paidQty);
+                      const selectedQty = splitSelectedItems[item.id] || 0;
+                      const isFullyPaid = unpaidQty === 0;
+
+                      return (
+                        <div key={item.id} className={'flex justify-between items-center p-2 rounded-xl border text-xs ' + (isFullyPaid ? 'bg-gray-100 dark:bg-gray-800/50 opacity-60 border-gray-200 dark:border-gray-700' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700')}>
+                          <div className="flex-1 pr-2">
+                            <span className="font-bold text-gray-800 dark:text-gray-200 block">{item.namaMenu || item.nama}</span>
+                            {item.selectedModifiers && item.selectedModifiers.length > 0 && (
+                              <div className="text-[10px] text-gray-400">
+                                {item.selectedModifiers.map((m: any) => m.optionName).join(', ')}
+                              </div>
+                            )}
+                            <div className="text-[11px] text-yellow-600 dark:text-yellow-500 font-bold">
+                              Rp {(item.hargaSatuan || item.harga).toLocaleString('id-ID')}
+                              <span className="text-gray-400 font-normal ml-2">({paidQty}/{totalQty} lunas)</span>
+                            </div>
+                          </div>
+
+                          {isFullyPaid ? (
+                            <span className="text-[10px] font-bold text-green-700 bg-green-50 dark:bg-green-950/60 px-2 py-1 rounded-lg">
+                              ✓ Lunas
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-900 p-1 rounded-lg border border-gray-200 dark:border-gray-700">
+                              <button
+                                type="button"
+                                onClick={() => setSplitSelectedItems(prev => ({ ...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1) }))}
+                                className="w-6 h-6 rounded bg-white dark:bg-gray-800 font-black text-gray-700 dark:text-gray-200"
+                              >
+                                -
+                              </button>
+                              <span className="w-5 text-center font-black text-xs">{selectedQty}</span>
+                              <button
+                                type="button"
+                                onClick={() => setSplitSelectedItems(prev => ({ ...prev, [item.id]: Math.min(unpaidQty, (prev[item.id] || 0) + 1) }))}
+                                className="w-6 h-6 rounded bg-amber-500 font-black text-white"
+                              >
+                                +
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center text-xs font-bold">
+                    <span>Estimasi Subtotal Pilihan:</span>
+                    <span className="text-amber-600 dark:text-amber-400 font-black text-sm">
+                      Rp {calculateSplitItemTotal().toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: BAGI RATA (SPLIT EQUALLY) */}
+              {splitTab === 'equal' && (
+                <div className="space-y-3 bg-gray-50 dark:bg-gray-900/40 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Bagi rata untuk:</span>
+                    <div className="flex gap-1.5">
+                      {[2, 3, 4, 5].map(n => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setSplitNumPeople(n)}
+                          className={'px-3 py-1.5 rounded-xl text-xs font-bold transition-all ' + (splitNumPeople === n ? 'bg-amber-500 text-white shadow' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700')}
+                        >
+                          {n} Orang
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Kalkulasi Per Orang dengan Pembulatan Presisi */}
+                  <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 space-y-1.5 text-xs">
+                    {Array.from({ length: splitNumPeople }).map((_, idx) => {
+                      const rem = (splitBillTargetOrder.remainingBalance !== undefined ? splitBillTargetOrder.remainingBalance : splitBillTargetOrder.total);
+                      const baseShare = Math.floor(rem / splitNumPeople);
+                      const mod = rem % splitNumPeople;
+                      const share = idx === 0 ? baseShare + mod : baseShare;
+
+                      return (
+                        <div key={idx} className="flex justify-between items-center py-1 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">
+                            👤 Bagian Orang #{idx + 1} {idx === 0 && mod > 0 && <span className="text-[10px] text-gray-400">(+sisa pembulatan)</span>}:
+                          </span>
+                          <span className="font-black text-amber-600 dark:text-amber-400">
+                            Rp {share.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                    ℹ️ Pembayaran ini akan melunasi <b>Bagian Orang #1</b> sebesar <b>Rp {(Math.floor((splitBillTargetOrder.remainingBalance || splitBillTargetOrder.total) / splitNumPeople) + ((splitBillTargetOrder.remainingBalance || splitBillTargetOrder.total) % splitNumPeople)).toLocaleString('id-ID')}</b>.
+                  </p>
+                </div>
+              )}
+
+              {/* TAB 3: CICIL / PARSIAL BEBAS */}
+              {splitTab === 'partial' && (
+                <div className="space-y-3 bg-gray-50 dark:bg-gray-900/40 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                    Masukkan nominal yang ingin dibayar saat ini (Rp):
+                  </label>
+                  <input
+                    type="number"
+                    value={splitCustomAmount}
+                    onChange={(e) => setSplitCustomAmount(e.target.value)}
+                    className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl p-3 text-lg font-black text-gray-900 dark:text-white outline-none focus:border-amber-500"
+                    placeholder="Contoh: 50000"
+                  />
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[20000, 50000, 100000].map(amt => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setSplitCustomAmount(amt.toString())}
+                        className="py-1 px-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100"
+                      >
+                        {amt / 1000}rb
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setSplitCustomAmount((splitBillTargetOrder.remainingBalance !== undefined ? splitBillTargetOrder.remainingBalance : splitBillTargetOrder.total).toString())}
+                      className="py-1 px-2 text-xs bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 rounded-lg font-bold text-amber-700 dark:text-amber-400"
+                    >
+                      Sisa Tagihan
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* METODE PEMBAYARAN & UANG DITERIMA */}
+              <div className="bg-gray-50 dark:bg-gray-900/40 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
+                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 block">Metode Pembayaran untuk Split Ini:</span>
+                <div className="grid grid-cols-3 gap-2">
+                  {["Cash", "QRIS", "Transfer"].map(m => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setSplitPaymentMethod(m)}
+                      className={'py-2 rounded-xl text-xs font-bold transition-all border ' + (splitPaymentMethod === m ? 'bg-blue-600 border-blue-600 text-white shadow' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300')}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+
+                {splitPaymentMethod === 'Cash' && (
+                  <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[11px] font-bold text-gray-600 dark:text-gray-400">Uang Tunai Diterima Kasir (Rp):</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const amt = splitTab === 'item' ? calculateSplitItemTotal() :
+                                      splitTab === 'equal' ? (Math.floor((splitBillTargetOrder.remainingBalance || splitBillTargetOrder.total) / splitNumPeople) + ((splitBillTargetOrder.remainingBalance || splitBillTargetOrder.total) % splitNumPeople)) :
+                                      Number(splitCustomAmount) || 0;
+                          setSplitCashTendered(amt.toString());
+                        }}
+                        className="text-[11px] text-blue-600 font-bold hover:underline"
+                      >
+                        Uang Pas
+                      </button>
+                    </div>
+                    <input
+                      type="number"
+                      value={splitCashTendered}
+                      onChange={(e) => setSplitCashTendered(e.target.value)}
+                      placeholder="Nominal uang kertas yang diserahkan"
+                      className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl p-2.5 text-base font-black text-gray-900 dark:text-white outline-none focus:border-blue-500"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">Catatan Tambahan (Opsional):</label>
+                  <input
+                    type="text"
+                    value={splitNotes}
+                    onChange={(e) => setSplitNotes(e.target.value)}
+                    placeholder="Contoh: Dibayar oleh Mas Budi"
+                    className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2 text-xs text-gray-800 dark:text-gray-200"
+                  />
+                </div>
+              </div>
+
+              {/* RIWAYAT PEMBAYARAN PARSIAL NOTA INI */}
+              {splitBillTargetOrder.payments && splitBillTargetOrder.payments.length > 0 && (
+                <div className="bg-gray-50 dark:bg-gray-900/40 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+                  <span className="text-xs font-black text-gray-800 dark:text-gray-200 block mb-2">
+                    📋 Riwayat Cicilan / Pembayaran Sebelumnya ({splitBillTargetOrder.payments.length}):
+                  </span>
+                  <div className="space-y-2">
+                    {splitBillTargetOrder.payments.map((p: any, pIdx: number) => {
+                      const isRef = p.status === 'refunded';
+                      return (
+                        <div key={p.id || pIdx} className={'p-2.5 rounded-xl border text-xs flex justify-between items-center ' + (isRef ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700')}>
+                          <div>
+                            <span className="font-bold text-gray-800 dark:text-gray-200">
+                              #{pIdx + 1} • {p.paymentMethod} • Rp {p.amount.toLocaleString('id-ID')}
+                            </span>
+                            <span className="text-[10px] text-gray-400 block">
+                              {p.paidAt ? new Date(p.paidAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'} • {p.splitType} • {p.operatorName}
+                            </span>
+                            {isRef && (
+                              <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 block mt-0.5">
+                                [REFUNDED: {p.refundReason || 'Dibatalkan'}]
+                              </span>
+                            )}
+                          </div>
+                          {!isRef && (
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const partialText = generatePartialPaymentReceipt(splitBillTargetOrder, p, storeSettings);
+                                  printReceiptText(partialText, 'Bukti_Bayar_Parsial');
+                                }}
+                                className="px-2 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 text-gray-700 dark:text-gray-200 rounded-lg text-[10px] font-bold"
+                              >
+                                🖨️ Struk
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRequestRefundPayment(p)}
+                                className="px-2 py-1 bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 hover:bg-rose-100 rounded-lg text-[10px] font-bold border border-rose-200 dark:border-rose-800"
+                              >
+                                ❌ Refund
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex space-x-2">
+              <button
+                type="button"
+                onClick={() => setIsSplitBillModalOpen(false)}
+                className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold"
+              >
+                Tutup
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteSplitPayment}
+                disabled={isSplitProcessing}
+                className="flex-[2] py-3 bg-amber-500 hover:bg-amber-400 text-gray-950 rounded-xl text-xs font-black shadow-lg flex items-center justify-center gap-1.5"
+              >
+                {isSplitProcessing ? 'Memproses...' : '💰 Proses Pembayaran Split'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* MODAL OTORISASI REFUND PEMBAYARAN PARSIAL */}
+      {isRefundModalOpen && refundTargetPayment && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-black text-rose-600 dark:text-rose-400 mb-2">Konfirmasi Refund Pembayaran</h3>
+            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+              Anda akan mengembalikan dana sebesar <b>Rp {refundTargetPayment.amount.toLocaleString('id-ID')}</b> ({refundTargetPayment.paymentMethod}) kepada pelanggan. Sisa tagihan meja akan bertambah kembali.
+            </p>
+
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">Alasan Refund:</label>
+                <input
+                  type="text"
+                  value={refundReasonInput}
+                  onChange={(e) => setRefundReasonInput(e.target.value)}
+                  placeholder="Misal: Pelanggan salah nominal / batal menu"
+                  className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl p-2.5 text-xs text-gray-900 dark:text-white outline-none focus:border-rose-500"
+                />
+              </div>
+
+              {storeSettings.enablePin && (
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">PIN Otorisasi Admin:</label>
+                  <input
+                    type="password"
+                    maxLength={6}
+                    value={refundPinInput}
+                    onChange={(e) => setRefundPinInput(e.target.value)}
+                    placeholder="Masukkan 4-6 digit PIN"
+                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl p-2.5 text-center text-lg font-black tracking-widest text-gray-900 dark:text-white outline-none focus:border-rose-500"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                onClick={() => { setIsRefundModalOpen(false); setRefundTargetPayment(null); }}
+                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRefundPayment}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-lg"
+              >
+                Konfirmasi Refund
               </button>
             </div>
           </div>
