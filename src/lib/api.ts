@@ -1,4 +1,4 @@
-import { db, MenuItem, Order, OrderItem, Payment, SelectedModifier } from './dexie';
+import { db, MenuItem, Order, OrderItem, Payment, SelectedModifier, PaymentProof } from './dexie';
 import initialData from './initialData.json';
 
 export function getDefaultModifiersForCategory(kategori: string, nama: string) {
@@ -145,13 +145,29 @@ export async function getMenus() {
   return menus;
 }
 
-export async function createMenu(data: { nama: string, harga: number, kategori: string, modifiers?: any[] }) {
+export async function seedDemoMenus(type: string = 'angkringan') {
+  const menusToInsert = initialData.menus.map(m => ({
+    sku: `SKU-${m.urutan.toString().padStart(3, '0')}`,
+    nama: m.nama,
+    harga: m.harga,
+    kategori: m.kategori,
+    isSoldOut: m.isSoldOut,
+    urutan: m.urutan,
+    modifiers: (m as any).modifiers || getDefaultModifiersForCategory(m.kategori, m.nama)
+  }));
+  await db.table('menuItems').bulkAdd(menusToInsert);
+  return menusToInsert.length;
+}
+
+export async function createMenu(data: { sku?: string, nama: string, harga: number, kategori: string, modifiers?: any[] }) {
   const count = await db.table('menuItems').count();
   const defaultMods = data.modifiers || getDefaultModifiersForCategory(data.kategori, data.nama);
-  await db.table('menuItems').add({
-    nama: data.nama,
+  const sku = data.sku ? data.sku.trim() : `SKU-${(count + 1).toString().padStart(3, '0')}`;
+  return await db.table('menuItems').add({
+    sku: sku,
+    nama: data.nama.trim(),
     harga: Number(data.harga),
-    kategori: data.kategori,
+    kategori: data.kategori.trim(),
     isSoldOut: false,
     urutan: count,
     modifiers: defaultMods
@@ -170,8 +186,9 @@ export async function reorderMenus(items: {id: number, urutan: number}[]) {
   });
 }
 
-export async function updateMenu(id: number, data: { nama?: string; harga?: number; kategori?: string; isSoldOut?: boolean; modifiers?: any[] }) {
+export async function updateMenu(id: number, data: { sku?: string; nama?: string; harga?: number; kategori?: string; isSoldOut?: boolean; modifiers?: any[] }) {
   const updateData: any = {};
+  if (data.sku !== undefined) updateData.sku = data.sku.trim();
   if (data.nama !== undefined) updateData.nama = data.nama.trim();
   if (data.harga !== undefined) updateData.harga = Number(data.harga);
   if (data.kategori !== undefined) updateData.kategori = data.kategori.trim();
@@ -294,6 +311,7 @@ export async function getOrders() {
   const orderItems = await db.table('orderItems').toArray();
   const menus = await db.table('menuItems').toArray();
   const payments = await db.table('payments').toArray();
+  const proofs = await db.table('paymentProofs').toArray();
 
   return orders.map(order => {
     const items = orderItems.filter(i => i.orderId === order.id).map(i => {
@@ -308,7 +326,15 @@ export async function getOrders() {
       };
     });
 
-    const orderPayments = payments.filter(p => p.orderId === order.id);
+    const orderPayments = payments.filter(p => p.orderId === order.id).map(p => {
+      const proof = proofs.find(pr => pr.paymentId === p.id);
+      return {
+        ...p,
+        proof
+      };
+    });
+
+    const orderProofs = proofs.filter(pr => pr.orderId === order.id);
     const completedPayments = orderPayments.filter(p => p.status === 'completed');
     const totalPaid = completedPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
     const remainingBalance = Math.max(0, order.total - totalPaid);
@@ -317,6 +343,9 @@ export async function getOrders() {
       ...order,
       items,
       payments: orderPayments,
+      proofs: orderProofs,
+      proof: orderProofs.length > 0 ? orderProofs[0] : undefined,
+      proofStatus: orderPayments.length > 0 ? orderPayments[0].proofStatus : undefined,
       paidAmount: orderPayments.length > 0 ? totalPaid : (order.status === 'paid' ? order.total : 0),
       remainingBalance: orderPayments.length > 0 ? remainingBalance : (order.status === 'paid' ? 0 : order.total)
     };
@@ -324,7 +353,7 @@ export async function getOrders() {
 }
 
 export async function createOrder(data: any) {
-  return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'shifts', 'tables', 'auditLogs'], async () => {
+  return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'paymentProofs', 'shifts', 'tables', 'auditLogs'], async () => {
     // 1. Atomic Idempotency check di dalam transaksi (OWASP Compliance)
     if (data.idempotencyKey) {
       const existing = await db.table('orders').where('idempotencyKey').equals(data.idempotencyKey).first();
@@ -345,6 +374,16 @@ export async function createOrder(data: any) {
     const isPaid = orderStatus === 'paid';
     const total = data.total;
 
+    const proofPayload = (data as any).proof || (data as any).paymentProof;
+    const hasProof = Boolean(proofPayload?.imageData);
+
+    // Hitung status verifikasi awal
+    const verificationStatus = !isPaid 
+      ? 'menunggu_bukti' 
+      : (data.paymentMethod === 'Cash' 
+          ? 'terverifikasi' 
+          : (hasProof ? 'menunggu_verifikasi' : 'menunggu_bukti'));
+
     // 3. Simpan Nota Induk (Parent Order)
     const orderId = await db.table('orders').add({
       shiftId: currentShiftId,
@@ -362,6 +401,8 @@ export async function createOrder(data: any) {
       cashTendered: data.cashTendered || null,
       change: data.change || null,
       status: orderStatus,
+      verificationStatus: verificationStatus,
+      isHistorical: data.isHistorical || false,
       customerName: data.customerName,
       customerPhone: data.customerPhone || null,
       paymentMethod: data.paymentMethod || 'Cash',
@@ -387,7 +428,8 @@ export async function createOrder(data: any) {
 
     // 5. Jika transaksi dibuat langsung lunas, catat entri pembayaran awal di tabel payments
     if (isPaid && total > 0) {
-      await db.table('payments').add({
+      const proofStatus = data.paymentMethod === 'Cash' ? 'terverifikasi' : (hasProof ? 'menunggu_verifikasi' : 'menunggu_bukti');
+      const paymentId = await db.table('payments').add({
         orderId: orderId as number,
         shiftId: currentShiftId,
         paymentMethod: data.paymentMethod || 'Cash',
@@ -398,8 +440,35 @@ export async function createOrder(data: any) {
         paidAt: new Date().toISOString(),
         operatorName: data.operatorName || 'Kasir',
         notes: data.notes || 'Pembayaran Penuh',
-        status: 'completed'
-      });
+        status: 'completed',
+        proofStatus: proofStatus
+      }) as number;
+
+      if (hasProof && (data.paymentMethod === 'QRIS' || data.paymentMethod === 'Transfer')) {
+        const proofId = await db.table('paymentProofs').add({
+          paymentId: paymentId,
+          orderId: orderId as number,
+          imageData: proofPayload.imageData,
+          fileName: proofPayload.fileName || 'bukti_bayar.jpg',
+          fileSize: proofPayload.fileSize || 0,
+          mimeType: proofPayload.mimeType || 'image/jpeg',
+          status: 'menunggu_verifikasi',
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: data.operatorName || 'Kasir',
+          notes: proofPayload.notes || ''
+        }) as number;
+
+        await db.table('payments').update(paymentId, { proofId });
+
+        await db.table('auditLogs').add({
+          action: 'UPLOAD_PROOF',
+          orderId: orderId as number,
+          amount: total,
+          reason: `Upload bukti bayar checkout: ${proofPayload.fileName || 'bukti_bayar.jpg'}`,
+          operator: data.operatorName || 'Kasir',
+          timestamp: new Date().toISOString()
+        });
+      }
     }
 
     return { id: orderId, createdAt: new Date().toISOString() };
@@ -448,6 +517,33 @@ export async function updateOrder(id: number, data: any) {
   });
 }
 
+// --- STATUS VERIFIKASI PEMBAYARAN NON-TUNAI ---
+
+export async function updateOrderVerificationStatus(orderId: number) {
+  const orderPayments = await db.table('payments').where('orderId').equals(orderId).toArray();
+  const nonCashPayments = orderPayments.filter((p: any) => p.status === 'completed' && p.paymentMethod !== 'Cash');
+
+  if (nonCashPayments.length === 0) {
+    await db.table('orders').update(orderId, { verificationStatus: 'terverifikasi' });
+    return 'terverifikasi';
+  }
+
+  const allVerified = nonCashPayments.every((p: any) => p.proofStatus === 'terverifikasi');
+  const anyWaitingVerification = nonCashPayments.some((p: any) => p.proofStatus === 'menunggu_verifikasi');
+
+  let newStatus: 'terverifikasi' | 'menunggu_verifikasi' | 'menunggu_bukti' = 'menunggu_bukti';
+  if (allVerified) {
+    newStatus = 'terverifikasi';
+  } else if (anyWaitingVerification) {
+    newStatus = 'menunggu_verifikasi';
+  } else {
+    newStatus = 'menunggu_bukti';
+  }
+
+  await db.table('orders').update(orderId, { verificationStatus: newStatus });
+  return newStatus;
+}
+
 // --- SISTEM SPLIT BILL & PEMBAYARAN PARSIAL (ATOMIC TRANSACTIONS) ---
 
 export async function recordPayment(data: {
@@ -461,8 +557,9 @@ export async function recordPayment(data: {
   itemsPaid?: { menuItemId: number; itemKey?: string; nama: string; qty: number; harga: number }[];
   operatorName: string;
   notes?: string;
+  proof?: { imageData: string; fileName?: string; fileSize?: number; mimeType?: string; notes?: string };
 }) {
-  return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'tables', 'shifts', 'auditLogs'], async () => {
+  return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'paymentProofs', 'tables', 'shifts', 'auditLogs'], async () => {
     const order = await db.table('orders').get(data.orderId);
     if (!order) throw new Error('Nota tidak ditemukan.');
     if (order.status === 'void') throw new Error('Nota sudah dibatalkan (void).');
@@ -495,6 +592,9 @@ export async function recordPayment(data: {
 
     const cashTendered = data.paymentMethod === 'Cash' ? (data.cashTendered || payAmount) : payAmount;
     const change = data.paymentMethod === 'Cash' ? Math.max(0, cashTendered - payAmount) : 0;
+    const proofPayload = (data as any).proof || (data as any).paymentProof;
+    const hasProof = Boolean(proofPayload?.imageData);
+    const proofStatus = data.paymentMethod === 'Cash' ? 'terverifikasi' : (hasProof ? 'menunggu_verifikasi' : 'menunggu_bukti');
 
     // 3. Masukkan rekaman pembayaran baru
     const paymentId = await db.table('payments').add({
@@ -509,8 +609,36 @@ export async function recordPayment(data: {
       paidAt: new Date().toISOString(),
       operatorName: data.operatorName || 'Kasir',
       notes: data.notes || '',
-      status: 'completed'
-    });
+      status: 'completed',
+      proofStatus: proofStatus
+    }) as number;
+
+    // Jika ada bukti pembayaran dilampirkan
+    if (hasProof && data.paymentMethod !== 'Cash') {
+      const proofId = await db.table('paymentProofs').add({
+        paymentId: paymentId,
+        orderId: data.orderId,
+        imageData: proofPayload.imageData,
+        fileName: proofPayload.fileName || 'bukti_bayar.jpg',
+        fileSize: proofPayload.fileSize || 0,
+        mimeType: proofPayload.mimeType || 'image/jpeg',
+        status: 'menunggu_verifikasi',
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: data.operatorName || 'Kasir',
+        notes: proofPayload.notes || ''
+      }) as number;
+
+      await db.table('payments').update(paymentId, { proofId });
+
+      await db.table('auditLogs').add({
+        action: 'UPLOAD_PROOF',
+        orderId: data.orderId,
+        amount: payAmount,
+        reason: `Upload bukti bayar split (${data.paymentMethod}): ${data.proof.fileName || 'bukti_bayar.jpg'}`,
+        operator: data.operatorName || 'Kasir',
+        timestamp: new Date().toISOString()
+      });
+    }
 
     // 4. Jika Split by Item: tandai item yang telah terbayar
     if (data.splitType === 'item' && data.itemsPaid && data.itemsPaid.length > 0) {
@@ -537,6 +665,9 @@ export async function recordPayment(data: {
       status: isFullyPaid ? 'paid' : 'unpaid',
       updatedAt: new Date().toISOString()
     });
+
+    // Perbarui status verifikasi nota induk
+    await updateOrderVerificationStatus(data.orderId);
 
     // 6. Sinkronisasi status meja
     if (order.tableId) {
@@ -719,6 +850,595 @@ export async function deleteOrders(ids: number[]) {
     const payments = await db.table('payments').toArray();
     const paymentIdsToDelete = payments.filter(p => ids.includes(p.orderId)).map(p => p.id!).filter(Boolean);
     await db.table('payments').bulkDelete(paymentIdsToDelete);
+
+    // Hapus juga payment proofs terkait jika ada
+    const proofs = await db.table('paymentProofs').toArray();
+    const proofIdsToDelete = proofs.filter(pr => ids.includes(pr.orderId)).map(pr => pr.id!).filter(Boolean);
+    if (proofIdsToDelete.length > 0) {
+      await db.table('paymentProofs').bulkDelete(proofIdsToDelete);
+    }
+  });
+}
+
+// --- MANAJEMEN BUKTI PEMBAYARAN (PAYMENT PROOFS) ---
+
+export async function uploadPaymentProof(data: {
+  paymentId: number;
+  orderId: number;
+  imageData: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  operator: string;
+  notes?: string;
+}) {
+  return await db.transaction('rw', ['paymentProofs', 'payments', 'orders', 'auditLogs'], async () => {
+    const existingProof = await db.table('paymentProofs').where('paymentId').equals(data.paymentId).first();
+    let proofId: number;
+
+    if (existingProof) {
+      await db.table('paymentProofs').update(existingProof.id!, {
+        imageData: data.imageData,
+        fileName: data.fileName,
+        fileSize: data.fileSize,
+        mimeType: data.mimeType,
+        status: 'menunggu_verifikasi',
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: data.operator,
+        notes: data.notes || existingProof.notes || ''
+      });
+      proofId = existingProof.id!;
+    } else {
+      proofId = await db.table('paymentProofs').add({
+        paymentId: data.paymentId,
+        orderId: data.orderId,
+        imageData: data.imageData,
+        fileName: data.fileName,
+        fileSize: data.fileSize,
+        mimeType: data.mimeType,
+        status: 'menunggu_verifikasi',
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: data.operator,
+        notes: data.notes || ''
+      }) as number;
+    }
+
+    await db.table('payments').update(data.paymentId, {
+      proofStatus: 'menunggu_verifikasi',
+      proofId: proofId
+    });
+
+    await updateOrderVerificationStatus(data.orderId);
+
+    await db.table('auditLogs').add({
+      action: 'UPLOAD_PROOF',
+      orderId: data.orderId,
+      amount: 0,
+      reason: `Upload bukti bayar: ${data.fileName} (${Math.round(data.fileSize / 1024)} KB)`,
+      operator: data.operator,
+      timestamp: new Date().toISOString()
+    });
+
+    return { proofId, status: 'menunggu_verifikasi' };
+  });
+}
+
+export async function verifyPaymentProof(proofId: number, options: { operator: string, notes?: string }) {
+  return await db.transaction('rw', ['paymentProofs', 'payments', 'orders', 'auditLogs'], async () => {
+    const proof = await db.table('paymentProofs').get(proofId);
+    if (!proof) throw new Error('Bukti pembayaran tidak ditemukan.');
+
+    await db.table('paymentProofs').update(proofId, {
+      status: 'terverifikasi',
+      verifiedAt: new Date().toISOString(),
+      verifiedBy: options.operator,
+      notes: options.notes ? (proof.notes ? `${proof.notes} | ${options.notes}` : options.notes) : proof.notes
+    });
+
+    await db.table('payments').update(proof.paymentId, {
+      proofStatus: 'terverifikasi'
+    });
+
+    await updateOrderVerificationStatus(proof.orderId);
+
+    await db.table('auditLogs').add({
+      action: 'VERIFY_PROOF',
+      orderId: proof.orderId,
+      amount: 0,
+      reason: `Verifikasi bukti bayar #${proofId} disetujui`,
+      operator: options.operator,
+      timestamp: new Date().toISOString()
+    });
+
+    return { success: true };
+  });
+}
+
+export async function deletePaymentProof(proofId: number, options: { operator: string, reason: string }) {
+  return await db.transaction('rw', ['paymentProofs', 'payments', 'orders', 'auditLogs'], async () => {
+    const proof = await db.table('paymentProofs').get(proofId);
+    if (!proof) throw new Error('Bukti pembayaran tidak ditemukan.');
+
+    await db.table('paymentProofs').delete(proofId);
+
+    await db.table('payments').update(proof.paymentId, {
+      proofStatus: 'menunggu_bukti',
+      proofId: undefined
+    });
+
+    await updateOrderVerificationStatus(proof.orderId);
+
+    await db.table('auditLogs').add({
+      action: 'DELETE_PROOF',
+      orderId: proof.orderId,
+      amount: 0,
+      reason: `Hapus bukti bayar #${proofId}: ${options.reason}`,
+      operator: options.operator,
+      timestamp: new Date().toISOString()
+    });
+
+    return { success: true };
+  });
+}
+
+export async function getPaymentProofs(orderId?: number) {
+  if (orderId) {
+    return await db.table('paymentProofs').where('orderId').equals(orderId).toArray();
+  }
+  return await db.table('paymentProofs').reverse().toArray();
+}
+
+export async function matchBulkPaymentProofs(files: {
+  fileName: string;
+  imageData: string;
+  fileSize: number;
+  mimeType: string;
+}[]) {
+  const orders = await db.table('orders').toArray();
+  const payments = await db.table('payments').toArray();
+  const nonCashPayments = payments.filter((p: any) => p.paymentMethod !== 'Cash');
+
+  const matches: {
+    file: { fileName: string; imageData: string; fileSize: number; mimeType: string };
+    matched: boolean;
+    payment?: any;
+    order?: any;
+    confidence: 'high' | 'medium' | 'none';
+    reason: string;
+  }[] = [];
+
+  for (const f of files) {
+    const cleanName = f.fileName.replace(/\.[^/.]+$/, '').toLowerCase();
+
+    // 1. Cocokkan ID Pembayaran: "pay_12" atau "payment-12"
+    const payMatch = cleanName.match(/(?:pay|payment)[-_]?(\d+)/i);
+    if (payMatch) {
+      const payId = parseInt(payMatch[1]);
+      const foundPayment = nonCashPayments.find((p: any) => p.id === payId);
+      if (foundPayment) {
+        const foundOrder = orders.find((o: any) => o.id === foundPayment.orderId);
+        matches.push({
+          file: f,
+          matched: true,
+          payment: foundPayment,
+          order: foundOrder,
+          confidence: 'high',
+          reason: `Cocok dengan ID Pembayaran: #${foundPayment.id}`
+        });
+        continue;
+      }
+    }
+
+    // 2. Cocokkan ID Order / Nota: "order-10", "nota_10", "inv_10", atau "10"
+    const orderMatch = cleanName.match(/(?:order|nota|inv)?[-_]?(\d+)/i);
+    if (orderMatch) {
+      const ordId = parseInt(orderMatch[1]);
+      const foundOrder = orders.find((o: any) => o.id === ordId);
+      if (foundOrder) {
+        const orderPays = nonCashPayments.filter((p: any) => p.orderId === foundOrder.id);
+        if (orderPays.length === 1) {
+          matches.push({
+            file: f,
+            matched: true,
+            payment: orderPays[0],
+            order: foundOrder,
+            confidence: 'high',
+            reason: `Cocok dengan Nota #${foundOrder.id} (${orderPays[0].paymentMethod})`
+          });
+          continue;
+        } else if (orderPays.length > 1) {
+          const pendingPay = orderPays.find((p: any) => p.proofStatus === 'menunggu_bukti') || orderPays[0];
+          matches.push({
+            file: f,
+            matched: true,
+            payment: pendingPay,
+            order: foundOrder,
+            confidence: 'medium',
+            reason: `Cocok dengan Nota #${foundOrder.id} (Pilih pembayaran #${pendingPay.id})`
+          });
+          continue;
+        }
+      }
+    }
+
+    matches.push({
+      file: f,
+      matched: false,
+      confidence: 'none',
+      reason: 'Tidak ditemukan transaksi QRIS/Transfer yang cocok dari nama file'
+    });
+  }
+
+  return matches;
+}
+
+// --- FITUR PENGELOLAAN DATA MASSAL (BULK MANAGEMENT) ---
+
+export async function bulkImportMenus(items: {
+  sku?: string;
+  nama: string;
+  harga: number;
+  kategori?: string;
+  isSoldOut?: boolean;
+}[], options: { mode: 'create_only' | 'update_existing' | 'upsert' }) {
+  const existing = await db.table('menuItems').toArray();
+  let createdCount = 0;
+  let updatedCount = 0;
+  let skippedCount = 0;
+  const errors: { row: number, item: any, reason: string }[] = [];
+
+  let maxUrutan = existing.reduce((max, m) => Math.max(max, m.urutan || 0), 0);
+
+  await db.transaction('rw', ['menuItems', 'auditLogs'], async () => {
+    for (let i = 0; i < items.length; i++) {
+      const raw = items[i];
+      const rowNum = i + 1;
+
+      if (!raw.nama || typeof raw.nama !== 'string' || raw.nama.trim().length === 0) {
+        errors.push({ row: rowNum, item: raw, reason: 'Nama menu tidak boleh kosong' });
+        continue;
+      }
+
+      const harga = Number(raw.harga);
+      if (isNaN(harga) || harga < 0) {
+        errors.push({ row: rowNum, item: raw, reason: 'Harga harus berupa angka >= 0' });
+        continue;
+      }
+
+      const cleanName = raw.nama.trim();
+      const sku = raw.sku ? String(raw.sku).trim() : '';
+
+      const match = existing.find(m => 
+        (sku && m.sku && m.sku.toLowerCase() === sku.toLowerCase()) || 
+        (m.nama.toLowerCase() === cleanName.toLowerCase())
+      );
+
+      if (match) {
+        if (options.mode === 'create_only') {
+          skippedCount++;
+          continue;
+        }
+        await db.table('menuItems').update(match.id!, {
+          sku: sku || match.sku,
+          nama: cleanName,
+          harga: harga,
+          kategori: raw.kategori ? raw.kategori.trim() : match.kategori,
+          isSoldOut: raw.isSoldOut !== undefined ? Boolean(raw.isSoldOut) : match.isSoldOut
+        });
+        updatedCount++;
+      } else {
+        if (options.mode === 'update_existing') {
+          skippedCount++;
+          continue;
+        }
+        maxUrutan++;
+        const newMenu = {
+          sku: sku || `SKU-${maxUrutan.toString().padStart(3, '0')}`,
+          nama: cleanName,
+          harga: harga,
+          kategori: raw.kategori ? raw.kategori.trim() : 'Umum',
+          isSoldOut: Boolean(raw.isSoldOut),
+          urutan: maxUrutan,
+          modifiers: getDefaultModifiersForCategory(raw.kategori || 'Umum', cleanName)
+        };
+        const newId = await db.table('menuItems').add(newMenu) as number;
+        existing.push({ id: newId, ...newMenu });
+        createdCount++;
+      }
+    }
+
+    await db.table('auditLogs').add({
+      action: 'BULK_IMPORT',
+      amount: 0,
+      reason: `Bulk Import Menu: ${createdCount} baru, ${updatedCount} diperbarui, ${skippedCount} dilewati, ${errors.length} gagal`,
+      operator: 'Admin',
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  return {
+    success: true,
+    createdCount,
+    updatedCount,
+    skippedCount,
+    errors
+  };
+}
+
+export async function bulkUpdateMenuPrices(menuIds: number[], options: { type: 'nominal' | 'percent', value: number }) {
+  return await db.transaction('rw', ['menuItems', 'auditLogs'], async () => {
+    let count = 0;
+    for (const id of menuIds) {
+      const item = await db.table('menuItems').get(id);
+      if (!item) continue;
+      let newPrice = item.harga;
+      if (options.type === 'nominal') {
+        newPrice = Math.max(0, item.harga + options.value);
+      } else {
+        newPrice = Math.max(0, Math.round(item.harga * (1 + options.value / 100)));
+      }
+      await db.table('menuItems').update(id, { harga: newPrice });
+      count++;
+    }
+
+    await db.table('auditLogs').add({
+      action: 'BULK_UPDATE',
+      amount: 0,
+      reason: `Bulk update harga ${count} menu (${options.type === 'nominal' ? (options.value >= 0 ? '+' : '') + options.value : (options.value >= 0 ? '+' : '') + options.value + '%'})`,
+      operator: 'Admin',
+      timestamp: new Date().toISOString()
+    });
+
+    return { updatedCount: count };
+  });
+}
+
+export async function bulkUpdateMenuCategory(menuIds: number[], kategori: string) {
+  return await db.transaction('rw', ['menuItems', 'auditLogs'], async () => {
+    let count = 0;
+    for (const id of menuIds) {
+      await db.table('menuItems').update(id, { kategori });
+      count++;
+    }
+    await db.table('auditLogs').add({
+      action: 'BULK_UPDATE',
+      amount: 0,
+      reason: `Bulk ubah kategori ${count} menu ke '${kategori}'`,
+      operator: 'Admin',
+      timestamp: new Date().toISOString()
+    });
+    return { updatedCount: count };
+  });
+}
+
+export async function bulkToggleMenuStock(menuIds: number[], isSoldOut: boolean) {
+  return await db.transaction('rw', ['menuItems', 'auditLogs'], async () => {
+    for (const id of menuIds) {
+      await db.table('menuItems').update(id, { isSoldOut });
+    }
+    await db.table('auditLogs').add({
+      action: 'BULK_UPDATE',
+      amount: 0,
+      reason: `Bulk set ${isSoldOut ? 'Habis' : 'Tersedia'} untuk ${menuIds.length} menu`,
+      operator: 'Admin',
+      timestamp: new Date().toISOString()
+    });
+    return { updatedCount: menuIds.length };
+  });
+}
+
+export async function bulkDeleteMenus(menuIds: number[]) {
+  return await db.transaction('rw', ['menuItems', 'orderItems', 'auditLogs'], async () => {
+    const allOrderItems = await db.table('orderItems').toArray();
+    const usedMenuIds = new Set(allOrderItems.map(oi => oi.menuItemId));
+
+    const deletableIds: number[] = [];
+    const protectedIds: number[] = [];
+
+    for (const id of menuIds) {
+      if (usedMenuIds.has(id)) {
+        protectedIds.push(id);
+      } else {
+        deletableIds.push(id);
+      }
+    }
+
+    if (deletableIds.length > 0) {
+      await db.table('menuItems').bulkDelete(deletableIds);
+    }
+
+    for (const id of protectedIds) {
+      await db.table('menuItems').update(id, { isSoldOut: true });
+    }
+
+    await db.table('auditLogs').add({
+      action: 'BULK_DELETE',
+      amount: 0,
+      reason: `Bulk delete menu: ${deletableIds.length} dihapus permanen, ${protectedIds.length} dilindungi karena memiliki riwayat transaksi`,
+      operator: 'Admin',
+      timestamp: new Date().toISOString()
+    });
+
+    return {
+      deletedCount: deletableIds.length,
+      protectedCount: protectedIds.length
+    };
+  });
+}
+
+export async function bulkCreateTables(params: { prefix?: string, startNum: number, count: number }) {
+  const prefix = params.prefix || 'Meja ';
+  return await db.transaction('rw', ['tables', 'auditLogs'], async () => {
+    const existing = await db.table('tables').toArray();
+    const existingNomors = new Set(existing.map(t => t.nomor.toLowerCase()));
+    const toInsert = [];
+
+    for (let i = 0; i < params.count; i++) {
+      const num = params.startNum + i;
+      const nomor = `${prefix}${num}`;
+      if (!existingNomors.has(nomor.toLowerCase())) {
+        toInsert.push({ nomor, status: 'kosong' });
+        existingNomors.add(nomor.toLowerCase());
+      }
+    }
+
+    if (toInsert.length > 0) {
+      await db.table('tables').bulkAdd(toInsert);
+    }
+
+    await db.table('auditLogs').add({
+      action: 'BULK_IMPORT',
+      amount: 0,
+      reason: `Bulk tambah meja: ${toInsert.length} meja baru (${prefix}${params.startNum} - ${prefix}${params.startNum + params.count - 1})`,
+      operator: 'Admin',
+      timestamp: new Date().toISOString()
+    });
+
+    return { createdCount: toInsert.length };
+  });
+}
+
+export async function bulkRenameTables(tableIds: number[], pattern: string) {
+  return await db.transaction('rw', ['tables', 'auditLogs'], async () => {
+    let idx = 1;
+    for (const id of tableIds) {
+      const newName = pattern.includes('{N}') ? pattern.replace('{N}', String(idx)) : `${pattern} ${idx}`;
+      await db.table('tables').update(id, { nomor: newName });
+      idx++;
+    }
+
+    await db.table('auditLogs').add({
+      action: 'BULK_UPDATE',
+      amount: 0,
+      reason: `Bulk rename ${tableIds.length} meja dengan pola '${pattern}'`,
+      operator: 'Admin',
+      timestamp: new Date().toISOString()
+    });
+
+    return { renamedCount: tableIds.length };
+  });
+}
+
+export async function bulkDeleteEmptyTables(tableIds: number[]) {
+  return await db.transaction('rw', ['tables', 'orders', 'auditLogs'], async () => {
+    const orders = await db.table('orders').toArray();
+    const unpaidTableIds = new Set(orders.filter(o => o.status === 'unpaid' && o.tableId).map(o => o.tableId));
+
+    const deletableIds: number[] = [];
+    const blockedIds: number[] = [];
+
+    for (const id of tableIds) {
+      if (unpaidTableIds.has(id)) {
+        blockedIds.push(id);
+      } else {
+        deletableIds.push(id);
+      }
+    }
+
+    if (deletableIds.length > 0) {
+      await db.table('tables').bulkDelete(deletableIds);
+    }
+
+    await db.table('auditLogs').add({
+      action: 'BULK_DELETE',
+      amount: 0,
+      reason: `Bulk hapus meja: ${deletableIds.length} dihapus, ${blockedIds.length} ditolak karena memiliki tagihan aktif`,
+      operator: 'Admin',
+      timestamp: new Date().toISOString()
+    });
+
+    return {
+      deletedCount: deletableIds.length,
+      blockedCount: blockedIds.length
+    };
+  });
+}
+
+export async function importHistoricalTransactions(transactions: {
+  receiptNumber?: string;
+  customerName?: string;
+  orderType?: string;
+  createdAt: string;
+  total: number;
+  paymentMethod: 'Cash' | 'QRIS' | 'Transfer';
+  items?: { nama: string; qty: number; harga: number }[];
+}[]) {
+  return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'auditLogs'], async () => {
+    let importedCount = 0;
+    for (const t of transactions) {
+      const total = Number(t.total) || 0;
+      const orderId = await db.table('orders').add({
+        shiftId: null,
+        idempotencyKey: `HIST-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        tableId: null,
+        receiptNumber: t.receiptNumber || null,
+        subtotal: total,
+        total: total,
+        paidAmount: total,
+        remainingBalance: 0,
+        status: 'paid',
+        verificationStatus: 'terverifikasi',
+        isHistorical: true,
+        customerName: t.customerName || 'Pelanggan Migrasi',
+        paymentMethod: t.paymentMethod || 'Cash',
+        orderType: t.orderType || 'Takeaway',
+        notes: `Import Riwayat Historis (${t.receiptNumber || 'Tanpa No'})`,
+        createdAt: t.createdAt || new Date().toISOString(),
+        updatedAt: t.createdAt || new Date().toISOString(),
+      }) as number;
+
+      if (t.items && t.items.length > 0) {
+        const itemsToInsert = t.items.map(i => ({
+          orderId,
+          menuItemId: 0,
+          namaMenu: i.nama,
+          kategoriMenu: 'Historis',
+          qty: i.qty || 1,
+          paidQty: i.qty || 1,
+          hargaSatuan: i.harga || total,
+          selectedModifiers: []
+        }));
+        await db.table('orderItems').bulkAdd(itemsToInsert);
+      } else {
+        await db.table('orderItems').add({
+          orderId,
+          menuItemId: 0,
+          namaMenu: 'Transaksi Historis',
+          kategoriMenu: 'Historis',
+          qty: 1,
+          paidQty: 1,
+          hargaSatuan: total,
+          selectedModifiers: []
+        });
+      }
+
+      await db.table('payments').add({
+        orderId,
+        shiftId: null,
+        paymentMethod: t.paymentMethod || 'Cash',
+        amount: total,
+        cashTendered: total,
+        change: 0,
+        splitType: 'full',
+        paidAt: t.createdAt || new Date().toISOString(),
+        operatorName: 'Migrasi',
+        notes: 'Import Riwayat Historis',
+        status: 'completed',
+        proofStatus: t.paymentMethod === 'Cash' ? 'terverifikasi' : 'menunggu_verifikasi'
+      });
+
+      importedCount++;
+    }
+
+    await db.table('auditLogs').add({
+      action: 'MIGRATION',
+      amount: 0,
+      reason: `Import ${importedCount} transaksi historis migrasi`,
+      operator: 'Admin',
+      timestamp: new Date().toISOString()
+    });
+
+    return { importedCount };
   });
 }
 
@@ -756,6 +1476,12 @@ export async function getShiftLiveStats(shiftId: number) {
       .filter((p: any) => p.status === 'completed' && p.paymentMethod !== 'Cash')
       .reduce((sum: number, p: any) => sum + p.amount, 0);
 
+    const verifiedNonCashSales = allPayments
+      .filter((p: any) => p.status === 'completed' && p.paymentMethod !== 'Cash' && p.proofStatus === 'terverifikasi')
+      .reduce((sum: number, p: any) => sum + p.amount, 0);
+
+    const unverifiedNonCashSales = Math.max(0, nonCashSales - verifiedNonCashSales);
+
     // 3. Refund Tunai
     const refundedPaymentsCash = allPayments
       .filter((p: any) => p.status === 'refunded' && p.paymentMethod === 'Cash')
@@ -790,11 +1516,18 @@ export async function getShiftLiveStats(shiftId: number) {
   // Expected Cash = Modal Awal + Penjualan Tunai - Refund Tunai + Kas Masuk - Kas Keluar
   const expectedCash = (Number(shift.startingCash) || 0) + cashSales - cashRefunds + cashIn - cashOut;
 
+  const verifiedNonCash = typeof allPayments !== 'undefined'
+    ? allPayments.filter((p: any) => p.status === 'completed' && p.paymentMethod !== 'Cash' && p.proofStatus === 'terverifikasi').reduce((s: number, p: any) => s + p.amount, 0)
+    : 0;
+  const unverifiedNonCash = Math.max(0, nonCashSales - verifiedNonCash);
+
   return {
     ...shift,
     totalTransactions: allPayments.length > 0 ? allPayments.filter((p: any) => p.status === 'completed').length : shiftOrders.filter(o => o.status !== 'void').length,
     cashSales,
     nonCashSales,
+    verifiedNonCashSales: verifiedNonCash,
+    unverifiedNonCashSales: unverifiedNonCash,
     cashRefunds,
     cashIn,
     cashOut,
@@ -892,10 +1625,11 @@ export async function addCashMovement(data: { shiftId: number, type: 'in' | 'out
 }
 
 export async function resetAllTransactions() {
-  await db.transaction('rw', ['orders', 'orderItems', 'payments', 'tables', 'auditLogs', 'shifts', 'cashMovements'], async () => {
+  await db.transaction('rw', ['orders', 'orderItems', 'payments', 'paymentProofs', 'tables', 'auditLogs', 'shifts', 'cashMovements'], async () => {
     await db.table('orderItems').clear();
     await db.table('orders').clear();
     await db.table('payments').clear();
+    await db.table('paymentProofs').clear();
     await db.table('auditLogs').clear();
     await db.table('shifts').clear();
     await db.table('cashMovements').clear();
@@ -916,6 +1650,7 @@ export async function exportAllData() {
   const orders = await db.table('orders').toArray();
   const orderItems = await db.table('orderItems').toArray();
   const payments = await db.table('payments').toArray();
+  const paymentProofs = await db.table('paymentProofs').toArray();
   const auditLogs = await db.table('auditLogs').toArray();
   const shifts = await db.table('shifts').toArray();
   const cashMovements = await db.table('cashMovements').toArray();
@@ -934,16 +1669,26 @@ export async function exportAllData() {
     } catch (e) {}
   }
 
+  const integrity = {
+    totalMenus: menus.length,
+    totalOrders: orders.length,
+    totalPayments: payments.length,
+    totalProofs: paymentProofs.length,
+    checksum: (menus.length * 3) + (orders.length * 7) + (payments.length * 11) + (paymentProofs.length * 13)
+  };
+
   return {
-    version: 2,
+    version: 3,
     appName: 'SakuNota POS',
     exportedAt: new Date().toISOString(),
+    integrity,
     settings,
     menus,
     tables,
     orders,
     orderItems,
     payments,
+    paymentProofs,
     auditLogs,
     shifts,
     cashMovements
@@ -952,13 +1697,14 @@ export async function exportAllData() {
 
 export async function importAllData(data: any) {
   if (!data || !Array.isArray(data.menus)) {
-    throw new Error('Format file cadangan tidak valid.');
+    throw new Error('Format file cadangan tidak valid: Data menu tidak ditemukan.');
   }
 
-  await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems', 'payments', 'auditLogs', 'shifts', 'cashMovements'], async () => {
+  await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems', 'payments', 'paymentProofs', 'auditLogs', 'shifts', 'cashMovements', 'settings'], async () => {
     await db.table('auditLogs').clear();
     await db.table('shifts').clear();
     await db.table('cashMovements').clear();
+    await db.table('paymentProofs').clear();
     await db.table('payments').clear();
     await db.table('orderItems').clear();
     await db.table('orders').clear();
@@ -968,6 +1714,7 @@ export async function importAllData(data: any) {
     if (data.menus && data.menus.length > 0) {
       const cleanMenus = data.menus.map((m: any) => ({
         id: m.id,
+        sku: m.sku || undefined,
         nama: m.nama,
         harga: Number(m.harga),
         kategori: m.kategori || 'Umum',
@@ -992,6 +1739,10 @@ export async function importAllData(data: any) {
 
     if (data.payments && data.payments.length > 0) {
       await db.table('payments').bulkAdd(data.payments);
+    }
+
+    if (data.paymentProofs && data.paymentProofs.length > 0) {
+      await db.table('paymentProofs').bulkAdd(data.paymentProofs);
     }
 
     if (data.auditLogs && data.auditLogs.length > 0) {
@@ -1024,4 +1775,22 @@ export async function importAllData(data: any) {
   }
 
   return true;
+}
+
+export async function bulkExportTransactions(options: { startDate?: string, endDate?: string, paymentMethod?: string }) {
+  const orders = await getOrders();
+  let filtered = orders;
+
+  if (options.startDate) {
+    filtered = filtered.filter(o => o.createdAt >= options.startDate!);
+  }
+  if (options.endDate) {
+    const endStr = options.endDate + 'T23:59:59.999Z';
+    filtered = filtered.filter(o => o.createdAt <= endStr);
+  }
+  if (options.paymentMethod && options.paymentMethod !== 'all') {
+    filtered = filtered.filter(o => o.paymentMethod === options.paymentMethod);
+  }
+
+  return filtered;
 }

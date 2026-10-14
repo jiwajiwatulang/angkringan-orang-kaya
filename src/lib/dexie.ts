@@ -17,6 +17,7 @@ export interface ModifierGroup {
 
 export interface MenuItem {
   id?: number;
+  sku?: string; // Kode unik produk / SKU untuk pencocokan bulk import
   nama: string;
   harga: number;
   kategori: string;
@@ -50,6 +51,22 @@ export interface OrderItem {
   menuItem?: MenuItem;   // Joined property (backward compatibility)
 }
 
+export interface PaymentProof {
+  id?: number;
+  paymentId: number;        // Terhubung dengan Payment.id
+  orderId: number;          // Terhubung dengan Order.id
+  imageData: string;        // Base64 Data URL (terkompresi WebP/JPEG, maks 2MB)
+  fileName: string;
+  fileSize: number;         // Ukuran bytes
+  mimeType: string;         // image/jpeg, image/png, image/webp
+  status: 'menunggu_bukti' | 'menunggu_verifikasi' | 'terverifikasi';
+  uploadedAt: string;
+  uploadedBy: string;       // Nama operator kasir / admin
+  verifiedAt?: string;
+  verifiedBy?: string;
+  notes?: string;
+}
+
 export interface Payment {
   id?: number;
   orderId: number;
@@ -64,6 +81,9 @@ export interface Payment {
   operatorName: string;
   notes?: string;
   status: 'completed' | 'refunded';
+  proofStatus?: 'menunggu_bukti' | 'menunggu_verifikasi' | 'terverifikasi';
+  proofId?: number;
+  proof?: PaymentProof;     // Joined property
   refundReason?: string;
   refundedAt?: string;
   refundOperator?: string;
@@ -86,6 +106,8 @@ export interface Order {
   cashTendered?: number;
   change?: number;
   status: string; // 'paid' | 'unpaid' | 'void'
+  verificationStatus?: 'menunggu_bukti' | 'menunggu_verifikasi' | 'terverifikasi';
+  isHistorical?: boolean;    // Penanda transaksi migrasi/historis dari bulk import
   voidReason?: string;
   voidedAt?: string;
   isRefunded?: boolean;
@@ -100,11 +122,12 @@ export interface Order {
   updatedAt: string;
   items?: OrderItem[]; // Joined property
   payments?: Payment[]; // Joined property
+  proofs?: PaymentProof[]; // Joined property
 }
 
 export interface AuditLog {
   id?: number;
-  action: 'VOID' | 'REFUND' | 'DELETE' | 'RESET' | 'OPEN_SHIFT' | 'CLOSE_SHIFT' | 'CASH_IN' | 'CASH_OUT' | 'PARTIAL_PAYMENT' | 'PARTIAL_REFUND';
+  action: 'VOID' | 'REFUND' | 'DELETE' | 'RESET' | 'OPEN_SHIFT' | 'CLOSE_SHIFT' | 'CASH_IN' | 'CASH_OUT' | 'PARTIAL_PAYMENT' | 'PARTIAL_REFUND' | 'UPLOAD_PROOF' | 'VERIFY_PROOF' | 'DELETE_PROOF' | 'BULK_IMPORT' | 'BULK_UPDATE' | 'BULK_DELETE' | 'MIGRATION';
   orderId?: number;
   amount: number;
   reason: string;
@@ -198,6 +221,19 @@ db.version(7).stores({
   orders: '++id, shiftId, idempotencyKey, tableId, status, createdAt',
   orderItems: '++id, orderId, menuItemId',
   payments: '++id, orderId, shiftId, paymentMethod, status, paidAt',
+  auditLogs: '++id, orderId, action, timestamp',
+  shifts: '++id, status, startTime, operatorName',
+  cashMovements: '++id, shiftId, type, timestamp',
+  settings: 'key'
+});
+
+db.version(8).stores({
+  menuItems: '++id, sku, nama, kategori, isSoldOut, urutan',
+  tables: '++id, nomor, status',
+  orders: '++id, shiftId, idempotencyKey, tableId, status, verificationStatus, createdAt',
+  orderItems: '++id, orderId, menuItemId',
+  payments: '++id, orderId, shiftId, paymentMethod, status, proofStatus, paidAt',
+  paymentProofs: '++id, paymentId, orderId, status, uploadedAt',
   auditLogs: '++id, orderId, action, timestamp',
   shifts: '++id, status, startTime, operatorName',
   cashMovements: '++id, shiftId, type, timestamp',

@@ -175,6 +175,8 @@ async function runTestSuite() {
     assert(shift2Stats.nonCashSales === 60000, 'Shift 2 QRIS tracked separately as Non-Cash (Rp 60.000)');
     // Expected Cash MUST NOT include QRIS 60.000! Starting (300.000) + Cash (75.000) = 375.000
     assert(shift2Stats.expectedCash === 375000, 'Shift 2 Expected Physical Cash correctly excludes QRIS (Rp 375.000)', `Rp ${shift2Stats.expectedCash}`);
+
+    await closeShift(shift2.id, { actualCash: 375000, operatorName: 'Kasir Malam (Joko)' });
   } catch (err: any) {
     assert(false, 'Test Group 3 Error', err.message);
   }
@@ -477,6 +479,336 @@ async function runTestSuite() {
     assert(deletedTable === undefined, 'deleteTable removes table successfully');
   } catch (err: any) {
     assert(false, 'Test Group 9 Error', err.message);
+  }
+
+  // --------------------------------------------------------------------------
+  console.log('\n[TEST GROUP 10] Payment Proof Upload, Atomic Attachment & Verification Workflow');
+  // --------------------------------------------------------------------------
+  try {
+    const { uploadPaymentProof, verifyPaymentProof, deletePaymentProof } = await import('./src/lib/api');
+    
+    // 1. Create QRIS Order WITH payment proof
+    const qrisOrder = await createOrder({
+      customerName: 'Siti Aminah',
+      paymentMethod: 'QRIS',
+      orderType: 'Dine-in',
+      tableId: 1,
+      total: 50000,
+      status: 'paid',
+      items: [{ id: 101, nama: 'Paket Nasi Kucing Komplit', harga: 50000, qty: 1 }],
+      paymentProof: {
+        imageData: 'data:image/webp;base64,UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAD8D+JaQAA3AA/ua1AAA=',
+        fileName: 'bukti_qris_siti.webp',
+        fileSize: 1024,
+        mimeType: 'image/webp'
+      }
+    });
+
+    const orders = await getOrders();
+    const fetchedQris = orders.find(o => o.id === qrisOrder.id);
+    assert(fetchedQris !== undefined, 'QRIS order created');
+    assert(fetchedQris.verificationStatus === 'menunggu_verifikasi', 'Order verificationStatus is "menunggu_verifikasi"', fetchedQris.verificationStatus);
+    assert(fetchedQris.proofStatus === 'menunggu_verifikasi', 'Payment proofStatus is "menunggu_verifikasi"');
+    assert(fetchedQris.proof !== undefined, 'Payment proof is attached to order');
+
+    // 2. Admin verifies proof
+    await verifyPaymentProof(fetchedQris.proof.id, { operator: 'Admin Utama' });
+    const ordersAfterVerify = await getOrders();
+    const verifiedOrder = ordersAfterVerify.find(o => o.id === qrisOrder.id);
+    assert(verifiedOrder.verificationStatus === 'terverifikasi', 'Order verificationStatus updated to "terverifikasi"');
+    assert(verifiedOrder.proofStatus === 'terverifikasi', 'Payment proofStatus updated to "terverifikasi"');
+
+    // 3. Create QRIS Order WITHOUT payment proof
+    const pendingProofOrder = await createOrder({
+      customerName: 'Hendra Gunawan',
+      paymentMethod: 'Transfer',
+      orderType: 'Takeaway',
+      total: 75000,
+      status: 'paid',
+      items: [{ id: 102, nama: 'Aneka Sate 15 Porsi', harga: 75000, qty: 1 }]
+    });
+
+    const ordersPending = await getOrders();
+    const fetchedPending = ordersPending.find(o => o.id === pendingProofOrder.id);
+    assert(fetchedPending.verificationStatus === 'menunggu_bukti', 'Non-cash order without proof has status "menunggu_bukti"');
+
+    // 4. Retroactive upload proof for Hendra
+    const payments = await getOrderPayments(pendingProofOrder.id);
+    const transferPayment = payments[0];
+    await uploadPaymentProof({
+      paymentId: transferPayment.id,
+      orderId: pendingProofOrder.id,
+      imageData: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/',
+      fileName: 'struk_transfer_hendra.jpg',
+      fileSize: 2048,
+      mimeType: 'image/jpeg',
+      operator: 'Kasir Shift 1'
+    });
+
+    const ordersAfterUpload = await getOrders();
+    const updatedHendra = ordersAfterUpload.find(o => o.id === pendingProofOrder.id);
+    assert(updatedHendra.verificationStatus === 'menunggu_verifikasi', 'Retroactive proof upload updates order to "menunggu_verifikasi"');
+
+    // 5. Admin deletes proof with reason
+    await deletePaymentProof(updatedHendra.proof.id, { operator: 'Admin Utama', reason: 'Bukti transfer buram/salah nominal' });
+    const ordersAfterDelete = await getOrders();
+    const revertedHendra = ordersAfterDelete.find(o => o.id === pendingProofOrder.id);
+    assert(revertedHendra.verificationStatus === 'menunggu_bukti', 'Deleted proof reverts order status to "menunggu_bukti"');
+  } catch (err: any) {
+    assert(false, 'Test Group 10 Error', err.message);
+  }
+
+  // --------------------------------------------------------------------------
+  console.log('\n[TEST GROUP 11] Reconciliation Calculation: Physical Cash vs Verified Non-Cash');
+  // --------------------------------------------------------------------------
+  try {
+    // Open a fresh shift to test reconciliation stats
+    const shift = await openShift({ startingCash: 200000, operatorName: 'Kasir Utama' });
+
+    // 1. Physical Cash Order: Rp 100.000
+    await createOrder({
+      customerName: 'Pelanggan Tunai',
+      paymentMethod: 'Cash',
+      orderType: 'Dine-in',
+      total: 100000,
+      status: 'paid',
+      items: [{ id: 301, nama: 'Makanan', harga: 100000, qty: 1 }]
+    });
+
+    // 2. Unverified QRIS Order: Rp 50.000
+    await createOrder({
+      customerName: 'Pelanggan QRIS Belum Verif',
+      paymentMethod: 'QRIS',
+      orderType: 'Dine-in',
+      total: 50000,
+      status: 'paid',
+      items: [{ id: 302, nama: 'Minuman', harga: 50000, qty: 1 }]
+    });
+
+    // 3. Verified Transfer Order: Rp 150.000
+    const verifiedOrder = await createOrder({
+      customerName: 'Pelanggan Transfer Verif',
+      paymentMethod: 'Transfer',
+      orderType: 'Dine-in',
+      total: 150000,
+      status: 'paid',
+      items: [{ id: 303, nama: 'Paket Gathering', harga: 150000, qty: 1 }],
+      paymentProof: {
+        imageData: 'data:image/webp;base64,UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAD8D+JaQAA3AA/ua1AAA=',
+        fileName: 'bukti_gathering.webp',
+        fileSize: 1500,
+        mimeType: 'image/webp'
+      }
+    });
+    const verifPayments = await getOrderPayments(verifiedOrder.id);
+    const { verifyPaymentProof } = await import('./src/lib/api');
+    await verifyPaymentProof(verifPayments[0].proofId!, { operator: 'Admin' });
+
+    // Fetch live stats
+    const stats = await getShiftLiveStats(shift.id);
+
+    // Verification of formulas:
+    // Expected Cash = Modal Awal (200.000) + Cash Sales (100.000) = 300.000
+    // QRIS and Transfer MUST NOT increase expected physical cash!
+    assert(stats.expectedCash === 300000, 'Expected Cash drawer reflects strictly physical cash (Rp 300.000)', `Rp ${stats.expectedCash}`);
+    assert(stats.verifiedNonCashSales === 150000, 'Verified Non-Cash Sales correctly reflects only verified proofs (Rp 150.000)', `Rp ${stats.verifiedNonCashSales}`);
+    assert(stats.unverifiedNonCashSales === 50000, 'Unverified Non-Cash Sales isolated for reconciliation (Rp 50.000)', `Rp ${stats.unverifiedNonCashSales}`);
+
+    await closeShift(shift.id, { actualCash: 300000, operatorName: 'Kasir Utama' });
+  } catch (err: any) {
+    assert(false, 'Test Group 11 Error', err.message);
+  }
+
+  // --------------------------------------------------------------------------
+  console.log('\n[TEST GROUP 12] Bulk Menu Operations & Financial Immutability Guardrail');
+  // --------------------------------------------------------------------------
+  try {
+    const {
+      bulkImportMenus,
+      bulkUpdateMenuPrices,
+      bulkUpdateMenuCategory,
+      bulkToggleMenuStock,
+      bulkDeleteMenus
+    } = await import('./src/lib/api');
+
+    // 1. Bulk Import (Upsert mode)
+    const importPayload = [
+      { sku: 'BLK-001', nama: 'Menu Massal Satu', harga: 10000, kategori: 'Snack' },
+      { sku: 'BLK-002', nama: 'Menu Massal Dua', harga: 20000, kategori: 'Snack' },
+      { sku: 'BLK-003', nama: 'Menu Massal Tiga', harga: 30000, kategori: 'Snack' }
+    ];
+    const importRes = await bulkImportMenus(importPayload, { mode: 'upsert' });
+    assert(importRes.createdCount === 3, 'bulkImportMenus created 3 items');
+
+    // Upsert duplicate SKU with new price
+    const updatePayload = [
+      { sku: 'BLK-001', nama: 'Menu Massal Satu Update', harga: 12000, kategori: 'Snack' },
+      { sku: 'BLK-004', nama: 'Menu Massal Empat', harga: 40000, kategori: 'Minuman' }
+    ];
+    const upsertRes = await bulkImportMenus(updatePayload, { mode: 'upsert' });
+    assert(upsertRes.createdCount === 1, 'Upsert created 1 new item (BLK-004)');
+    assert(upsertRes.updatedCount === 1, 'Upsert updated 1 existing item (BLK-001)');
+
+    const menus = await db.table('menuItems').toArray();
+    const item1 = menus.find(m => m.sku === 'BLK-001');
+    assert(item1.harga === 12000, 'BLK-001 price updated to 12.000 via upsert');
+
+    // 2. Bulk Price Update (+ nominal Rp 3.000)
+    const targetIds = menus.filter(m => ['BLK-001', 'BLK-002'].includes(m.sku)).map(m => m.id);
+    await bulkUpdateMenuPrices(targetIds, { type: 'nominal', value: 3000 });
+    const item1AfterNom = await db.table('menuItems').get(item1.id);
+    assert(item1AfterNom.harga === 15000, 'bulkUpdateMenuPrices nominal (+Rp 3.000) applied: Rp 15.000');
+
+    // Bulk Price Update (+10% percent)
+    await bulkUpdateMenuPrices([item1.id], { type: 'percent', value: 10 });
+    const item1AfterPct = await db.table('menuItems').get(item1.id);
+    assert(item1AfterPct.harga === 16500, 'bulkUpdateMenuPrices percent (+10%) applied: Rp 16.500');
+
+    // 3. Bulk Update Category
+    await bulkUpdateMenuCategory(targetIds, 'Makanan Ringan');
+    const item2 = await db.table('menuItems').get(targetIds[1]);
+    assert(item2.kategori === 'Makanan Ringan', 'bulkUpdateMenuCategory updated category to "Makanan Ringan"');
+
+    // 4. Bulk Toggle Stock
+    await bulkToggleMenuStock(targetIds, true);
+    const item2SoldOut = await db.table('menuItems').get(targetIds[1]);
+    assert(item2SoldOut.isSoldOut === true, 'bulkToggleMenuStock sets isSoldOut = true');
+
+    // 5. Bulk Delete Financial Safety Guardrail:
+    // Create an order referencing BLK-001
+    await createOrder({
+      customerName: 'Pembeli Menu Massal',
+      paymentMethod: 'Cash',
+      orderType: 'Dine-in',
+      total: 16500,
+      status: 'paid',
+      items: [{ id: item1.id, nama: item1.nama, harga: item1.harga, qty: 1 }]
+    });
+
+    // Now attempt to bulk delete BLK-001 (used in order) and BLK-003 (unused)
+    const item3 = menus.find(m => m.sku === 'BLK-003');
+    const deleteRes = await bulkDeleteMenus([item1.id, item3.id]);
+    assert(deleteRes.deletedCount === 1, 'Unused menu item BLK-003 permanently deleted');
+    assert(deleteRes.protectedCount === 1, 'Used menu item BLK-001 protected from deletion');
+
+    const item1Check = await db.table('menuItems').get(item1.id);
+    assert(item1Check !== undefined, 'Protected item BLK-001 still exists in database');
+    assert(item1Check.isSoldOut === true, 'Protected item BLK-001 marked as sold out / disabled');
+
+    const item3Check = await db.table('menuItems').get(item3.id);
+    assert(item3Check === undefined, 'Unused item BLK-003 successfully removed');
+  } catch (err: any) {
+    assert(false, 'Test Group 12 Error', err.message);
+  }
+
+  // --------------------------------------------------------------------------
+  console.log('\n[TEST GROUP 13] Bulk Table Management & Active Order Guardrail');
+  // --------------------------------------------------------------------------
+  try {
+    const { bulkCreateTables, bulkRenameTables, bulkDeleteEmptyTables } = await import('./src/lib/api');
+
+    // 1. Bulk Create Tables
+    const createRes = await bulkCreateTables({ prefix: 'Saung ', startNum: 1, count: 5 });
+    assert(createRes.createdCount === 5, 'bulkCreateTables generated 5 new tables (Saung 1..5)');
+
+    const tables = await db.table('tables').toArray();
+    const saungTables = tables.filter(t => t.nomor.startsWith('Saung '));
+    assert(saungTables.length === 5, 'Found 5 Saung tables in database');
+
+    // 2. Bulk Rename Tables
+    const saungIds = saungTables.map(t => t.id);
+    await bulkRenameTables(saungIds, 'Gazebo #{N}');
+    const renamedFirst = await db.table('tables').get(saungIds[0]);
+    assert(renamedFirst.nomor === 'Gazebo #1', 'bulkRenameTables formatted first table to "Gazebo #1"');
+
+    // 3. Active Order Safety Guardrail:
+    // Create an unpaid / open bill order on Gazebo #1
+    await createOrder({
+      customerName: 'Pelanggan Gazebo',
+      paymentMethod: 'Cash',
+      orderType: 'Dine-in',
+      tableId: saungIds[0],
+      total: 20000,
+      status: 'unpaid',
+      items: [{ id: 101, nama: 'Makanan', harga: 20000, qty: 1 }]
+    });
+
+    // Attempt to delete all saung tables (one has active unpaid order)
+    const delRes = await bulkDeleteEmptyTables(saungIds);
+    assert(delRes.blockedCount === 1, 'Table with active unpaid order BLOCKED from deletion');
+    assert(delRes.deletedCount === 4, 'Empty tables without active orders deleted successfully');
+
+    const protectedTable = await db.table('tables').get(saungIds[0]);
+    assert(protectedTable !== undefined, 'Active table Gazebo #1 remains preserved in database');
+  } catch (err: any) {
+    assert(false, 'Test Group 13 Error', err.message);
+  }
+
+  // --------------------------------------------------------------------------
+  console.log('\n[TEST GROUP 14] Historical Transaction Import & Financial Immutability');
+  // --------------------------------------------------------------------------
+  try {
+    const { importHistoricalTransactions } = await import('./src/lib/api');
+
+    const historicalData = [
+      {
+        receiptNumber: 'HIST-2025-001',
+        createdAt: '2025-01-15T12:00:00.000Z',
+        customerName: 'Pelanggan Masa Lalu 1',
+        orderType: 'Dine-in' as const,
+        tableName: 'Meja Lawas',
+        subtotal: 100000,
+        taxAmount: 10000,
+        discountAmount: 0,
+        total: 110000,
+        paymentMethod: 'Cash' as const,
+        notes: 'Migrasi dari pembukuan buku tulis',
+        items: [
+          { nama: 'Bebek Goreng', qty: 2, harga: 40000, subtotal: 80000 },
+          { nama: 'Es Jeruk', qty: 2, harga: 10000, subtotal: 20000 }
+        ]
+      }
+    ];
+
+    const histRes = await importHistoricalTransactions(historicalData);
+    assert(histRes.importedCount === 1, 'importHistoricalTransactions imported 1 record');
+
+    const orders = await db.table('orders').toArray();
+    const importedOrder = orders.find(o => o.receiptNumber === 'HIST-2025-001');
+    assert(importedOrder !== undefined, 'Historical order found in database');
+    assert(importedOrder.isHistorical === true, 'Historical order tagged with isHistorical = true');
+    assert(importedOrder.status === 'paid', 'Historical order status is paid');
+    assert(importedOrder.total === 110000, 'Historical order total is Rp 110.000');
+  } catch (err: any) {
+    assert(false, 'Test Group 14 Error', err.message);
+  }
+
+  // --------------------------------------------------------------------------
+  console.log('\n[TEST GROUP 15] Full Backup & Restore with Payment Proofs Integrity');
+  // --------------------------------------------------------------------------
+  try {
+    // 1. Export entire database to backup object
+    const backup = await exportAllData();
+    assert(backup.version === 3, 'Backup version is 3');
+    assert(Array.isArray(backup.paymentProofs), 'Backup contains paymentProofs table');
+    assert(backup.paymentProofs.length > 0, 'paymentProofs backup array has records');
+
+    const proofBefore = backup.paymentProofs[0];
+    assert(proofBefore.imageData !== undefined, 'paymentProof imageData preserved in backup');
+
+    // 2. Perform restore from backup object
+    const restoreRes = await importAllData(backup);
+    assert(restoreRes === true, 'importAllData restored successfully');
+
+    // 3. Verify restored payment proofs in Dexie
+    const proofsAfter = await db.table('paymentProofs').toArray();
+    assert(proofsAfter.length === backup.paymentProofs.length, 'Restored paymentProofs count matches original backup');
+    const matchedProof = proofsAfter.find(p => p.id === proofBefore.id);
+    assert(matchedProof !== undefined, 'Original proof ID restored');
+    assert(matchedProof.fileName === proofBefore.fileName, 'Proof fileName intact after restore');
+    assert(matchedProof.imageData === proofBefore.imageData, 'Proof imageData intact after restore');
+  } catch (err: any) {
+    assert(false, 'Test Group 15 Error', err.message);
   }
 
   // --------------------------------------------------------------------------

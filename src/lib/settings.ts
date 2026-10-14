@@ -16,6 +16,8 @@ export interface StoreSettings {
   taxAppliesToService: boolean; // Apakah PBJT dikenakan juga pada Service Charge (UU HKPD)
   servicePercent: number; // Persentase Biaya Layanan
   enableService: boolean;
+  onboardingCompleted?: boolean; // Status penyelesaian onboarding toko baru
+  businessType?: string; // Jenis usaha: 'angkringan' | 'kafe' | 'warung' | 'restoran' | 'retail'
 }
 
 export const DEFAULT_SETTINGS: StoreSettings = {
@@ -34,6 +36,8 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   taxAppliesToService: true,
   servicePercent: 5,
   enableService: false,
+  onboardingCompleted: true, // Default true agar existing instalasi tidak terganggu
+  businessType: "angkringan",
 };
 
 const STORAGE_KEY = "pos_store_settings";
@@ -151,6 +155,12 @@ export function saveStoreSettings(settings: StoreSettings): void {
   saveStoreSettingsAsync(settings).catch(err => {
     console.error("saveStoreSettings background error:", err);
   });
+}
+
+export async function updateStoreSettings(partial: Partial<StoreSettings>): Promise<void> {
+  const current = await loadStoreSettingsAsync();
+  const merged = { ...current, ...partial };
+  await saveStoreSettingsAsync(merged);
 }
 
 /**

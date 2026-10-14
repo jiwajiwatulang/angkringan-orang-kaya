@@ -1,8 +1,23 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAdmin } from "../AdminContext";
-import { getOrders, processVoidRefund, getAuditLogs } from "@/lib/api";
+import {
+  getOrders,
+  processVoidRefund,
+  getAuditLogs,
+  uploadPaymentProof,
+  verifyPaymentProof,
+  deletePaymentProof,
+  matchBulkPaymentProofs,
+  importHistoricalTransactions,
+} from "@/lib/api";
+import {
+  exportOrdersToExcel,
+  downloadHistoricalTransactionTemplate,
+  parseHistoricalTransactionsFile,
+} from "@/lib/excelUtils";
+import { compressPaymentProof, formatBytes } from "@/lib/imageUtils";
 import { generateEscPosReceipt } from "@/lib/receipt";
 import { Printer } from "@capgo/capacitor-printer";
 import { BluetoothSerial } from "@ascentio-it/capacitor-bluetooth-serial";
@@ -23,23 +38,48 @@ export default function AdminTransaksiPage() {
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("Semua");
+  const [verificationFilter, setVerificationFilter] = useState("Semua");
 
-  // Receipt Modal
+  // Selection for Bulk Actions
+  const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
+
+  // Receipt / Detail Modal
   const [receiptData, setReceiptData] = useState<any>(null);
-  const [printMode, setPrintMode] = useState<'all' | 'food' | 'drink'>('all');
+  const [zoomProofImage, setZoomProofImage] = useState<string | null>(null);
 
   // Void & Refund Modal
   const [voidTargetOrder, setVoidTargetOrder] = useState<any>(null);
-  const [voidReason, setVoidReason] = useState("Salah input item menu");
+  const [voidReason, setVoidReason] = useState("Salah input pesanan");
   const [isRefundCash, setIsRefundCash] = useState(false);
   const [voidPinInput, setVoidPinInput] = useState("");
   const [voidPinError, setVoidPinError] = useState("");
+
+  // Modal: Import Transaksi Historis
+  const [isHistoricalModalOpen, setIsHistoricalModalOpen] = useState(false);
+  const [historicalFile, setHistoricalFile] = useState<File | null>(null);
+  const [parsedHistorical, setParsedHistorical] = useState<any>(null);
+  const [isImportingHistorical, setIsImportingHistorical] = useState(false);
+
+  // Modal: Bulk Upload Bukti Bayar
+  const [isBulkProofModalOpen, setIsBulkProofModalOpen] = useState(false);
+  const [matchedProofResults, setMatchedProofResults] = useState<any[]>([]);
+  const [isMatchingProofs, setIsMatchingProofs] = useState(false);
+  const [isSavingBulkProofs, setIsSavingBulkProofs] = useState(false);
+
+  // File input ref untuk upload bukti dari detail modal
+  const detailProofInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingDetailProof, setIsUploadingDetailProof] = useState(false);
 
   const loadData = async () => {
     try {
       const [allOrders, logs] = await Promise.all([getOrders(), getAuditLogs()]);
       setOrders(allOrders);
       setAuditLogs(logs);
+      // Update receiptData if open
+      if (receiptData) {
+        const refreshed = allOrders.find(o => o.id === receiptData.id);
+        if (refreshed) setReceiptData(refreshed);
+      }
     } catch (e) {
       console.error("Error loading transactions:", e);
     } finally {
@@ -56,10 +96,16 @@ export default function AdminTransaksiPage() {
     let removeListener: any;
     try {
       App.addListener("backButton", () => {
-        if (receiptData) {
+        if (zoomProofImage) {
+          setZoomProofImage(null);
+        } else if (receiptData) {
           setReceiptData(null);
         } else if (voidTargetOrder) {
           setVoidTargetOrder(null);
+        } else if (isHistoricalModalOpen) {
+          setIsHistoricalModalOpen(false);
+        } else if (isBulkProofModalOpen) {
+          setIsBulkProofModalOpen(false);
         }
       }).then(handle => {
         removeListener = handle;
@@ -71,7 +117,7 @@ export default function AdminTransaksiPage() {
         removeListener.remove();
       }
     };
-  }, [receiptData, voidTargetOrder]);
+  }, [zoomProofImage, receiptData, voidTargetOrder, isHistoricalModalOpen, isBulkProofModalOpen]);
 
   // Filter orders
   const filteredOrders = orders.filter((o) => {
@@ -93,207 +139,546 @@ export default function AdminTransaksiPage() {
     // Payment filter
     if (paymentFilter !== 'Semua' && o.paymentMethod !== paymentFilter) return false;
 
+    // Verification filter
+    if (verificationFilter !== 'Semua') {
+      const st = o.verificationStatus || (o.paymentMethod === 'Cash' ? 'terverifikasi' : 'menunggu_bukti');
+      if (st !== verificationFilter) return false;
+    }
+
     // Search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchId = o.id.toString().includes(q);
       const matchCust = (o.customerName || "").toLowerCase().includes(q);
       const matchTable = (o.tableName || "").toLowerCase().includes(q);
-      if (!matchId && !matchCust && !matchTable) return false;
+      return matchId || matchCust || matchTable;
     }
 
     return true;
-  }).reverse();
+  });
 
-  // Print Receipt handler
-  const handlePrint = async (mode: 'all' | 'food' | 'drink') => {
-    const isAndroid = /android/i.test(navigator.userAgent);
-    setPrintMode(mode);
-
-    setTimeout(async () => {
-      try {
-        const mac = localStorage.getItem("bt_printer_mac");
-        if (isAndroid && mac && receiptData) {
-          const textToPrint = generateEscPosReceipt(receiptData, mode, storeSettings);
-          try {
-            await BluetoothSerial.connect({ address: mac });
-          } catch (_) {}
-          await BluetoothSerial.write({ address: mac, value: textToPrint });
-          showToast("Berhasil mencetak ke Printer Bluetooth!", "success");
-        } else {
-          await Printer.printWebView({ name: "Nota_SakuNota" });
-        }
-      } catch (e: any) {
-        try {
-          await Printer.printWebView({ name: "Nota_SakuNota" });
-        } catch (_) {
-          alert("Gagal memanggil print: " + e.message);
-        }
-      }
-      setPrintMode('all');
-    }, 100);
+  // Checkbox helpers
+  const handleToggleSelectAll = () => {
+    if (selectedOrderIds.length === filteredOrders.length) {
+      setSelectedOrderIds([]);
+    } else {
+      setSelectedOrderIds(filteredOrders.map(o => o.id));
+    }
   };
 
-  // Void & Refund Submit
+  const handleToggleSelectOrder = (id: number) => {
+    if (selectedOrderIds.includes(id)) {
+      setSelectedOrderIds(selectedOrderIds.filter(i => i !== id));
+    } else {
+      setSelectedOrderIds([...selectedOrderIds, id]);
+    }
+  };
+
+  // Bulk Actions
+  const handleBulkExport = (format: 'xlsx' | 'csv' = 'xlsx') => {
+    const targetOrders = selectedOrderIds.length > 0 
+      ? orders.filter(o => selectedOrderIds.includes(o.id))
+      : filteredOrders;
+
+    if (targetOrders.length === 0) {
+      showToast("Tidak ada transaksi untuk diekspor", "error");
+      return;
+    }
+
+    exportOrdersToExcel(targetOrders, format);
+    showToast(`Berhasil mengekspor ${targetOrders.length} transaksi ke ${format.toUpperCase()}`);
+  };
+
+  const handleBulkReprint = async () => {
+    if (selectedOrderIds.length === 0) {
+      showToast("Pilih minimal satu nota untuk dicetak", "error");
+      return;
+    }
+
+    const selectedList = orders.filter(o => selectedOrderIds.includes(o.id));
+    showToast(`Memulai pencetakan ${selectedList.length} nota...`);
+
+    for (const ord of selectedList) {
+      await handlePrintSingleOrder(ord, 'all');
+    }
+  };
+
+  const handlePrintSingleOrder = async (order: any, mode: 'all' | 'food' | 'drink' = 'all') => {
+    try {
+      const isAndroid = typeof window !== "undefined" && /android/i.test(navigator.userAgent);
+      const mac = typeof window !== "undefined" ? localStorage.getItem('bt_printer_mac') : null;
+
+      if (isAndroid && mac) {
+        const escPosData = generateEscPosReceipt(order, mode, storeSettings);
+        try { await BluetoothSerial.connect({ address: mac }); } catch(e) {}
+        await BluetoothSerial.write({ address: mac, value: escPosData });
+        return;
+      }
+
+      const receiptContent = `
+        <html>
+          <head>
+            <style>
+              body { font-family: monospace; padding: 10px; width: ${storeSettings.paperWidth === '80mm' ? '76mm' : '56mm'}; font-size: 11px; }
+              .center { text-align: center; }
+              .divider { border-bottom: 1px dashed #000; margin: 6px 0; }
+              .row { display: flex; justify-content: space-between; }
+              .bold { font-weight: bold; }
+            </style>
+          </head>
+          <body>
+            <div class="center bold">${storeSettings.storeName || "SakuNota POS"}</div>
+            <div class="center">${storeSettings.storeAddress || ""}</div>
+            <div class="divider"></div>
+            <div class="row"><span>Nota #${order.id}</span><span>${new Date(order.createdAt).toLocaleTimeString()}</span></div>
+            <div class="row"><span>Tamu: ${order.customerName || "Tamu"}</span><span>${order.tableName || order.orderType}</span></div>
+            <div class="divider"></div>
+            ${(order.items || []).map((it: any) => `
+              <div class="row">
+                <span>${it.qty}x ${it.nama || it.namaMenu}</span>
+                <span>Rp ${(it.harga * it.qty).toLocaleString("id-ID")}</span>
+              </div>
+            `).join('')}
+            <div class="divider"></div>
+            <div class="row bold"><span>TOTAL:</span><span>Rp ${(order.total || 0).toLocaleString("id-ID")}</span></div>
+            <div class="row"><span>Metode:</span><span>${order.paymentMethod || "Cash"}</span></div>
+          </body>
+        </html>
+      `;
+
+      if (typeof window !== "undefined" && (window as any).Capacitor) {
+        await Printer.printWebView({ name: `Nota #${order.id}` });
+      } else {
+        const printWindow = window.open("", "_blank");
+        if (printWindow) {
+          printWindow.document.write(receiptContent);
+          printWindow.document.close();
+          printWindow.focus();
+          printWindow.print();
+          printWindow.close();
+        }
+      }
+    } catch (e: any) {
+      console.error("Gagal mencetak nota:", e);
+    }
+  };
+
+  // Single Print from modal
+  const handlePrint = async (mode: 'all' | 'food' | 'drink' = 'all') => {
+    if (!receiptData) return;
+    await handlePrintSingleOrder(receiptData, mode);
+    showToast("Perintah cetak struk dikirim");
+  };
+
+  // Void Handler
   const handleProcessVoidSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!voidTargetOrder) return;
 
-    const correctPin = storeSettings.adminPin || "1234";
-    if (voidPinInput !== correctPin) {
-      setVoidPinError("PIN Admin salah!");
-      return;
+    if (storeSettings.enablePin) {
+      if (voidPinInput !== storeSettings.adminPin) {
+        setVoidPinError("PIN Admin salah! Harap periksa kembali.");
+        return;
+      }
     }
 
     try {
       await processVoidRefund(voidTargetOrder.id, {
         reason: voidReason,
         isRefunded: isRefundCash,
-        refundAmount: isRefundCash ? voidTargetOrder.total : 0,
-        refundMethod: isRefundCash ? "Cash" : "None",
+        refundAmount: voidTargetOrder.total,
+        refundMethod: isRefundCash ? "Tunai" : voidTargetOrder.paymentMethod,
         operator: "Admin",
       });
 
-      showToast(`Nota #${voidTargetOrder.id} berhasil dibatalkan (VOID)`, "info");
+      showToast(`Nota #${voidTargetOrder.id} berhasil di-VOID`);
       setVoidTargetOrder(null);
-      setVoidPinInput("");
-      setVoidPinError("");
       await loadData();
     } catch (err: any) {
       alert("Gagal membatalkan nota: " + err.message);
     }
   };
 
+  // Verifikasi Bukti Bayar
+  const handleVerifyProof = async (proofId: number) => {
+    try {
+      await verifyPaymentProof(proofId, { operator: "Admin" });
+      showToast("Bukti pembayaran berhasil DIVERIFIKASI ✓");
+      await loadData();
+    } catch (err: any) {
+      alert("Gagal memverifikasi: " + err.message);
+    }
+  };
+
+  // Hapus Bukti Bayar
+  const handleDeleteProof = async (proofId: number) => {
+    if (!confirm("Hapus bukti pembayaran ini? Status nota akan kembali ke Menunggu Bukti.")) return;
+    try {
+      await deletePaymentProof(proofId, { operator: "Admin", reason: "Dihapus manual oleh Admin" });
+      showToast("Bukti pembayaran berhasil dihapus");
+      await loadData();
+    } catch (err: any) {
+      alert("Gagal menghapus bukti: " + err.message);
+    }
+  };
+
+  // Upload Bukti Bayar dari Modal Detail
+  const handleUploadProofFromDetail = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !receiptData) return;
+
+    setIsUploadingDetailProof(true);
+    try {
+      const processed = await compressPaymentProof(file);
+      // Temukan payment yang relevan
+      const payment = (receiptData.payments || []).find((p: any) => p.paymentMethod !== 'Cash') || { id: receiptData.id };
+      await uploadPaymentProof({
+        paymentId: payment.id || receiptData.id,
+        orderId: receiptData.id,
+        imageData: processed.base64,
+        fileName: processed.fileName,
+        fileSize: processed.fileSize,
+        mimeType: processed.mimeType,
+        operator: "Admin",
+      });
+
+      showToast("Bukti pembayaran berhasil diunggah");
+      await loadData();
+    } catch (err: any) {
+      alert("Gagal mengunggah bukti: " + err.message);
+    } finally {
+      setIsUploadingDetailProof(false);
+      e.target.value = "";
+    }
+  };
+
+  // Parser File Transaksi Historis
+  const handleHistoricalFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setHistoricalFile(file);
+
+    try {
+      const parsed = await parseHistoricalTransactionsFile(file);
+      setParsedHistorical(parsed);
+    } catch (err: any) {
+      alert("Format file transaksi historis tidak valid: " + err.message);
+      setHistoricalFile(null);
+      setParsedHistorical(null);
+    }
+  };
+
+  const handleConfirmHistoricalImport = async () => {
+    if (!parsedHistorical || !parsedHistorical.validTransactions.length) return;
+    setIsImportingHistorical(true);
+
+    try {
+      const res = await importHistoricalTransactions(parsedHistorical.validTransactions);
+      showToast(`Berhasil mengimpor ${res.importedCount} transaksi historis`);
+      setIsHistoricalModalOpen(false);
+      setHistoricalFile(null);
+      setParsedHistorical(null);
+      await loadData();
+    } catch (err: any) {
+      alert("Gagal mengimpor transaksi historis: " + err.message);
+    } finally {
+      setIsImportingHistorical(false);
+    }
+  };
+
+  // Bulk Upload Bukti Bayar
+  const handleBulkProofFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsMatchingProofs(true);
+    try {
+      const processedList = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        try {
+          const comp = await compressPaymentProof(file);
+          processedList.push(comp);
+        } catch (compErr) {
+          console.warn("Lewati file gagal kompres:", file.name, compErr);
+        }
+      }
+
+      const matches = await matchBulkPaymentProofs(processedList);
+      setMatchedProofResults(matches);
+    } catch (err: any) {
+      alert("Gagal memproses file bukti: " + err.message);
+    } finally {
+      setIsMatchingProofs(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleConfirmBulkProofs = async () => {
+    const matchedOnly = matchedProofResults.filter(m => m.matched && m.payment);
+    if (matchedOnly.length === 0) {
+      showToast("Tidak ada bukti yang cocok untuk disimpan", "error");
+      return;
+    }
+
+    setIsSavingBulkProofs(true);
+    let successCount = 0;
+
+    try {
+      for (const m of matchedOnly) {
+        await uploadPaymentProof({
+          paymentId: m.payment.id,
+          orderId: m.payment.orderId || m.order.id,
+          imageData: m.file.imageData,
+          fileName: m.file.fileName,
+          fileSize: m.file.fileSize,
+          mimeType: m.file.mimeType,
+          operator: "Admin (Bulk)",
+          notes: m.reason
+        });
+        successCount++;
+      }
+
+      showToast(`Berhasil menyimpan ${successCount} bukti pembayaran!`);
+      setIsBulkProofModalOpen(false);
+      setMatchedProofResults([]);
+      await loadData();
+    } catch (err: any) {
+      alert("Sebagian bukti gagal disimpan: " + err.message);
+    } finally {
+      setIsSavingBulkProofs(false);
+    }
+  };
+
   return (
-    <div className="space-y-5 animate-in fade-in duration-200">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-gray-800">
+    <div className="space-y-4 max-w-7xl mx-auto pb-16">
+      {/* --- TOP BAR & ACTION TOOLS --- */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white dark:bg-gray-900 p-4 sm:p-5 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
         <div>
-          <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+          <h2 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
             <span>🧾</span>
             <span>Riwayat Transaksi & Pembatalan</span>
           </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Daftar seluruh nota penjualan, cetak ulang struk, dan audit void/refund.
+            Daftar seluruh nota penjualan, verifikasi bukti bayar QRIS/Transfer, dan audit void.
           </p>
         </div>
 
-        {/* Tab Switcher (In-page tab) */}
-        <div className="flex p-1 bg-gray-200/80 dark:bg-gray-800 rounded-2xl self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={() => setActiveTab('orders')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              activeTab === 'orders'
-                ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm"
-                : "text-gray-600 dark:text-gray-400 hover:text-gray-900"
-            }`}
-          >
-            Semua Nota ({orders.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('voids')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
-              activeTab === 'voids'
-                ? "bg-rose-600 text-white shadow-sm"
-                : "text-gray-600 dark:text-gray-400 hover:text-rose-600"
-            }`}
-          >
-            <span>Void & Refund</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/20">
-              {orders.filter(o => o.status === 'void').length}
-            </span>
-          </button>
+        {/* Global Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Tab Filter */}
+          <div className="bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl flex items-center text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setActiveTab('orders')}
+              className={`px-3 py-1.5 rounded-xl transition-all ${
+                activeTab === 'orders'
+                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm font-black"
+                  : "text-gray-500 dark:text-gray-400"
+              }`}
+            >
+              Semua Nota ({orders.filter(o => o.status !== 'void').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('voids')}
+              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                activeTab === 'voids'
+                  ? "bg-rose-600 text-white shadow-sm font-black"
+                  : "text-rose-600 dark:text-rose-400"
+              }`}
+            >
+              <span>Void & Refund</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200 text-[10px]">
+                {orders.filter(o => o.status === 'void').length}
+              </span>
+            </button>
+          </div>
+
+          {/* Export & Import Buttons */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleBulkExport('xlsx')}
+              className="px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
+            >
+              <span>📤</span>
+              <span>Export Excel</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsHistoricalModalOpen(true)}
+              className="px-3 py-2 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
+            >
+              <span>📥</span>
+              <span>Import Historis</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsBulkProofModalOpen(true)}
+              className="px-3 py-2 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
+            >
+              <span>📷</span>
+              <span>Bulk Bukti Bayar</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Filters Bar */}
-      <div className="bg-white dark:bg-gray-900 p-4 rounded-3xl border border-gray-200 dark:border-gray-800 space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* --- FILTER & SEARCH BAR --- */}
+      <div className="bg-white dark:bg-gray-900 p-4 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
           {/* Search */}
           <div className="relative">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
             <input
               type="text"
-              placeholder="Cari No. Nota, Meja, atau Tamu..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl py-2 pl-9 pr-3 text-xs text-gray-900 dark:text-white outline-none focus:border-emerald-500 font-semibold"
+              placeholder="Cari No. Nota, Tamu, Meja..."
+              className="w-full pl-9 pr-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-900 dark:text-white outline-none focus:border-emerald-500 font-semibold"
             />
-            <span className="absolute left-3 top-2.5 text-gray-400 text-xs">🔍</span>
           </div>
 
           {/* Date Filter */}
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl py-2 px-3 text-xs text-gray-900 dark:text-white outline-none focus:border-emerald-500 font-bold"
-          >
-            <option value="all">📅 Semua Waktu</option>
-            <option value="today">📅 Hari Ini</option>
-            <option value="month">📅 Bulan Ini</option>
-            <option value="custom">📅 Pilih Rentang Tanggal...</option>
-          </select>
+          <div>
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="w-full py-2.5 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 outline-none"
+            >
+              <option value="all">📅 Semua Waktu</option>
+              <option value="today">📅 Hari Ini</option>
+              <option value="month">📅 Bulan Ini</option>
+              <option value="custom">📅 Rentang Tanggal Khusus</option>
+            </select>
+          </div>
 
-          {/* Payment Method */}
-          <select
-            value={paymentFilter}
-            onChange={(e) => setPaymentFilter(e.target.value)}
-            className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl py-2 px-3 text-xs text-gray-900 dark:text-white outline-none focus:border-emerald-500 font-bold"
-          >
-            <option value="Semua">💳 Semua Pembayaran</option>
-            <option value="Cash">💵 Tunai (Cash)</option>
-            <option value="QRIS">📱 QRIS</option>
-            <option value="Transfer">🏦 Transfer Bank</option>
-          </select>
+          {/* Payment Filter */}
+          <div>
+            <select
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value)}
+              className="w-full py-2.5 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 outline-none"
+            >
+              <option value="Semua">💳 Semua Pembayaran</option>
+              <option value="Cash">💵 Tunai (Cash)</option>
+              <option value="QRIS">📱 QRIS</option>
+              <option value="Transfer">💳 Transfer Bank</option>
+            </select>
+          </div>
+
+          {/* Verification Status Filter */}
+          <div>
+            <select
+              value={verificationFilter}
+              onChange={(e) => setVerificationFilter(e.target.value)}
+              className="w-full py-2.5 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 outline-none"
+            >
+              <option value="Semua">🔍 Semua Status Verifikasi</option>
+              <option value="terverifikasi">✓ Terverifikasi</option>
+              <option value="menunggu_verifikasi">⏳ Menunggu Verifikasi</option>
+              <option value="menunggu_bukti">⚠️ Menunggu Bukti</option>
+            </select>
+          </div>
         </div>
 
+        {/* Custom Date Range Inputs */}
         {dateFilter === "custom" && (
-          <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-800 text-xs">
-            <div className="flex-1">
-              <label className="text-[10px] text-gray-400 font-bold block mb-1">Mulai Dari:</label>
-              <input
-                type="date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2 text-xs"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="text-[10px] text-gray-400 font-bold block mb-1">Sampai Dengan:</label>
-              <input
-                type="date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2 text-xs"
-              />
-            </div>
+          <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <input
+              type="date"
+              value={customStartDate}
+              onChange={(e) => setCustomStartDate(e.target.value)}
+              className="py-1.5 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold"
+            />
+            <span className="text-xs text-gray-400">s/d</span>
+            <input
+              type="date"
+              value={customEndDate}
+              onChange={(e) => setCustomEndDate(e.target.value)}
+              className="py-1.5 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold"
+            />
           </div>
         )}
       </div>
 
-      {/* Orders List / Cards */}
+      {/* --- STICKY BULK ACTION BAR JIKA ADA NOTA TERPILIH --- */}
+      {selectedOrderIds.length > 0 && (
+        <div className="sticky top-16 z-20 bg-emerald-700 text-white p-3 sm:p-4 rounded-2xl shadow-xl flex items-center justify-between gap-3 animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center font-black text-xs">
+              {selectedOrderIds.length}
+            </span>
+            <span className="text-xs font-black">Nota Terpilih</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleBulkReprint}
+              className="px-3 py-1.5 bg-white text-emerald-800 hover:bg-emerald-50 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95"
+            >
+              <span>🖨️</span>
+              <span>Cetak Terpilih</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkExport('xlsx')}
+              className="px-3 py-1.5 bg-emerald-800 text-white hover:bg-emerald-900 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
+            >
+              <span>📤</span>
+              <span>Export (.xlsx)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedOrderIds([])}
+              className="px-2.5 py-1.5 text-emerald-200 hover:text-white text-xs font-semibold"
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* --- TABLE / CARD LIST TRANSAKSI --- */}
       {isLoading ? (
-        <div className="py-12 text-center text-gray-400 text-xs">Memuat data transaksi...</div>
+        <div className="p-12 text-center text-gray-400 text-xs">Memuat daftar transaksi...</div>
       ) : filteredOrders.length === 0 ? (
-        <div className="py-12 text-center bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 p-8">
-          <div className="text-4xl mb-2">🧾</div>
-          <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">
-            {activeTab === 'voids' ? "Tidak ada transaksi void" : "Tidak ada nota ditemukan"}
-          </h3>
-          <p className="text-xs text-gray-400 mt-1">Coba sesuaikan filter pencarian atau tanggal Anda.</p>
+        <div className="bg-white dark:bg-gray-900 rounded-3xl p-12 text-center border border-gray-100 dark:border-gray-800">
+          <span className="text-4xl block mb-2">🧾</span>
+          <p className="text-sm font-bold text-gray-700 dark:text-gray-300">Tidak ada nota ditemukan</p>
+          <p className="text-xs text-gray-400 mt-1">Coba sesuaikan filter pencarian atau rentang tanggal Anda.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
+          {/* Header Row untuk Select All */}
+          <div className="px-4 py-2 flex items-center justify-between text-xs text-gray-500 font-bold">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedOrderIds.length === filteredOrders.length && filteredOrders.length > 0}
+                onChange={handleToggleSelectAll}
+                className="w-4 h-4 accent-emerald-600 rounded"
+              />
+              <span>Pilih Semua ({filteredOrders.length} Nota)</span>
+            </label>
+            <span>Total Nilai: Rp {filteredOrders.filter(o => o.status !== 'void').reduce((s, o) => s + (o.total || 0), 0).toLocaleString('id-ID')}</span>
+          </div>
+
           {filteredOrders.map((order) => {
             const isVoid = order.status === "void";
-            const dateDisplay = new Date(order.created_at || order.createdAt || Date.now()).toLocaleString("id-ID", {
+            const dateDisplay = new Date(order.createdAt).toLocaleString("id-ID", {
               day: "numeric",
               month: "short",
-              year: "numeric",
               hour: "2-digit",
               minute: "2-digit",
             });
+            const isSelected = selectedOrderIds.includes(order.id);
+            const isNonCash = order.paymentMethod === "QRIS" || order.paymentMethod === "Transfer";
+            const vStatus = order.verificationStatus || (isNonCash ? (order.proofs?.length > 0 ? "menunggu_verifikasi" : "menunggu_bukti") : "terverifikasi");
 
             return (
               <div
@@ -301,37 +686,79 @@ export default function AdminTransaksiPage() {
                 className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-gray-900 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                   isVoid
                     ? "border-rose-200 dark:border-rose-900/40 bg-rose-50/20"
+                    : isSelected
+                    ? "border-emerald-500 ring-2 ring-emerald-500/20"
                     : "border-gray-200/80 dark:border-gray-800 hover:border-emerald-500/40"
                 }`}
               >
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-black text-sm text-gray-900 dark:text-white">
-                      Nota #{order.id}
-                    </span>
-                    <span
-                      className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
-                        isVoid
-                          ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 line-through"
-                          : order.status === "paid"
-                          ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
-                          : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300"
-                      }`}
-                    >
-                      {isVoid ? "DIBATALKAN (VOID)" : order.status === "paid" ? "LUNAS" : "OPEN BILL"}
-                    </span>
-                    <span className="text-[10px] text-gray-400">{dateDisplay}</span>
-                  </div>
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleToggleSelectOrder(order.id)}
+                    className="w-4 h-4 mt-1 accent-emerald-600 rounded cursor-pointer"
+                  />
 
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    {order.tableName || (order.tableId ? `Meja ${order.tableId}` : order.orderType || "Takeaway")} • Tamu: <strong className="text-gray-800 dark:text-gray-200">{order.customerName || "Tamu"}</strong>
-                  </p>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="font-black text-sm text-gray-900 dark:text-white">
+                        Nota #{order.id}
+                      </span>
 
-                  {isVoid && order.voidReason && (
-                    <div className="mt-2 text-[11px] text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-2.5 py-1 rounded-lg">
-                      <span className="font-bold">Alasan Batal:</span> {order.voidReason}
+                      {/* Status Lunas / Void */}
+                      <span
+                        className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                          isVoid
+                            ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 line-through"
+                            : order.status === "paid"
+                            ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+                            : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300"
+                        }`}
+                      >
+                        {isVoid ? "VOID" : order.status === "paid" ? "LUNAS" : "OPEN BILL"}
+                      </span>
+
+                      {/* Status Verifikasi Bukti Pembayaran */}
+                      {isNonCash && !isVoid && (
+                        <span
+                          className={`text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                            vStatus === "terverifikasi"
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                              : vStatus === "menunggu_verifikasi"
+                              ? "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 animate-pulse"
+                              : "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                          }`}
+                        >
+                          <span>{vStatus === "terverifikasi" ? "✓" : vStatus === "menunggu_verifikasi" ? "⏳" : "⚠️"}</span>
+                          <span>
+                            {vStatus === "terverifikasi"
+                              ? "Terverifikasi"
+                              : vStatus === "menunggu_verifikasi"
+                              ? "Menunggu Verifikasi"
+                              : "Menunggu Bukti"}
+                          </span>
+                        </span>
+                      )}
+
+                      {order.isHistorical && (
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
+                          Migrasi Historis
+                        </span>
+                      )}
+
+                      <span className="text-[10px] text-gray-400">{dateDisplay}</span>
                     </div>
-                  )}
+
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {order.tableName || (order.tableId ? `Meja ${order.tableId}` : order.orderType || "Takeaway")} • Tamu: <strong className="text-gray-800 dark:text-gray-200">{order.customerName || "Tamu"}</strong>
+                    </p>
+
+                    {isVoid && order.voidReason && (
+                      <div className="mt-2 text-[11px] text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-2.5 py-1 rounded-lg">
+                        <span className="font-bold">Alasan Batal:</span> {order.voidReason}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-0 border-gray-100 dark:border-gray-800">
@@ -350,8 +777,8 @@ export default function AdminTransaksiPage() {
                       onClick={() => setReceiptData(order)}
                       className="px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1"
                     >
-                      <span>🖨️</span>
-                      <span>Struk</span>
+                      <span>🔍</span>
+                      <span>Rincian & Bukti</span>
                     </button>
 
                     {!isVoid && (
@@ -377,19 +804,22 @@ export default function AdminTransaksiPage() {
         </div>
       )}
 
-      {/* --- RECEIPT MODAL --- */}
+      {/* --- RECEIPT & DETAIL BUKTI PEMBAYARAN MODAL --- */}
       {receiptData && (
         <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
           onClick={() => setReceiptData(null)}
         >
           <div
-            className="bg-white dark:bg-gray-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[90vh] flex flex-col"
+            className="bg-white dark:bg-gray-900 rounded-3xl p-5 sm:p-6 max-w-lg w-full shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[92vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="font-black text-sm text-gray-900 dark:text-white">
-                Rincian Struk Nota #{receiptData.id}
+              <h3 className="font-black text-sm text-gray-900 dark:text-white flex items-center gap-2">
+                <span>Rincian Transaksi Nota #{receiptData.id}</span>
+                {receiptData.status === "void" && (
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">VOID</span>
+                )}
               </h3>
               <button
                 type="button"
@@ -400,43 +830,156 @@ export default function AdminTransaksiPage() {
               </button>
             </div>
 
-            {/* Thermal Slip Simulation */}
-            <div className="flex-1 overflow-y-auto py-4 font-mono text-[11px] leading-tight space-y-2 bg-gray-50 dark:bg-gray-800/40 p-3 rounded-2xl my-2">
-              <div className="text-center font-bold text-xs pb-1 border-b border-dashed border-gray-300 dark:border-gray-700">
-                {storeSettings.storeName || "SakuNota POS"}
-              </div>
-              <div className="text-gray-500 text-[10px]">
-                Nota: #{receiptData.id} • {receiptData.tableName || receiptData.orderType}
-              </div>
-              <div className="text-gray-500 text-[10px]">
-                Tamu: {receiptData.customerName || "Tamu"}
-              </div>
-              <div className="border-b border-dashed border-gray-300 dark:border-gray-700 pb-1" />
+            <div className="flex-1 overflow-y-auto py-3 space-y-3">
+              {/* Thermal Slip Simulation */}
+              <div className="font-mono text-[11px] leading-tight space-y-2 bg-gray-50 dark:bg-gray-800/40 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800">
+                <div className="text-center font-bold text-xs pb-1 border-b border-dashed border-gray-300 dark:border-gray-700">
+                  {storeSettings.storeName || "SakuNota POS"}
+                </div>
+                <div className="text-gray-500 text-[10px]">
+                  Nota: #{receiptData.id} • {receiptData.tableName || receiptData.orderType}
+                </div>
+                <div className="text-gray-500 text-[10px]">
+                  Tamu: {receiptData.customerName || "Tamu"} • {new Date(receiptData.createdAt).toLocaleString("id-ID")}
+                </div>
+                <div className="border-b border-dashed border-gray-300 dark:border-gray-700 pb-1" />
 
-              <div className="space-y-1">
-                {(receiptData.items || []).map((it: any, idx: number) => (
-                  <div key={idx} className="flex justify-between">
-                    <span>{it.qty}x {it.nama}</span>
-                    <span>Rp {(it.harga * it.qty).toLocaleString("id-ID")}</span>
+                <div className="space-y-1">
+                  {(receiptData.items || []).map((it: any, idx: number) => (
+                    <div key={idx} className="flex justify-between">
+                      <span>{it.qty}x {it.nama || it.namaMenu}</span>
+                      <span>Rp {(it.hargaSatuan || it.harga) * it.qty}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-b border-dashed border-gray-300 dark:border-gray-700 pt-1" />
+                <div className="flex justify-between font-bold text-xs pt-1">
+                  <span>TOTAL:</span>
+                  <span>Rp {(receiptData.total || 0).toLocaleString("id-ID")}</span>
+                </div>
+                <div className="flex justify-between text-[10px] text-gray-500">
+                  <span>Metode:</span>
+                  <span>{receiptData.paymentMethod || "Cash"}</span>
+                </div>
+              </div>
+
+              {/* SEKSI BUKTI PEMBAYARAN (QRIS / TRANSFER) */}
+              {(receiptData.paymentMethod === "QRIS" || receiptData.paymentMethod === "Transfer" || receiptData.proofs?.length > 0) && (
+                <div className="p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-1.5">
+                      <span>📷</span>
+                      <span>Bukti Pembayaran ({receiptData.paymentMethod})</span>
+                    </h4>
+
+                    {receiptData.proofs && receiptData.proofs.length > 0 ? (
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                        receiptData.proofs[0].status === 'terverifikasi'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                      }`}>
+                        {receiptData.proofs[0].status === 'terverifikasi' ? '✓ Terverifikasi' : '⏳ Menunggu Verifikasi'}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+                        ⚠️ Belum Ada Bukti
+                      </span>
+                    )}
                   </div>
-                ))}
-              </div>
 
-              <div className="border-b border-dashed border-gray-300 dark:border-gray-700 pt-1" />
-              <div className="flex justify-between font-bold text-xs pt-1">
-                <span>TOTAL:</span>
-                <span>Rp {(receiptData.total || 0).toLocaleString("id-ID")}</span>
-              </div>
+                  {/* List Bukti Pembayaran */}
+                  {receiptData.proofs && receiptData.proofs.length > 0 ? (
+                    receiptData.proofs.map((pr: any) => (
+                      <div key={pr.id} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 space-y-2.5">
+                        <div className="flex items-center gap-3">
+                          {/* Thumbnail */}
+                          <div
+                            onClick={() => setZoomProofImage(pr.imageData)}
+                            className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0 cursor-pointer border border-gray-200 dark:border-gray-600 group"
+                            title="Klik untuk melihat foto penuh"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={pr.imageData} alt={pr.fileName} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
+                              🔍
+                            </div>
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{pr.fileName}</p>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                              Ukuran: {formatBytes(pr.fileSize)} • Unggah: {new Date(pr.uploadedAt).toLocaleTimeString()}
+                            </p>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                              Oleh: <span className="font-semibold text-gray-700 dark:text-gray-300">{pr.uploadedBy}</span>
+                            </p>
+                            {pr.verifiedAt && (
+                              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                                Diverifikasi oleh {pr.verifiedBy} pada {new Date(pr.verifiedAt).toLocaleTimeString()}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action Verifikasi / Hapus */}
+                        <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                          {pr.status !== 'terverifikasi' && (
+                            <button
+                              type="button"
+                              onClick={() => handleVerifyProof(pr.id)}
+                              className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1"
+                            >
+                              <span>✓</span>
+                              <span>Verifikasi Sekarang</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteProof(pr.id)}
+                            className="py-1.5 px-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-bold hover:bg-rose-100 transition-colors"
+                          >
+                            Hapus Bukti
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    /* Tombol Upload Bukti Susulan jika belum ada */
+                    <div className="text-center py-2">
+                      <input
+                        ref={detailProofInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleUploadProofFromDetail}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => detailProofInputRef.current?.click()}
+                        disabled={isUploadingDetailProof}
+                        className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5"
+                      >
+                        <span>📷</span>
+                        <span>{isUploadingDetailProof ? "Mengompresi..." : "Upload Bukti Pembayaran Sekarang"}</span>
+                      </button>
+                      <p className="text-[10px] text-gray-400 mt-1.5">
+                        Dapat diambil langsung dari kamera ponsel atau galeri file gambar.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Print Buttons */}
-            <div className="space-y-2 pt-2">
+            <div className="space-y-2 pt-3 border-t border-gray-100 dark:border-gray-800">
               <button
                 type="button"
                 onClick={() => handlePrint('all')}
                 className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
               >
-                🖨️ Cetak Semua Item (Struk Tamu)
+                🖨️ Cetak Ulang Struk Tamu
               </button>
               <div className="flex gap-2">
                 <button
@@ -454,6 +997,258 @@ export default function AdminTransaksiPage() {
                   ☕ Struk Bar
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- LIGHTBOX ZOOM FOTO BUKTI PEMBAYARAN --- */}
+      {zoomProofImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setZoomProofImage(null)}
+        >
+          <div className="relative max-w-2xl w-full max-h-[90vh] flex flex-col items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={zoomProofImage}
+              alt="Bukti Pembayaran Penuh"
+              className="max-w-full max-h-[82vh] object-contain rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button
+              type="button"
+              onClick={() => setZoomProofImage(null)}
+              className="mt-4 px-6 py-2 rounded-full bg-white/20 hover:bg-white/30 text-white text-xs font-bold backdrop-blur-md"
+            >
+              ✕ Tutup Pratinjau
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL IMPORT TRANSAKSI HISTORIS --- */}
+      {isHistoricalModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setIsHistoricalModalOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-800">
+              <h3 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
+                <span>📥</span>
+                <span>Import Riwayat Transaksi Historis</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsHistoricalModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-800 text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="py-4 overflow-y-auto space-y-4">
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-2xl border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-300 text-xs leading-relaxed">
+                ℹ️ Transaksi historis akan diberi tanda <b>Migrasi Historis</b> untuk menjaga audit finansial tanpa mengubah shift laci kasir saat ini.
+              </div>
+
+              {/* Unduh Template */}
+              <div className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-200 dark:border-gray-700">
+                <div>
+                  <h4 className="text-xs font-bold text-gray-900 dark:text-white">Unduh Template Resmi</h4>
+                  <p className="text-[10px] text-gray-500">Gunakan format kolom yang sudah disesuaikan</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => downloadHistoricalTransactionTemplate('xlsx')}
+                    className="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-xs font-bold hover:bg-gray-100"
+                  >
+                    .xlsx
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadHistoricalTransactionTemplate('csv')}
+                    className="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-xs font-bold hover:bg-gray-100"
+                  >
+                    .csv
+                  </button>
+                </div>
+              </div>
+
+              {/* Upload File */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                  Pilih File (.xlsx / .csv):
+                </label>
+                <input
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleHistoricalFileChange}
+                  className="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 dark:file:bg-emerald-950/60 dark:file:text-emerald-300"
+                />
+              </div>
+
+              {/* Preview Hasil Parsing */}
+              {parsedHistorical && (
+                <div className="p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2">
+                  <div className="flex justify-between items-center text-xs font-bold">
+                    <span>Baris Valid: <strong className="text-emerald-600">{parsedHistorical.validTransactions.length}</strong></span>
+                    <span>Gagal: <strong className="text-rose-600">{parsedHistorical.invalidRows.length}</strong></span>
+                  </div>
+
+                  {parsedHistorical.validTransactions.length > 0 && (
+                    <div className="max-h-40 overflow-y-auto text-[11px] space-y-1 bg-white dark:bg-gray-900 p-2 rounded-xl">
+                      {parsedHistorical.validTransactions.slice(0, 5).map((t: any, idx: number) => (
+                        <div key={idx} className="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-1">
+                          <span>{t.receiptNumber} • {t.customerName}</span>
+                          <span className="font-bold">Rp {t.total.toLocaleString('id-ID')} ({t.paymentMethod})</span>
+                        </div>
+                      ))}
+                      {parsedHistorical.validTransactions.length > 5 && (
+                        <p className="text-[10px] text-gray-400 text-center pt-1">
+                          ...dan {parsedHistorical.validTransactions.length - 5} transaksi lainnya
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsHistoricalModalOpen(false)}
+                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmHistoricalImport}
+                disabled={!parsedHistorical || !parsedHistorical.validTransactions.length || isImportingHistorical}
+                className="flex-[2] py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20"
+              >
+                {isImportingHistorical ? "Mengimpor..." : `Impor ${parsedHistorical?.validTransactions?.length || 0} Transaksi`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL BULK UPLOAD BUKTI BAYAR & PENCOCOKAN OTOMATIS --- */}
+      {isBulkProofModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setIsBulkProofModalOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-3xl p-6 max-w-xl w-full shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-800">
+              <h3 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
+                <span>📷</span>
+                <span>Pencocokan Massal Bukti Bayar QRIS / Transfer</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsBulkProofModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-800 text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="py-4 overflow-y-auto space-y-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Pilih beberapa file gambar bukti transfer/QRIS sekaligus. SakuNota otomatis membaca nama file (misal: <code>INV-12.jpg</code>, <code>PAY-45.png</code>, atau <code>12.jpg</code>) untuk dicocokkan ke transaksi kasir.
+              </p>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                  Pilih Banyak Gambar Bukti Bayar:
+                </label>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleBulkProofFilesChange}
+                  disabled={isMatchingProofs}
+                  className="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-50 file:text-amber-800 hover:file:bg-amber-100 dark:file:bg-amber-950/60 dark:file:text-amber-300"
+                />
+              </div>
+
+              {isMatchingProofs && (
+                <div className="text-center py-6 text-xs text-gray-500 font-semibold animate-pulse">
+                  ⏳ Sedang membaca dan mencocokkan gambar ke nota transaksi...
+                </div>
+              )}
+
+              {matchedProofResults.length > 0 && !isMatchingProofs && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-bold px-1">
+                    <span>Hasil Pencocokan:</span>
+                    <span>
+                      <strong className="text-emerald-600">{matchedProofResults.filter(m => m.matched).length} Cocok</strong> •{" "}
+                      <strong className="text-rose-600">{matchedProofResults.filter(m => !m.matched).length} Tidak Cocok</strong>
+                    </span>
+                  </div>
+
+                  <div className="max-h-60 overflow-y-auto space-y-2">
+                    {matchedProofResults.map((m, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-3 rounded-xl border flex items-center gap-3 text-xs ${
+                          m.matched
+                            ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
+                            : "bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800"
+                        }`}
+                      >
+                        {/* Thumbnail */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={m.file.imageData} alt={m.file.fileName} className="w-10 h-10 object-cover rounded-lg flex-shrink-0" />
+
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-900 dark:text-white truncate">{m.file.fileName}</p>
+                          <p className={`text-[10px] ${m.matched ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"}`}>
+                            {m.reason}
+                          </p>
+                        </div>
+
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${
+                          m.matched ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                        }`}>
+                          {m.matched ? "✓ Cocok" : "✕ Gagal"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsBulkProofModalOpen(false)}
+                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmBulkProofs}
+                disabled={matchedProofResults.filter(m => m.matched).length === 0 || isSavingBulkProofs}
+                className="flex-[2] py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20"
+              >
+                {isSavingBulkProofs ? "Menyimpan..." : `Simpan ${matchedProofResults.filter(m => m.matched).length} Bukti Cocok`}
+              </button>
             </div>
           </div>
         </div>

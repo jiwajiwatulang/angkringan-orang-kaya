@@ -2,7 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import { useAdmin } from "../AdminContext";
-import { getTables, addTable, renameTable, deleteTable } from "@/lib/api";
+import {
+  getTables,
+  addTable,
+  renameTable,
+  deleteTable,
+  bulkCreateTables,
+  bulkRenameTables,
+  bulkDeleteEmptyTables,
+} from "@/lib/api";
 import { App } from "@capacitor/app";
 
 interface TableItem {
@@ -16,15 +24,31 @@ export default function AdminMejaPage() {
   const [tables, setTables] = useState<TableItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Add Table Modal
+  // Multi-select state
+  const [selectedTableIds, setSelectedTableIds] = useState<number[]>([]);
+
+  // Single Add Modal
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newTableName, setNewTableName] = useState("");
 
-  // Edit / Rename Modal
+  // Bulk Create Modal
+  const [isBulkCreateOpen, setIsBulkCreateOpen] = useState(false);
+  const [bulkPrefix, setBulkPrefix] = useState("Meja ");
+  const [bulkStartNum, setBulkStartNum] = useState("1");
+  const [bulkCount, setBulkCount] = useState("10");
+
+  // Bulk Rename Modal
+  const [isBulkRenameOpen, setIsBulkRenameOpen] = useState(false);
+  const [renamePattern, setRenamePattern] = useState("Meja {N}");
+
+  // Bulk Delete Confirm Modal
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+
+  // Single Edit / Rename Modal
   const [tableToEdit, setTableToEdit] = useState<TableItem | null>(null);
   const [tableEditName, setTableEditName] = useState("");
 
-  // Delete Modal
+  // Single Delete Modal
   const [tableToDelete, setTableToDelete] = useState<TableItem | null>(null);
 
   // Unsaved Guard
@@ -57,14 +81,24 @@ export default function AdminMejaPage() {
           setUnsavedConfirm(null);
         } else if (tableToDelete) {
           setTableToDelete(null);
+        } else if (isBulkDeleteOpen) {
+          setIsBulkDeleteOpen(false);
+        } else if (isBulkRenameOpen) {
+          setIsBulkRenameOpen(false);
+        } else if (isBulkCreateOpen) {
+          setIsBulkCreateOpen(false);
         } else if (tableToEdit) {
           handleCloseEdit();
         } else if (isAddOpen) {
           handleCloseAdd();
+        } else if (selectedTableIds.length > 0) {
+          setSelectedTableIds([]);
         }
-      }).then((handle) => {
-        removeListener = handle;
-      }).catch(() => {});
+      })
+        .then((handle) => {
+          removeListener = handle;
+        })
+        .catch(() => {});
     } catch (_) {}
 
     return () => {
@@ -72,8 +106,35 @@ export default function AdminMejaPage() {
         removeListener.remove();
       }
     };
-  }, [unsavedConfirm, tableToDelete, tableToEdit, isAddOpen, newTableName, tableEditName]);
+  }, [
+    unsavedConfirm,
+    tableToDelete,
+    isBulkDeleteOpen,
+    isBulkRenameOpen,
+    isBulkCreateOpen,
+    tableToEdit,
+    isAddOpen,
+    selectedTableIds,
+    newTableName,
+    tableEditName,
+  ]);
 
+  // Multi-select helpers
+  const handleToggleSelectTable = (id: number) => {
+    setSelectedTableIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedTableIds.length === tables.length) {
+      setSelectedTableIds([]);
+    } else {
+      setSelectedTableIds(tables.map((t) => t.id));
+    }
+  };
+
+  // --- SINGLE ACTIONS ---
   const handleCloseAdd = () => {
     if (newTableName.trim() !== "") {
       setUnsavedConfirm({
@@ -140,8 +201,68 @@ export default function AdminMejaPage() {
     }
   };
 
+  // --- BULK ACTIONS ---
+  const handleBulkCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const startNum = parseInt(bulkStartNum) || 1;
+    const count = parseInt(bulkCount) || 1;
+
+    if (count <= 0 || count > 100) {
+      alert("Jumlah meja baru harus antara 1 sampai 100.");
+      return;
+    }
+
+    try {
+      const res = await bulkCreateTables({
+        prefix: bulkPrefix,
+        startNum,
+        count,
+      });
+      showToast(`${res.createdCount} meja baru berhasil ditambahkan!`, "success");
+      setIsBulkCreateOpen(false);
+      await loadData();
+    } catch (err: any) {
+      alert("Gagal menambah meja massal: " + err.message);
+    }
+  };
+
+  const handleBulkRenameSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!renamePattern.trim()) {
+      alert("Pola nama meja tidak boleh kosong.");
+      return;
+    }
+
+    try {
+      const res = await bulkRenameTables(selectedTableIds, renamePattern.trim());
+      showToast(`${res.renamedCount} meja berhasil diubah namanya!`, "success");
+      setIsBulkRenameOpen(false);
+      setSelectedTableIds([]);
+      await loadData();
+    } catch (err: any) {
+      alert("Gagal rename meja massal: " + err.message);
+    }
+  };
+
+  const handleBulkDeleteSubmit = async () => {
+    try {
+      const res = await bulkDeleteEmptyTables(selectedTableIds);
+      let msg = "";
+      if (res.deletedCount > 0) msg += `${res.deletedCount} meja berhasil dihapus. `;
+      if (res.blockedCount > 0) {
+        msg += `${res.blockedCount} meja dilindungi karena masih memiliki tagihan aktif / open bill!`;
+      }
+      showToast(msg || "Meja diproses.", res.blockedCount > 0 ? "error" : "info");
+      setIsBulkDeleteOpen(false);
+      setSelectedTableIds([]);
+      await loadData();
+    } catch (err: any) {
+      alert("Gagal menghapus meja massal: " + err.message);
+    }
+  };
+
   return (
-    <div className="space-y-5 animate-in fade-in duration-200">
+    <div className="space-y-5 animate-in fade-in duration-200 pb-24">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-gray-800">
         <div>
@@ -154,17 +275,57 @@ export default function AdminMejaPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setNewTableName(`Meja ${tables.length + 1}`);
-            setIsAddOpen(true);
-          }}
-          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition-all"
-        >
-          <span className="text-base leading-none">+</span>
-          <span>Tambah Meja Baru</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Bulk Create Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setBulkPrefix("Meja ");
+              setBulkStartNum(String(tables.length + 1));
+              setBulkCount("10");
+              setIsBulkCreateOpen(true);
+            }}
+            className="px-3.5 py-2.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 active:scale-95 text-blue-700 dark:text-blue-300 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all border border-blue-200 dark:border-blue-800"
+            title="Tambah banyak meja sekaligus (contoh: Meja 1 sampai 20)"
+          >
+            <span>⚡</span>
+            <span>Tambah Massal</span>
+          </button>
+
+          {/* Add Single Table */}
+          <button
+            type="button"
+            onClick={() => {
+              setNewTableName(`Meja ${tables.length + 1}`);
+              setIsAddOpen(true);
+            }}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition-all"
+          >
+            <span className="text-base leading-none">+</span>
+            <span>Tambah Meja</span>
+          </button>
+        </div>
       </div>
+
+      {/* Select All Toggle Bar */}
+      {tables.length > 0 && (
+        <div className="flex items-center justify-between px-2 py-1 text-xs text-gray-600 dark:text-gray-400">
+          <label className="flex items-center gap-2 cursor-pointer font-bold select-none">
+            <input
+              type="checkbox"
+              checked={tables.length > 0 && selectedTableIds.length === tables.length}
+              onChange={handleSelectAll}
+              className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300"
+            />
+            <span>Pilih Semua Meja ({tables.length})</span>
+          </label>
+          {selectedTableIds.length > 0 && (
+            <span className="text-emerald-600 dark:text-emerald-400 font-black">
+              {selectedTableIds.length} meja dipilih
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Grid of Tables */}
       {isLoading ? (
@@ -173,23 +334,39 @@ export default function AdminMejaPage() {
         <div className="py-12 text-center bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 p-8">
           <div className="text-4xl mb-2">🪑</div>
           <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">Belum ada meja</h3>
-          <p className="text-xs text-gray-400 mt-1">Klik tombol di atas untuk menambahkan meja pertama Anda.</p>
+          <p className="text-xs text-gray-400 mt-1">
+            Klik tombol di atas untuk menambahkan meja atau gunakan fitur Tambah Massal.
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {tables.map((table) => {
-            const isAvailable = table.status === "kosong" || table.status === "available";
             const isOpenBill = table.status === "open" || table.status === "occupied";
             const isPaid = table.status === "lunas";
+            const isSelected = selectedTableIds.includes(table.id);
 
             return (
               <div
                 key={table.id}
-                className="p-4 rounded-2xl sm:rounded-3xl bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 shadow-sm flex flex-col justify-between hover:border-emerald-500/50 transition-all"
+                onClick={() => handleToggleSelectTable(table.id)}
+                className={`p-4 rounded-2xl sm:rounded-3xl bg-white dark:bg-gray-900 border shadow-sm flex flex-col justify-between cursor-pointer select-none transition-all ${
+                  isSelected
+                    ? "border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20 ring-2 ring-emerald-500/30"
+                    : "border-gray-200/80 dark:border-gray-800 hover:border-emerald-500/50"
+                }`}
               >
                 <div>
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-lg">🪑</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}} // handled by parent onClick
+                        className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 pointer-events-none"
+                      />
+                      <span className="text-lg">🪑</span>
+                    </div>
+
                     <span
                       className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
                         isOpenBill
@@ -211,7 +388,10 @@ export default function AdminMejaPage() {
                   </span>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex gap-1.5">
+                <div
+                  className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex gap-1.5"
+                  onClick={(e) => e.stopPropagation()} // don't toggle select
+                >
                   <button
                     type="button"
                     onClick={() => {
@@ -237,7 +417,248 @@ export default function AdminMejaPage() {
         </div>
       )}
 
-      {/* --- MODAL TAMBAH MEJA --- */}
+      {/* --- FLOATING BULK TOOLBAR (WHEN TABLES SELECTED) --- */}
+      {selectedTableIds.length > 0 && (
+        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-[460px] z-40 bg-gray-900/95 dark:bg-gray-800/95 backdrop-blur-md text-white p-3.5 rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-700/80 animate-in slide-in-from-bottom-5 duration-200 flex flex-col gap-2">
+          <div className="flex items-center justify-between border-b border-gray-700/60 pb-2">
+            <span className="text-xs font-black text-emerald-400 flex items-center gap-1.5">
+              <span>✓</span>
+              <span>{selectedTableIds.length} Meja Dipilih</span>
+            </span>
+            <button
+              onClick={() => setSelectedTableIds([])}
+              className="text-[11px] text-gray-400 hover:text-white font-bold transition-colors"
+            >
+              Batal Pilih ✕
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            {/* Rename Massal */}
+            <button
+              type="button"
+              onClick={() => {
+                setRenamePattern("Meja {N}");
+                setIsBulkRenameOpen(true);
+              }}
+              className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+            >
+              <span>✏️</span>
+              <span>Rename Massal</span>
+            </button>
+
+            {/* Hapus Meja Kosong */}
+            <button
+              type="button"
+              onClick={() => setIsBulkDeleteOpen(true)}
+              className="flex-1 py-2 bg-rose-800/80 hover:bg-rose-700 text-rose-200 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+            >
+              <span>🗑️</span>
+              <span>Hapus Terpilih</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL TAMBAH MEJA MASSAL (RANGE) --- */}
+      {isBulkCreateOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
+          onClick={() => setIsBulkCreateOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-gray-100 dark:border-gray-800 animate-in slide-in-from-bottom duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mb-3 sm:hidden" />
+            <h3 className="text-lg font-black text-gray-900 dark:text-white mb-1">
+              ⚡ Tambah Meja Massal
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              Buat serangkaian meja secara otomatis sekaligus.
+            </p>
+
+            <form onSubmit={handleBulkCreateSubmit} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Awalan / Prefix Meja:
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Meja , VIP , Lesehan "
+                  value={bulkPrefix}
+                  onChange={(e) => setBulkPrefix(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Nomor Mulai:
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={bulkStartNum}
+                    onChange={(e) => setBulkStartNum(e.target.value)}
+                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Jumlah Meja:
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={bulkCount}
+                    onChange={(e) => setBulkCount(e.target.value)}
+                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Live Preview */}
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200/60 dark:border-emerald-900/40 text-xs">
+                <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block">
+                  Pratinjau Meja yang Akan Dibuat:
+                </span>
+                <span className="font-black text-emerald-800 dark:text-emerald-200">
+                  {bulkPrefix}
+                  {bulkStartNum || "1"} s/d {bulkPrefix}
+                  {(parseInt(bulkStartNum) || 1) + (parseInt(bulkCount) || 1) - 1} (
+                  {bulkCount || 0} Meja)
+                </span>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsBulkCreateOpen(false)}
+                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+                >
+                  Buat {bulkCount} Meja
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL RENAME MASSAL --- */}
+      {isBulkRenameOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
+          onClick={() => setIsBulkRenameOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-gray-100 dark:border-gray-800 animate-in slide-in-from-bottom duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mb-3 sm:hidden" />
+            <h3 className="text-lg font-black text-gray-900 dark:text-white mb-1">
+              ✏️ Rename Massal Meja
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              Ubah format nama <strong>{selectedTableIds.length}</strong> meja terpilih secara berurutan.
+            </p>
+
+            <form onSubmit={handleBulkRenameSubmit} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Pola Penamaan (Gunakan `{"{N}"}` untuk nomor urut):
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Meja {N} atau Lesehan {N}"
+                  value={renamePattern}
+                  onChange={(e) => setRenamePattern(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                  autoFocus
+                  required
+                />
+              </div>
+
+              {/* Preview */}
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-gray-400 block">
+                  Contoh Hasil Penamaan:
+                </span>
+                <div>1. {renamePattern.replace("{N}", "1")}</div>
+                <div>2. {renamePattern.replace("{N}", "2")}</div>
+                <div>... s/d {renamePattern.replace("{N}", String(selectedTableIds.length))}</div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsBulkRenameOpen(false)}
+                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+                >
+                  Terapkan Nama Baru
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL BULK DELETE CONFIRM --- */}
+      {isBulkDeleteOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setIsBulkDeleteOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-gray-800 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
+              🗑️
+            </div>
+            <h3 className="text-base font-black text-gray-900 dark:text-white mb-1">
+              Hapus {selectedTableIds.length} Meja Terpilih?
+            </h3>
+            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed mb-4 text-left bg-gray-50 dark:bg-gray-800/60 p-3 rounded-xl border border-gray-100 dark:border-gray-700/60">
+              🛡️ <strong>Fitur Pengaman Tagihan:</strong> Meja yang sedang memiliki pesanan/tagihan aktif (Status Open Bill atau Terisi) tidak akan dapat dihapus untuk mencegah kehilangan data keuangan kasir.
+            </p>
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                onClick={() => setIsBulkDeleteOpen(false)}
+                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkDeleteSubmit}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow transition-all active:scale-95"
+              >
+                Hapus Meja Kosong
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL TAMBAH MEJA SATUAN --- */}
       {isAddOpen && (
         <div
           className="fixed inset-0 bg-black/65 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
@@ -291,7 +712,7 @@ export default function AdminMejaPage() {
         </div>
       )}
 
-      {/* --- MODAL UBAH NAMA MEJA --- */}
+      {/* --- MODAL UBAH NAMA MEJA SATUAN --- */}
       {tableToEdit && (
         <div
           className="fixed inset-0 bg-black/65 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
@@ -344,7 +765,7 @@ export default function AdminMejaPage() {
         </div>
       )}
 
-      {/* --- CONFIRMATION DIALOG: DELETE TABLE --- */}
+      {/* --- CONFIRMATION DIALOG: DELETE SINGLE TABLE --- */}
       {tableToDelete && (
         <div
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-150"

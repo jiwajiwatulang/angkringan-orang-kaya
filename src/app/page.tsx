@@ -9,6 +9,8 @@ import { getStoreSettings, loadStoreSettingsAsync, subscribeStoreSettings, Store
 import { getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement, recordPayment, refundPartialPayment, getOrderPayments, exportAllData } from '@/lib/api';
 import { generateZReportReceipt } from '@/lib/receipt';
 import { generateEscPosReceipt, generatePartialPaymentReceipt } from '@/lib/receipt';
+import PaymentProofUpload from '@/components/PaymentProofUpload';
+import OnboardingWizard from '@/components/OnboardingWizard';
 
 type MenuItem = { id: number; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; modifiers?: any[]; };
 type CartItem = MenuItem & { qty: number; selectedModifiers?: { groupName: string; optionName: string; harga: number }[]; itemKey?: string };
@@ -35,6 +37,10 @@ export default function POSPage() {
   const [selectedModOptions, setSelectedModOptions] = useState<Record<string, any[]>>({});
   const [blindCloseResult, setBlindCloseResult] = useState<any>(null);
 
+  // --- BUKTI PEMBAYARAN & ONBOARDING STATES ---
+  const [checkoutProof, setCheckoutProof] = useState<{ imageData: string; fileName: string; fileSize: number; mimeType: string } | null>(null);
+  const [splitProof, setSplitProof] = useState<{ imageData: string; fileName: string; fileSize: number; mimeType: string } | null>(null);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
   // Form states for Shift
   const [shiftOperatorName, setShiftOperatorName] = useState("Kasir");
@@ -130,6 +136,9 @@ export default function POSPage() {
       try {
         const fresh = await loadStoreSettingsAsync();
         setStoreSettings(fresh);
+        if (fresh.onboardingCompleted === false || (typeof window !== 'undefined' && window.location.search.includes('onboarding=true'))) {
+          setIsOnboardingOpen(true);
+        }
       } catch (err) {
         console.error("Error loading store settings in POS:", err);
       }
@@ -764,8 +773,10 @@ export default function POSPage() {
         splitType: splitTab,
         itemsPaid: itemsPaidPayload,
         operatorName: activeShift ? activeShift.operatorName : 'Kasir',
-        notes: splitNotes
+        notes: splitNotes,
+        proof: splitProof && splitPaymentMethod !== 'Cash' ? splitProof : undefined
       });
+      setSplitProof(null);
 
       // Buat struk pembayaran parsial
       const paymentRecord = {
@@ -1018,8 +1029,10 @@ export default function POSPage() {
         orderType,
         notes,
         tableId: orderType === "Dine-in" && selectedTable ? parseInt(selectedTable) : null,
-        status: status
+        status: status,
+        proof: checkoutProof && paymentMethod !== 'Cash' ? checkoutProof : undefined
       };
+      setCheckoutProof(null);
 
       let resultId;
 
@@ -1516,6 +1529,15 @@ export default function POSPage() {
                         </span>
                       </div>
                     </div>
+                  )}
+
+                  {/* Upload Bukti Pembayaran untuk QRIS & Transfer Bank */}
+                  {(paymentMethod === "QRIS" || paymentMethod === "Transfer") && (
+                    <PaymentProofUpload
+                      proof={checkoutProof}
+                      onChange={setCheckoutProof}
+                      paymentMethod={paymentMethod}
+                    />
                   )}
               </div>
             </div>
@@ -2732,6 +2754,15 @@ export default function POSPage() {
                   </div>
                 )}
 
+                {/* Upload Bukti Pembayaran Split QRIS / Transfer */}
+                {(splitPaymentMethod === 'QRIS' || splitPaymentMethod === 'Transfer') && (
+                  <PaymentProofUpload
+                    proof={splitProof}
+                    onChange={setSplitProof}
+                    paymentMethod={splitPaymentMethod}
+                  />
+                )}
+
                 <div>
                   <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">Catatan Tambahan (Opsional):</label>
                   <input
@@ -3006,6 +3037,17 @@ export default function POSPage() {
           </div>
         </div>
       )}
+
+      {/* Onboarding Wizard Toko Baru */}
+      <OnboardingWizard
+        isOpen={isOnboardingOpen}
+        onComplete={async () => {
+          setIsOnboardingOpen(false);
+          await loadData();
+          await refreshShiftData();
+        }}
+        currentSettings={storeSettings}
+      />
 
     </div>
     </>
