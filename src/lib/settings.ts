@@ -155,6 +155,11 @@ export function saveStoreSettings(settings: StoreSettings): void {
 
 /**
  * Subscribes to settings updates across the entire application in real-time.
+ * Automatically synchronizes via:
+ * 1. CustomEvent (same-window reactivity)
+ * 2. BroadcastChannel (multi-tab / multi-webview reactivity)
+ * 3. window.storage event (fallback cross-window reactivity)
+ * 4. focus & visibilitychange (guarantees freshness when app is brought to foreground)
  */
 export function subscribeStoreSettings(callback: (settings: StoreSettings) => void): () => void {
   if (typeof window === "undefined") return () => {};
@@ -165,7 +170,34 @@ export function subscribeStoreSettings(callback: (settings: StoreSettings) => vo
     }
   };
 
+  const handleStorageEvent = (e: StorageEvent) => {
+    if (e.key === STORAGE_KEY && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue);
+        const merged = { ...DEFAULT_SETTINGS, ...parsed };
+        memoryCache = merged;
+        callback(merged);
+      } catch (_) {}
+    }
+  };
+
+  const handleFocusOrVisible = async () => {
+    try {
+      const fresh = await loadStoreSettingsAsync();
+      callback(fresh);
+    } catch (_) {}
+  };
+
+  const handleVisibility = () => {
+    if (document.visibilityState === 'visible') {
+      handleFocusOrVisible();
+    }
+  };
+
   window.addEventListener(SETTINGS_EVENT, handleCustomEvent);
+  window.addEventListener('storage', handleStorageEvent);
+  window.addEventListener('focus', handleFocusOrVisible);
+  document.addEventListener('visibilitychange', handleVisibility);
 
   let channel: BroadcastChannel | null = null;
   if ('BroadcastChannel' in window) {
@@ -180,6 +212,9 @@ export function subscribeStoreSettings(callback: (settings: StoreSettings) => vo
 
   return () => {
     window.removeEventListener(SETTINGS_EVENT, handleCustomEvent);
+    window.removeEventListener('storage', handleStorageEvent);
+    window.removeEventListener('focus', handleFocusOrVisible);
+    document.removeEventListener('visibilitychange', handleVisibility);
     if (channel) {
       channel.close();
     }

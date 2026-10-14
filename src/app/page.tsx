@@ -6,7 +6,7 @@ import { Printer } from '@capgo/capacitor-printer';
 import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
 import { App } from '@capacitor/app';
 import { getStoreSettings, loadStoreSettingsAsync, subscribeStoreSettings, StoreSettings } from '@/lib/settings';
-import { getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement, recordPayment, refundPartialPayment, getOrderPayments } from '@/lib/api';
+import { getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement, recordPayment, refundPartialPayment, getOrderPayments, exportAllData } from '@/lib/api';
 import { generateZReportReceipt } from '@/lib/receipt';
 import { generateEscPosReceipt, generatePartialPaymentReceipt } from '@/lib/receipt';
 
@@ -113,6 +113,9 @@ export default function POSPage() {
     } else {
       setIsDark(false); document.documentElement.classList.remove('dark');
     }
+    if (typeof window !== 'undefined' && window.location.search.includes('view=menu')) {
+      setView('menu');
+    }
   }, []);
   const toggleTheme = () => {
     setIsDark(!isDark);
@@ -142,29 +145,186 @@ export default function POSPage() {
     };
   }, []);
 
+  // Unsaved Changes Protection Modal State
+  const [unsavedConfirm, setUnsavedConfirm] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message?: string;
+    onDiscard: () => void;
+  } | null>(null);
+
+  const [backupSuccessNotice, setBackupSuccessNotice] = useState<string | null>(null);
+
+  const handleExportBackupFromPos = async () => {
+    try {
+      const data = await exportAllData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const date = new Date().toISOString().split('T')[0];
+      link.href = url;
+      link.download = "Backup_POS_" + (storeSettings.storeName || 'Toko').replace(/\s+/g, '_') + "_" + date + ".json";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      const nowIso = new Date().toISOString();
+      localStorage.setItem('sakunota_last_backup_date', nowIso);
+      setBackupSuccessNotice("Cadangan berhasil diunduh (" + date + ")!");
+      setTimeout(() => setBackupSuccessNotice(null), 4000);
+    } catch (err: any) {
+      alert("Gagal membuat cadangan: " + err.message);
+    }
+  };
+
+  const handleCloseOpenShift = () => {
+    const isDirty = (shiftOperatorName && shiftOperatorName !== "Kasir") ||
+      (shiftStartingCash && shiftStartingCash !== "200000") ||
+      (shiftNotes && shiftNotes.trim() !== "");
+    if (isDirty) {
+      setUnsavedConfirm({
+        isOpen: true,
+        title: "Batalkan Buka Shift?",
+        message: "Data modal awal yang sedang Anda ketik belum disimpan. Yakin ingin menutup?",
+        onDiscard: () => setIsOpenShiftModalOpen(false)
+      });
+    } else {
+      setIsOpenShiftModalOpen(false);
+    }
+  };
+
+  const handleCloseCashMovement = () => {
+    const isDirty = cashMovementAmount.trim() !== "";
+    if (isDirty) {
+      setUnsavedConfirm({
+        isOpen: true,
+        title: "Batalkan Catat Kas?",
+        message: "Nominal uang kas yang Anda ketik belum dicatat. Yakin ingin menutup?",
+        onDiscard: () => {
+          setCashMovementAmount("");
+          setIsCashMovementModalOpen(false);
+        }
+      });
+    } else {
+      setIsCashMovementModalOpen(false);
+    }
+  };
+
+  const handleCloseCloseShift = () => {
+    const isDirty = countedPhysicalCash.trim() !== "" || closingShiftNotes.trim() !== "";
+    if (isDirty) {
+      setUnsavedConfirm({
+        isOpen: true,
+        title: "Batalkan Tutup Shift?",
+        message: "Penghitungan fisik uang laci belum diselesaikan. Yakin ingin menutup?",
+        onDiscard: () => {
+          setCountedPhysicalCash("");
+          setIsCloseShiftModalOpen(false);
+        }
+      });
+    } else {
+      setIsCloseShiftModalOpen(false);
+    }
+  };
+
+  const handleCloseDiscountModal = () => {
+    const isDirty = tempDiscountVal.trim() !== "" && tempDiscountVal !== discountValue.toString();
+    if (isDirty) {
+      setUnsavedConfirm({
+        isOpen: true,
+        title: "Batalkan Input Diskon?",
+        message: "Diskon yang Anda ketik belum diterapkan. Yakin ingin menutup?",
+        onDiscard: () => {
+          setTempDiscountVal(discountValue > 0 ? discountValue.toString() : "");
+          setIsDiscountModalOpen(false);
+        }
+      });
+    } else {
+      setIsDiscountModalOpen(false);
+    }
+  };
+
+  const handleCloseSplitBill = () => {
+    const hasItems = Object.keys(splitSelectedItems).length > 0;
+    const hasCustom = splitCustomAmount.trim() !== "";
+    const hasCash = splitCashTendered.trim() !== "";
+    if (hasItems || hasCustom || hasCash) {
+      setUnsavedConfirm({
+        isOpen: true,
+        title: "Batalkan Split Bill?",
+        message: "Rincian split pembayaran belum disimpan. Yakin ingin membatalkan?",
+        onDiscard: () => {
+          setSplitSelectedItems({});
+          setSplitCustomAmount("");
+          setSplitCashTendered("");
+          setIsSplitBillModalOpen(false);
+        }
+      });
+    } else {
+      setIsSplitBillModalOpen(false);
+    }
+  };
+
+  const handleClosePaymentModal = () => {
+    const isDirty = customerName.trim() !== "" || 
+      notes.trim() !== "" || 
+      cashTendered.trim() !== "";
+    if (isDirty) {
+      setUnsavedConfirm({
+        isOpen: true,
+        title: "Batalkan Pembayaran?",
+        message: "Data pelanggan atau uang diterima belum diproses. Yakin ingin membatalkan?",
+        onDiscard: () => setIsPaymentModalOpen(false)
+      });
+    } else {
+      setIsPaymentModalOpen(false);
+    }
+  };
+
+  const handleReleaseTable = () => {
+    if (cart.length > 0) {
+      setUnsavedConfirm({
+        isOpen: true,
+        title: "Lepas Meja & Kosongkan Keranjang?",
+        message: `Ada ${cart.length} item di dalam keranjang yang belum dipesan. Yakin ingin mengosongkan keranjang dan melepas meja?`,
+        onDiscard: () => {
+          resetCart();
+          setSelectedTable("");
+          setIsMobileCartOpen(false);
+        }
+      });
+    } else {
+      resetCart();
+      setSelectedTable("");
+      setIsMobileCartOpen(false);
+    }
+  };
+
   // Android Hardware Back button listener: closes active modal or bottom-sheet before exiting
   useEffect(() => {
     let removeListener: any;
     try {
       App.addListener('backButton', ({ canGoBack }) => {
-        if (activeModItem) {
+        if (unsavedConfirm?.isOpen) {
+          setUnsavedConfirm(null);
+        } else if (activeModItem) {
           setActiveModItem(null);
         } else if (activeVariantGroup) {
           setActiveVariantGroup(null);
         } else if (isPaymentModalOpen) {
-          setIsPaymentModalOpen(false);
+          handleClosePaymentModal();
         } else if (isSplitBillModalOpen) {
-          setIsSplitBillModalOpen(false);
+          handleCloseSplitBill();
         } else if (isRefundModalOpen) {
           setIsRefundModalOpen(false);
         } else if (isDiscountModalOpen) {
-          setIsDiscountModalOpen(false);
+          handleCloseDiscountModal();
         } else if (isCashMovementModalOpen) {
-          setIsCashMovementModalOpen(false);
+          handleCloseCashMovement();
         } else if (isOpenShiftModalOpen) {
-          setIsOpenShiftModalOpen(false);
+          handleCloseOpenShift();
         } else if (isCloseShiftModalOpen) {
-          setIsCloseShiftModalOpen(false);
+          handleCloseCloseShift();
         } else if (receiptData) {
           setReceiptData(null);
         } else if (blindCloseResult) {
@@ -185,6 +345,7 @@ export default function POSPage() {
       }
     };
   }, [
+    unsavedConfirm,
     activeModItem,
     activeVariantGroup,
     isPaymentModalOpen,
@@ -196,7 +357,21 @@ export default function POSPage() {
     isCloseShiftModalOpen,
     receiptData,
     blindCloseResult,
-    isMobileCartOpen
+    isMobileCartOpen,
+    shiftOperatorName,
+    shiftStartingCash,
+    shiftNotes,
+    cashMovementAmount,
+    countedPhysicalCash,
+    closingShiftNotes,
+    tempDiscountVal,
+    discountValue,
+    splitSelectedItems,
+    splitCustomAmount,
+    splitCashTendered,
+    customerName,
+    notes,
+    cashTendered
   ]);
 
   const loadData = async () => {
@@ -1042,7 +1217,7 @@ export default function POSPage() {
       <div className={`${isMobile ? 'px-6 pb-4 pt-2' : 'p-5'} border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-t-3xl`}>
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
-          {selectedTable && <button onClick={() => { resetCart(); setSelectedTable(""); setIsMobileCartOpen(false); }} className="text-xs font-bold text-red-500 bg-red-50 px-3 py-1.5 rounded-full hover:bg-red-100">Lepas meja</button>}
+          {selectedTable && <button onClick={handleReleaseTable} className="text-xs font-bold text-red-500 bg-red-50 px-3 py-1.5 rounded-full hover:bg-red-100">Lepas meja</button>}
         </div>
         {selectedTableObj && (
           <div className="mt-3 flex flex-wrap gap-2 items-center">
@@ -1204,7 +1379,7 @@ export default function POSPage() {
       {isPaymentModalOpen && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
-          onClick={() => setIsPaymentModalOpen(false)}
+          onClick={handleClosePaymentModal}
         >
           <div 
             className="bg-white dark:bg-gray-800 p-6 md:p-8 rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl relative flex flex-col max-h-[90vh]"
@@ -1217,7 +1392,7 @@ export default function POSPage() {
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Selesaikan Pembayaran</h2>
               <button 
                 type="button"
-                onClick={() => setIsPaymentModalOpen(false)}
+                onClick={handleClosePaymentModal}
                 className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white flex items-center justify-center text-sm font-bold"
               >
                 ✕
@@ -1368,7 +1543,7 @@ export default function POSPage() {
               <div className="flex space-x-2">
                 <button 
                   type="button"
-                  onClick={() => setIsPaymentModalOpen(false)} 
+                  onClick={handleClosePaymentModal} 
                   className="px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white hover:bg-gray-200 font-bold text-xs transition-colors"
                 >
                   Batal
@@ -1802,7 +1977,7 @@ export default function POSPage() {
       {isOpenShiftModalOpen && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
-          onClick={() => setIsOpenShiftModalOpen(false)}
+          onClick={handleCloseOpenShift}
         >
           <div 
             className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-gray-700"
@@ -1854,7 +2029,7 @@ export default function POSPage() {
               <div className="flex space-x-2 pt-2">
                 <button 
                   type="button" 
-                  onClick={() => setIsOpenShiftModalOpen(false)}
+                  onClick={handleCloseOpenShift}
                   className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-bold transition-colors"
                 >
                   Batal
@@ -1875,7 +2050,7 @@ export default function POSPage() {
       {isCashMovementModalOpen && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
-          onClick={() => setIsCashMovementModalOpen(false)}
+          onClick={handleCloseCashMovement}
         >
           <div 
             className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-gray-700"
@@ -1929,7 +2104,7 @@ export default function POSPage() {
               <div className="flex space-x-2 pt-2">
                 <button 
                   type="button" 
-                  onClick={() => setIsCashMovementModalOpen(false)}
+                  onClick={handleCloseCashMovement}
                   className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-bold transition-colors"
                 >
                   Batal
@@ -1950,7 +2125,7 @@ export default function POSPage() {
       {isCloseShiftModalOpen && currentShiftStats && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto animate-in fade-in duration-200"
-          onClick={() => setIsCloseShiftModalOpen(false)}
+          onClick={handleCloseCloseShift}
         >
           <div 
             className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl my-8 border border-gray-100 dark:border-gray-700"
@@ -2017,7 +2192,7 @@ export default function POSPage() {
               <div className="flex space-x-2 pt-2">
                 <button 
                   type="button" 
-                  onClick={() => setIsCloseShiftModalOpen(false)}
+                  onClick={handleCloseCloseShift}
                   className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-bold transition-colors"
                 >
                   Batal
@@ -2250,24 +2425,38 @@ export default function POSPage() {
             )}
 
             {/* Actions */}
-            <div className="mt-5 flex space-x-2">
+            <div className="mt-5 space-y-2">
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const zReceiptText = generateZReportReceipt(blindCloseResult, storeSettings);
+                    printReceiptText(zReceiptText, 'Z_Report_Tutup_Shift');
+                  }}
+                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow"
+                >
+                  <span>🖨️ Cetak Z-Report</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBlindCloseResult(null)}
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+                >
+                  Selesai & Tutup
+                </button>
+              </div>
               <button
                 type="button"
-                onClick={() => {
-                  const zReceiptText = generateZReportReceipt(blindCloseResult, storeSettings);
-                  printReceiptText(zReceiptText, 'Z_Report_Tutup_Shift');
-                }}
-                className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow"
+                onClick={handleExportBackupFromPos}
+                className="w-full py-2.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
               >
-                <span>🖨️ Cetak Z-Report</span>
+                <span>💾 Cadangkan Data Kasir (Unduh JSON)</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setBlindCloseResult(null)}
-                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
-              >
-                Selesai & Tutup
-              </button>
+              {backupSuccessNotice && (
+                <p className="text-[11px] font-bold text-center text-emerald-600 dark:text-emerald-400 animate-in fade-in">
+                  ✓ {backupSuccessNotice}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -2277,7 +2466,7 @@ export default function POSPage() {
       {isSplitBillModalOpen && splitBillTargetOrder && (
         <div 
           className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
-          onClick={() => setIsSplitBillModalOpen(false)}
+          onClick={handleCloseSplitBill}
         >
           <div 
             className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-2xl p-5 md:p-7 max-w-xl w-full shadow-2xl border border-gray-200 dark:border-gray-700 my-0 sm:my-6 flex flex-col max-h-[92vh]"
@@ -2299,7 +2488,7 @@ export default function POSPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setIsSplitBillModalOpen(false)}
+                onClick={handleCloseSplitBill}
                 className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white flex items-center justify-center text-sm font-bold"
               >
                 ✕
@@ -2613,7 +2802,7 @@ export default function POSPage() {
             <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex space-x-2">
               <button
                 type="button"
-                onClick={() => setIsSplitBillModalOpen(false)}
+                onClick={handleCloseSplitBill}
                 className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors"
               >
                 Tutup
@@ -2698,7 +2887,7 @@ export default function POSPage() {
       {isDiscountModalOpen && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
-          onClick={() => setIsDiscountModalOpen(false)}
+          onClick={handleCloseDiscountModal}
         >
           <div 
             className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-xs w-full shadow-2xl border border-gray-100 dark:border-gray-700"
@@ -2737,7 +2926,7 @@ export default function POSPage() {
             <div className="flex space-x-2">
               <button 
                 type="button"
-                onClick={() => setIsDiscountModalOpen(false)}
+                onClick={handleCloseDiscountModal}
                 className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-bold text-xs transition-colors"
               >
                 Batal
@@ -2769,6 +2958,49 @@ export default function POSPage() {
                 className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
               >
                 Terapkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- DIALOG PERINGATAN UNSAVED CHANGES --- */}
+      {unsavedConfirm?.isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setUnsavedConfirm(null)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-gray-700 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
+              ⚠️
+            </div>
+            <h3 className="text-base font-black text-gray-900 dark:text-white mb-1">
+              {unsavedConfirm.title || "Perubahan Belum Disimpan"}
+            </h3>
+            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed mb-5">
+              {unsavedConfirm.message || "Input yang Anda ketik belum disimpan. Yakin ingin membatalkan?"}
+            </p>
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                onClick={() => setUnsavedConfirm(null)}
+                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors"
+              >
+                Lanjut Mengisi
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const cb = unsavedConfirm.onDiscard;
+                  setUnsavedConfirm(null);
+                  cb();
+                }}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow transition-all active:scale-95"
+              >
+                Buang Perubahan
               </button>
             </div>
           </div>

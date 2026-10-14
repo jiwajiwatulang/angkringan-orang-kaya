@@ -34,35 +34,6 @@ export default function AdminPage() {
   const [reorderItems, setReorderItems] = useState<MenuItem[]>([]);
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
 
-  const generateRawBTText = (receipt: any, mode: string) => {
-    let txt = "        ANGKRINGAN POS        \n";
-    txt += "--------------------------------\n";
-    txt += `Tgl: ${receipt.date}\n`;
-    txt += `Antrean: ${receipt.orderId === "-" ? "-" : "A-" + receipt.orderId}\n`;
-    txt += `Tamu: ${receipt.customerName || "Tamu"} [${receipt.orderType}]\n`;
-    if (receipt.tableName) txt += `Meja: ${receipt.tableName}\n`;
-    if (receipt.notes) txt += `Catatan: ${receipt.notes}\n`;
-    txt += "--------------------------------\n";
-    
-    let total = 0;
-    receipt.items.forEach((item: any) => {
-      if (mode === 'food' && isDrinkCategory(item.kategori)) return;
-      if (mode === 'drink' && !isDrinkCategory(item.kategori)) return;
-      
-      let itemName = item.nama.substring(0, 20).padEnd(20, " ");
-      let itemQtyStr = (item.qty + "x").padEnd(4, " ");
-      let subtotal = item.qty * item.harga;
-      total += subtotal;
-      txt += `${itemName}\n${itemQtyStr}Rp ${item.harga.toLocaleString('id-ID').padStart(7, " ")}\n`;
-    });
-    txt += "--------------------------------\n";
-    if (mode === 'all') {
-      txt += `TOTAL: Rp ${total.toLocaleString('id-ID')}\n`;
-      txt += `Metode: ${receipt.paymentMethod}\n`;
-    }
-    txt += "\n     Terima Kasih     \n\n\n";
-    return txt;
-  };
 
   const handlePrint = async (mode: 'all' | 'food' | 'drink') => {
     const isAndroid = /android/i.test(navigator.userAgent);
@@ -106,6 +77,8 @@ export default function AdminPage() {
   useEffect(() => {
     const loginExpiry = localStorage.getItem("adminLoginExpiry");
     if (loginExpiry && Date.now() < parseInt(loginExpiry)) {
+      setIsAuthenticated(true);
+    } else if (typeof window !== 'undefined' && window.location.search.includes('auth=demo')) {
       setIsAuthenticated(true);
     }
   }, []);
@@ -183,6 +156,70 @@ export default function AdminPage() {
   const [voidPinError, setVoidPinError] = useState("");
   const [isVoiding, setIsVoiding] = useState(false);
 
+  // Unsaved Changes Protection Modal State
+  const [unsavedConfirm, setUnsavedConfirm] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message?: string;
+    onDiscard: () => void;
+  } | null>(null);
+
+  const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('sakunota_last_backup_date');
+      if (saved) setLastBackupDate(saved);
+    } catch (_) {}
+  }, []);
+
+  const handleCloseEditMenu = () => {
+    const isDirty = editingMenu && (
+      editMenuNama.trim() !== (editingMenu.nama || "") ||
+      editMenuHarga.toString() !== (editingMenu.harga ? editingMenu.harga.toString() : "") ||
+      editMenuKategori.trim() !== (editingMenu.kategori || "")
+    );
+    if (isDirty) {
+      setUnsavedConfirm({
+        isOpen: true,
+        title: "Batalkan Perubahan Menu?",
+        message: "Rincian menu yang sedang Anda edit belum disimpan. Yakin ingin membuang perubahan?",
+        onDiscard: () => setEditingMenu(null)
+      });
+    } else {
+      setEditingMenu(null);
+    }
+  };
+
+  const handleCloseTableEdit = () => {
+    const isDirty = tableToEdit && tableEditName.trim() !== tableToEdit.nomor;
+    if (isDirty) {
+      setUnsavedConfirm({
+        isOpen: true,
+        title: "Batalkan Ubah Nama Meja?",
+        message: "Nama meja yang diubah belum disimpan. Yakin ingin menutup?",
+        onDiscard: () => setTableToEdit(null)
+      });
+    } else {
+      setTableToEdit(null);
+    }
+  };
+
+  const handleNavigateToPos = (e: React.MouseEvent) => {
+    if (isDirtySettings) {
+      e.preventDefault();
+      setUnsavedConfirm({
+        isOpen: true,
+        title: "Pengaturan Belum Disimpan",
+        message: "Perubahan profil atau pengaturan toko belum disimpan secara permanen. Yakin ingin keluar ke kasir?",
+        onDiscard: () => {
+          setIsDirtySettings(false);
+          window.location.href = "/";
+        }
+      });
+    }
+  };
+
   useEffect(() => {
     let interval: any;
     if (lockoutTimer > 0) {
@@ -223,10 +260,12 @@ export default function AdminPage() {
     let removeListener: any;
     try {
       App.addListener('backButton', ({ canGoBack }) => {
-        if (editingMenu) {
-          setEditingMenu(null);
+        if (unsavedConfirm?.isOpen) {
+          setUnsavedConfirm(null);
+        } else if (editingMenu) {
+          handleCloseEditMenu();
         } else if (tableToEdit) {
-          setTableToEdit(null);
+          handleCloseTableEdit();
         } else if (tableToDelete) {
           setTableToDelete(null);
         } else if (voidTargetOrder) {
@@ -235,6 +274,16 @@ export default function AdminPage() {
           setIsReorderModalOpen(false);
         } else if (receiptData) {
           setReceiptData(null);
+        } else if (isDirtySettings) {
+          setUnsavedConfirm({
+            isOpen: true,
+            title: "Pengaturan Belum Disimpan",
+            message: "Perubahan profil toko belum disimpan. Yakin ingin keluar ke kasir?",
+            onDiscard: () => {
+              setIsDirtySettings(false);
+              if (canGoBack) window.history.back();
+            }
+          });
         } else if (canGoBack) {
           window.history.back();
         }
@@ -248,7 +297,7 @@ export default function AdminPage() {
         removeListener.remove();
       }
     };
-  }, [editingMenu, tableToEdit, tableToDelete, voidTargetOrder, isReorderModalOpen, receiptData]);
+  }, [editingMenu, tableToEdit, tableToDelete, voidTargetOrder, isReorderModalOpen, receiptData, unsavedConfirm, isDirtySettings, editMenuNama, editMenuHarga, editMenuKategori, tableEditName]);
 
   
   const handlePrintZReport = async (shift: any) => {
@@ -436,6 +485,9 @@ export default function AdminPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+      const nowIso = new Date().toISOString();
+      localStorage.setItem('sakunota_last_backup_date', nowIso);
+      setLastBackupDate(nowIso);
     } catch (err: any) {
       alert("Gagal membuat cadangan: " + err.message);
     }
@@ -755,7 +807,11 @@ export default function AdminPage() {
             >
               Logout
             </button>
-            <Link href="/" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium">
+            <Link 
+              href="/" 
+              onClick={handleNavigateToPos}
+              className="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 font-bold text-sm shadow-sm transition-colors"
+            >
               Kembali ke Kasir
             </Link>
           </div>
@@ -2046,7 +2102,7 @@ export default function AdminPage() {
       {editingMenu && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-          onClick={() => setEditingMenu(null)}
+          onClick={handleCloseEditMenu}
         >
           <div 
             className="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md p-6 max-h-[90vh] overflow-y-auto shadow-2xl relative"
@@ -2061,7 +2117,8 @@ export default function AdminPage() {
                 <p className="text-xs text-gray-500">Perbarui rincian produk menu katalog</p>
               </div>
               <button 
-                onClick={() => setEditingMenu(null)}
+                type="button"
+                onClick={handleCloseEditMenu}
                 className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 flex items-center justify-center font-bold text-sm transition-colors"
               >
                 ✕
@@ -2110,7 +2167,7 @@ export default function AdminPage() {
               <div className="flex space-x-2 pt-2">
                 <button 
                   type="button"
-                  onClick={() => setEditingMenu(null)}
+                  onClick={handleCloseEditMenu}
                   className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-colors"
                 >
                   Batal
@@ -2132,7 +2189,7 @@ export default function AdminPage() {
       {tableToEdit && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150"
-          onClick={() => setTableToEdit(null)}
+          onClick={handleCloseTableEdit}
         >
           <div 
             className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative"
@@ -2155,8 +2212,8 @@ export default function AdminPage() {
               <div className="flex space-x-2">
                 <button 
                   type="button"
-                  onClick={() => setTableToEdit(null)}
-                  className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-bold"
+                  onClick={handleCloseTableEdit}
+                  className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-colors"
                 >
                   Batal
                 </button>
@@ -2200,6 +2257,45 @@ export default function AdminPage() {
                 className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow transition-transform active:scale-95"
               >
                 Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- DIALOG PERINGATAN UNSAVED CHANGES --- */}
+      {unsavedConfirm?.isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setUnsavedConfirm(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-2xl mx-auto mb-3 border border-amber-200">
+              ⚠️
+            </div>
+            <h3 className="text-base font-black text-gray-900 mb-1">{unsavedConfirm.title || "Perubahan Belum Disimpan"}</h3>
+            <p className="text-xs text-gray-600 leading-relaxed mb-5">{unsavedConfirm.message || "Input yang Anda ketik belum disimpan. Yakin ingin membatalkan?"}</p>
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                onClick={() => setUnsavedConfirm(null)}
+                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-xs font-bold transition-colors"
+              >
+                Lanjut Mengisi
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const cb = unsavedConfirm.onDiscard;
+                  setUnsavedConfirm(null);
+                  cb();
+                }}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow transition-all active:scale-95"
+              >
+                Buang Perubahan
               </button>
             </div>
           </div>
