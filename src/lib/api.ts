@@ -323,6 +323,152 @@ export async function deleteOrders(ids: number[]) {
 
 
 
+
+// --- MANAJEMEN SHIFT & REKONSILIASI KAS ---
+
+export async function getActiveShift() {
+  const shifts = await db.table('shifts').where({ status: 'open' }).toArray();
+  return shifts.length > 0 ? shifts[0] : null;
+}
+
+export async function getAllShifts() {
+  return await db.table('shifts').reverse().toArray();
+}
+
+export async function getShiftLiveStats(shiftId: number) {
+  const shift = await db.table('shifts').get(shiftId);
+  if (!shift) throw new Error('Shift tidak ditemukan.');
+
+  const allOrders = await db.table('orders').toArray();
+  const shiftOrders = allOrders.filter(o => {
+    const orderTime = new Date(o.createdAt).getTime();
+    const startTime = new Date(shift.startTime).getTime();
+    const endTime = shift.endTime ? new Date(shift.endTime).getTime() : Date.now();
+    return orderTime >= startTime && orderTime <= endTime;
+  });
+
+  const cashSales = shiftOrders
+    .filter(o => o.status !== 'void' && o.paymentMethod === 'Cash')
+    .reduce((sum, o) => sum + o.total, 0);
+
+  const nonCashSales = shiftOrders
+    .filter(o => o.status !== 'void' && o.paymentMethod !== 'Cash')
+    .reduce((sum, o) => sum + o.total, 0);
+
+  const cashRefunds = shiftOrders
+    .filter(o => o.status === 'void' && o.isRefunded && o.refundMethod === 'Tunai')
+    .reduce((sum, o) => sum + (o.refundAmount || o.total), 0);
+
+  const movements = await db.table('cashMovements').where({ shiftId }).toArray();
+  const cashIn = movements.filter(m => m.type === 'in').reduce((sum, m) => sum + m.amount, 0);
+  const cashOut = movements.filter(m => m.type === 'out').reduce((sum, m) => sum + m.amount, 0);
+
+  const expectedCash = (Number(shift.startingCash) || 0) + cashSales - cashRefunds + cashIn - cashOut;
+
+  return {
+    ...shift,
+    totalTransactions: shiftOrders.filter(o => o.status !== 'void').length,
+    cashSales,
+    nonCashSales,
+    cashRefunds,
+    cashIn,
+    cashOut,
+    expectedCash,
+    movements
+  };
+}
+
+export async function openShift(data: { operatorName: string, startingCash: number, notes?: string }) {
+  const active = await getActiveShift();
+  if (active) {
+    throw new Error('Shift atas nama "' + active.operatorName + '" masih aktif. Tutup shift terlebih dahulu.');
+  }
+
+  const shiftData = {
+    operatorName: data.operatorName || 'Kasir',
+    startTime: new Date().toISOString(),
+    startingCash: Number(data.startingCash) || 0,
+    cashSales: 0,
+    nonCashSales: 0,
+    cashRefunds: 0,
+    cashIn: 0,
+    cashOut: 0,
+    expectedCash: Number(data.startingCash) || 0,
+    status: 'open',
+    notes: data.notes || ''
+  };
+
+  const id = await db.table('shifts').add(shiftData);
+
+  // Catat ke audit log
+  await db.table('auditLogs').add({
+    action: 'OPEN_SHIFT',
+    amount: Number(data.startingCash) || 0,
+    reason: 'Buka Shift Kasir (Modal Awal: Rp ' + (Number(data.startingCash) || 0).toLocaleString('id-ID') + ')',
+    operator: data.operatorName || 'Kasir',
+    timestamp: new Date().toISOString()
+  });
+
+  return { id, ...shiftData };
+}
+
+export async function closeShift(shiftId: number, data: { actualCash: number, notes?: string, operatorName?: string }) {
+  const stats = await getShiftLiveStats(shiftId);
+  const actual = Number(data.actualCash) || 0;
+  const difference = actual - stats.expectedCash;
+
+  const updatePayload = {
+    endTime: new Date().toISOString(),
+    actualCash: actual,
+    cashDifference: difference,
+    cashSales: stats.cashSales,
+    nonCashSales: stats.nonCashSales,
+    cashRefunds: stats.cashRefunds,
+    cashIn: stats.cashIn,
+    cashOut: stats.cashOut,
+    expectedCash: stats.expectedCash,
+    status: 'closed',
+    notes: data.notes || stats.notes || ''
+  };
+
+  await db.table('shifts').update(shiftId, updatePayload);
+
+  // Catat audit log
+  await db.table('auditLogs').add({
+    action: 'CLOSE_SHIFT',
+    amount: actual,
+    reason: 'Tutup Shift (Selisih: Rp ' + difference.toLocaleString('id-ID') + ')',
+    operator: data.operatorName || stats.operatorName || 'Kasir',
+    timestamp: new Date().toISOString()
+  });
+
+  return { id: shiftId, ...stats, ...updatePayload };
+}
+
+export async function addCashMovement(data: { shiftId: number, type: 'in' | 'out', amount: number, reason: string, operatorName: string }) {
+  const movement = {
+    shiftId: data.shiftId,
+    type: data.type,
+    amount: Number(data.amount) || 0,
+    reason: data.reason || (data.type === 'in' ? 'Kas Masuk' : 'Kas Keluar'),
+    operatorName: data.operatorName || 'Kasir',
+    timestamp: new Date().toISOString()
+  };
+
+  const id = await db.table('cashMovements').add(movement);
+
+  // Catat audit log
+  await db.table('auditLogs').add({
+    action: data.type === 'in' ? 'CASH_IN' : 'CASH_OUT',
+    amount: movement.amount,
+    reason: movement.reason,
+    operator: movement.operatorName,
+    timestamp: new Date().toISOString()
+  });
+
+  return { id, ...movement };
+}
+
 // --- FITUR CADANGAN (BACKUP) & PEMULIHAN (RESTORE) ---
 
 export async function exportAllData() {
@@ -331,6 +477,8 @@ export async function exportAllData() {
   const orders = await db.table('orders').toArray();
   const orderItems = await db.table('orderItems').toArray();
   const auditLogs = await db.table('auditLogs').toArray();
+  const shifts = await db.table('shifts').toArray();
+  const cashMovements = await db.table('cashMovements').toArray();
   
   let settings = null;
   if (typeof window !== 'undefined') {
@@ -349,7 +497,9 @@ export async function exportAllData() {
     tables,
     orders,
     orderItems,
-    auditLogs
+    auditLogs,
+    shifts,
+    cashMovements
   };
 }
 
@@ -358,8 +508,10 @@ export async function importAllData(data: any) {
     throw new Error('Format file cadangan tidak valid.');
   }
 
-  await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems', 'auditLogs'], async () => {
+  await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems', 'auditLogs', 'shifts', 'cashMovements'], async () => {
     await db.table('auditLogs').clear();
+    await db.table('shifts').clear();
+    await db.table('cashMovements').clear();
     // 1. Bersihkan data lama
     await db.table('orderItems').clear();
     await db.table('orders').clear();
@@ -392,6 +544,12 @@ export async function importAllData(data: any) {
     }
     if (data.auditLogs && data.auditLogs.length > 0) {
       await db.table('auditLogs').bulkAdd(data.auditLogs);
+    }
+    if (data.shifts && data.shifts.length > 0) {
+      await db.table('shifts').bulkAdd(data.shifts);
+    }
+    if (data.cashMovements && data.cashMovements.length > 0) {
+      await db.table('cashMovements').bulkAdd(data.cashMovements);
     }
   });
 

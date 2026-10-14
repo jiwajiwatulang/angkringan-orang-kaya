@@ -5,8 +5,8 @@ import Link from "next/link";
 import { Printer } from '@capgo/capacitor-printer';
 import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
 import { getStoreSettings, saveStoreSettings, StoreSettings } from '@/lib/settings';
-import { generateEscPosReceipt } from '@/lib/receipt';
-import { exportAllData, importAllData, resetAllTransactions, voidOrder, processVoidRefund, getAuditLogs } from '@/lib/api';
+import { generateEscPosReceipt, generateZReportReceipt } from '@/lib/receipt';
+import { exportAllData, importAllData, resetAllTransactions, voidOrder, processVoidRefund, getAuditLogs, getAllShifts } from '@/lib/api';
 
 
 type MenuItem = { id: number; nama: string; harga: number; kategori: string; isSoldOut: boolean; };
@@ -15,6 +15,7 @@ export default function AdminPage() {
   const [menus, setMenus] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [shifts, setShifts] = useState<any[]>([]);
   const [nama, setNama] = useState("");
   const [harga, setHarga] = useState("");
   const [kategori, setKategori] = useState("Nasi");
@@ -186,6 +187,25 @@ export default function AdminPage() {
     }
   }, []);
 
+  
+  const handlePrintZReport = async (shift: any) => {
+    const isAndroid = /android/i.test(navigator.userAgent);
+    const mac = localStorage.getItem('bt_printer_mac');
+    const txt = generateZReportReceipt(shift, storeSettings);
+    
+    try {
+      if (isAndroid && mac) {
+        try { await BluetoothSerial.connect({ address: mac }); } catch(e) {}
+        await BluetoothSerial.write({ address: mac, value: txt });
+        alert("Struk Z-Report berhasil dicetak!");
+      } else {
+        await Printer.printWebView({ name: 'Z_Report_Shift' });
+      }
+    } catch(err: any) {
+      alert("Gagal mencetak struk Z-Report: " + err.message);
+    }
+  };
+
   const handleUnlockPin = (e: React.FormEvent) => {
     e.preventDefault();
     if (lockoutTimer > 0) return;
@@ -331,6 +351,7 @@ export default function AdminPage() {
     setMenus(menusRes as any[]);
     setOrders(ordersRes);
     try { const logs = await getAuditLogs(); setAuditLogs(logs); } catch(e) {}
+    try { const s = await getAllShifts(); setShifts(s); } catch(e) {}
     setTables(tablesRes);
   };
 
@@ -1104,6 +1125,96 @@ export default function AdminPage() {
                 {orders.filter(o => o.status === 'void').length === 0 && (
                   <tr>
                     <td colSpan={7} className="py-6 text-center text-gray-400">Belum ada riwayat pembatalan nota (Void/Refund).</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        
+        {/* --- RIWAYAT SHIFT KASIR & REKONSILIASI KAS --- */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <span>💼 Riwayat Shift Kasir & Rekonsiliasi Kas (Z-Report)</span>
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">Memantau modal awal, uang tunai masuk, pengeluaran kasir, serta selisih uang fisik saat tutup toko.</p>
+            </div>
+            
+            <div className="flex gap-2">
+              <span className="text-xs bg-gray-100 text-gray-700 font-bold px-3 py-1.5 rounded-lg border border-gray-200">
+                Total Shift: {shifts.length}
+              </span>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50/70 text-gray-600">
+                  <th className="py-2.5 px-3">Status</th>
+                  <th className="py-2.5 px-3">Operator</th>
+                  <th className="py-2.5 px-3">Waktu Buka / Tutup</th>
+                  <th className="py-2.5 px-3">Modal Awal</th>
+                  <th className="py-2.5 px-3">Penjualan Tunai</th>
+                  <th className="py-2.5 px-3">Non-Tunai</th>
+                  <th className="py-2.5 px-3">Kas Seharusnya</th>
+                  <th className="py-2.5 px-3">Fisik Dihitung</th>
+                  <th className="py-2.5 px-3">Selisih Kas</th>
+                  <th className="py-2.5 px-3 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shifts.map((s: any) => {
+                  const isOpen = s.status === 'open';
+                  const diff = s.cashDifference || 0;
+                  return (
+                    <tr key={'shift-' + s.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                      <td className="py-2.5 px-3">
+                        <span className={'px-2 py-0.5 rounded font-bold text-[10px] ' + (isOpen ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700')}>
+                          {isOpen ? '🟢 AKTIF' : 'SELESAI'}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 font-bold text-gray-800">{s.operatorName || 'Kasir'}</td>
+                      <td className="py-2.5 px-3 text-gray-500 whitespace-nowrap">
+                        <div>Buka: {new Date(s.startTime).toLocaleString('id-ID')}</div>
+                        {s.endTime && <div className="text-[10px] text-gray-400">Tutup: {new Date(s.endTime).toLocaleString('id-ID')}</div>}
+                      </td>
+                      <td className="py-2.5 px-3 font-semibold text-gray-700">Rp {(s.startingCash || 0).toLocaleString('id-ID')}</td>
+                      <td className="py-2.5 px-3 text-green-700 font-bold">Rp {(s.cashSales || 0).toLocaleString('id-ID')}</td>
+                      <td className="py-2.5 px-3 text-blue-700 font-bold">Rp {(s.nonCashSales || 0).toLocaleString('id-ID')}</td>
+                      <td className="py-2.5 px-3 font-bold text-gray-900">Rp {(s.expectedCash || 0).toLocaleString('id-ID')}</td>
+                      <td className="py-2.5 px-3 font-bold text-gray-900">
+                        {isOpen ? <span className="text-gray-400 italic">Sedang berjalan</span> : ('Rp ' + (s.actualCash || 0).toLocaleString('id-ID'))}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        {isOpen ? (
+                          <span className="text-gray-400">-</span>
+                        ) : diff === 0 ? (
+                          <span className="text-green-700 font-bold bg-green-50 px-2 py-0.5 rounded">✓ Pas</span>
+                        ) : diff < 0 ? (
+                          <span className="text-red-700 font-bold bg-red-50 px-2 py-0.5 rounded">Kurang (-Rp {Math.abs(diff).toLocaleString('id-ID')})</span>
+                        ) : (
+                          <span className="text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded">+Rp {diff.toLocaleString('id-ID')}</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-right">
+                        <button
+                          onClick={() => handlePrintZReport(s)}
+                          className="bg-gray-800 hover:bg-gray-900 text-white px-2.5 py-1 rounded text-xs font-semibold"
+                          title="Cetak Struk Rekapitulasi Z-Report"
+                        >
+                          Cetak Z-Report
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {shifts.length === 0 && (
+                  <tr>
+                    <td colSpan={10} className="py-6 text-center text-gray-400">Belum ada riwayat shift yang tercatat.</td>
                   </tr>
                 )}
               </tbody>

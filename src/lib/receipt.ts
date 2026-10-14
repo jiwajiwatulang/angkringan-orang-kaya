@@ -138,3 +138,67 @@ export function generateEscPosReceipt(receipt: any, mode: 'all' | 'food' | 'drin
   txt += "\n\n\n"; // Feed paper
   return txt;
 }
+
+export function generateZReportReceipt(stats: any, settings?: StoreSettings): string {
+  const cfg = settings || getStoreSettings();
+  const width = cfg.paperWidth === '80mm' ? 48 : 32;
+  const divider = "-".repeat(width) + "\n";
+  const doubleDivider = "=".repeat(width) + "\n";
+
+  const center = (text: string): string => {
+    if (text.length >= width) return text.substring(0, width) + "\n";
+    const pad = Math.floor((width - text.length) / 2);
+    return " ".repeat(pad) + text + "\n";
+  };
+
+  const lineTwoCols = (left: string, right: string): string => {
+    const space = width - left.length - right.length;
+    if (space <= 0) {
+      return left + "\n" + " ".repeat(Math.max(0, width - right.length)) + right + "\n";
+    }
+    return left + " ".repeat(space) + right + "\n";
+  };
+
+  let txt = "";
+  txt += center(cfg.storeName.toUpperCase());
+  if (cfg.storeAddress) txt += center(cfg.storeAddress);
+  txt += doubleDivider;
+  txt += center("LAPORAN TUTUP SHIFT");
+  txt += center("(Z-REPORT)");
+  txt += doubleDivider;
+
+  txt += lineTwoCols("Operator:", stats.operatorName || 'Kasir');
+  txt += lineTwoCols("Buka:", new Date(stats.startTime).toLocaleString('id-ID'));
+  txt += lineTwoCols("Tutup:", stats.endTime ? new Date(stats.endTime).toLocaleString('id-ID') : new Date().toLocaleString('id-ID'));
+  txt += lineTwoCols("Jml Transaksi:", (stats.totalTransactions || 0) + " nota");
+  txt += divider;
+
+  txt += lineTwoCols("Modal Awal Kas:", formatCurrency(stats.startingCash || 0));
+  txt += lineTwoCols("Penjualan Tunai:", formatCurrency(stats.cashSales || 0));
+  txt += lineTwoCols("Penjualan Non-Tunai:", formatCurrency(stats.nonCashSales || 0));
+  if (stats.cashIn > 0) txt += lineTwoCols("Kas Masuk (+):", formatCurrency(stats.cashIn));
+  if (stats.cashOut > 0) txt += lineTwoCols("Kas Keluar (-):", "-" + formatCurrency(stats.cashOut));
+  if (stats.cashRefunds > 0) txt += lineTwoCols("Refund Tunai (-):", "-" + formatCurrency(stats.cashRefunds));
+  txt += divider;
+
+  txt += lineTwoCols("Kas Seharusnya:", formatCurrency(stats.expectedCash || 0));
+  txt += lineTwoCols("Fisik Dihitung:", formatCurrency(stats.actualCash || 0));
+  txt += divider;
+
+  const diff = stats.cashDifference || 0;
+  const statusStr = diff === 0 ? "[ PAS ]" : diff > 0 ? ("+ " + formatCurrency(diff)) : ("- " + formatCurrency(Math.abs(diff)));
+  txt += lineTwoCols("SELISIH KAS:", statusStr);
+  txt += doubleDivider;
+
+  if (stats.notes) {
+    txt += "Catatan: " + stats.notes + "\n";
+    txt += divider;
+  }
+
+  txt += center("Kasir / Supervisor:");
+  txt += "\n\n\n";
+  txt += center("( " + (stats.operatorName || 'Kasir') + " )");
+  txt += "\n\n\n";
+
+  return txt;
+}
