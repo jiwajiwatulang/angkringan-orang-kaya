@@ -92,6 +92,27 @@ export default function POSPage() {
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [tempDiscountVal, setTempDiscountVal] = useState("");
 
+  // --- ATOMIC MODAL & HISTORY MANAGER ---
+  const isProgrammaticPopRef = useRef<boolean>(false);
+  const modDirtyRef = useRef<boolean>(false);
+
+  const pushModalHistory = (name: string) => {
+    if (typeof window !== "undefined") {
+      try {
+        window.history.pushState({ sakunotaModal: name }, "");
+      } catch (_) {}
+    }
+  };
+
+  const popModalHistory = () => {
+    if (typeof window !== "undefined" && window.history.state?.sakunotaModal) {
+      isProgrammaticPopRef.current = true;
+      try {
+        window.history.back();
+      } catch (_) {}
+    }
+  };
+
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [cartSheetDragY, setCartSheetDragY] = useState(0);
   const cartSheetTouchStartRef = useRef<number | null>(null);
@@ -121,21 +142,13 @@ export default function POSPage() {
   const openMobileCart = () => {
     setIsMobileCartOpen(true);
     setCartSheetDragY(0);
-    if (typeof window !== "undefined") {
-      try {
-        window.history.pushState({ modal: "mobile-cart" }, "");
-      } catch (_) {}
-    }
+    pushModalHistory("cart");
   };
 
   const closeMobileCart = () => {
     setIsMobileCartOpen(false);
     setCartSheetDragY(0);
-    if (typeof window !== "undefined" && window.history.state?.modal === "mobile-cart") {
-      try {
-        window.history.back();
-      } catch (_) {}
-    }
+    popModalHistory();
   };
 
   // Modifier Bottom Sheet Drag State
@@ -155,7 +168,7 @@ export default function POSPage() {
 
   const handleModTouchEnd = () => {
     if (modSheetDragY > 70) {
-      setActiveModItem(null);
+      handleCloseModifiers();
     }
     setModSheetDragY(0);
     modSheetTouchStartRef.current = null;
@@ -357,26 +370,66 @@ export default function POSPage() {
           setSplitCustomAmount("");
           setSplitCashTendered("");
           setIsSplitBillModalOpen(false);
+          popModalHistory();
         }
       });
     } else {
       setIsSplitBillModalOpen(false);
+      popModalHistory();
     }
+  };
+
+  const openPaymentModal = () => {
+    setIsPaymentModalOpen(true);
+    setPaymentSheetDragY(0);
+    pushModalHistory("payment");
   };
 
   const handleClosePaymentModal = () => {
     const isDirty = customerName.trim() !== "" || 
       notes.trim() !== "" || 
-      cashTendered.trim() !== "";
+      (cashTendered.trim() !== "" && cashTendered !== "0") ||
+      checkoutProof !== null;
     if (isDirty) {
       setUnsavedConfirm({
         isOpen: true,
         title: "Batalkan Pembayaran?",
-        message: "Data pelanggan atau uang diterima belum diproses. Yakin ingin membatalkan?",
-        onDiscard: () => setIsPaymentModalOpen(false)
+        message: "Data pelanggan, uang diterima, atau bukti pembayaran belum diproses. Yakin ingin membatalkan?",
+        onDiscard: () => {
+          setIsPaymentModalOpen(false);
+          setPaymentSheetDragY(0);
+          popModalHistory();
+        }
       });
     } else {
       setIsPaymentModalOpen(false);
+      setPaymentSheetDragY(0);
+      popModalHistory();
+    }
+  };
+
+  const handleCloseModifiers = () => {
+    const totalSelected = Object.values(selectedModOptions).flat().length;
+    const hasCustomSelection = modDirtyRef.current || (totalSelected > 0 && Object.values(selectedModOptions).flat().some(o => (o.harga || 0) > 0 || totalSelected > 1));
+    if (hasCustomSelection) {
+      setUnsavedConfirm({
+        isOpen: true,
+        title: "Batalkan Pilihan Varian?",
+        message: "Pilihan topping / varian menu yang sudah Anda pilih belum ditambahkan ke keranjang. Yakin ingin membatalkan?",
+        onDiscard: () => {
+          modDirtyRef.current = false;
+          setActiveModItem(null);
+          setSelectedModOptions({});
+          setModSheetDragY(0);
+          popModalHistory();
+        }
+      });
+    } else {
+      modDirtyRef.current = false;
+      setActiveModItem(null);
+      setSelectedModOptions({});
+      setModSheetDragY(0);
+      popModalHistory();
     }
   };
 
@@ -406,14 +459,18 @@ export default function POSPage() {
       App.addListener('backButton', ({ canGoBack }) => {
         if (unsavedConfirm?.isOpen) {
           setUnsavedConfirm(null);
-        } else if (activeModItem) {
-          setActiveModItem(null);
-        } else if (activeVariantGroup) {
-          setActiveVariantGroup(null);
-        } else if (isPaymentModalOpen) {
-          handleClosePaymentModal();
+        } else if (receiptData) {
+          closeReceipt();
+        } else if (blindCloseResult) {
+          setBlindCloseResult(null);
         } else if (isSplitBillModalOpen) {
           handleCloseSplitBill();
+        } else if (isPaymentModalOpen) {
+          handleClosePaymentModal();
+        } else if (activeModItem) {
+          handleCloseModifiers();
+        } else if (activeVariantGroup) {
+          setActiveVariantGroup(null);
         } else if (isRefundModalOpen) {
           setIsRefundModalOpen(false);
         } else if (isDiscountModalOpen) {
@@ -424,12 +481,10 @@ export default function POSPage() {
           handleCloseOpenShift();
         } else if (isCloseShiftModalOpen) {
           handleCloseCloseShift();
-        } else if (receiptData) {
-          setReceiptData(null);
-        } else if (blindCloseResult) {
-          setBlindCloseResult(null);
         } else if (isMobileCartOpen) {
-          setIsMobileCartOpen(false);
+          closeMobileCart();
+        } else if (view === 'menu' && selectedTable) {
+          setView('meja');
         } else if (canGoBack) {
           window.history.back();
         }
@@ -457,6 +512,8 @@ export default function POSPage() {
     receiptData,
     blindCloseResult,
     isMobileCartOpen,
+    view,
+    selectedTable,
     shiftOperatorName,
     shiftStartingCash,
     shiftNotes,
@@ -470,23 +527,31 @@ export default function POSPage() {
     splitCashTendered,
     customerName,
     notes,
+    selectedModOptions,
   ]);
 
   // Web & Mobile Safari / Chrome PopState Back Navigation Guard
   useEffect(() => {
     const handlePopState = () => {
+      if (isProgrammaticPopRef.current) {
+        isProgrammaticPopRef.current = false;
+        return;
+      }
+
       if (unsavedConfirm?.isOpen) {
         setUnsavedConfirm(null);
-      } else if (activeModItem) {
-        setActiveModItem(null);
-        setModSheetDragY(0);
-      } else if (activeVariantGroup) {
-        setActiveVariantGroup(null);
-      } else if (isPaymentModalOpen) {
-        handleClosePaymentModal();
-        setPaymentSheetDragY(0);
+      } else if (receiptData) {
+        setReceiptData(null);
+      } else if (blindCloseResult) {
+        setBlindCloseResult(null);
       } else if (isSplitBillModalOpen) {
         handleCloseSplitBill();
+      } else if (isPaymentModalOpen) {
+        handleClosePaymentModal();
+      } else if (activeModItem) {
+        handleCloseModifiers();
+      } else if (activeVariantGroup) {
+        setActiveVariantGroup(null);
       } else if (isRefundModalOpen) {
         setIsRefundModalOpen(false);
       } else if (isDiscountModalOpen) {
@@ -497,13 +562,11 @@ export default function POSPage() {
         handleCloseOpenShift();
       } else if (isCloseShiftModalOpen) {
         handleCloseCloseShift();
-      } else if (receiptData) {
-        setReceiptData(null);
-      } else if (blindCloseResult) {
-        setBlindCloseResult(null);
       } else if (isMobileCartOpen) {
         setIsMobileCartOpen(false);
         setCartSheetDragY(0);
+      } else if (view === 'menu' && selectedTable) {
+        setView('meja');
       }
     };
 
@@ -513,18 +576,29 @@ export default function POSPage() {
     };
   }, [
     unsavedConfirm,
+    receiptData,
+    blindCloseResult,
+    isSplitBillModalOpen,
+    isPaymentModalOpen,
     activeModItem,
     activeVariantGroup,
-    isPaymentModalOpen,
-    isSplitBillModalOpen,
     isRefundModalOpen,
     isDiscountModalOpen,
     isCashMovementModalOpen,
     isOpenShiftModalOpen,
     isCloseShiftModalOpen,
-    receiptData,
-    blindCloseResult,
     isMobileCartOpen,
+    view,
+    selectedTable,
+    customerName,
+    notes,
+    cashTendered,
+    selectedModOptions,
+    tempDiscountVal,
+    discountValue,
+    splitSelectedItems,
+    splitCustomAmount,
+    splitCashTendered,
   ]);
 
   const loadData = async () => {
@@ -799,7 +873,7 @@ export default function POSPage() {
     if (cart.length > 0) {
       if (!customerName.trim()) {
         alert("Mohon isi Nama Pelanggan terlebih dahulu.");
-        setIsPaymentModalOpen(true);
+        openPaymentModal();
         return;
       }
       const saved: any = await processPayment(true, 'unpaid');
@@ -1003,6 +1077,9 @@ export default function POSPage() {
 
   const openModifierModal = (item: any) => {
     setActiveModItem(item);
+    setModSheetDragY(0);
+    pushModalHistory("modifier");
+    modDirtyRef.current = false;
     const defaults: Record<string, any[]> = {};
     if (item.modifiers && item.modifiers.length > 0) {
       item.modifiers.forEach((g: any) => {
@@ -1017,6 +1094,7 @@ export default function POSPage() {
   };
 
   const toggleModOption = (group: any, option: any) => {
+    modDirtyRef.current = true;
     setSelectedModOptions(prev => {
       const current = prev[group.id] || [];
       const exists = current.some((o: any) => o.id === option.id);
@@ -1063,7 +1141,11 @@ export default function POSPage() {
     const finalPrice = activeModItem.harga + extraTotal;
 
     addToCart(activeModItem, flatMods, finalPrice);
+    modDirtyRef.current = false;
     setActiveModItem(null);
+    setSelectedModOptions({});
+    setModSheetDragY(0);
+    popModalHistory();
   };
 
   const addToCart = (item: any, customModifiers?: { groupName: string; optionName: string; harga: number }[], customPrice?: number) => {
@@ -1270,12 +1352,16 @@ export default function POSPage() {
       };
       
       setReceiptData(newReceipt);
+      pushModalHistory("receipt");
 
       resetCart();
       setOrderType("Dine-in");
       setSelectedTable("");
       setView('meja');
       setIsPaymentModalOpen(false);
+      setIsMobileCartOpen(false);
+      setCartSheetDragY(0);
+      setPaymentSheetDragY(0);
       loadData();
 
       if (status === 'paid') {
@@ -1306,6 +1392,7 @@ export default function POSPage() {
       items: [...cart],
       total: totalPrice
     });
+    pushModalHistory("receipt");
   };
 
   const generateRawBTText = (receipt: any, mode: string) => {
@@ -1366,7 +1453,10 @@ export default function POSPage() {
       setPrintMode('all');
     }, 100);
   };
-  const closeReceipt = () => setReceiptData(null);
+  const closeReceipt = () => {
+    setReceiptData(null);
+    popModalHistory();
+  };
 
 
   const renderCartInner = (isMobile: boolean) => (
@@ -1564,7 +1654,7 @@ export default function POSPage() {
             </button>
           )}
           <button 
-            onClick={() => setIsPaymentModalOpen(true)} 
+            onClick={openPaymentModal} 
             className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-extrabold text-sm md:text-base shadow-md active:scale-95 transition-all disabled:opacity-40" 
             disabled={cart.length === 0}
           >
@@ -1761,7 +1851,7 @@ export default function POSPage() {
                   )}
               </div>
             </div>
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-2">
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-2 shrink-0 bg-white dark:bg-gray-800">
               
                 {cart.length > 0 && (discountAmount > 0 || serviceAmount > 0 || taxAmount > 0) && (
                   <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl space-y-1 text-xs text-gray-600 dark:text-gray-400 border border-gray-100 dark:border-gray-800">
@@ -2459,7 +2549,7 @@ export default function POSPage() {
       {activeModItem && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
-          onClick={() => setActiveModItem(null)}
+          onClick={handleCloseModifiers}
         >
           <div 
             className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-200 dark:border-gray-700 relative flex flex-col max-h-[85vh] transition-transform ease-out"
@@ -2475,7 +2565,7 @@ export default function POSPage() {
               onTouchStart={handleModTouchStart}
               onTouchMove={handleModTouchMove}
               onTouchEnd={handleModTouchEnd}
-              onClick={() => setActiveModItem(null)}
+              onClick={handleCloseModifiers}
             >
               <div className="w-14 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mb-1"></div>
               <span className="text-[10px] text-gray-400 font-semibold flex items-center gap-1">
@@ -2498,7 +2588,7 @@ export default function POSPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setActiveModItem(null)}
+                onClick={handleCloseModifiers}
                 className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white flex items-center justify-center text-sm font-bold active:scale-90 transition-all"
               >
                 ✕
@@ -2579,7 +2669,7 @@ export default function POSPage() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setActiveModItem(null)}
+                  onClick={handleCloseModifiers}
                   className="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors"
                 >
                   Batal
