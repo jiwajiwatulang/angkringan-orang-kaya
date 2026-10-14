@@ -117,7 +117,7 @@ export default function PengaturanPrinterPage() {
         <div>
           <Link
             href="/admin/pengaturan"
-            className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 mb-1"
+            className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 mb-1"
           >
             <span>← Kembali ke Pengaturan</span>
           </Link>
@@ -130,7 +130,7 @@ export default function PengaturanPrinterPage() {
         <button
           onClick={handleTestPrint}
           disabled={isPrintingTest}
-          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
+          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl shadow-lg shadow-blue-600/20 active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
         >
           <span>🖨️</span>
           <span>{isPrintingTest ? "Mencetak..." : "Tes Cetak Struk"}</span>
@@ -146,7 +146,7 @@ export default function PengaturanPrinterPage() {
           <div className="flex items-center gap-2">
             <span
               className={`w-3 h-3 rounded-full ${
-                selectedMac ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+                selectedMac ? "bg-blue-500 animate-pulse" : "bg-amber-500"
               }`}
             />
             <h3 className="text-base font-black text-gray-900 dark:text-white">
@@ -205,8 +205,8 @@ export default function PengaturanPrinterPage() {
                     onClick={() => handleSelectPrinter(dev.address)}
                     className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                       isSelected
-                        ? "bg-emerald-600 text-white font-black shadow-md shadow-emerald-600/20"
-                        : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-emerald-50 hover:text-emerald-700"
+                        ? "bg-blue-600 text-white font-black shadow-md shadow-blue-600/20"
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
                     }`}
                   >
                     {isSelected ? "✓ Terpilih" : "Gunakan Printer Ini"}
@@ -230,15 +230,15 @@ export default function PengaturanPrinterPage() {
         <div className="flex gap-2">
           <input
             type="text"
-            placeholder="Contoh: 66:22:BB:77:88:99"
+            placeholder="66:22:BB:77:88:99"
             value={selectedMac}
             onChange={(e) => setSelectedMac(e.target.value.trim())}
-            className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 text-xs font-mono font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+            className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 text-xs font-mono font-bold text-gray-900 dark:text-white outline-none focus:border-blue-500"
           />
           <button
             type="button"
             onClick={() => handleSelectPrinter(selectedMac)}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
           >
             Simpan
           </button>

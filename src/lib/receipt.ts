@@ -14,10 +14,17 @@ export function generateEscPosReceipt(receipt: any, mode: 'all' | 'food' | 'drin
 
   const lineTwoCols = (left: string, right: string): string => {
     const space = width - left.length - right.length;
-    if (space <= 0) {
-      return `${left}\n${right.padStart(width, " ")}\n`;
+    if (space >= 0) {
+      return `${left}${" ".repeat(space)}${right}\n`;
     }
-    return `${left}${" ".repeat(space)}${right}\n`;
+    const maxLeftWidth = width - right.length - 1;
+    if (maxLeftWidth > 10) {
+      const firstLineLeft = left.substring(0, maxLeftWidth);
+      const remainingLeft = left.substring(maxLeftWidth);
+      const firstLineSpace = width - firstLineLeft.length - right.length;
+      return `${firstLineLeft}${" ".repeat(Math.max(1, firstLineSpace))}${right}\n   ${remainingLeft.trim()}\n`;
+    }
+    return `${left}\n${right.padStart(width, " ")}\n`;
   };
 
   const formatCurrency = (val: number): string => `Rp ${val.toLocaleString('id-ID')}`;

@@ -268,6 +268,12 @@ export async function refreshTableStatus(tableId: number, justPaid: boolean = fa
     await setTableStatus(tableId, 'open');
   } else if (justPaid) {
     await setTableStatus(tableId, 'lunas');
+  } else {
+    const tableOrders = await db.table('orders').where('tableId').equals(tableId).toArray();
+    const hasUnpaid = tableOrders.some((o: any) => o.status === 'unpaid');
+    if (!hasUnpaid) {
+      await setTableStatus(tableId, 'kosong');
+    }
   }
 }
 
@@ -275,6 +281,13 @@ export async function clearTable(tableId: number) {
   const unpaid = await countUnpaidOrdersForTable(tableId);
   if (unpaid > 0) {
     throw new Error('Masih ada tagihan yang belum lunas di meja ini.');
+  }
+  // Lepas kaitan meja dari order yang sudah lunas/void agar tidak nyangkut ke pembeli baru
+  const tableOrders = await db.table('orders').where('tableId').equals(tableId).toArray();
+  for (const o of tableOrders) {
+    if (o.status === 'paid' || o.status === 'void') {
+      await db.table('orders').update(o.id, { tableId: null, isTableCleared: true });
+    }
   }
   await setTableStatus(tableId, 'kosong');
 }
@@ -469,6 +482,10 @@ export async function createOrder(data: any) {
           timestamp: new Date().toISOString()
         });
       }
+    }
+
+    if (data.tableId) {
+      await setTableStatus(data.tableId, isPaid ? 'lunas' : 'open');
     }
 
     return { id: orderId, createdAt: new Date().toISOString() };

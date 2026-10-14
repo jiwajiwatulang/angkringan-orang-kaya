@@ -16,6 +16,7 @@ export default function PengaturanProfilPage() {
   const [storePhone, setStorePhone] = useState(storeSettings.storePhone || "");
   const [receiptFooter, setReceiptFooter] = useState(storeSettings.receiptFooter || "Terima Kasih atas Kunjungan Anda\nSilakan Datang Kembali");
   const [paperWidth, setPaperWidth] = useState<'58mm' | '80mm'>(storeSettings.paperWidth || "58mm");
+  const [storeLogo, setStoreLogo] = useState(storeSettings.storeLogo || "");
 
   const [unsavedConfirm, setUnsavedConfirm] = useState<{
     isOpen: boolean;
@@ -28,7 +29,51 @@ export default function PengaturanProfilPage() {
     setStorePhone(storeSettings.storePhone || "");
     setReceiptFooter(storeSettings.receiptFooter || "Terima Kasih atas Kunjungan Anda\nSilakan Datang Kembali");
     setPaperWidth(storeSettings.paperWidth || "58mm");
+    setStoreLogo(storeSettings.storeLogo || "");
   }, [storeSettings]);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Harap pilih file gambar (JPG, PNG, atau WebP)");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (readerEvent) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxDim = 256;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL("image/webp", 0.85);
+          setStoreLogo(compressed);
+          showToast("Logo berhasil dimuat!", "info");
+        }
+      };
+      img.src = readerEvent.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const isDirty = () => {
     return (
@@ -36,7 +81,8 @@ export default function PengaturanProfilPage() {
       storeAddress !== (storeSettings.storeAddress || "") ||
       storePhone !== (storeSettings.storePhone || "") ||
       receiptFooter !== (storeSettings.receiptFooter || "Terima Kasih atas Kunjungan Anda\nSilakan Datang Kembali") ||
-      paperWidth !== (storeSettings.paperWidth || "58mm")
+      paperWidth !== (storeSettings.paperWidth || "58mm") ||
+      storeLogo !== (storeSettings.storeLogo || "")
     );
   };
 
@@ -77,7 +123,7 @@ export default function PengaturanProfilPage() {
         removeListener.remove();
       }
     };
-  }, [storeName, storeAddress, storePhone, receiptFooter, paperWidth, unsavedConfirm, storeSettings, router]);
+  }, [storeName, storeAddress, storePhone, receiptFooter, paperWidth, storeLogo, unsavedConfirm, storeSettings, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,10 +135,11 @@ export default function PengaturanProfilPage() {
         storePhone: storePhone.trim(),
         receiptFooter: receiptFooter.trim(),
         paperWidth: paperWidth,
+        storeLogo: storeLogo,
       };
       await saveStoreSettingsAsync(updated);
       await refreshSettings();
-      showToast("Profil usaha & struk berhasil disimpan!", "success");
+      showToast("Profil usaha & logo berhasil disimpan!", "success");
     } catch (err: any) {
       alert("Gagal menyimpan profil: " + err.message);
     }
@@ -106,7 +153,7 @@ export default function PengaturanProfilPage() {
           <button
             type="button"
             onClick={() => handleNavigateBack()}
-            className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 mb-1"
+            className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 mb-1"
           >
             <span>← Kembali ke Pengaturan</span>
           </button>
@@ -118,7 +165,7 @@ export default function PengaturanProfilPage() {
 
         <button
           onClick={handleSubmit}
-          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl shadow-lg shadow-blue-600/20 active:scale-95 transition-all"
         >
           Simpan Profil
         </button>
@@ -128,6 +175,45 @@ export default function PengaturanProfilPage() {
         {/* Form Inputs (2 Cols) */}
         <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-4">
           <div className="bg-white dark:bg-gray-900 p-5 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-sm space-y-4">
+            {/* Logo Usaha */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">
+                Logo Usaha / Struk:
+              </label>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center overflow-hidden shrink-0">
+                  {storeLogo ? (
+                    <img src={storeLogo} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl">🏪</span>
+                  )}
+                </div>
+                <div className="space-y-1.5 flex-1">
+                  <div className="flex gap-2">
+                    <label className="cursor-pointer px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors inline-block">
+                      <span>Pilih Gambar Logo</span>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        onChange={handleLogoUpload}
+                      />
+                    </label>
+                    {storeLogo && (
+                      <button
+                        type="button"
+                        onClick={() => setStoreLogo("")}
+                        className="px-3 py-1.5 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors"
+                      >
+                        Hapus
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Format JPG, PNG, WebP. Maks 256x256 px.</p>
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
                 Nama Usaha / Toko:
@@ -137,7 +223,7 @@ export default function PengaturanProfilPage() {
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
                 placeholder="Contoh: Angkringan Orang Kaya"
-                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-blue-500"
                 required
               />
             </div>

@@ -18,6 +18,7 @@ export interface StoreSettings {
   enableService: boolean;
   onboardingCompleted?: boolean; // Status penyelesaian onboarding toko baru
   businessType?: string; // Jenis usaha: 'angkringan' | 'kafe' | 'warung' | 'restoran' | 'retail'
+  storeLogo?: string; // Base64 data URL untuk logo usaha / struk
 }
 
 export const DEFAULT_SETTINGS: StoreSettings = {
@@ -38,6 +39,7 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   enableService: false,
   onboardingCompleted: true, // Default true agar existing instalasi tidak terganggu
   businessType: "angkringan",
+  storeLogo: "",
 };
 
 const STORAGE_KEY = "pos_store_settings";
