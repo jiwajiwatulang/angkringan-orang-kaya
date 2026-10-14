@@ -1,5 +1,90 @@
-﻿import { db, MenuItem, Order, OrderItem } from './dexie';
+import { db, MenuItem, Order, OrderItem } from './dexie';
 import initialData from './initialData.json';
+
+export function getDefaultModifiersForCategory(kategori: string, nama: string) {
+  const cat = (kategori || '').toLowerCase();
+  const name = (nama || '').toLowerCase();
+
+  const isDrink = cat.includes('minuman') || cat.includes('tea') || cat.includes('matcha') || 
+                  cat.includes('milkshake') || cat.includes('coffee') || cat.includes('drink') || 
+                  name.includes('teh') || name.includes('kopi') || name.includes('latte') || name.includes('juice');
+
+  if (isDrink) {
+    return [
+      {
+        id: 'mod_sweetness',
+        nama: 'Tingkat Kemanisan',
+        required: true,
+        minSelect: 1,
+        maxSelect: 1,
+        options: [
+          { id: 'sw_normal', nama: 'Normal Sugar', harga: 0 },
+          { id: 'sw_less', nama: 'Less Sugar', harga: 0 },
+          { id: 'sw_none', nama: 'No Sugar', harga: 0 },
+          { id: 'sw_extra', nama: 'Extra Sugar (+1k)', harga: 1000 }
+        ]
+      },
+      {
+        id: 'mod_ice',
+        nama: 'Pilihan Es',
+        required: true,
+        minSelect: 1,
+        maxSelect: 1,
+        options: [
+          { id: 'ice_normal', nama: 'Normal Ice', harga: 0 },
+          { id: 'ice_less', nama: 'Less Ice', harga: 0 },
+          { id: 'ice_none', nama: 'No Ice (Hangat/Panas)', harga: 0 }
+        ]
+      },
+      {
+        id: 'mod_topping',
+        nama: 'Topping Tambahan',
+        required: false,
+        minSelect: 0,
+        maxSelect: 3,
+        options: [
+          { id: 'top_boba', nama: 'Boba / Pearl', harga: 4000 },
+          { id: 'top_jelly', nama: 'Grass Jelly', harga: 3000 },
+          { id: 'top_shot', nama: 'Extra Shot Espresso', harga: 5000 }
+        ]
+      }
+    ];
+  }
+
+  const isFood = cat.includes('makanan') || cat.includes('lauk') || cat.includes('sambel') ||
+                 name.includes('nasi') || name.includes('ayam') || name.includes('iga') || name.includes('sate') || name.includes('pindang');
+
+  if (isFood) {
+    return [
+      {
+        id: 'mod_spicy',
+        nama: 'Level Pedas',
+        required: true,
+        minSelect: 1,
+        maxSelect: 1,
+        options: [
+          { id: 'sp_none', nama: 'Tidak Pedas', harga: 0 },
+          { id: 'sp_mild', nama: 'Sedang (Normal)', harga: 0 },
+          { id: 'sp_hot', nama: 'Pedas Banget 🔥', harga: 0 }
+        ]
+      },
+      {
+        id: 'mod_addon_food',
+        nama: 'Tambahan Lauk / Pelengkap',
+        required: false,
+        minSelect: 0,
+        maxSelect: 3,
+        options: [
+          { id: 'ad_sambel', nama: 'Ekstra Sambel Cumi', harga: 5000 },
+          { id: 'ad_lalap', nama: 'Ekstra Lalapan Segar', harga: 2000 },
+          { id: 'ad_pete', nama: 'Tambah Pete Bakar', harga: 5000 }
+        ]
+      }
+    ];
+  }
+
+  return [];
+}
 
 let isInitializingMenus = false;
 
@@ -15,7 +100,8 @@ export async function getMenus() {
           harga: m.harga,
           kategori: m.kategori,
           isSoldOut: m.isSoldOut,
-          urutan: m.urutan
+          urutan: m.urutan,
+          modifiers: (m as any).modifiers || getDefaultModifiersForCategory(m.kategori, m.nama)
         }));
         await db.table('menuItems').bulkAdd(menusToInsert);
       }
@@ -43,6 +129,17 @@ export async function getMenus() {
   if (duplicateIds.length > 0) {
     await db.table('menuItems').bulkDelete(duplicateIds);
     menus = uniqueMenus;
+  }
+
+  // Auto-enrich item menu jika belum memiliki modifier
+  for (const m of menus) {
+    if (!m.modifiers || m.modifiers.length === 0) {
+      const defaultMods = getDefaultModifiersForCategory(m.kategori, m.nama);
+      if (defaultMods.length > 0) {
+        m.modifiers = defaultMods;
+        await db.table('menuItems').update(m.id, { modifiers: defaultMods });
+      }
+    }
   }
 
   return menus;
@@ -182,15 +279,34 @@ export async function getOrders() {
   return orders.map(order => {
     const items = orderItems.filter(i => i.orderId === order.id).map(i => ({
       ...i,
-      menuItem: menus.find(m => m.id === i.menuItemId) || { nama: 'Menu Terhapus', kategori: 'Lainnya' }
+      menuItem: menus.find(m => m.id === i.menuItemId) || { nama: 'Menu Terhapus', kategori: 'Lainnya' },
+      selectedModifiers: i.selectedModifiers || []
     }));
     return { ...order, items };
   });
 }
 
 export async function createOrder(data: any) {
+  // Idempotency check pada level database (OWASP Compliance)
+  if (data.idempotencyKey) {
+    const existing = await db.table('orders').where({ idempotencyKey: data.idempotencyKey }).first();
+    if (existing) {
+      console.warn("Idempotency guard hit: Order already processed with key", data.idempotencyKey);
+      return { id: existing.id, createdAt: existing.createdAt };
+    }
+  }
+
+  // Cap transaksi langsung ke shift kasir yang sedang aktif
+  let currentShiftId = data.shiftId || null;
+  if (!currentShiftId) {
+    const active = await db.table('shifts').where({ status: 'open' }).first();
+    if (active) currentShiftId = active.id;
+  }
+
   return await db.transaction('rw', 'orders', 'orderItems', async () => {
     const orderId = await db.table('orders').add({
+      shiftId: currentShiftId,
+      idempotencyKey: data.idempotencyKey || null,
       tableId: data.tableId || null,
       subtotal: data.subtotal || data.total,
       discount: data.discount || 0,
@@ -215,7 +331,8 @@ export async function createOrder(data: any) {
       orderId: orderId as number,
       menuItemId: item.id || item.menuItemId,
       qty: item.qty,
-      hargaSatuan: item.harga || item.hargaSatuan
+      hargaSatuan: item.harga || item.hargaSatuan,
+      selectedModifiers: item.selectedModifiers || []
     }));
 
     await db.table('orderItems').bulkAdd(itemsToInsert);
@@ -255,7 +372,8 @@ export async function updateOrder(id: number, data: any) {
       orderId: id,
       menuItemId: item.id || item.menuItemId,
       qty: item.qty,
-      hargaSatuan: item.harga || item.hargaSatuan
+      hargaSatuan: item.harga || item.hargaSatuan,
+      selectedModifiers: item.selectedModifiers || []
     }));
     await db.table('orderItems').bulkAdd(itemsToInsert);
     return { id };
@@ -341,6 +459,7 @@ export async function getShiftLiveStats(shiftId: number) {
 
   const allOrders = await db.table('orders').toArray();
   const shiftOrders = allOrders.filter(o => {
+    if (o.shiftId) return o.shiftId === shiftId;
     const orderTime = new Date(o.createdAt).getTime();
     const startTime = new Date(shift.startTime).getTime();
     const endTime = shift.endTime ? new Date(shift.endTime).getTime() : Date.now();
@@ -526,7 +645,8 @@ export async function importAllData(data: any) {
         harga: Number(m.harga),
         kategori: m.kategori || 'Umum',
         isSoldOut: Boolean(m.isSoldOut),
-        urutan: Number(m.urutan || 0)
+        urutan: Number(m.urutan || 0),
+        modifiers: m.modifiers || []
       }));
       await db.table('menuItems').bulkAdd(cleanMenus);
     }

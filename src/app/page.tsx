@@ -9,8 +9,8 @@ import { getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMoveme
 import { generateZReportReceipt } from '@/lib/receipt';
 import { generateEscPosReceipt } from '@/lib/receipt';
 
-type MenuItem = { id: number; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; };
-type CartItem = MenuItem & { qty: number };
+type MenuItem = { id: number; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; modifiers?: any[]; };
+type CartItem = MenuItem & { qty: number; selectedModifiers?: { groupName: string; optionName: string; harga: number }[]; itemKey?: string };
 
 export default function POSPage() {
   const [menuData, setMenuData] = useState<MenuItem[]>([]);
@@ -29,6 +29,11 @@ export default function POSPage() {
   const [isCloseShiftModalOpen, setIsCloseShiftModalOpen] = useState(false);
   const [isCashMovementModalOpen, setIsCashMovementModalOpen] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  // --- MODIFIERS & TRUE BLIND CLOSE STATES ---
+  const [activeModItem, setActiveModItem] = useState<any>(null);
+  const [selectedModOptions, setSelectedModOptions] = useState<Record<string, any[]>>({});
+  const [blindCloseResult, setBlindCloseResult] = useState<any>(null);
+
 
   // Form states for Shift
   const [shiftOperatorName, setShiftOperatorName] = useState("Kasir");
@@ -239,6 +244,7 @@ export default function POSPage() {
         operatorName: activeShift.operatorName
       });
       setIsCloseShiftModalOpen(false);
+      setBlindCloseResult(closed);
 
       // Otomatis cetak struk Z-Report
       const zReceiptText = generateZReportReceipt(closed, storeSettings);
@@ -302,24 +308,130 @@ export default function POSPage() {
       console.error(e);
     }
   };
-  const addToCart = (item: MenuItem) => {
-    if (item.isSoldOut) return;
-    setCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) return prev.map(i => i.id === item.id ? { ...i, qty: i.qty + 1 } : i);
-      return [...prev, { ...item, qty: 1 }];
+  const printReceiptText = async (rawText: string, jobName: string = 'Struk') => {
+    try {
+      const isAndroid = /android/i.test(navigator.userAgent);
+      const mac = localStorage.getItem('bt_printer_mac');
+      if (isAndroid && mac) {
+        try { await BluetoothSerial.connect({ address: mac }); } catch(e) {}
+        await BluetoothSerial.write({ address: mac, value: rawText });
+        alert("Berhasil dicetak langsung ke Printer Bluetooth!");
+      } else {
+        await Printer.printWebView({ name: jobName });
+      }
+    } catch (err: any) {
+      console.warn("Print error:", err);
+      try {
+        await Printer.printWebView({ name: jobName });
+      } catch(e) {
+        alert("Gagal mencetak struk: " + JSON.stringify(err));
+      }
+    }
+  };
+
+  const openModifierModal = (item: any) => {
+    setActiveModItem(item);
+    const defaults: Record<string, any[]> = {};
+    if (item.modifiers && item.modifiers.length > 0) {
+      item.modifiers.forEach((g: any) => {
+        if (g.minSelect >= 1 && g.options && g.options.length > 0) {
+          defaults[g.id] = [g.options[0]];
+        } else {
+          defaults[g.id] = [];
+        }
+      });
+    }
+    setSelectedModOptions(defaults);
+  };
+
+  const toggleModOption = (group: any, option: any) => {
+    setSelectedModOptions(prev => {
+      const current = prev[group.id] || [];
+      const exists = current.some((o: any) => o.id === option.id);
+
+      if (group.maxSelect === 1) {
+        return { ...prev, [group.id]: [option] };
+      } else {
+        if (exists) {
+          return { ...prev, [group.id]: current.filter((o: any) => o.id !== option.id) };
+        } else {
+          if (current.length >= group.maxSelect) {
+            alert(`Maksimal pilihan untuk "${group.nama}" adalah ${group.maxSelect}`);
+            return prev;
+          }
+          return { ...prev, [group.id]: [...current, option] };
+        }
+      }
     });
   };
 
-  const updateQty = (id: number, delta: number) => {
+  const handleConfirmModifiers = () => {
+    if (!activeModItem) return;
+    for (const g of (activeModItem.modifiers || [])) {
+      const selected = selectedModOptions[g.id] || [];
+      if (selected.length < g.minSelect) {
+        alert(`Mohon pilih minimal ${g.minSelect} untuk "${g.nama}"`);
+        return;
+      }
+    }
+
+    const flatMods: { groupName: string; optionName: string; harga: number }[] = [];
+    (activeModItem.modifiers || []).forEach((g: any) => {
+      const selected = selectedModOptions[g.id] || [];
+      selected.forEach((opt: any) => {
+        flatMods.push({
+          groupName: g.nama,
+          optionName: opt.nama,
+          harga: opt.harga || 0
+        });
+      });
+    });
+
+    const extraTotal = flatMods.reduce((sum, m) => sum + m.harga, 0);
+    const finalPrice = activeModItem.harga + extraTotal;
+
+    addToCart(activeModItem, flatMods, finalPrice);
+    setActiveModItem(null);
+  };
+
+  const addToCart = (item: any, customModifiers?: { groupName: string; optionName: string; harga: number }[], customPrice?: number) => {
+    if (item.isSoldOut) return;
+    
+    // Jika item memiliki modifier dan belum dipilih, buka modal pilihan
+    if (!customModifiers && item.modifiers && item.modifiers.length > 0) {
+      openModifierModal(item);
+      return;
+    }
+
+    const mods = customModifiers || [];
+    const itemPrice = customPrice !== undefined ? customPrice : item.harga;
+    const modSignature = mods.map(m => `${m.groupName}:${m.optionName}`).sort().join('|');
+    const itemKey = modSignature ? `${item.id}_${modSignature}` : `${item.id}`;
+
+    setCart(prev => {
+      const existing = prev.find(i => (i.itemKey || i.id.toString()) === itemKey);
+      if (existing) {
+        return prev.map(i => (i.itemKey || i.id.toString()) === itemKey ? { ...i, qty: i.qty + 1 } : i);
+      }
+      return [...prev, {
+        ...item,
+        harga: itemPrice,
+        qty: 1,
+        selectedModifiers: mods,
+        itemKey
+      }];
+    });
+  };
+
+  const updateQty = (keyOrId: string | number, delta: number) => {
     setCart(prev => prev.map(item => {
-      if (item.id === id) {
+      const currentKey = item.itemKey || item.id;
+      if (currentKey === keyOrId || item.id === keyOrId || currentKey.toString() === keyOrId.toString()) {
         return { ...item, qty: item.qty + delta };
       }
       return item;
     }).filter(item => item.qty > 0));
   };
-
   const resetCart = () => {
     setCart([]);
     setOldCart([]);
@@ -372,7 +484,9 @@ export default function POSPage() {
         if (existingOrder) targetOrderId = existingOrder.id;
       }
 
+      const idempotencyKey = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
       const payload: any = {
+        idempotencyKey,
         items: finalItems,
         subtotal: rawSubtotal,
         discount: discountAmount,
@@ -398,16 +512,23 @@ export default function POSPage() {
           // Merge items for implicit addition
           const existingOrder = activeOrders.find(o => o.id === targetOrderId);
           
-          const cartFormattedOld = existingOrder.items.map((i: any) => ({
-            id: i.menuItemId,
-            nama: menuData.find((m:any) => m.id === i.menuItemId)?.nama || 'Item',
-            harga: i.hargaSatuan,
-            kategori: menuData.find((m:any) => m.id === i.menuItemId)?.kategori || '',
-            qty: i.qty || i.quantity
-          }));
+          const cartFormattedOld = existingOrder.items.map((i: any) => {
+            const mods = i.selectedModifiers || [];
+            const modSignature = mods.map((m: any) => `${m.groupName}:${m.optionName}`).sort().join('|');
+            return {
+              id: i.menuItemId,
+              nama: menuData.find((m:any) => m.id === i.menuItemId)?.nama || 'Item',
+              harga: i.hargaSatuan,
+              kategori: menuData.find((m:any) => m.id === i.menuItemId)?.kategori || '',
+              qty: i.qty || i.quantity,
+              selectedModifiers: mods,
+              itemKey: modSignature ? `${i.menuItemId}_${modSignature}` : `${i.menuItemId}`
+            };
+          });
           
           cart.forEach(newItem => {
-            const exIdx = cartFormattedOld.findIndex((i:any) => i.id === newItem.id);
+            const newKey = newItem.itemKey || `${newItem.id}`;
+            const exIdx = cartFormattedOld.findIndex((i:any) => (i.itemKey || `${i.id}`) === newKey);
             if (exIdx >= 0) cartFormattedOld[exIdx].qty += newItem.qty;
             else cartFormattedOld.push(newItem);
           });
@@ -617,15 +738,26 @@ export default function POSPage() {
         )}
 
         {cart.map(item => (
-          <div key={item.id} className="flex justify-between items-start border-b border-gray-100 dark:border-gray-700 pb-4">
+          <div key={item.itemKey || item.id} className="flex justify-between items-start border-b border-gray-100 dark:border-gray-700 pb-4">
             <div className="flex-1 pr-3">
               <h4 className="font-bold text-gray-800 dark:text-gray-100 text-sm md:text-base leading-tight">{item.nama}</h4>
+              {item.selectedModifiers && item.selectedModifiers.length > 0 && (
+                <div className="mt-1 space-y-0.5">
+                  {item.selectedModifiers.map((m: any, mIdx: number) => (
+                    <div key={mIdx} className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                      <span>•</span>
+                      <span>{m.optionName}</span>
+                      {m.harga > 0 && <span className="font-bold text-yellow-600 dark:text-yellow-500">(+Rp {m.harga.toLocaleString('id-ID')})</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
               <p className="text-yellow-600 dark:text-yellow-500 text-sm font-black mt-1">Rp {item.harga.toLocaleString('id-ID')}</p>
             </div>
             <div className="flex items-center bg-gray-50 dark:bg-gray-900 rounded-lg p-1 border border-gray-200 dark:border-gray-700 shadow-sm">
-              <button onClick={() => updateQty(item.id, -1)} className="w-8 h-8 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 flex items-center justify-center font-black transition-colors">-</button>
+              <button onClick={() => updateQty(item.itemKey || item.id, -1)} className="w-8 h-8 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 flex items-center justify-center font-black transition-colors">-</button>
               <span className="w-8 text-center font-bold text-gray-800 dark:text-white text-sm">{item.qty}</span>
-              <button onClick={() => updateQty(item.id, 1)} className="w-8 h-8 rounded-md bg-yellow-500 hover:bg-yellow-400 text-white flex items-center justify-center font-black transition-colors">+</button>
+              <button onClick={() => updateQty(item.itemKey || item.id, 1)} className="w-8 h-8 rounded-md bg-yellow-500 hover:bg-yellow-400 text-white flex items-center justify-center font-black transition-colors">+</button>
             </div>
           </div>
         ))}
@@ -1405,27 +1537,13 @@ export default function POSPage() {
               </div>
             </div>
 
-            {/* Ringkasan Perhitungan Sistem */}
-            <div className="bg-gray-50 dark:bg-gray-900/80 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2 text-xs text-gray-600 dark:text-gray-300 mb-4">
-              <div className="flex justify-between"><span>Modal Awal Kas:</span><span className="font-bold">Rp {currentShiftStats.startingCash?.toLocaleString('id-ID')}</span></div>
-              <div className="flex justify-between text-green-700 font-bold"><span>+ Penjualan Tunai:</span><span>Rp {currentShiftStats.cashSales?.toLocaleString('id-ID')}</span></div>
-              <div className="flex justify-between text-blue-700 font-bold"><span>+ Penjualan Non-Tunai (QRIS/Transfer):</span><span>Rp {currentShiftStats.nonCashSales?.toLocaleString('id-ID')}</span></div>
-              {currentShiftStats.cashIn > 0 && (
-                <div className="flex justify-between text-green-600"><span>+ Kas Masuk Manual:</span><span>Rp {currentShiftStats.cashIn?.toLocaleString('id-ID')}</span></div>
-              )}
-              {currentShiftStats.cashOut > 0 && (
-                <div className="flex justify-between text-red-600"><span>- Kas Keluar (Biaya):</span><span>-Rp {currentShiftStats.cashOut?.toLocaleString('id-ID')}</span></div>
-              )}
-              {currentShiftStats.cashRefunds > 0 && (
-                <div className="flex justify-between text-red-600 font-bold"><span>- Refund Tunai Pelanggan:</span><span>-Rp {currentShiftStats.cashRefunds?.toLocaleString('id-ID')}</span></div>
-              )}
-              <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between text-sm font-black text-gray-900 dark:text-white">
-                <span>Total Kas Fisik Seharusnya:</span>
-                <span>Rp {currentShiftStats.expectedCash?.toLocaleString('id-ID')}</span>
-              </div>
+            {/* Petunjuk Blind Close */}
+            <div className="bg-blue-50 dark:bg-blue-950/40 p-4 rounded-2xl border border-blue-200 dark:border-blue-800 mb-5">
+              <p className="text-xs font-bold text-blue-900 dark:text-blue-300 mb-1">🔒 Prosedur Blind Close:</p>
+              <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
+                Silakan hitung seluruh uang fisik (kertas & koin) yang ada di laci kasir saat ini. Angka sistem sengaja disembunyikan agar hasil penghitungan murni objektif.
+              </p>
             </div>
-
-            {/* Input Uang Fisik Kasir (Blind Close) */}
             <form onSubmit={handleCloseShiftSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1">
@@ -1483,6 +1601,230 @@ export default function POSPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Pilihan Modifier & Add-on Menu */}
+      {activeModItem && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-200 dark:border-gray-700 my-8">
+            <div className="flex justify-between items-start pb-4 border-b border-gray-100 dark:border-gray-700">
+              <div>
+                <span className="text-[10px] font-bold tracking-widest text-blue-600 dark:text-blue-400 uppercase">Pilihan Menu</span>
+                <h3 className="text-lg font-black text-gray-900 dark:text-white leading-tight">{activeModItem.nama}</h3>
+                <p className="text-xs text-yellow-600 dark:text-yellow-400 font-bold mt-0.5">
+                  Harga Dasar: Rp {activeModItem.harga.toLocaleString('id-ID')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveModItem(null)}
+                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white flex items-center justify-center text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Daftar Kelompok Modifier */}
+            <div className="mt-4 space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {(activeModItem.modifiers || []).map((group: any) => {
+                const selected = selectedModOptions[group.id] || [];
+                const isSingle = group.maxSelect === 1;
+
+                return (
+                  <div key={group.id} className="bg-gray-50 dark:bg-gray-900/60 p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700">
+                    <div className="flex justify-between items-center mb-2.5">
+                      <span className="text-xs font-black text-gray-800 dark:text-gray-200">
+                        {group.nama}
+                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        group.minSelect >= 1 
+                          ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400' 
+                          : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                      }`}>
+                        {group.minSelect >= 1 ? (isSingle ? 'Wajib (Pilih 1)' : `Wajib (Min ${group.minSelect})`) : 'Opsional'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-1.5">
+                      {group.options.map((opt: any) => {
+                        const isChecked = selected.some((o: any) => o.id === opt.id);
+
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => toggleModOption(group, opt)}
+                            className={`w-full p-2.5 rounded-xl border text-left flex justify-between items-center transition-all ${
+                              isChecked
+                                ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-500 dark:border-blue-500 text-blue-900 dark:text-blue-100 font-bold shadow-sm'
+                                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <span className={`w-4 h-4 rounded-${isSingle ? 'full' : 'md'} border flex items-center justify-center text-[10px] ${
+                                isChecked ? 'bg-blue-600 border-blue-600 text-white font-bold' : 'border-gray-300 dark:border-gray-600'
+                              }`}>
+                                {isChecked ? (isSingle ? '●' : '✓') : ''}
+                              </span>
+                              <span className="text-xs">{opt.nama}</span>
+                            </div>
+                            {opt.harga > 0 ? (
+                              <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400">
+                                +Rp {opt.harga.toLocaleString('id-ID')}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-gray-400">Gratis</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Bottom Bar Total & Action */}
+            <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] text-gray-400 block font-semibold">Subtotal Item</span>
+                <span className="text-base font-black text-yellow-600 dark:text-yellow-500">
+                  Rp {(
+                    activeModItem.harga +
+                    Object.values(selectedModOptions).flat().reduce((sum: number, opt: any) => sum + (opt.harga || 0), 0)
+                  ).toLocaleString('id-ID')}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveModItem(null)}
+                  className="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmModifiers}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-lg"
+                >
+                  + Tambahkan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Hasil Blind Close Shift (Z-Report Audit) */}
+      {blindCloseResult && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-200 dark:border-gray-700 my-8">
+            <div className="text-center pb-4 border-b border-gray-100 dark:border-gray-700">
+              <span className="text-4xl">🏁</span>
+              <h3 className="text-xl font-black text-gray-900 dark:text-white mt-2">Laporan Tutup Shift (Z-Report)</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Shift #{blindCloseResult.id} • Operator: <span className="font-bold text-gray-800 dark:text-gray-200">{blindCloseResult.operatorName}</span></p>
+            </div>
+
+            {/* Status Rekonsiliasi Banner */}
+            <div className={`mt-4 p-4 rounded-2xl text-center border ${
+              blindCloseResult.cashDifference === 0 || blindCloseResult.difference === 0 
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300'
+                : (blindCloseResult.cashDifference || blindCloseResult.difference || 0) > 0
+                ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300'
+                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-300'
+            }`}>
+              <p className="text-[11px] font-bold uppercase tracking-wider">Hasil Rekonsiliasi Kas Fisik</p>
+              <p className="text-xl font-black mt-1">
+                {(blindCloseResult.cashDifference === 0 || blindCloseResult.difference === 0) && '🟢 COCOK / PAS (Rp 0)'}
+                {(blindCloseResult.cashDifference || blindCloseResult.difference || 0) > 0 && `🟡 LEBIH (+Rp ${(blindCloseResult.cashDifference || blindCloseResult.difference).toLocaleString('id-ID')})`}
+                {(blindCloseResult.cashDifference || blindCloseResult.difference || 0) < 0 && `🔴 KURANG (-Rp ${Math.abs(blindCloseResult.cashDifference || blindCloseResult.difference).toLocaleString('id-ID')})`}
+              </p>
+            </div>
+
+            {/* Rincian Finansial Kas Fisik Laci */}
+            <div className="mt-4 bg-gray-50 dark:bg-gray-900/60 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2 text-xs">
+              <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                <span>Modal Awal Kas:</span>
+                <span className="font-bold">Rp {blindCloseResult.startingCash?.toLocaleString('id-ID')}</span>
+              </div>
+              <div className="flex justify-between text-emerald-700 dark:text-emerald-400 font-bold">
+                <span>+ Penjualan Tunai Bersih:</span>
+                <span>Rp {blindCloseResult.cashSales?.toLocaleString('id-ID')}</span>
+              </div>
+              {blindCloseResult.cashIn > 0 && (
+                <div className="flex justify-between text-emerald-600">
+                  <span>+ Kas Masuk Manual:</span>
+                  <span>Rp {blindCloseResult.cashIn?.toLocaleString('id-ID')}</span>
+                </div>
+              )}
+              {blindCloseResult.cashOut > 0 && (
+                <div className="flex justify-between text-rose-600">
+                  <span>- Kas Keluar (Biaya Operasional):</span>
+                  <span>-Rp {blindCloseResult.cashOut?.toLocaleString('id-ID')}</span>
+                </div>
+              )}
+              {blindCloseResult.cashRefunds > 0 && (
+                <div className="flex justify-between text-rose-600 font-bold">
+                  <span>- Refund Tunai Pelanggan:</span>
+                  <span>-Rp {blindCloseResult.cashRefunds?.toLocaleString('id-ID')}</span>
+                </div>
+              )}
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between font-bold text-gray-800 dark:text-gray-200">
+                <span>Total Kas Fisik Seharusnya:</span>
+                <span className="font-black text-sm">Rp {blindCloseResult.expectedCash?.toLocaleString('id-ID')}</span>
+              </div>
+              <div className="flex justify-between text-blue-700 dark:text-blue-400 font-bold">
+                <span>Hasil Hitung Fisik Kasir:</span>
+                <span className="font-black text-sm">Rp {blindCloseResult.actualCash?.toLocaleString('id-ID')}</span>
+              </div>
+              <div className="pt-2 border-t border-dashed border-gray-300 dark:border-gray-700 flex justify-between font-black text-sm">
+                <span>Selisih:</span>
+                <span className={(blindCloseResult.cashDifference || blindCloseResult.difference || 0) === 0 ? 'text-emerald-600' : (blindCloseResult.cashDifference || blindCloseResult.difference || 0) > 0 ? 'text-amber-600' : 'text-rose-600'}>
+                  Rp {(blindCloseResult.cashDifference !== undefined ? blindCloseResult.cashDifference : blindCloseResult.difference)?.toLocaleString('id-ID')}
+                </span>
+              </div>
+            </div>
+
+            {/* Info Non-Tunai (Rekonsiliasi Bank/QRIS) */}
+            <div className="mt-3 p-3 bg-blue-50/70 dark:bg-blue-950/30 rounded-xl border border-blue-100 dark:border-blue-900/40 text-xs">
+              <div className="flex justify-between text-blue-900 dark:text-blue-300 font-bold">
+                <span>Penjualan Non-Tunai (QRIS/Transfer):</span>
+                <span>Rp {blindCloseResult.nonCashSales?.toLocaleString('id-ID')}</span>
+              </div>
+              <p className="text-[10px] text-blue-700 dark:text-blue-400 mt-1 leading-relaxed">
+                ℹ️ Penjualan QRIS & transfer langsung masuk ke rekening bank/merchant QRIS, tidak dihitung sebagai uang fisik di laci kasir.
+              </p>
+            </div>
+
+            {blindCloseResult.notes && (
+              <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl">
+                <span className="font-bold">Catatan:</span> {blindCloseResult.notes}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="mt-5 flex space-x-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const zReceiptText = generateZReportReceipt(blindCloseResult, storeSettings);
+                  printReceiptText(zReceiptText, 'Z_Report_Tutup_Shift');
+                }}
+                className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow"
+              >
+                <span>🖨️ Cetak Z-Report</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setBlindCloseResult(null)}
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-lg"
+              >
+                Selesai & Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}

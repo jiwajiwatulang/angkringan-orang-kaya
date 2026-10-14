@@ -1,5 +1,20 @@
 import Dexie, { type Table as DexieTable } from 'dexie';
 
+export interface ModifierOption {
+  id: string;
+  nama: string;
+  harga: number; // 0 jika gratis / normal, >0 jika berbayar (+Extra)
+}
+
+export interface ModifierGroup {
+  id: string;
+  nama: string; // contoh: "Level Pedas", "Topping Tambahan", "Pilihan Es", "Ukuran"
+  required: boolean;
+  minSelect: number;
+  maxSelect: number; // 1 untuk single choice (radio), >1 untuk multi choice (checkbox)
+  options: ModifierOption[];
+}
+
 export interface MenuItem {
   id?: number;
   nama: string;
@@ -7,6 +22,7 @@ export interface MenuItem {
   kategori: string;
   isSoldOut: boolean;
   urutan: number;
+  modifiers?: ModifierGroup[]; // Add-on & modifier menu
 }
 
 export interface Table {
@@ -15,17 +31,26 @@ export interface Table {
   status: string; // 'kosong' | 'open' | 'lunas'
 }
 
+export interface SelectedModifier {
+  groupName: string;
+  optionName: string;
+  harga: number;
+}
+
 export interface OrderItem {
   id?: number;
   orderId: number;
   menuItemId: number;
   qty: number;
   hargaSatuan: number;
+  selectedModifiers?: SelectedModifier[]; // Catatan add-on terpilih
   menuItem?: MenuItem; // Joined property
 }
 
 export interface Order {
   id?: number;
+  shiftId?: number | null; // Terikat langsung ke sesi Shift kasir
+  idempotencyKey?: string; // Mencegah double-order / duplicate charge
   tableId: number | null;
   subtotal?: number;
   discount?: number;
@@ -69,13 +94,13 @@ export interface Shift {
   startTime: string;
   endTime?: string;
   startingCash: number;       // Modal uang laci awal (misal Rp 200.000)
-  cashSales: number;          // Total penjualan tunai selama shift
-  nonCashSales: number;       // Total penjualan QRIS/Transfer selama shift
+  cashSales: number;          // Total penjualan tunai murni selama shift
+  nonCashSales: number;       // Total penjualan QRIS/Transfer (tercatat terpisah, tidak masuk laci)
   cashRefunds: number;        // Total refund tunai selama shift
   cashIn: number;             // Total kas masuk manual
-  cashOut: number;            // Total kas keluar manual
+  cashOut: number;            // Total kas keluar manual (biaya es batu, gas, dll)
   expectedCash: number;       // startingCash + cashSales - cashRefunds + cashIn - cashOut
-  actualCash?: number;        // Uang fisik yang dihitung kasir saat tutup shift
+  actualCash?: number;        // Uang fisik yang dihitung kasir saat tutup shift (Blind Close)
   cashDifference?: number;    // actualCash - expectedCash (0 = pas, minus = tekor, plus = lebih)
   status: 'open' | 'closed';
   notes?: string;
@@ -84,7 +109,7 @@ export interface Shift {
 export interface CashMovement {
   id?: number;
   shiftId: number;
-  type: 'in' | 'out';         // 'in' = kas masuk, 'out' = kas keluar
+  type: 'in' | 'out';         // 'in' = kas masuk, 'out' = kas keluar (biaya operasional)
   amount: number;
   reason: string;
   operatorName: string;
@@ -92,10 +117,10 @@ export interface CashMovement {
 }
 
 const db = new Dexie('AngkringanDB');
-db.version(4).stores({
+db.version(5).stores({
   menuItems: '++id, nama, kategori, isSoldOut, urutan',
   tables: '++id, nomor, status',
-  orders: '++id, tableId, status, createdAt',
+  orders: '++id, shiftId, idempotencyKey, tableId, status, createdAt',
   orderItems: '++id, orderId, menuItemId',
   auditLogs: '++id, orderId, action, timestamp',
   shifts: '++id, status, startTime, operatorName',

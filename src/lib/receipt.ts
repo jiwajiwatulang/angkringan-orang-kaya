@@ -85,6 +85,14 @@ export function generateEscPosReceipt(receipt: any, mode: 'all' | 'food' | 'drin
     } else {
       txt += `${item.qty}x ${item.nama}\n`;
     }
+
+    // Cetak rincian Modifier / Add-on (Level pedas, extra topping, es, dll)
+    if (item.selectedModifiers && item.selectedModifiers.length > 0) {
+      item.selectedModifiers.forEach((m: any) => {
+        const modPrice = m.harga > 0 ? ` (+${formatCurrency(m.harga)})` : '';
+        txt += `   > ${m.optionName}${modPrice}\n`;
+      });
+    }
   });
 
   txt += divider;
