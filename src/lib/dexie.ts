@@ -39,6 +39,9 @@ export interface Order {
   status: string; // 'paid' | 'unpaid' | 'void'
   voidReason?: string;
   voidedAt?: string;
+  isRefunded?: boolean;
+  refundAmount?: number;
+  refundMethod?: string;
   customerName: string | null;
   customerPhone: string | null;
   paymentMethod: string;
@@ -49,12 +52,24 @@ export interface Order {
   items?: OrderItem[]; // Joined property
 }
 
+export interface AuditLog {
+  id?: number;
+  action: 'VOID' | 'REFUND' | 'DELETE' | 'RESET';
+  orderId?: number;
+  amount: number;
+  reason: string;
+  operator: string;
+  refundMethod?: string;
+  timestamp: string;
+}
+
 const db = new Dexie('AngkringanDB');
-db.version(2).stores({
+db.version(3).stores({
   menuItems: '++id, nama, kategori, isSoldOut, urutan',
   tables: '++id, nomor, status',
   orders: '++id, tableId, status, createdAt',
-  orderItems: '++id, orderId, menuItemId'
+  orderItems: '++id, orderId, menuItemId',
+  auditLogs: '++id, orderId, action, timestamp'
 });
 
 export { db };

@@ -263,21 +263,52 @@ export async function updateOrder(id: number, data: any) {
 }
 
 
-export async function voidOrder(orderId: number, reason: string) {
+export async function getAuditLogs() {
+  return await db.table('auditLogs').reverse().toArray();
+}
+
+export async function processVoidRefund(orderId: number, options: { reason: string, isRefunded: boolean, refundAmount: number, refundMethod: string, operator: string }) {
   const order = await db.table('orders').get(orderId);
   if (!order) throw new Error('Nota tidak ditemukan.');
-  
-  await db.table('orders').update(orderId, {
-    status: 'void',
-    voidReason: reason || 'Dibatalkan oleh kasir/admin',
-    voidedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+
+  await db.transaction('rw', ['orders', 'tables', 'auditLogs'], async () => {
+    await db.table('orders').update(orderId, {
+      status: 'void',
+      voidReason: options.reason || 'Dibatalkan',
+      voidedAt: new Date().toISOString(),
+      isRefunded: options.isRefunded,
+      refundAmount: options.refundAmount,
+      refundMethod: options.refundMethod,
+      updatedAt: new Date().toISOString()
+    });
+
+    // Catat log audit
+    await db.table('auditLogs').add({
+      action: options.isRefunded ? 'REFUND' : 'VOID',
+      orderId: orderId,
+      amount: order.total,
+      reason: options.reason,
+      refundMethod: options.refundMethod,
+      operator: options.operator || 'Admin',
+      timestamp: new Date().toISOString()
+    });
+
+    if (order.tableId) {
+      await refreshTableStatus(order.tableId);
+    }
   });
 
-  if (order.tableId) {
-    await refreshTableStatus(order.tableId);
-  }
   return true;
+}
+
+export async function voidOrder(orderId: number, reason: string) {
+  return await processVoidRefund(orderId, {
+    reason: reason,
+    isRefunded: false,
+    refundAmount: 0,
+    refundMethod: 'None',
+    operator: 'Kasir/Admin'
+  });
 }
 
 export async function deleteOrders(ids: number[]) {
@@ -299,6 +330,7 @@ export async function exportAllData() {
   const tables = await db.table('tables').toArray();
   const orders = await db.table('orders').toArray();
   const orderItems = await db.table('orderItems').toArray();
+  const auditLogs = await db.table('auditLogs').toArray();
   
   let settings = null;
   if (typeof window !== 'undefined') {
@@ -316,7 +348,8 @@ export async function exportAllData() {
     menus,
     tables,
     orders,
-    orderItems
+    orderItems,
+    auditLogs
   };
 }
 
@@ -325,7 +358,8 @@ export async function importAllData(data: any) {
     throw new Error('Format file cadangan tidak valid.');
   }
 
-  await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems'], async () => {
+  await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems', 'auditLogs'], async () => {
+    await db.table('auditLogs').clear();
     // 1. Bersihkan data lama
     await db.table('orderItems').clear();
     await db.table('orders').clear();
@@ -355,6 +389,9 @@ export async function importAllData(data: any) {
 
     if (data.orderItems && data.orderItems.length > 0) {
       await db.table('orderItems').bulkAdd(data.orderItems);
+    }
+    if (data.auditLogs && data.auditLogs.length > 0) {
+      await db.table('auditLogs').bulkAdd(data.auditLogs);
     }
   });
 

@@ -210,7 +210,8 @@ export default function POSPage() {
   ) : 0;
   const afterDiscount = Math.max(0, rawSubtotal - discountAmount);
   const serviceAmount = storeSettings.enableService ? Math.round(afterDiscount * ((storeSettings.servicePercent || 0) / 100)) : 0;
-  const taxAmount = storeSettings.enableTax ? Math.round((afterDiscount + serviceAmount) * ((storeSettings.taxPercent || 0) / 100)) : 0;
+  const taxBase = afterDiscount + (storeSettings.taxAppliesToService ? serviceAmount : 0);
+  const taxAmount = storeSettings.enableTax ? Math.round(taxBase * ((storeSettings.taxPercent || 0) / 100)) : 0;
   const totalPrice = afterDiscount + serviceAmount + taxAmount;
   const selectedTableObj = tableData.find(t => t.id.toString() === selectedTable);
   const selectedTableStatus = selectedTableObj ? getTableStatus(selectedTableObj) : null;
@@ -1137,7 +1138,25 @@ export default function POSPage() {
               <button 
                 type="button"
                 onClick={() => {
-                  setDiscountValue(Number(tempDiscountVal) || 0);
+                  const enteredVal = Number(tempDiscountVal) || 0;
+                  if (discountType === 'percent') {
+                    if (enteredVal < 0 || enteredVal > 100) {
+                      alert("Persentase diskon harus di antara 0% sampai 100%");
+                      return;
+                    }
+                    setDiscountValue(enteredVal);
+                  } else {
+                    if (enteredVal < 0) {
+                      alert("Diskon tidak boleh bernilai negatif");
+                      return;
+                    }
+                    if (enteredVal > rawSubtotal) {
+                      alert("Diskon nominal (Rp " + enteredVal.toLocaleString('id-ID') + ") melebihi subtotal. Diskon dibatasi maksimal Rp " + rawSubtotal.toLocaleString('id-ID') + " agar total tidak minus.");
+                      setDiscountValue(rawSubtotal);
+                    } else {
+                      setDiscountValue(enteredVal);
+                    }
+                  }
                   setIsDiscountModalOpen(false);
                 }}
                 className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow"

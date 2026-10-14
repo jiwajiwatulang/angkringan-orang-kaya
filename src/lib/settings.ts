@@ -8,8 +8,10 @@ export interface StoreSettings {
   serviceMode: 'resto' | 'quick'; // resto = with tables, quick = fast cashier without tables
   adminPin: string; // PIN pengaman akses Admin & Void
   enablePin: boolean;
-  taxPercent: number; // Persentase Pajak / PB1 / PPN
+  taxName: string; // Nama pajak: PBJT / PB1 / Pajak Resto
+  taxPercent: number; // Persentase Pajak Daerah / PBJT (maks 10%)
   enableTax: boolean;
+  taxAppliesToService: boolean; // Apakah PBJT dikenakan juga pada Service Charge (UU HKPD)
   servicePercent: number; // Persentase Biaya Layanan
   enableService: boolean;
 }
@@ -24,8 +26,10 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   serviceMode: "resto",
   adminPin: "1234",
   enablePin: false,
+  taxName: "PBJT Restoran (10%)",
   taxPercent: 10,
   enableTax: false,
+  taxAppliesToService: true,
   servicePercent: 5,
   enableService: false,
 };

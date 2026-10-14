@@ -6,7 +6,7 @@ import { Printer } from '@capgo/capacitor-printer';
 import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
 import { getStoreSettings, saveStoreSettings, StoreSettings } from '@/lib/settings';
 import { generateEscPosReceipt } from '@/lib/receipt';
-import { exportAllData, importAllData, resetAllTransactions, voidOrder } from '@/lib/api';
+import { exportAllData, importAllData, resetAllTransactions, voidOrder, processVoidRefund, getAuditLogs } from '@/lib/api';
 
 
 type MenuItem = { id: number; nama: string; harga: number; kategori: string; isSoldOut: boolean; };
@@ -14,6 +14,7 @@ type MenuItem = { id: number; nama: string; harga: number; kategori: string; isS
 export default function AdminPage() {
   const [menus, setMenus] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [nama, setNama] = useState("");
   const [harga, setHarga] = useState("");
   const [kategori, setKategori] = useState("Nasi");
@@ -152,10 +153,29 @@ export default function AdminPage() {
   const [isUnlocked, setIsUnlocked] = useState(true);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState("");
+  const [pinAttempts, setPinAttempts] = useState(0);
+  const [lockoutTimer, setLockoutTimer] = useState(0);
+
+  // Void & Refund States
   const [voidTargetOrder, setVoidTargetOrder] = useState<any>(null);
   const [voidReason, setVoidReason] = useState("Salah input pesanan");
   const [customVoidReason, setCustomVoidReason] = useState("");
+  const [isRefundCheckbox, setIsRefundCheckbox] = useState(true);
+  const [refundMethod, setRefundMethod] = useState("Tunai");
+  const [refundAmount, setRefundAmount] = useState(0);
+  const [voidPinConfirm, setVoidPinConfirm] = useState("");
+  const [voidPinError, setVoidPinError] = useState("");
   const [isVoiding, setIsVoiding] = useState(false);
+
+  useEffect(() => {
+    let interval: any;
+    if (lockoutTimer > 0) {
+      interval = setInterval(() => {
+        setLockoutTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [lockoutTimer]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -168,29 +188,65 @@ export default function AdminPage() {
 
   const handleUnlockPin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput === storeSettings.adminPin || pinInput === '1234') {
+    if (lockoutTimer > 0) return;
+    const correctPin = storeSettings.adminPin || '1234';
+    if (pinInput === correctPin) {
       setIsUnlocked(true);
       sessionStorage.setItem('admin_unlocked', 'true');
       setPinError("");
       setPinInput("");
+      setPinAttempts(0);
     } else {
-      setPinError("PIN yang Anda masukkan salah.");
+      const newAttempts = pinAttempts + 1;
+      setPinAttempts(newAttempts);
+      if (newAttempts >= 5) {
+        setLockoutTimer(30);
+        setPinError("Terlalu banyak percobaan salah! Akses terkunci selama 30 detik.");
+        setPinAttempts(0);
+      } else {
+        setPinError("PIN salah! Sisa percobaan: " + (5 - newAttempts) + " kali.");
+      }
     }
+  };
+
+  const openVoidModal = (order: any) => {
+    setVoidTargetOrder(order);
+    setIsRefundCheckbox(order.status === 'paid');
+    setRefundAmount(order.total);
+    setRefundMethod(order.paymentMethod === 'Cash' ? 'Tunai' : (order.paymentMethod || 'Tunai'));
+    setVoidReason("Salah input pesanan");
+    setCustomVoidReason("");
+    setVoidPinConfirm("");
+    setVoidPinError("");
   };
 
   const handleProcessVoid = async () => {
     if (!voidTargetOrder) return;
+    
+    // Validasi PIN jika proteksi PIN aktif
+    if (storeSettings.enablePin) {
+      const correctPin = storeSettings.adminPin || '1234';
+      if (voidPinConfirm !== correctPin) {
+        setVoidPinError("PIN Otorisasi Admin salah!");
+        return;
+      }
+    }
+
     const finalReason = voidReason === 'Lainnya' ? (customVoidReason || 'Dibatalkan') : voidReason;
     try {
       setIsVoiding(true);
-      await voidOrder(voidTargetOrder.id, finalReason);
+      await processVoidRefund(voidTargetOrder.id, {
+        reason: finalReason,
+        isRefunded: isRefundCheckbox && voidTargetOrder.status === 'paid',
+        refundAmount: Number(refundAmount) || voidTargetOrder.total,
+        refundMethod: isRefundCheckbox ? refundMethod : 'None',
+        operator: 'Admin / Kasir'
+      });
       setVoidTargetOrder(null);
-      setVoidReason("Salah input pesanan");
-      setCustomVoidReason("");
       await loadData();
-      alert("Nota A-" + voidTargetOrder.id + " berhasil DIBATALKAN (VOID).");
+      alert("Nota A-" + voidTargetOrder.id + " berhasil diproses (Status: VOID" + (isRefundCheckbox ? " + REFUND" : "") + ").");
     } catch (err: any) {
-      alert("Gagal membatalkan nota: " + err.message);
+      alert("Gagal memproses pembatalan: " + err.message);
     } finally {
       setIsVoiding(false);
     }
@@ -274,6 +330,7 @@ export default function AdminPage() {
     ]);
     setMenus(menusRes as any[]);
     setOrders(ordersRes);
+    try { const logs = await getAuditLogs(); setAuditLogs(logs); } catch(e) {}
     setTables(tablesRes);
   };
 
@@ -988,6 +1045,72 @@ export default function AdminPage() {
       </div>
 
       
+        
+        {/* --- AUDIT TRAIL & LOG PEMBATALAN / REFUND --- */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8 mt-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <span>🛡️ Log Audit & Riwayat Pembatalan (Void/Refund)</span>
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">Seluruh nota yang dibatalkan atau uang yang dikembalikan dicatat permanen demi transparansi kasir.</p>
+            </div>
+            
+            <div className="bg-red-50 border border-red-200 px-4 py-2 rounded-xl text-right">
+              <span className="block text-[10px] text-red-600 font-bold uppercase tracking-wider">Total Dana Di-Refund</span>
+              <span className="text-xl font-black text-red-700">
+                Rp {orders.filter(o => o.status === 'void' && o.isRefunded).reduce((s, o) => s + (o.refundAmount || o.total), 0).toLocaleString('id-ID')}
+              </span>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50/70 text-gray-600">
+                  <th className="py-2.5 px-3">Waktu</th>
+                  <th className="py-2.5 px-3">Tindakan</th>
+                  <th className="py-2.5 px-3">No. Nota</th>
+                  <th className="py-2.5 px-3">Nominal Transaksi</th>
+                  <th className="py-2.5 px-3">Status Pengembalian (Refund)</th>
+                  <th className="py-2.5 px-3">Alasan Pembatalan</th>
+                  <th className="py-2.5 px-3">Operator</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.filter(o => o.status === 'void').map(o => (
+                  <tr key={'audit-'+o.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                    <td className="py-2.5 px-3 text-gray-500 whitespace-nowrap">
+                      {o.voidedAt ? new Date(o.voidedAt).toLocaleString('id-ID') : '-'}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className="px-2 py-0.5 rounded font-black text-[10px] bg-red-100 text-red-700">VOID</span>
+                    </td>
+                    <td className="py-2.5 px-3 font-bold text-gray-800">A-{o.id}</td>
+                    <td className="py-2.5 px-3 font-semibold text-gray-700">Rp {o.total.toLocaleString('id-ID')}</td>
+                    <td className="py-2.5 px-3">
+                      {o.isRefunded ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800">
+                          Refund: Rp {(o.refundAmount || o.total).toLocaleString('id-ID')} ({o.refundMethod || 'Tunai'})
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">Tidak ada refund (belum bayar)</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-3 text-gray-600 font-medium">{o.voidReason || 'Dibatalkan'}</td>
+                    <td className="py-2.5 px-3 text-gray-500">Admin</td>
+                  </tr>
+                ))}
+                {orders.filter(o => o.status === 'void').length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-6 text-center text-gray-400">Belum ada riwayat pembatalan nota (Void/Refund).</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* --- PENGATURAN TOKO & STRUK --- */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8 mt-8">
           <div className="flex justify-between items-center mb-6 border-b pb-4">
@@ -1439,50 +1562,122 @@ export default function AdminPage() {
         </div>
       )}
     
-      {/* --- MODAL VOID / PEMBATALAN TRANSAKSI --- */}
+      {/* --- MODAL VOID / REFUND TRANSAKSI --- */}
       {voidTargetOrder && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-2xl font-black mb-3">⚠️</div>
-            <h3 className="text-lg font-bold text-gray-900">Batalkan Nota A-{voidTargetOrder.id}?</h3>
-            <p className="text-xs text-gray-500 mt-1 mb-4">Transaksi ini akan ditandai sebagai VOID dan omzetnya akan dipotong dari laporan.</p>
-            
-            <label className="block text-xs font-bold text-gray-700 mb-1">Pilih Alasan Pembatalan:</label>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl my-8">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center text-2xl font-black">
+                🚫
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-gray-900">Batalkan Nota A-{voidTargetOrder.id}</h3>
+                <p className="text-xs text-gray-500">Total Transaksi: <strong className="text-gray-800">Rp {voidTargetOrder.total.toLocaleString('id-ID')}</strong> ({voidTargetOrder.status === 'paid' ? 'Sudah Lunas' : 'Belum Bayar'})</p>
+              </div>
+            </div>
+
+            {/* Bagian Status Refund (Pengembalian Uang) */}
+            {voidTargetOrder.status === 'paid' ? (
+              <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-2xl">
+                <label className="flex items-center space-x-2.5 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={isRefundCheckbox}
+                    onChange={(e) => setIsRefundCheckbox(e.target.checked)}
+                    className="w-4 h-4 rounded text-orange-600"
+                  />
+                  <span className="text-xs font-bold text-orange-900">Catat Pengembalian Uang (Refund ke Pelanggan)</span>
+                </label>
+                <p className="text-[11px] text-orange-700 mt-1 pl-6">
+                  Uang sudah diterima kasir. Aktifkan agar saldo kas fisik dan laporan keuangan tetap cocok.
+                </p>
+
+                {isRefundCheckbox && (
+                  <div className="mt-3 pt-3 border-t border-orange-200/60 grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-orange-900 mb-1">Metode Refund:</label>
+                      <select 
+                        value={refundMethod}
+                        onChange={(e) => setRefundMethod(e.target.value)}
+                        className="w-full border border-orange-300 rounded-lg p-2 text-xs bg-white text-gray-800"
+                      >
+                        <option value="Tunai">💵 Tunai (Kas Fisik)</option>
+                        <option value="Transfer">💳 Transfer Bank / QRIS</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-orange-900 mb-1">Nominal Refund (Rp):</label>
+                      <input 
+                        type="number"
+                        value={refundAmount}
+                        onChange={(e) => setRefundAmount(Number(e.target.value))}
+                        className="w-full border border-orange-300 rounded-lg p-2 text-xs bg-white text-gray-800 font-bold"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600">
+                ℹ️ Transaksi ini berstatus <strong>Belum Bayar</strong> (Open Bill). Nota akan dibatalkan tanpa pengembalian uang fisik.
+              </div>
+            )}
+
+            {/* Pilihan Alasan */}
+            <label className="block text-xs font-bold text-gray-700 mb-1">Alasan Pembatalan (Audit Trail):</label>
             <select 
               value={voidReason}
               onChange={(e) => setVoidReason(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-800 bg-white mb-3 focus:border-red-500 outline-none"
+              className="w-full border border-gray-300 rounded-xl p-2.5 text-sm text-gray-800 bg-white mb-3 focus:border-red-500 outline-none"
             >
-              <option value="Salah input pesanan">Salah input pesanan / menu</option>
-              <option value="Pelanggan batal / pulang">Pelanggan batal / pulang</option>
-              <option value="Makanan / stok habis">Makanan / bahan habis</option>
-              <option value="Komplain pelanggan">Komplain pelanggan</option>
-              <option value="Lainnya">Alasan Lainnya...</option>
+              <option value="Salah input pesanan">Salah input menu / pesanan kasir</option>
+              <option value="Pelanggan batal / pulang">Pelanggan membatalkan pesanan / pulang</option>
+              <option value="Makanan / stok habis">Stok bahan atau menu habis</option>
+              <option value="Komplain pelanggan">Komplain pesanan bermasalah</option>
+              <option value="Lainnya">Alasan Lainnya (Tulis manual)...</option>
             </select>
 
             {voidReason === 'Lainnya' && (
               <input 
                 type="text"
-                placeholder="Tulis alasan pembatalan..."
+                placeholder="Tuliskan alasan pembatalan..."
                 value={customVoidReason}
                 onChange={(e) => setCustomVoidReason(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-800 mb-4 focus:border-red-500 outline-none"
+                className="w-full border border-gray-300 rounded-xl p-2.5 text-sm text-gray-800 mb-3 focus:border-red-500 outline-none"
               />
             )}
 
-            <div className="flex space-x-2 mt-4">
+            {/* Otorisasi PIN Admin jika aktif */}
+            {storeSettings.enablePin && (
+              <div className="mt-3 mb-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                <label className="block text-xs font-bold text-gray-800 mb-1">🔑 Otorisasi PIN Admin:</label>
+                <input 
+                  type="password"
+                  maxLength={6}
+                  placeholder="Masukkan PIN Admin"
+                  value={voidPinConfirm}
+                  onChange={(e) => { setVoidPinConfirm(e.target.value); setVoidPinError(""); }}
+                  className="w-full border border-gray-300 rounded-lg p-2 text-sm text-center tracking-widest font-bold text-gray-900 bg-white"
+                />
+                {voidPinError && (
+                  <p className="text-xs text-red-500 font-bold mt-1">{voidPinError}</p>
+                )}
+              </div>
+            )}
+
+            <div className="flex space-x-2 mt-5">
               <button 
                 onClick={() => setVoidTargetOrder(null)} 
-                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-bold"
+                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-colors"
               >
                 Batal
               </button>
               <button 
                 onClick={handleProcessVoid}
                 disabled={isVoiding}
-                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow disabled:opacity-50"
+                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow-lg transition-transform active:scale-95 disabled:opacity-50"
               >
-                {isVoiding ? 'Memproses...' : 'Ya, Batalkan Nota'}
+                {isVoiding ? 'Memproses...' : 'Proses Void & Simpan Log'}
               </button>
             </div>
           </div>
