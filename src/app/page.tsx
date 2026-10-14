@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Printer } from '@capgo/capacitor-printer';
 import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
@@ -93,6 +93,96 @@ export default function POSPage() {
   const [tempDiscountVal, setTempDiscountVal] = useState("");
 
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+  const [cartSheetDragY, setCartSheetDragY] = useState(0);
+  const cartSheetTouchStartRef = useRef<number | null>(null);
+
+  const handleCartTouchStart = (e: React.TouchEvent) => {
+    cartSheetTouchStartRef.current = e.touches[0].clientY;
+  };
+
+  const handleCartTouchMove = (e: React.TouchEvent) => {
+    if (cartSheetTouchStartRef.current === null) return;
+    const deltaY = e.touches[0].clientY - cartSheetTouchStartRef.current;
+    if (deltaY > 0) {
+      setCartSheetDragY(deltaY);
+    } else {
+      setCartSheetDragY(0);
+    }
+  };
+
+  const handleCartTouchEnd = () => {
+    if (cartSheetDragY > 70) {
+      closeMobileCart();
+    }
+    setCartSheetDragY(0);
+    cartSheetTouchStartRef.current = null;
+  };
+
+  const openMobileCart = () => {
+    setIsMobileCartOpen(true);
+    setCartSheetDragY(0);
+    if (typeof window !== "undefined") {
+      try {
+        window.history.pushState({ modal: "mobile-cart" }, "");
+      } catch (_) {}
+    }
+  };
+
+  const closeMobileCart = () => {
+    setIsMobileCartOpen(false);
+    setCartSheetDragY(0);
+    if (typeof window !== "undefined" && window.history.state?.modal === "mobile-cart") {
+      try {
+        window.history.back();
+      } catch (_) {}
+    }
+  };
+
+  // Modifier Bottom Sheet Drag State
+  const [modSheetDragY, setModSheetDragY] = useState(0);
+  const modSheetTouchStartRef = useRef<number | null>(null);
+
+  const handleModTouchStart = (e: React.TouchEvent) => {
+    modSheetTouchStartRef.current = e.touches[0].clientY;
+  };
+
+  const handleModTouchMove = (e: React.TouchEvent) => {
+    if (modSheetTouchStartRef.current === null) return;
+    const diff = e.touches[0].clientY - modSheetTouchStartRef.current;
+    if (diff > 0) setModSheetDragY(diff);
+    else setModSheetDragY(0);
+  };
+
+  const handleModTouchEnd = () => {
+    if (modSheetDragY > 70) {
+      setActiveModItem(null);
+    }
+    setModSheetDragY(0);
+    modSheetTouchStartRef.current = null;
+  };
+
+  // Payment Bottom Sheet Drag State
+  const [paymentSheetDragY, setPaymentSheetDragY] = useState(0);
+  const paymentSheetTouchStartRef = useRef<number | null>(null);
+
+  const handlePaymentTouchStart = (e: React.TouchEvent) => {
+    paymentSheetTouchStartRef.current = e.touches[0].clientY;
+  };
+
+  const handlePaymentTouchMove = (e: React.TouchEvent) => {
+    if (paymentSheetTouchStartRef.current === null) return;
+    const diff = e.touches[0].clientY - paymentSheetTouchStartRef.current;
+    if (diff > 0) setPaymentSheetDragY(diff);
+    else setPaymentSheetDragY(0);
+  };
+
+  const handlePaymentTouchEnd = () => {
+    if (paymentSheetDragY > 70) {
+      handleClosePaymentModal();
+    }
+    setPaymentSheetDragY(0);
+    paymentSheetTouchStartRef.current = null;
+  };
 
   // Cart State
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -380,7 +470,61 @@ export default function POSPage() {
     splitCashTendered,
     customerName,
     notes,
-    cashTendered
+  ]);
+
+  // Web & Mobile Safari / Chrome PopState Back Navigation Guard
+  useEffect(() => {
+    const handlePopState = () => {
+      if (unsavedConfirm?.isOpen) {
+        setUnsavedConfirm(null);
+      } else if (activeModItem) {
+        setActiveModItem(null);
+        setModSheetDragY(0);
+      } else if (activeVariantGroup) {
+        setActiveVariantGroup(null);
+      } else if (isPaymentModalOpen) {
+        handleClosePaymentModal();
+        setPaymentSheetDragY(0);
+      } else if (isSplitBillModalOpen) {
+        handleCloseSplitBill();
+      } else if (isRefundModalOpen) {
+        setIsRefundModalOpen(false);
+      } else if (isDiscountModalOpen) {
+        handleCloseDiscountModal();
+      } else if (isCashMovementModalOpen) {
+        handleCloseCashMovement();
+      } else if (isOpenShiftModalOpen) {
+        handleCloseOpenShift();
+      } else if (isCloseShiftModalOpen) {
+        handleCloseCloseShift();
+      } else if (receiptData) {
+        setReceiptData(null);
+      } else if (blindCloseResult) {
+        setBlindCloseResult(null);
+      } else if (isMobileCartOpen) {
+        setIsMobileCartOpen(false);
+        setCartSheetDragY(0);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [
+    unsavedConfirm,
+    activeModItem,
+    activeVariantGroup,
+    isPaymentModalOpen,
+    isSplitBillModalOpen,
+    isRefundModalOpen,
+    isDiscountModalOpen,
+    isCashMovementModalOpen,
+    isOpenShiftModalOpen,
+    isCloseShiftModalOpen,
+    receiptData,
+    blindCloseResult,
+    isMobileCartOpen,
   ]);
 
   const loadData = async () => {
@@ -1227,10 +1371,56 @@ export default function POSPage() {
 
   const renderCartInner = (isMobile: boolean) => (
     <>
-      <div className={`${isMobile ? 'px-6 pb-4 pt-2' : 'p-5'} border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-t-3xl`}>
+      <div 
+        className={`${isMobile ? 'px-5 pb-4 pt-2' : 'p-5'} border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-t-3xl`}
+        onTouchStart={isMobile ? handleCartTouchStart : undefined}
+        onTouchMove={isMobile ? handleCartTouchMove : undefined}
+        onTouchEnd={isMobile ? handleCartTouchEnd : undefined}
+      >
+        {isMobile && (
+          <div 
+            className="flex flex-col items-center justify-center -mt-1 mb-2.5 pt-1 pb-1 cursor-pointer select-none active:opacity-70 touch-none"
+            onClick={closeMobileCart}
+            title="Ketuk atau tarik ke bawah untuk menutup"
+          >
+            <div className="w-14 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mb-1"></div>
+            <span className="text-[10px] text-gray-400 font-semibold flex items-center gap-1">
+              <span>↓</span> Tarik ke bawah atau ketuk untuk kembali
+            </span>
+          </div>
+        )}
+
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
-          {selectedTable && <button onClick={handleReleaseTable} className="text-xs font-bold text-red-500 bg-red-50 px-3 py-1.5 rounded-full hover:bg-red-100">Lepas meja</button>}
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-extrabold">
+              {cart.reduce((sum, item) => sum + item.qty, 0)} item
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {selectedTable && (
+              <button 
+                type="button"
+                onClick={handleReleaseTable} 
+                className="text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-400 px-3 py-1.5 rounded-full transition-colors"
+              >
+                Lepas meja
+              </button>
+            )}
+
+            {isMobile && (
+              <button
+                type="button"
+                onClick={closeMobileCart}
+                className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center text-base font-bold shadow-sm transition-all active:scale-90"
+                aria-label="Tutup keranjang"
+                title="Tutup dan kembali ke daftar menu"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
         {selectedTableObj && (
           <div className="mt-3 flex flex-wrap gap-2 items-center">
@@ -1350,6 +1540,16 @@ export default function POSPage() {
           <span className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-wider">Total Pembayaran</span>
           <span className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white leading-none tracking-tight">Rp {totalPrice.toLocaleString('id-ID')}</span>
         </div>
+        {isMobile && (
+          <button
+            type="button"
+            onClick={closeMobileCart}
+            className="w-full mb-3 py-3 rounded-2xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700/80 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 font-extrabold text-xs flex items-center justify-center gap-2 transition-all active:scale-98 shadow-sm"
+          >
+            <span>←</span>
+            <span>Tambah Menu Lain (Kembali ke Daftar Menu)</span>
+          </button>
+        )}
         <div className="flex gap-2">
           {editingOrderId && (
             <button onClick={handleShowDraftBill} className="w-1/4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white py-3.5 rounded-xl font-bold text-xs shadow-sm active:scale-95 transition-all">📝 Draft</button>
@@ -1395,18 +1595,38 @@ export default function POSPage() {
           onClick={handleClosePaymentModal}
         >
           <div 
-            className="bg-white dark:bg-gray-800 p-6 md:p-8 rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl relative flex flex-col max-h-[90vh]"
+            className="bg-white dark:bg-gray-800 p-6 md:p-8 rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl relative flex flex-col max-h-[90vh] transition-transform ease-out"
+            style={{
+              transform: paymentSheetDragY > 0 ? `translateY(${paymentSheetDragY}px)` : undefined,
+              touchAction: 'pan-y'
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Grab handle for mobile touch */}
-            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-3 sm:hidden" />
+            <div 
+              className="flex flex-col items-center justify-center pt-1 pb-2 cursor-pointer select-none sm:hidden touch-none"
+              onTouchStart={handlePaymentTouchStart}
+              onTouchMove={handlePaymentTouchMove}
+              onTouchEnd={handlePaymentTouchEnd}
+              onClick={handleClosePaymentModal}
+            >
+              <div className="w-14 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mb-1"></div>
+              <span className="text-[10px] text-gray-400 font-semibold flex items-center gap-1">
+                <span>↓</span> Tarik ke bawah untuk batal
+              </span>
+            </div>
 
-            <div className="flex justify-between items-center mb-4">
+            <div 
+              className="flex justify-between items-center mb-4"
+              onTouchStart={handlePaymentTouchStart}
+              onTouchMove={handlePaymentTouchMove}
+              onTouchEnd={handlePaymentTouchEnd}
+            >
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Selesaikan Pembayaran</h2>
               <button 
                 type="button"
                 onClick={handleClosePaymentModal}
-                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white flex items-center justify-center text-sm font-bold"
+                className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white flex items-center justify-center text-sm font-bold active:scale-90 transition-all"
               >
                 ✕
               </button>
@@ -1952,7 +2172,7 @@ export default function POSPage() {
         {(!isMobileCartOpen && (cart.length > 0 || selectedTable)) && (
           <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-30">
             <button 
-              onClick={() => setIsMobileCartOpen(true)}
+              onClick={openMobileCart}
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl py-3.5 px-5 flex justify-between items-center shadow-lg active:scale-95 transition-all"
             >
               <div className="flex items-center gap-3">
@@ -1980,14 +2200,18 @@ export default function POSPage() {
           {/* Mobile Bottom Sheet Cart (Gojek/McD Style) */}
           {isMobileCartOpen && (
             <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
-              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setIsMobileCartOpen(false)}></div>
-              <div className="relative bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl flex flex-col max-h-[85vh] w-full animate-in slide-in-from-bottom-2 duration-300">
-                
-                {/* Pull Handle */}
-                <div className="flex justify-center p-3 cursor-pointer absolute top-0 left-0 right-0 z-10" onClick={() => setIsMobileCartOpen(false)}>
-                  <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
-                </div>
-
+              <div 
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+                onClick={closeMobileCart}
+                aria-label="Tutup keranjang"
+              />
+              <div 
+                className="relative bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl flex flex-col max-h-[88vh] w-full animate-in slide-in-from-bottom-2 duration-200 transition-transform ease-out"
+                style={{
+                  transform: cartSheetDragY > 0 ? `translateY(${cartSheetDragY}px)` : undefined,
+                  touchAction: 'pan-y'
+                }}
+              >
                 {renderCartInner(true)}
               </div>
             </div>
@@ -2238,13 +2462,33 @@ export default function POSPage() {
           onClick={() => setActiveModItem(null)}
         >
           <div 
-            className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-200 dark:border-gray-700 relative flex flex-col max-h-[85vh]"
+            className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-200 dark:border-gray-700 relative flex flex-col max-h-[85vh] transition-transform ease-out"
+            style={{
+              transform: modSheetDragY > 0 ? `translateY(${modSheetDragY}px)` : undefined,
+              touchAction: 'pan-y'
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Grab handle for mobile touch */}
-            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-3 sm:hidden" />
+            <div 
+              className="flex flex-col items-center justify-center pt-1 pb-2 cursor-pointer select-none sm:hidden touch-none"
+              onTouchStart={handleModTouchStart}
+              onTouchMove={handleModTouchMove}
+              onTouchEnd={handleModTouchEnd}
+              onClick={() => setActiveModItem(null)}
+            >
+              <div className="w-14 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mb-1"></div>
+              <span className="text-[10px] text-gray-400 font-semibold flex items-center gap-1">
+                <span>↓</span> Tarik ke bawah untuk batal
+              </span>
+            </div>
 
-            <div className="flex justify-between items-start pb-4 border-b border-gray-100 dark:border-gray-700">
+            <div 
+              className="flex justify-between items-start pb-4 border-b border-gray-100 dark:border-gray-700"
+              onTouchStart={handleModTouchStart}
+              onTouchMove={handleModTouchMove}
+              onTouchEnd={handleModTouchEnd}
+            >
               <div>
                 <span className="text-[10px] font-bold tracking-widest text-emerald-600 dark:text-emerald-400 uppercase">Pilihan Menu</span>
                 <h3 className="text-lg font-black text-gray-900 dark:text-white leading-tight">{activeModItem.nama}</h3>
@@ -2255,7 +2499,7 @@ export default function POSPage() {
               <button
                 type="button"
                 onClick={() => setActiveModItem(null)}
-                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white flex items-center justify-center text-sm font-bold"
+                className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white flex items-center justify-center text-sm font-bold active:scale-90 transition-all"
               >
                 ✕
               </button>
