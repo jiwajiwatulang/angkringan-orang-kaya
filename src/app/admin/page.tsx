@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Printer } from '@capgo/capacitor-printer';
 import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
-import { getStoreSettings, saveStoreSettings, StoreSettings } from '@/lib/settings';
+import { App } from '@capacitor/app';
+import { getStoreSettings, saveStoreSettingsAsync, loadStoreSettingsAsync, subscribeStoreSettings, StoreSettings } from '@/lib/settings';
 import { generateEscPosReceipt, generateZReportReceipt } from '@/lib/receipt';
-import { exportAllData, importAllData, resetAllTransactions, voidOrder, processVoidRefund, getAuditLogs, getAllShifts } from '@/lib/api';
+import { exportAllData, importAllData, resetAllTransactions, voidOrder, processVoidRefund, getAuditLogs, getAllShifts, updateMenu, toggleMenuSoldOut, renameTable, deleteTable, addTable } from '@/lib/api';
 
 
 type MenuItem = { id: number; nama: string; harga: number; kategori: string; isSoldOut: boolean; };
@@ -149,6 +150,20 @@ export default function AdminPage() {
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(getStoreSettings());
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [settingsSavedToast, setSettingsSavedToast] = useState(false);
+  const [isDirtySettings, setIsDirtySettings] = useState(false);
+
+  // Edit Menu State
+  const [editingMenu, setEditingMenu] = useState<MenuItem | null>(null);
+  const [isUpdatingMenu, setIsUpdatingMenu] = useState(false);
+  const [editMenuNama, setEditMenuNama] = useState("");
+  const [editMenuHarga, setEditMenuHarga] = useState("");
+  const [editMenuKategori, setEditMenuKategori] = useState("");
+
+  // Table Management State
+  const [tableToEdit, setTableToEdit] = useState<{ id: number; nomor: string } | null>(null);
+  const [tableEditName, setTableEditName] = useState("");
+  const [tableToDelete, setTableToDelete] = useState<{ id: number; nomor: string } | null>(null);
 
   // PIN Lock & Void State
   const [isUnlocked, setIsUnlocked] = useState(true);
@@ -178,14 +193,62 @@ export default function AdminPage() {
     return () => clearInterval(interval);
   }, [lockoutTimer]);
 
+  // Load persistent store settings from IndexedDB and subscribe to live changes
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const settings = getStoreSettings();
-      if (settings.enablePin && sessionStorage.getItem('admin_unlocked') !== 'true') {
-        setIsUnlocked(false);
+    let unsubscribe: (() => void) | undefined;
+    async function initSettings() {
+      try {
+        const loaded = await loadStoreSettingsAsync();
+        setStoreSettings(loaded);
+        if (loaded.enablePin && sessionStorage.getItem('admin_unlocked') !== 'true') {
+          setIsUnlocked(false);
+        }
+      } catch (err) {
+        console.error("Error loading store settings in Admin:", err);
       }
     }
+    initSettings();
+
+    unsubscribe = subscribeStoreSettings((updated) => {
+      setStoreSettings(updated);
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
+
+  // Android Hardware Back button listener: close modals before exiting
+  useEffect(() => {
+    let removeListener: any;
+    try {
+      App.addListener('backButton', ({ canGoBack }) => {
+        if (editingMenu) {
+          setEditingMenu(null);
+        } else if (tableToEdit) {
+          setTableToEdit(null);
+        } else if (tableToDelete) {
+          setTableToDelete(null);
+        } else if (voidTargetOrder) {
+          setVoidTargetOrder(null);
+        } else if (isReorderModalOpen) {
+          setIsReorderModalOpen(false);
+        } else if (receiptData) {
+          setReceiptData(null);
+        } else if (canGoBack) {
+          window.history.back();
+        }
+      }).then(handle => {
+        removeListener = handle;
+      }).catch(() => {});
+    } catch (_) {}
+
+    return () => {
+      if (removeListener && removeListener.remove) {
+        removeListener.remove();
+      }
+    };
+  }, [editingMenu, tableToEdit, tableToDelete, voidTargetOrder, isReorderModalOpen, receiptData]);
 
   
   const handlePrintZReport = async (shift: any) => {
@@ -273,11 +336,91 @@ export default function AdminPage() {
   };
 
 
-  const handleSaveStoreSettings = (e: React.FormEvent) => {
+  const handleSaveStoreSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    saveStoreSettings(storeSettings);
     setIsSavingSettings(true);
-    setTimeout(() => setIsSavingSettings(false), 2000);
+    try {
+      await saveStoreSettingsAsync(storeSettings);
+      setIsDirtySettings(false);
+      setSettingsSavedToast(true);
+      setTimeout(() => setSettingsSavedToast(false), 3500);
+    } catch (err: any) {
+      alert("Gagal menyimpan profil usaha: " + err.message);
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleOpenEditMenu = (menu: MenuItem) => {
+    setEditingMenu(menu);
+    setEditMenuNama(menu.nama);
+    setEditMenuHarga(menu.harga.toString());
+    setEditMenuKategori(menu.kategori);
+  };
+
+  const handleSaveEditMenu = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMenu) return;
+    if (!editMenuNama.trim()) {
+      alert("Nama menu tidak boleh kosong");
+      return;
+    }
+    const h = Number(editMenuHarga);
+    if (isNaN(h) || h < 0) {
+      alert("Harga menu tidak valid");
+      return;
+    }
+    setIsUpdatingMenu(true);
+    try {
+      await updateMenu(editingMenu.id, {
+        nama: editMenuNama.trim(),
+        harga: h,
+        kategori: editMenuKategori.trim()
+      });
+      setEditingMenu(null);
+      await loadData();
+    } catch (err: any) {
+      alert("Gagal mengubah menu: " + err.message);
+    } finally {
+      setIsUpdatingMenu(false);
+    }
+  };
+
+  const handleToggleSoldOut = async (menu: MenuItem) => {
+    try {
+      await toggleMenuSoldOut(menu.id, !menu.isSoldOut);
+      await loadData();
+    } catch (err: any) {
+      alert("Gagal mengubah status stok: " + err.message);
+    }
+  };
+
+  const handleOpenRenameTable = (t: { id: number; nomor: string }) => {
+    setTableToEdit(t);
+    setTableEditName(t.nomor);
+  };
+
+  const handleSaveTableRename = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!tableToEdit || !tableEditName.trim()) return;
+    try {
+      await renameTable(tableToEdit.id, tableEditName.trim());
+      setTableToEdit(null);
+      await loadData();
+    } catch (err: any) {
+      alert("Gagal mengubah nama meja: " + err.message);
+    }
+  };
+
+  const handleConfirmTableDelete = async () => {
+    if (!tableToDelete) return;
+    try {
+      await deleteTable(tableToDelete.id);
+      setTableToDelete(null);
+      await loadData();
+    } catch (err: any) {
+      alert("Gagal menghapus meja: " + err.message);
+    }
   };
 
   const handleExportBackup = async () => {
@@ -754,6 +897,7 @@ export default function AdminPage() {
                     <th className="py-3 px-4 text-gray-600 font-medium text-sm">Nama</th>
                     <th className="py-3 px-4 text-gray-600 font-medium text-sm">Kategori</th>
                     <th className="py-3 px-4 text-gray-600 font-medium text-sm">Harga</th>
+                    <th className="py-3 px-4 text-gray-600 font-medium text-sm text-center">Status Stok</th>
                     <th className="py-3 px-4 text-gray-600 font-medium text-sm text-right">Aksi</th>
                   </tr>
                 </thead>
@@ -771,22 +915,46 @@ export default function AdminPage() {
                           }}
                         />
                       </td>
-                      <td className="py-3 px-4 text-gray-500">{menu.id}</td>
+                      <td className="py-3 px-4 text-gray-500 font-mono text-xs">{menu.id}</td>
                       <td className="py-3 px-4 text-gray-800 font-medium">{menu.nama}</td>
                       <td className="py-3 px-4 text-gray-500">
                         <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
                           {menu.kategori}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-gray-800">Rp {menu.harga.toLocaleString('id-ID')}</td>
-                      <td className="py-3 px-4 text-right">
-                        <button onClick={() => handleDeleteMenu(menu.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">Hapus</button>
+                      <td className="py-3 px-4 text-gray-900 font-bold">Rp {menu.harga.toLocaleString('id-ID')}</td>
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => handleToggleSoldOut(menu)}
+                          className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all ${
+                            menu.isSoldOut
+                              ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-300'
+                              : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-300'
+                          }`}
+                          title="Klik untuk ubah status habis / tersedia"
+                        >
+                          {menu.isSoldOut ? '✕ Habis' : '✓ Tersedia'}
+                        </button>
+                      </td>
+                      <td className="py-3 px-4 text-right whitespace-nowrap space-x-2">
+                        <button 
+                          onClick={() => handleOpenEditMenu(menu)} 
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold transition-colors border border-emerald-200"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteMenu(menu.id)} 
+                          className="px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition-colors border border-red-200"
+                        >
+                          🗑️ Hapus
+                        </button>
                       </td>
                     </tr>
                   ))}
                   {currentMenuData.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-gray-500">Belum ada menu yang ditemukan.</td>
+                      <td colSpan={7} className="py-8 text-center text-gray-500">Belum ada menu yang ditemukan.</td>
                     </tr>
                   )}
                 </tbody>
@@ -860,13 +1028,8 @@ export default function AdminPage() {
                     <span className="text-xs text-gray-600 mb-2">{label}</span>
                     <div className="flex gap-1 flex-wrap justify-center">
                       <button
-                        onClick={async () => {
-                          const name = window.prompt('Nama meja baru:', t.nomor);
-                          if (!name) return;
-                          try { const { renameTable } = await import('@/lib/api'); await renameTable(t.id, name); loadData(); }
-                          catch (err: any) { alert(err.message); }
-                        }}
-                        className="text-xs px-2 py-1 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100"
+                        onClick={() => handleOpenRenameTable(t)}
+                        className="text-xs px-2.5 py-1 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 font-semibold"
                       >Ubah</button>
                       {st === 'lunas' && (
                         <button
@@ -874,17 +1037,13 @@ export default function AdminPage() {
                             try { const { clearTable } = await import('@/lib/api'); await clearTable(t.id); loadData(); }
                             catch (err: any) { alert(err.message); }
                           }}
-                          className="text-xs px-2 py-1 rounded bg-green-600 text-white hover:bg-green-700"
+                          className="text-xs px-2.5 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 font-semibold"
                         >Kosongkan</button>
                       )}
                       {st === 'kosong' && (
                         <button
-                          onClick={async () => {
-                            if (!window.confirm(`Hapus ${t.nomor}?`)) return;
-                            try { const { deleteTable } = await import('@/lib/api'); await deleteTable(t.id); loadData(); }
-                            catch (err: any) { alert(err.message); }
-                          }}
-                          className="text-xs px-2 py-1 rounded bg-red-100 text-red-600 hover:bg-red-200"
+                          onClick={() => setTableToDelete(t)}
+                          className="text-xs px-2.5 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 font-semibold"
                         >Hapus</button>
                       )}
                     </div>
@@ -1223,17 +1382,24 @@ export default function AdminPage() {
         </div>
 
         {/* --- PENGATURAN TOKO & STRUK --- */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8 mt-8">
-          <div className="flex justify-between items-center mb-6 border-b pb-4">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8 mt-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 border-b pb-4">
             <div>
-              <h2 className="text-xl font-bold text-gray-800">Profil Usaha & Pengaturan Struk</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Identitas ini akan otomatis dicetak pada kepala nota belanja pelanggan.</p>
+              <h2 className="text-xl font-bold text-gray-900">Profil Usaha & Pengaturan Struk</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Identitas ini tersimpan permanen di perangkat & otomatis dicetak pada kepala nota belanja.</p>
             </div>
-            {isSavingSettings && (
-              <span className="text-xs font-bold text-green-700 bg-green-50 px-3 py-1.5 rounded-full border border-green-200">
-                ✓ Tersimpan!
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {isDirtySettings && (
+                <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
+                  ⚠️ Perubahan belum disimpan
+                </span>
+              )}
+              {settingsSavedToast && (
+                <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-1.5 rounded-full border border-emerald-300 animate-in fade-in duration-200">
+                  ✓ Berhasil Disimpan Permanen!
+                </span>
+              )}
+            </div>
           </div>
 
           <form onSubmit={handleSaveStoreSettings} className="space-y-4">
@@ -1243,9 +1409,12 @@ export default function AdminPage() {
                 <input 
                   type="text" 
                   value={storeSettings.storeName}
-                  onChange={(e) => setStoreSettings({ ...storeSettings, storeName: e.target.value })}
+                  onChange={(e) => {
+                    setStoreSettings({ ...storeSettings, storeName: e.target.value });
+                    setIsDirtySettings(true);
+                  }}
                   placeholder="Contoh: Kopi Janji Santai"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-blue-500 outline-none"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 text-sm text-gray-900 focus:border-emerald-500 outline-none"
                   required
                 />
               </div>
@@ -1255,9 +1424,12 @@ export default function AdminPage() {
                 <input 
                   type="text" 
                   value={storeSettings.storePhone}
-                  onChange={(e) => setStoreSettings({ ...storeSettings, storePhone: e.target.value })}
+                  onChange={(e) => {
+                    setStoreSettings({ ...storeSettings, storePhone: e.target.value });
+                    setIsDirtySettings(true);
+                  }}
                   placeholder="Contoh: 081234567890"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-blue-500 outline-none"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 text-sm text-gray-900 focus:border-emerald-500 outline-none"
                 />
               </div>
             </div>
@@ -1267,9 +1439,12 @@ export default function AdminPage() {
               <input 
                 type="text" 
                 value={storeSettings.storeAddress}
-                onChange={(e) => setStoreSettings({ ...storeSettings, storeAddress: e.target.value })}
-                placeholder="Contoh: Jl. Ahmad Yani No. 12, Jakarta"
-                className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-blue-500 outline-none"
+                onChange={(e) => {
+                  setStoreSettings({ ...storeSettings, storeAddress: e.target.value });
+                  setIsDirtySettings(true);
+                }}
+                placeholder="Contoh: Jl. Malioboro No. 45, Yogyakarta"
+                className="w-full border border-gray-300 rounded-xl p-2.5 text-sm text-gray-900 focus:border-emerald-500 outline-none"
               />
             </div>
 
@@ -1278,8 +1453,11 @@ export default function AdminPage() {
                 <label className="block text-xs font-bold text-gray-700 mb-1">Ukuran Kertas Thermal</label>
                 <select 
                   value={storeSettings.paperWidth}
-                  onChange={(e) => setStoreSettings({ ...storeSettings, paperWidth: e.target.value as any })}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 bg-white focus:border-blue-500 outline-none"
+                  onChange={(e) => {
+                    setStoreSettings({ ...storeSettings, paperWidth: e.target.value as any });
+                    setIsDirtySettings(true);
+                  }}
+                  className="w-full border border-gray-300 rounded-xl p-2.5 text-sm text-gray-900 bg-white focus:border-emerald-500 outline-none"
                 >
                   <option value="58mm">58mm (Printer Mini / Standar Kasir)</option>
                   <option value="80mm">80mm (Printer Besar Restoran)</option>
@@ -1291,9 +1469,12 @@ export default function AdminPage() {
                 <input 
                   type="text" 
                   value={storeSettings.receiptFooter}
-                  onChange={(e) => setStoreSettings({ ...storeSettings, receiptFooter: e.target.value })}
-                  placeholder="Contoh: Terima Kasih, Jangan Lupa Senyum"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-blue-500 outline-none"
+                  onChange={(e) => {
+                    setStoreSettings({ ...storeSettings, receiptFooter: e.target.value });
+                    setIsDirtySettings(true);
+                  }}
+                  placeholder="Contoh: Terima Kasih, Silakan Datang Kembali"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 text-sm text-gray-900 focus:border-emerald-500 outline-none"
                 />
               </div>
             </div>
@@ -1303,15 +1484,18 @@ export default function AdminPage() {
             <div className="border-t pt-4 mt-4">
               <h3 className="text-sm font-bold text-gray-800 mb-3">Keamanan PIN & Biaya Tambahan</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-200">
                 {/* Kunci PIN */}
                 <div className="space-y-2">
                   <label className="flex items-center space-x-2 text-xs font-bold text-gray-700 cursor-pointer">
                     <input 
                       type="checkbox" 
                       checked={storeSettings.enablePin}
-                      onChange={(e) => setStoreSettings({ ...storeSettings, enablePin: e.target.checked })}
-                      className="rounded text-blue-600"
+                      onChange={(e) => {
+                        setStoreSettings({ ...storeSettings, enablePin: e.target.checked });
+                        setIsDirtySettings(true);
+                      }}
+                      className="rounded text-emerald-600 focus:ring-emerald-500"
                     />
                     <span>Kunci Admin dengan PIN</span>
                   </label>
@@ -1320,7 +1504,10 @@ export default function AdminPage() {
                       type="password"
                       maxLength={6}
                       value={storeSettings.adminPin}
-                      onChange={(e) => setStoreSettings({ ...storeSettings, adminPin: e.target.value })}
+                      onChange={(e) => {
+                        setStoreSettings({ ...storeSettings, adminPin: e.target.value });
+                        setIsDirtySettings(true);
+                      }}
                       placeholder="PIN 4 Digit (contoh: 1234)"
                       className="w-full border border-gray-300 rounded-lg p-2 text-sm text-gray-900 bg-white"
                     />
@@ -1334,8 +1521,11 @@ export default function AdminPage() {
                     <input 
                       type="checkbox" 
                       checked={storeSettings.enableTax}
-                      onChange={(e) => setStoreSettings({ ...storeSettings, enableTax: e.target.checked })}
-                      className="rounded text-blue-600"
+                      onChange={(e) => {
+                        setStoreSettings({ ...storeSettings, enableTax: e.target.checked });
+                        setIsDirtySettings(true);
+                      }}
+                      className="rounded text-emerald-600 focus:ring-emerald-500"
                     />
                     <span>Pajak Restoran (PB1/PPN)</span>
                   </label>
@@ -1346,8 +1536,11 @@ export default function AdminPage() {
                         min="0"
                         max="100"
                         value={storeSettings.taxPercent}
-                        onChange={(e) => setStoreSettings({ ...storeSettings, taxPercent: Number(e.target.value) })}
-                        className="w-20 border border-gray-300 rounded-lg p-2 text-sm text-gray-900 bg-white"
+                        onChange={(e) => {
+                          setStoreSettings({ ...storeSettings, taxPercent: Number(e.target.value) });
+                          setIsDirtySettings(true);
+                        }}
+                        className="w-20 border border-gray-300 rounded-lg p-2 text-sm text-gray-900 bg-white font-bold"
                       />
                       <span className="text-sm font-bold text-gray-700">%</span>
                     </div>
@@ -1361,8 +1554,11 @@ export default function AdminPage() {
                     <input 
                       type="checkbox" 
                       checked={storeSettings.enableService}
-                      onChange={(e) => setStoreSettings({ ...storeSettings, enableService: e.target.checked })}
-                      className="rounded text-blue-600"
+                      onChange={(e) => {
+                        setStoreSettings({ ...storeSettings, enableService: e.target.checked });
+                        setIsDirtySettings(true);
+                      }}
+                      className="rounded text-emerald-600 focus:ring-emerald-500"
                     />
                     <span>Biaya Layanan (Service)</span>
                   </label>
@@ -1373,8 +1569,11 @@ export default function AdminPage() {
                         min="0"
                         max="100"
                         value={storeSettings.servicePercent}
-                        onChange={(e) => setStoreSettings({ ...storeSettings, servicePercent: Number(e.target.value) })}
-                        className="w-20 border border-gray-300 rounded-lg p-2 text-sm text-gray-900 bg-white"
+                        onChange={(e) => {
+                          setStoreSettings({ ...storeSettings, servicePercent: Number(e.target.value) });
+                          setIsDirtySettings(true);
+                        }}
+                        className="w-20 border border-gray-300 rounded-lg p-2 text-sm text-gray-900 bg-white font-bold"
                       />
                       <span className="text-sm font-bold text-gray-700">%</span>
                     </div>
@@ -1384,7 +1583,14 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg text-sm shadow transition-colors">Simpan Profil Toko</button>
+            <button 
+              type="submit" 
+              disabled={isSavingSettings}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-6 rounded-xl text-sm shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
+            >
+              {isSavingSettings && <span className="inline-block animate-spin">⏳</span>}
+              {isSavingSettings ? 'Menyimpan ke Memori Aman...' : 'Simpan Profil Toko'}
+            </button>
           </form>
         </div>
 
@@ -1832,6 +2038,170 @@ export default function AdminPage() {
                 ← Kembali ke Kasir
               </Link>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL EDIT MENU --- */}
+      {editingMenu && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+          onClick={() => setEditingMenu(null)}
+        >
+          <div 
+            className="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md p-6 max-h-[90vh] overflow-y-auto shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Grab handle for mobile touch */}
+            <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4 sm:hidden" />
+
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Edit Menu</h3>
+                <p className="text-xs text-gray-500">Perbarui rincian produk menu katalog</p>
+              </div>
+              <button 
+                onClick={() => setEditingMenu(null)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 flex items-center justify-center font-bold text-sm transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditMenu} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Nama Menu</label>
+                <input 
+                  type="text"
+                  required
+                  autoFocus
+                  value={editMenuNama}
+                  onChange={(e) => setEditMenuNama(e.target.value)}
+                  placeholder="Contoh: Es Kopi Susu Aren"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 text-sm text-gray-900 focus:border-emerald-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Harga Satuan (Rp)</label>
+                <input 
+                  type="number"
+                  required
+                  min="0"
+                  value={editMenuHarga}
+                  onChange={(e) => setEditMenuHarga(e.target.value)}
+                  placeholder="15000"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 text-sm text-gray-900 focus:border-emerald-500 outline-none font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Kategori</label>
+                <input 
+                  type="text"
+                  required
+                  value={editMenuKategori}
+                  onChange={(e) => setEditMenuKategori(e.target.value)}
+                  placeholder="Contoh: Minuman"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 text-sm text-gray-900 focus:border-emerald-500 outline-none"
+                />
+              </div>
+
+              <div className="flex space-x-2 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => setEditingMenu(null)}
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-colors"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isUpdatingMenu}
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50"
+                >
+                  {isUpdatingMenu ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL UBAH NAMA MEJA --- */}
+      {tableToEdit && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setTableToEdit(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Ubah Nama Meja</h3>
+            <p className="text-xs text-gray-500 mb-4">Ganti label meja untuk pemesanan kasir</p>
+
+            <form onSubmit={handleSaveTableRename} className="space-y-4">
+              <input 
+                type="text"
+                required
+                autoFocus
+                value={tableEditName}
+                onChange={(e) => setTableEditName(e.target.value)}
+                placeholder="Nomor / Nama Meja"
+                className="w-full border border-gray-300 rounded-xl p-2.5 text-sm font-bold text-gray-900 focus:border-emerald-500 outline-none"
+              />
+
+              <div className="flex space-x-2">
+                <button 
+                  type="button"
+                  onClick={() => setTableToEdit(null)}
+                  className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-bold"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow transition-transform active:scale-95"
+                >
+                  Simpan Meja
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL HAPUS MEJA --- */}
+      {tableToDelete && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setTableToDelete(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-xl mx-auto mb-3 font-bold">
+              🗑️
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Hapus {tableToDelete.nomor}?</h3>
+            <p className="text-xs text-gray-500 mb-5">Meja kosong ini akan dihapus dari daftar tata letak meja kasir.</p>
+
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => setTableToDelete(null)}
+                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-bold"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleConfirmTableDelete}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow transition-transform active:scale-95"
+              >
+                Ya, Hapus
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Printer } from '@capgo/capacitor-printer';
 import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
-import { getStoreSettings, StoreSettings } from '@/lib/settings';
+import { App } from '@capacitor/app';
+import { getStoreSettings, loadStoreSettingsAsync, subscribeStoreSettings, StoreSettings } from '@/lib/settings';
 import { getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement, recordPayment, refundPartialPayment, getOrderPayments } from '@/lib/api';
 import { generateZReportReceipt } from '@/lib/receipt';
 import { generateEscPosReceipt, generatePartialPaymentReceipt } from '@/lib/receipt';
@@ -86,18 +87,6 @@ export default function POSPage() {
   const [tempDiscountVal, setTempDiscountVal] = useState("");
 
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
-  useEffect(() => {
-    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      setIsDark(true); document.documentElement.classList.add('dark');
-    } else {
-      setIsDark(false); document.documentElement.classList.remove('dark');
-    }
-  }, []);
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    if (!isDark) { document.documentElement.classList.add('dark'); localStorage.theme = 'dark'; }
-    else { document.documentElement.classList.remove('dark'); localStorage.theme = 'light'; }
-  };
 
   // Cart State
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -118,8 +107,105 @@ export default function POSPage() {
 
   const [activeVariantGroup, setActiveVariantGroup] = useState<any>(null);
 
+  useEffect(() => {
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      setIsDark(true); document.documentElement.classList.add('dark');
+    } else {
+      setIsDark(false); document.documentElement.classList.remove('dark');
+    }
+  }, []);
+  const toggleTheme = () => {
+    setIsDark(!isDark);
+    if (!isDark) { document.documentElement.classList.add('dark'); localStorage.theme = 'dark'; }
+    else { document.documentElement.classList.remove('dark'); localStorage.theme = 'light'; }
+  };
+
+  // Synchronize store settings asynchronously from IndexedDB and subscribe to live changes
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    async function initSettings() {
+      try {
+        const fresh = await loadStoreSettingsAsync();
+        setStoreSettings(fresh);
+      } catch (err) {
+        console.error("Error loading store settings in POS:", err);
+      }
+    }
+    initSettings();
+
+    unsubscribe = subscribeStoreSettings((updated) => {
+      setStoreSettings(updated);
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  // Android Hardware Back button listener: closes active modal or bottom-sheet before exiting
+  useEffect(() => {
+    let removeListener: any;
+    try {
+      App.addListener('backButton', ({ canGoBack }) => {
+        if (activeModItem) {
+          setActiveModItem(null);
+        } else if (activeVariantGroup) {
+          setActiveVariantGroup(null);
+        } else if (isPaymentModalOpen) {
+          setIsPaymentModalOpen(false);
+        } else if (isSplitBillModalOpen) {
+          setIsSplitBillModalOpen(false);
+        } else if (isRefundModalOpen) {
+          setIsRefundModalOpen(false);
+        } else if (isDiscountModalOpen) {
+          setIsDiscountModalOpen(false);
+        } else if (isCashMovementModalOpen) {
+          setIsCashMovementModalOpen(false);
+        } else if (isOpenShiftModalOpen) {
+          setIsOpenShiftModalOpen(false);
+        } else if (isCloseShiftModalOpen) {
+          setIsCloseShiftModalOpen(false);
+        } else if (receiptData) {
+          setReceiptData(null);
+        } else if (blindCloseResult) {
+          setBlindCloseResult(null);
+        } else if (isMobileCartOpen) {
+          setIsMobileCartOpen(false);
+        } else if (canGoBack) {
+          window.history.back();
+        }
+      }).then(handle => {
+        removeListener = handle;
+      }).catch(() => {});
+    } catch (_) {}
+
+    return () => {
+      if (removeListener && removeListener.remove) {
+        removeListener.remove();
+      }
+    };
+  }, [
+    activeModItem,
+    activeVariantGroup,
+    isPaymentModalOpen,
+    isSplitBillModalOpen,
+    isRefundModalOpen,
+    isDiscountModalOpen,
+    isCashMovementModalOpen,
+    isOpenShiftModalOpen,
+    isCloseShiftModalOpen,
+    receiptData,
+    blindCloseResult,
+    isMobileCartOpen
+  ]);
+
   const loadData = async () => {
-    setStoreSettings(getStoreSettings());
+    try {
+      const freshSettings = await loadStoreSettingsAsync();
+      setStoreSettings(freshSettings);
+    } catch (_) {
+      setStoreSettings(getStoreSettings());
+    }
     await refreshShiftData();
     const { getMenus, getOrders, getTables } = await import('@/lib/api');
     const menus = await getMenus();
@@ -1009,12 +1095,12 @@ export default function POSPage() {
                   ))}
                 </div>
               )}
-              <p className="text-yellow-600 dark:text-yellow-500 text-sm font-black mt-1">Rp {item.harga.toLocaleString('id-ID')}</p>
+              <p className="text-emerald-700 dark:text-emerald-400 text-sm font-extrabold mt-1">Rp {item.harga.toLocaleString('id-ID')}</p>
             </div>
-            <div className="flex items-center bg-gray-50 dark:bg-gray-900 rounded-lg p-1 border border-gray-200 dark:border-gray-700 shadow-sm">
-              <button onClick={() => updateQty(item.itemKey || item.id, -1)} className="w-8 h-8 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 flex items-center justify-center font-black transition-colors">-</button>
+            <div className="flex items-center bg-gray-50 dark:bg-gray-900 rounded-xl p-1 border border-gray-200 dark:border-gray-700 shadow-sm">
+              <button onClick={() => updateQty(item.itemKey || item.id, -1)} className="w-8 h-8 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 flex items-center justify-center font-black transition-colors">-</button>
               <span className="w-8 text-center font-bold text-gray-800 dark:text-white text-sm">{item.qty}</span>
-              <button onClick={() => updateQty(item.itemKey || item.id, 1)} className="w-8 h-8 rounded-md bg-yellow-500 hover:bg-yellow-400 text-white flex items-center justify-center font-black transition-colors">+</button>
+              <button onClick={() => updateQty(item.itemKey || item.id, 1)} className="w-8 h-8 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center font-black transition-colors">+</button>
             </div>
           </div>
         ))}
@@ -1033,7 +1119,7 @@ export default function POSPage() {
             <div className="flex justify-between items-center">
               {discountAmount > 0 ? (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-green-600 dark:text-green-400 font-bold">
+                  <span className="text-emerald-700 dark:text-emerald-400 font-bold">
                     🏷️ Diskon ({discountType === 'percent' ? discountValue + '%' : 'Rp'}):
                   </span>
                   <button 
@@ -1046,13 +1132,13 @@ export default function POSPage() {
               ) : (
                 <button 
                   onClick={() => setIsDiscountModalOpen(true)}
-                  className="text-blue-600 dark:text-blue-400 font-bold hover:underline flex items-center gap-1"
+                  className="text-emerald-700 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1"
                 >
                   + Tambah Diskon / Promo
                 </button>
               )}
               {discountAmount > 0 && (
-                <span className="font-bold text-green-600 dark:text-green-400">-Rp {discountAmount.toLocaleString('id-ID')}</span>
+                <span className="font-bold text-emerald-700 dark:text-emerald-400">-Rp {discountAmount.toLocaleString('id-ID')}</span>
               )}
             </div>
 
@@ -1073,23 +1159,27 @@ export default function POSPage() {
         )}
 
         <div className="flex justify-between items-end mb-4">
-          <span className="text-gray-500 dark:text-gray-400 font-bold text-sm uppercase tracking-wider">Total Pembayaran</span>
+          <span className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-wider">Total Pembayaran</span>
           <span className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white leading-none tracking-tight">Rp {totalPrice.toLocaleString('id-ID')}</span>
         </div>
         <div className="flex gap-2">
           {editingOrderId && (
-            <button onClick={handleShowDraftBill} className="w-1/4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white py-4 rounded-2xl font-bold text-xs shadow-sm active:scale-95 transition-all">📝 Draft</button>
+            <button onClick={handleShowDraftBill} className="w-1/4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white py-3.5 rounded-xl font-bold text-xs shadow-sm active:scale-95 transition-all">📝 Draft</button>
           )}
           {(editingOrderId || (orderType === "Dine-in" && selectedTable && activeOrders.some(o => o.tableId === parseInt(selectedTable)))) && (
             <button 
               type="button"
               onClick={handleOpenSplitBillFromCart} 
-              className="w-1/3 bg-amber-500 hover:bg-amber-400 text-gray-950 py-4 rounded-2xl font-black text-xs md:text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-1"
+              className="w-1/3 bg-amber-600 hover:bg-amber-700 text-white py-3.5 rounded-xl font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
             >
               ✂️ Split Bill
             </button>
           )}
-          <button onClick={() => setIsPaymentModalOpen(true)} className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-gray-900 py-4 rounded-2xl font-black text-base md:text-lg shadow-lg active:scale-95 transition-all" disabled={cart.length === 0}>
+          <button 
+            onClick={() => setIsPaymentModalOpen(true)} 
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-extrabold text-sm md:text-base shadow-md active:scale-95 transition-all disabled:opacity-40" 
+            disabled={cart.length === 0}
+          >
             Bayar Pesanan
           </button>
         </div>
@@ -1112,29 +1202,49 @@ export default function POSPage() {
 
       {/* Payment Modal */}
       {isPaymentModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center md:items-start md:pt-10 justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl w-full max-w-md shadow-2xl relative flex flex-col max-h-[90vh]">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">Selesaikan Pembayaran</h2>
-            <div className="flex-1 overflow-y-auto pr-2">
-              <div className="space-y-4 mb-6">
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
+          onClick={() => setIsPaymentModalOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 p-6 md:p-8 rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl relative flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Grab handle for mobile touch */}
+            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-3 sm:hidden" />
+
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Selesaikan Pembayaran</h2>
+              <button 
+                type="button"
+                onClick={() => setIsPaymentModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-white flex items-center justify-center text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto pr-1">
+              <div className="space-y-4 mb-4">
                 <div>
-                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Tipe Pesanan</label>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">Tipe Pesanan</label>
                   <div className="flex space-x-2">
                     {["Dine-in", "Takeaway"].map((type) => (
                       <button 
                         key={type}
+                        type="button"
                         onClick={() => setOrderType(type)}
-                        className={`flex-1 py-3 rounded-lg text-sm font-semibold transition-colors border ${orderType === type ? 'bg-yellow-600 border-yellow-500 text-white shadow-md' : 'bg-gray-100 dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-400'}`}
+                        className={`flex-1 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border ${orderType === type ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm' : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-400'}`}
                       >
-                        {type}
+                        {type === 'Dine-in' ? '🍽️ Dine-in (Makan di Tempat)' : '🥡 Takeaway (Bungkus)'}
                       </button>
                     ))}
                   </div>
                 </div>
                 {orderType === "Dine-in" && (
                   <div>
-                    <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Pilih Meja</label>
-                    <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto p-1">
+                    <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">Pilih Meja</label>
+                    <div className="grid grid-cols-4 gap-2 max-h-36 overflow-y-auto p-1">
                       {tableData.map(table => {
                         const tStatus = getTableStatus(table);
                         const isSelected = selectedTable === table.id.toString();
@@ -1144,7 +1254,7 @@ export default function POSPage() {
                             key={table.id}
                             type="button"
                             onClick={() => setSelectedTable(table.id.toString())}
-                            className={`py-2 px-1 rounded-lg border-2 text-xs font-bold transition-all ${bgClass} ${isSelected ? 'ring-2 ring-yellow-500 ring-offset-1 scale-105 shadow-md' : 'opacity-80 hover:opacity-100'}`}
+                            className={`py-2 px-1 rounded-xl border text-xs font-bold transition-all ${bgClass} ${isSelected ? 'ring-2 ring-emerald-600 ring-offset-1 scale-105 shadow-sm' : 'opacity-80 hover:opacity-100'}`}
                           >
                             {table.nomor.replace(/^Meja\s*/i, '')}
                           </button>
@@ -1154,46 +1264,49 @@ export default function POSPage() {
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Nama Pelanggan (Wajib)</label>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Nama Pelanggan (Wajib)</label>
                   <input 
                     type="text" 
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-yellow-500 outline-none transition-colors" 
+                    placeholder="Contoh: Budi Santoso"
+                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl p-2.5 text-sm text-gray-900 dark:text-white focus:border-emerald-500 outline-none transition-colors" 
                   />
                   <div className="mt-3">
-                    <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Catatan (Opsional)</label>
+                    <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Catatan (Opsional)</label>
                     <input
                       type="text"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-yellow-500 outline-none transition-colors"
+                      placeholder="Contoh: Tanpa bawang goreng, sambal pisah"
+                      className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl p-2.5 text-sm text-gray-900 dark:text-white focus:border-emerald-500 outline-none transition-colors"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2 mt-4">Metode Pembayaran</label>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5 mt-2">Metode Pembayaran</label>
                   <div className="grid grid-cols-3 gap-2">
                     {["Cash", "QRIS", "Transfer"].map((method) => (
                       <button 
                         key={method}
+                        type="button"
                         onClick={() => setPaymentMethod(method)}
-                        className={`py-3 rounded-lg text-sm font-semibold transition-colors border ${paymentMethod === method ? 'bg-blue-600 border-blue-500 text-white shadow-md' : 'bg-gray-100 dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-400'}`}
+                        className={`py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border ${paymentMethod === method ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm' : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-400'}`}
                       >
-                        {method}
+                        {method === 'Cash' ? '💵 Tunai' : method === 'QRIS' ? '📱 QRIS' : '💳 Transfer'}
                       </button>
                     ))}
                   </div>
                 </div>
                   {/* Kalkulator Uang Masuk & Kembalian */}
                   {paymentMethod === "Cash" && (
-                    <div className="mt-4 p-3.5 bg-gray-50 dark:bg-gray-900/80 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <div className="mt-3 p-3.5 bg-gray-50 dark:bg-gray-900/80 rounded-2xl border border-gray-200 dark:border-gray-700">
                       <div className="flex justify-between items-center mb-1.5">
                         <label className="text-xs font-bold text-gray-700 dark:text-gray-300">Uang Diterima (Rp)</label>
                         <button 
                           type="button"
                           onClick={() => setCashTendered(totalPrice.toString())}
-                          className="text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline"
+                          className="text-xs text-emerald-700 dark:text-emerald-400 font-bold hover:underline"
                         >
                           Uang Pas
                         </button>
@@ -1203,7 +1316,7 @@ export default function POSPage() {
                         placeholder={totalPrice.toString()}
                         value={cashTendered}
                         onChange={(e) => setCashTendered(e.target.value)}
-                        className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 text-lg font-black text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-colors"
+                        className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl p-2.5 text-lg font-black text-gray-900 dark:text-white outline-none focus:border-emerald-500 transition-colors"
                       />
                       
                       {/* Tombol Cepat Pecahan Uang */}
@@ -1213,7 +1326,7 @@ export default function POSPage() {
                             key={amt}
                             type="button"
                             onClick={() => setCashTendered(amt.toString())}
-                            className="py-1 px-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                            className="py-1 px-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 transition-colors shadow-sm"
                           >
                             {amt >= 1000 ? (amt / 1000) + 'rb' : amt}
                           </button>
@@ -1223,7 +1336,7 @@ export default function POSPage() {
                       {/* Indikator Kembalian */}
                       <div className="mt-3 pt-2.5 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
                         <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Kembalian:</span>
-                        <span className={'text-base font-black ' + ((Number(cashTendered) || 0) >= totalPrice ? 'text-green-600 dark:text-green-400' : 'text-red-500')}>
+                        <span className={'text-base font-black ' + ((Number(cashTendered) || 0) >= totalPrice ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-500')}>
                           Rp {Math.max(0, (Number(cashTendered) || 0) - totalPrice).toLocaleString('id-ID')}
                         </span>
                       </div>
@@ -1231,13 +1344,13 @@ export default function POSPage() {
                   )}
               </div>
             </div>
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-2">
               
                 {cart.length > 0 && (discountAmount > 0 || serviceAmount > 0 || taxAmount > 0) && (
-                  <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl space-y-1 text-xs text-gray-600 dark:text-gray-400 border border-gray-100 dark:border-gray-800">
+                  <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl space-y-1 text-xs text-gray-600 dark:text-gray-400 border border-gray-100 dark:border-gray-800">
                     <div className="flex justify-between"><span>Subtotal</span><span>Rp {rawSubtotal.toLocaleString('id-ID')}</span></div>
                     {discountAmount > 0 && (
-                      <div className="flex justify-between text-green-600 font-semibold"><span>Diskon</span><span>-Rp {discountAmount.toLocaleString('id-ID')}</span></div>
+                      <div className="flex justify-between text-emerald-700 font-semibold"><span>Diskon</span><span>-Rp {discountAmount.toLocaleString('id-ID')}</span></div>
                     )}
                     {serviceAmount > 0 && (
                       <div className="flex justify-between"><span>Biaya Layanan ({storeSettings.servicePercent}%)</span><span>Rp {serviceAmount.toLocaleString('id-ID')}</span></div>
@@ -1248,26 +1361,41 @@ export default function POSPage() {
                   </div>
                 )}
 
-              <div className="flex justify-between items-center mb-6">
-                <span className="text-gray-600 dark:text-gray-400 font-medium text-lg">Total</span>
-                <span className="text-3xl font-black text-yellow-600 dark:text-yellow-400">Rp {totalPrice.toLocaleString('id-ID')}</span>
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-gray-600 dark:text-gray-400 font-bold text-sm">Total Tagihan</span>
+                <span className="text-2xl font-black text-emerald-700 dark:text-emerald-400">Rp {totalPrice.toLocaleString('id-ID')}</span>
               </div>
               <div className="flex space-x-2">
-                <button onClick={() => setIsPaymentModalOpen(false)} className="px-4 py-3 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600 font-semibold transition-colors">Batal</button>
+                <button 
+                  type="button"
+                  onClick={() => setIsPaymentModalOpen(false)} 
+                  className="px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white hover:bg-gray-200 font-bold text-xs transition-colors"
+                >
+                  Batal
+                </button>
                 {orderType === "Dine-in" && selectedTable && (
-                  <button onClick={() => processPayment(true, 'unpaid')} className="flex-1 py-3 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold transition-colors shadow-md text-sm">
+                  <button 
+                    type="button"
+                    onClick={() => processPayment(true, 'unpaid')} 
+                    className="flex-1 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold transition-all shadow-sm text-xs active:scale-95"
+                  >
                     📥 Open Bill
                   </button>
                 )}
                 <button 
                   type="button" 
                   onClick={handleOpenSplitBillFromPaymentModal} 
-                  className="flex-1 py-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-900 font-black transition-colors shadow-md text-sm flex items-center justify-center gap-1"
+                  className="flex-1 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold transition-all shadow-sm text-xs flex items-center justify-center gap-1 active:scale-95"
                 >
                   ✂️ Split Bill
                 </button>
-                <button onClick={() => processPayment(false, 'paid')} className="flex-1 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-colors shadow-md text-sm">
-                  💸 Bayar Lunas
+                <button 
+                  type="button"
+                  disabled={isProcessingPayment}
+                  onClick={() => processPayment(false, 'paid')} 
+                  className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold transition-all shadow-md text-xs sm:text-sm active:scale-95 disabled:opacity-50"
+                >
+                  {isProcessingPayment ? 'Memproses...' : '💸 Bayar Lunas'}
                 </button>
               </div>
             </div>
@@ -1277,8 +1405,14 @@ export default function POSPage() {
 
       {/* Receipt Modal */}
       {receiptData && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-white text-black p-6 rounded-xl w-full max-w-sm shadow-2xl relative flex flex-col max-h-[90vh]">
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
+          onClick={closeReceipt}
+        >
+          <div 
+            className="bg-white text-black p-6 rounded-2xl w-full max-w-sm shadow-2xl relative flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex-1 overflow-y-auto pr-2">
               <div id="printable-receipt" className="font-mono text-sm leading-tight p-2 relative">
                 {receiptData.isDraft && (
@@ -1367,7 +1501,7 @@ export default function POSPage() {
                     {printMode === 'all' && receiptData.cashTendered > 0 && receiptData.paymentMethod === 'Cash' && (
                       <>
                         <div className="flex justify-between mt-1 text-gray-600"><span>Bayar Tunai</span><span>Rp {Number(receiptData.cashTendered).toLocaleString('id-ID')}</span></div>
-                        <div className="flex justify-between mt-1 text-green-700 font-bold"><span>Kembalian</span><span>Rp {Number(receiptData.change || 0).toLocaleString('id-ID')}</span></div>
+                        <div className="flex justify-between mt-1 text-emerald-700 font-bold"><span>Kembalian</span><span>Rp {Number(receiptData.change || 0).toLocaleString('id-ID')}</span></div>
                       </>
                     )}
                   </div>
@@ -1390,22 +1524,22 @@ export default function POSPage() {
 
             <div className="mt-6 flex flex-col space-y-2 border-t pt-4">
               {receiptData.isDraft && (
-                <button onClick={() => { closeReceipt(); processPayment(false, 'paid'); }} className="w-full py-3 mb-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold text-lg shadow-lg flex justify-center items-center space-x-2">
+                <button onClick={() => { closeReceipt(); processPayment(false, 'paid'); }} className="w-full py-3 mb-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg shadow-lg shadow-emerald-600/20 flex justify-center items-center space-x-2 transition-transform active:scale-95">
                   <span>Bayar Lunas Sekarang</span>
                 </button>
               )}
-              <button onClick={() => handlePrint('all')} className="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center space-x-2">
+              <button onClick={() => handlePrint('all')} className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center space-x-2 shadow transition-transform active:scale-95">
                 <span>Cetak Semua</span>
               </button>
               <div className="flex space-x-2">
                 {receiptData.items.some((i:any) => !isDrinkCategory(i.kategori)) && (
-                  <button onClick={() => handlePrint('food')} className="flex-1 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-semibold text-sm">Cetak Makanan</button>
+                  <button onClick={() => handlePrint('food')} className="flex-1 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm transition-colors">Cetak Makanan</button>
                 )}
                 {receiptData.items.some((i:any) => isDrinkCategory(i.kategori)) && (
-                  <button onClick={() => handlePrint('drink')} className="flex-1 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm">Cetak Minuman</button>
+                  <button onClick={() => handlePrint('drink')} className="flex-1 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm transition-colors">Cetak Minuman</button>
                 )}
               </div>
-              <button onClick={closeReceipt} className="w-full py-2 mt-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold">Tutup</button>
+              <button onClick={closeReceipt} className="w-full py-2.5 mt-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold transition-colors">Tutup</button>
             </div>
           </div>
         </div>
@@ -1413,23 +1547,29 @@ export default function POSPage() {
 
       {/* Variant Modal */}
       {activeVariantGroup && (
-        <div className="fixed inset-0 bg-black/60 flex items-start pt-10 justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl w-full max-w-sm shadow-2xl relative">
-            <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white text-center">Pilih Varian {activeVariantGroup.title}</h2>
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start pt-10 justify-center z-50 p-4 overflow-y-auto animate-in fade-in duration-200"
+          onClick={() => setActiveVariantGroup(null)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 p-6 rounded-3xl w-full max-w-sm shadow-2xl relative border border-gray-100 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-black mb-4 text-gray-900 dark:text-white text-center">Pilih Varian {activeVariantGroup.title}</h2>
             <div className="space-y-3">
               {activeVariantGroup.variants.map((v: MenuItem) => (
                 <button
                   key={v.id}
                   onClick={() => { addToCart(v); setActiveVariantGroup(null); }}
-                  className={`w-full py-4 rounded-xl font-bold text-lg transition-transform active:scale-95 flex justify-between px-6 ${v.isSoldOut ? 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-60' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-2 border-yellow-300 shadow-sm'}`}
+                  className={`w-full py-3.5 rounded-2xl font-bold text-sm transition-transform active:scale-95 flex justify-between px-5 ${v.isSoldOut ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-700 shadow-sm'}`}
                   disabled={v.isSoldOut}
                 >
                   <span>{v.nama}</span>
-                  <span>Rp {v.harga.toLocaleString('id-ID')}</span>
+                  <span className="font-black">Rp {v.harga.toLocaleString('id-ID')}</span>
                 </button>
               ))}
             </div>
-            <button onClick={() => setActiveVariantGroup(null)} className="w-full mt-4 py-3 rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white font-bold hover:bg-gray-300 dark:hover:bg-gray-600">Batal</button>
+            <button onClick={() => setActiveVariantGroup(null)} className="w-full mt-4 py-3 rounded-2xl bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Batal</button>
           </div>
         </div>
       )}      <div className="flex-1 flex flex-col md:flex-row w-full print:hidden">
@@ -1437,23 +1577,30 @@ export default function POSPage() {
         {/* Left Panel */}
         <div className="flex-1 flex flex-col border-r border-gray-200 dark:border-gray-700 h-full pb-24 lg:pb-0 overflow-hidden transition-colors">
           <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center transition-colors">
-                                                <div className="flex items-center space-x-3">
-              <img src="/logo.jpg" alt="Logo" className="w-12 h-12 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm object-cover" />
-              <div>
-                <h1 className="text-xl md:text-2xl font-black text-gray-800 dark:text-white leading-tight">Angkringan <span className="text-yellow-600 dark:text-yellow-500">Orang Kaya</span></h1>
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow-sm flex-shrink-0">
+                  SN
+                </div>
+                <div>
+                  <h1 className="text-base md:text-lg font-black text-gray-900 dark:text-white leading-tight">
+                    {storeSettings.storeName || 'SakuNota POS'}
+                  </h1>
+                  <span className="text-[11px] text-gray-500 font-medium line-clamp-1">
+                    {storeSettings.storeAddress || 'Aplikasi Kasir Pintar UMKM'}
+                  </span>
+                </div>
               </div>
-            </div>
             <div className="flex items-center space-x-2 md:space-x-3">
 
             {/* Shift Indicator */}
             {activeShift ? (
-              <div className="flex items-center gap-1.5 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 px-3 py-1.5 rounded-full text-xs shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                <span className="font-bold text-green-800 dark:text-green-300">Shift: {activeShift.operatorName}</span>
-                <span className="hidden md:inline opacity-70 text-green-700 dark:text-green-400">| Laci: Rp {(currentShiftStats?.expectedCash || activeShift.startingCash || 0).toLocaleString('id-ID')}</span>
+              <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-full text-xs shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span className="font-bold text-emerald-800 dark:text-emerald-300">Shift: {activeShift.operatorName}</span>
+                <span className="hidden md:inline opacity-70 text-emerald-700 dark:text-emerald-400">| Laci: Rp {(currentShiftStats?.expectedCash || activeShift.startingCash || 0).toLocaleString('id-ID')}</span>
                 <button 
                   onClick={() => setIsCashMovementModalOpen(true)}
-                  className="ml-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                  className="ml-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline"
                   title="Catat Kas Masuk / Keluar"
                 >
                   [+/- Kas]
@@ -1469,15 +1616,15 @@ export default function POSPage() {
             ) : (
               <button 
                 onClick={() => setIsOpenShiftModalOpen(true)}
-                className="flex items-center gap-1.5 bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-300 dark:border-yellow-700 px-3 py-1.5 rounded-full text-xs font-bold text-yellow-800 dark:text-yellow-300 hover:bg-yellow-100 shadow-sm"
+                className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 px-3 py-1.5 rounded-full text-xs font-bold text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 shadow-sm transition-transform active:scale-95"
               >
-                <span>⚠️ Buka Shift</span>
+                <span>💼 Buka Shift</span>
               </button>
             )}
 
-              <div className="flex bg-gray-100 dark:bg-gray-900 rounded-lg p-1">
-                <button onClick={() => setView('meja')} className={`px-3 md:px-4 py-2 rounded-md text-sm font-bold transition-colors ${view === 'meja' ? 'bg-white dark:bg-gray-800 shadow-sm text-yellow-600 dark:text-yellow-500' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>🍽️ Meja</button>
-                <button onClick={() => setView('menu')} className={`px-3 md:px-4 py-2 rounded-md text-sm font-bold transition-colors ${view === 'menu' ? 'bg-white dark:bg-gray-800 shadow-sm text-yellow-600 dark:text-yellow-500' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>☕ Menu</button>
+              <div className="flex bg-gray-100 dark:bg-gray-900 rounded-xl p-1 border border-gray-200 dark:border-gray-800">
+                <button onClick={() => setView('meja')} className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${view === 'meja' ? 'bg-white dark:bg-gray-800 shadow-sm text-emerald-700 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>🍽️ Meja</button>
+                <button onClick={() => setView('menu')} className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${view === 'menu' ? 'bg-white dark:bg-gray-800 shadow-sm text-emerald-700 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>☕ Menu</button>
               </div>
               <button onClick={toggleTheme} className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Toggle Theme">
                 {isDark ? '☀️' : '🌙'}
@@ -1498,81 +1645,7 @@ export default function POSPage() {
                   const name = order?.customerName || lastPaid?.customerName;
                   const isSelected = selectedTable === table.id.toString();
                   const style = tStatus === 'open' ? { card: 'border-red-400 bg-white dark:bg-gray-800', badge: 'bg-red-600', label: 'Open Bill', labelCls: 'bg-red-100 text-red-700' } : tStatus === 'lunas' ? { card: 'border-blue-400 bg-white dark:bg-gray-800', badge: 'bg-blue-600', label: 'Lunas', labelCls: 'bg-blue-100 text-blue-700' } : { card: 'border-green-300 bg-white dark:bg-gray-800', badge: 'bg-green-600', label: 'Kosong', labelCls: 'bg-green-100 text-green-700' };
-                  const renderCartInner = (isMobile: boolean) => (
-    <>
-      <div className={`${isMobile ? 'px-6 pb-4 pt-2' : 'p-5'} border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-t-3xl`}>
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
-          {selectedTable && <button onClick={() => { resetCart(); setSelectedTable(""); setIsMobileCartOpen(false); }} className="text-xs font-bold text-red-500 bg-red-50 px-3 py-1.5 rounded-full hover:bg-red-100">Lepas meja</button>}
-        </div>
-        {selectedTableObj && (
-          <div className="mt-3 flex flex-wrap gap-2 items-center">
-            <div className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm ${selectedTableStatus === 'open' ? 'bg-red-50 text-red-700 border border-red-200' : selectedTableStatus === 'lunas' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" /></svg>
-              {selectedTableObj.nomor.replace(/^Meja\s*/i, '')}
-              <span className="opacity-70 ml-1">({selectedTableStatus === 'open' ? 'Open Bill' : selectedTableStatus === 'lunas' ? 'Lunas' : 'Kosong'})</span>
-            </div>
-            {customerName && (
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 shadow-sm">
-                👤 {customerName}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className={`flex-1 overflow-y-auto ${isMobile ? 'p-6' : 'p-5'} space-y-4 bg-white dark:bg-gray-800`}>
-        {cart.length === 0 && selectedTableStatus === 'lunas' && (
-          <div className="text-center mt-6 flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-3xl mb-3 border border-blue-100">🎉</div>
-            <p className="font-bold text-gray-800 dark:text-white">Tagihan meja ini sudah LUNAS</p>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mt-4 text-sm text-yellow-800 text-left w-full">
-              <p className="font-bold mb-1">Tambah Pesanan Baru:</p>
-              <p className="leading-snug">Pilih menu di samping. Pesanan akan otomatis masuk sebagai <b>Nota Baru</b>.</p>
-            </div>
-            <button onClick={() => { handleClearTable(); setIsMobileCartOpen(false); }} className="w-full mt-4 py-3.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-sm transition-colors">Kosongkan Meja (Selesai)</button>
-          </div>
-        )}
-        
-        {cart.length === 0 && selectedTableStatus !== 'lunas' && (
-          <div className="text-center text-gray-400 dark:text-gray-500 mt-12 flex flex-col items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-16 h-16 mb-4 opacity-50"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
-            <p className="font-medium text-sm">Belum ada pesanan.</p>
-          </div>
-        )}
-
-        {cart.map(item => (
-          <div key={item.id} className="flex justify-between items-start border-b border-gray-100 dark:border-gray-700 pb-4">
-            <div className="flex-1 pr-3">
-              <h4 className="font-bold text-gray-800 dark:text-gray-100 text-sm md:text-base leading-tight">{item.nama}</h4>
-              <p className="text-yellow-600 dark:text-yellow-500 text-sm font-black mt-1">Rp {item.harga.toLocaleString('id-ID')}</p>
-            </div>
-            <div className="flex items-center bg-gray-50 dark:bg-gray-900 rounded-lg p-1 border border-gray-200 dark:border-gray-700 shadow-sm">
-              <button onClick={() => updateQty(item.id, -1)} className="w-8 h-8 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 flex items-center justify-center font-black transition-colors">-</button>
-              <span className="w-8 text-center font-bold text-gray-800 dark:text-white text-sm">{item.qty}</span>
-              <button onClick={() => updateQty(item.id, 1)} className="w-8 h-8 rounded-md bg-yellow-500 hover:bg-yellow-400 text-white flex items-center justify-center font-black transition-colors">+</button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className={`${isMobile ? 'p-6 pb-8' : 'p-5'} bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-[0_-4px_10px_rgba(0,0,0,0.02)]`}>
-        <div className="flex justify-between items-end mb-4">
-          <span className="text-gray-500 dark:text-gray-400 font-bold text-sm uppercase tracking-wider">Total Pembayaran</span>
-          <span className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white leading-none tracking-tight">Rp {totalPrice.toLocaleString('id-ID')}</span>
-        </div>
-        <div className="flex gap-2">
-          {editingOrderId && (
-            <button onClick={handleShowDraftBill} className="w-1/3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white py-4 rounded-2xl font-bold text-sm shadow-sm active:scale-95 transition-all">📝 Draft</button>
-          )}
-          <button onClick={() => setIsPaymentModalOpen(true)} className={`${editingOrderId ? 'w-2/3' : 'w-full'} bg-yellow-500 hover:bg-yellow-400 text-gray-900 py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all`} disabled={cart.length === 0}>
-            Bayar Pesanan
-          </button>
-        </div>
-      </div>
-    </>
-  );
-  return (
+                  return (
                     <button key={table.id} onClick={() => handleTableClick(table)} className={`relative rounded-2xl border-2 ${style.card} p-4 h-36 flex flex-col items-center justify-center shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all ${isSelected ? 'ring-4 ring-yellow-500/70' : ''}`}>
                       <span className={`w-14 h-14 rounded-full ${style.badge} text-white font-black text-lg flex items-center justify-center shadow-md`}>{table.nomor.replace(/^Meja\s*/i, '')}</span>
                       <span className={`mt-2 text-xs font-bold px-2.5 py-0.5 rounded-full ${style.labelCls}`}>{style.label}</span>
@@ -1587,55 +1660,120 @@ export default function POSPage() {
 
           {view === 'menu' && (
             <div className="flex-1 p-4 md:p-6 overflow-y-auto">
-              <div className="flex flex-col space-y-4 mb-4 md:mb-6">
-                <div className="flex space-x-2 overflow-x-auto pb-2">
+              <div className="flex flex-col space-y-3 mb-4 md:mb-6">
+                <div className="flex space-x-2 overflow-x-auto pb-1 no-scrollbar">
                   {categories.map(cat => (
-                    <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 py-2 rounded-full whitespace-nowrap border ${activeCategory === cat ? 'bg-yellow-600 border-yellow-500 text-white shadow-lg' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors'}`}>{cat}</button>
+                    <button 
+                      key={cat} 
+                      onClick={() => setActiveCategory(cat)} 
+                      className={`px-4 py-2 rounded-full whitespace-nowrap text-xs md:text-sm font-bold border transition-all ${
+                        activeCategory === cat 
+                          ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm' 
+                          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {cat}
+                    </button>
                   ))}
                 </div>
-                <input type="text" placeholder="Cari menu..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl p-3 text-gray-900 dark:text-white focus:border-yellow-500 outline-none transition-colors shadow-sm" />
+                <input 
+                  type="text" 
+                  placeholder="Cari menu..." 
+                  value={searchQuery} 
+                  onChange={e => setSearchQuery(e.target.value)} 
+                  className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl p-3 text-sm text-gray-900 dark:text-white focus:border-emerald-500 outline-none transition-colors shadow-sm" 
+                />
               </div>
+
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
-                {filteredMenu.map(item => (
-                  <button key={item.id} onClick={() => item.isGroup ? setActiveVariantGroup({ title: item.nama, variants: item.variants }) : addToCart(item)} className="bg-white dark:bg-gray-800 p-3 md:p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-yellow-500 dark:hover:border-yellow-500 text-left transition-all hover:shadow-lg flex flex-col justify-between h-28 md:h-32 transform hover:-translate-y-1 relative">
-                    {item.isGroup && <span className="absolute top-2 right-2 text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-bold">Varian</span>}
-                    <div>
-                      <h3 className="font-medium line-clamp-2 leading-tight text-sm md:text-base text-gray-800 dark:text-white">{item.nama}</h3>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block">{item.kategori}</span>
-                    </div>
-                    <p className="text-yellow-600 dark:text-yellow-400 font-bold text-sm md:text-base">Rp {item.harga.toLocaleString('id-ID')}</p>
-                  </button>
-                ))}
+                {filteredMenu.map(item => {
+                  const hasModifiers = item.modifiers && item.modifiers.length > 0;
+                  const isSoldOut = item.isSoldOut;
+
+                  return (
+                    <button 
+                      key={item.id} 
+                      disabled={isSoldOut}
+                      onClick={() => {
+                        if (isSoldOut) return;
+                        if (item.isGroup) {
+                          setActiveVariantGroup({ title: item.nama, variants: item.variants });
+                        } else if (hasModifiers) {
+                          openModifierModal(item);
+                        } else {
+                          addToCart(item);
+                        }
+                      }} 
+                      className={`bg-white dark:bg-gray-800 p-3.5 md:p-4 rounded-2xl border text-left transition-all flex flex-col justify-between h-32 md:h-36 relative ${
+                        isSoldOut 
+                          ? 'opacity-60 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-not-allowed' 
+                          : 'border-gray-200/90 dark:border-gray-700 hover:border-emerald-500 hover:shadow-md active:scale-[0.98]'
+                      }`}
+                    >
+                      {isSoldOut ? (
+                        <span className="absolute top-2.5 right-2.5 text-[10px] bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400 px-2 py-0.5 rounded-full font-bold">
+                          Habis
+                        </span>
+                      ) : item.isGroup ? (
+                        <span className="absolute top-2.5 right-2.5 text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold">
+                          Varian
+                        </span>
+                      ) : hasModifiers ? (
+                        <span className="absolute top-2.5 right-2.5 text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-full font-semibold">
+                          + Pilihan
+                        </span>
+                      ) : null}
+
+                      <div>
+                        <h3 className="font-bold line-clamp-2 leading-tight text-sm md:text-base text-gray-900 dark:text-white">
+                          {item.nama}
+                        </h3>
+                        <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 block font-medium">
+                          {item.kategori}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700/60">
+                        <p className="text-emerald-700 dark:text-emerald-400 font-extrabold text-sm md:text-base">
+                          Rp {item.harga.toLocaleString('id-ID')}
+                        </p>
+                        {!isSoldOut && (
+                          <span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center text-sm font-bold">
+                            +
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
         </div>
 
-        
-          
-          {/* Floating Cart Button (Mobile) */}
-          {(!isMobileCartOpen && (cart.length > 0 || selectedTable)) && (
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-30">
-              <button 
-                onClick={() => setIsMobileCartOpen(true)}
-                className="w-full bg-yellow-500 hover:bg-yellow-400 text-gray-900 rounded-2xl py-3.5 px-5 flex justify-between items-center shadow-xl active:scale-95 transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/40 px-3 py-1.5 rounded-xl text-sm font-black flex items-center gap-1 shadow-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M7.5 6v.75H5.513c-.96 0-1.764.724-1.865 1.679l-1.263 12A1.875 1.875 0 004.25 22.5h15.5a1.875 1.875 0 001.865-2.071l-1.263-12a1.875 1.875 0 00-1.865-1.679H16.5V6a4.5 4.5 0 10-9 0zM12 3a3 3 0 00-3 3v.75h6V6a3 3 0 00-3-3zm-3 8.25a3 3 0 106 0v-.75a.75.75 0 011.5 0v.75a4.5 4.5 0 11-9 0v-.75a.75.75 0 011.5 0v.75z" clipRule="evenodd" /></svg>
-                    {cart.reduce((s, i) => s + i.qty, 0)}
-                  </div>
-                  <div className="text-left leading-tight text-gray-900">
-                     <span className="block text-[11px] opacity-80 font-bold uppercase tracking-wider">{selectedTableObj ? `Meja ${selectedTableObj.nomor.replace(/^Meja\s*/i, '')}` : 'Tanpa Meja'}</span>
-                     <span className="block font-black text-sm">Lihat Pesanan</span>
-                  </div>
+        {/* Floating Cart Button (Mobile - GoFood / Grab Style) */}
+        {(!isMobileCartOpen && (cart.length > 0 || selectedTable)) && (
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-30">
+            <button 
+              onClick={() => setIsMobileCartOpen(true)}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl py-3.5 px-5 flex justify-between items-center shadow-lg active:scale-95 transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 px-3 py-1.5 rounded-xl text-sm font-black flex items-center gap-1.5 shadow-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M7.5 6v.75H5.513c-.96 0-1.764.724-1.865 1.679l-1.263 12A1.875 1.875 0 004.25 22.5h15.5a1.875 1.875 0 001.865-2.071l-1.263-12a1.875 1.875 0 00-1.865-1.679H16.5V6a4.5 4.5 0 10-9 0zM12 3a3 3 0 00-3 3v.75h6V6a3 3 0 00-3-3zm-3 8.25a3 3 0 106 0v-.75a.75.75 0 011.5 0v.75a4.5 4.5 0 11-9 0v-.75a.75.75 0 011.5 0v.75z" clipRule="evenodd" /></svg>
+                  {cart.reduce((s, i) => s + i.qty, 0)}
                 </div>
-                <div className="font-black text-xl tracking-tight bg-white/20 px-3 py-1 rounded-xl shadow-sm">
-                  Rp {totalPrice.toLocaleString('id-ID')}
+                <div className="text-left leading-tight text-white">
+                   <span className="block text-[11px] opacity-90 font-bold uppercase tracking-wider">{selectedTableObj ? `Meja ${selectedTableObj.nomor.replace(/^Meja\s*/i, '')}` : 'Tanpa Meja'}</span>
+                   <span className="block font-black text-sm">Lihat Keranjang</span>
                 </div>
-              </button>
-            </div>
-          )}
+              </div>
+              <div className="font-black text-base tracking-tight bg-white/20 px-3 py-1 rounded-xl shadow-sm">
+                Rp {totalPrice.toLocaleString('id-ID')} →
+              </div>
+            </button>
+          </div>
+        )}
 
           {/* Desktop Sidebar Cart */}
           <div className="hidden lg:flex flex-col w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-2xl z-40">
@@ -1662,9 +1800,15 @@ export default function POSPage() {
       
       {/* --- MODAL BUKA SHIFT --- */}
       {isOpenShiftModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl">
-            <div className="w-12 h-12 rounded-2xl bg-yellow-100 text-yellow-700 flex items-center justify-center text-2xl font-black mb-3">
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
+          onClick={() => setIsOpenShiftModalOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center text-2xl font-black mb-3">
               💼
             </div>
             <h3 className="text-xl font-black text-gray-900 dark:text-white">Buka Shift Kasir Baru</h3>
@@ -1678,7 +1822,7 @@ export default function POSPage() {
                   value={shiftOperatorName}
                   onChange={(e) => setShiftOperatorName(e.target.value)}
                   placeholder="Contoh: Kasir Budi"
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-xl p-2.5 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 outline-none focus:border-yellow-500"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-xl p-2.5 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 outline-none focus:border-emerald-500"
                   required
                 />
               </div>
@@ -1690,7 +1834,7 @@ export default function POSPage() {
                   value={shiftStartingCash}
                   onChange={(e) => setShiftStartingCash(e.target.value)}
                   placeholder="200000"
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-xl p-3 text-lg font-black text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 outline-none focus:border-yellow-500"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-xl p-3 text-lg font-black text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 outline-none focus:border-emerald-500"
                   required
                 />
                 <div className="grid grid-cols-3 gap-1.5 mt-2">
@@ -1699,7 +1843,7 @@ export default function POSPage() {
                       key={amt}
                       type="button"
                       onClick={() => setShiftStartingCash(amt.toString())}
-                      className="py-1 px-2 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-200 font-semibold"
+                      className="py-1 px-2 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-gray-200 font-semibold transition-colors"
                     >
                       {amt / 1000}rb
                     </button>
@@ -1711,13 +1855,13 @@ export default function POSPage() {
                 <button 
                   type="button" 
                   onClick={() => setIsOpenShiftModalOpen(false)}
-                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-bold"
+                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-bold transition-colors"
                 >
                   Batal
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 py-3 bg-yellow-500 hover:bg-yellow-400 text-gray-900 rounded-xl text-sm font-black shadow-lg"
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-black shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
                 >
                   Mulai Shift
                 </button>
@@ -1729,8 +1873,14 @@ export default function POSPage() {
 
       {/* --- MODAL CASH IN / CASH OUT --- */}
       {isCashMovementModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl">
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
+          onClick={() => setIsCashMovementModalOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-xl font-black text-gray-900 dark:text-white mb-1">Catat Arus Kas Laci</h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Catat pengeluaran operasional toko atau penambahan modal kas kecil.</p>
 
@@ -1739,14 +1889,14 @@ export default function POSPage() {
                 <button
                   type="button"
                   onClick={() => setCashMovementType('out')}
-                  className={'flex-1 py-2 rounded-lg text-xs font-bold transition-all ' + (cashMovementType === 'out' ? 'bg-red-600 text-white shadow' : 'text-gray-600 dark:text-gray-300')}
+                  className={'flex-1 py-2 rounded-lg text-xs font-bold transition-all ' + (cashMovementType === 'out' ? 'bg-rose-600 text-white shadow' : 'text-gray-600 dark:text-gray-300')}
                 >
                   🔴 Kas Keluar (Biaya)
                 </button>
                 <button
                   type="button"
                   onClick={() => setCashMovementType('in')}
-                  className={'flex-1 py-2 rounded-lg text-xs font-bold transition-all ' + (cashMovementType === 'in' ? 'bg-green-600 text-white shadow' : 'text-gray-600 dark:text-gray-300')}
+                  className={'flex-1 py-2 rounded-lg text-xs font-bold transition-all ' + (cashMovementType === 'in' ? 'bg-emerald-600 text-white shadow' : 'text-gray-600 dark:text-gray-300')}
                 >
                   🟢 Kas Masuk (+)
                 </button>
@@ -1755,11 +1905,11 @@ export default function POSPage() {
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Nominal (Rp):</label>
                 <input 
-                  type="number"
+                  type="number" 
                   placeholder="0"
                   value={cashMovementAmount}
                   onChange={(e) => setCashMovementAmount(e.target.value)}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-xl p-3 text-lg font-black text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 outline-none focus:border-blue-500"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-xl p-3 text-lg font-black text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 outline-none focus:border-emerald-500"
                   required
                 />
               </div>
@@ -1767,11 +1917,11 @@ export default function POSPage() {
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Alasan / Keperluan:</label>
                 <input 
-                  type="text"
+                  type="text" 
                   placeholder="Contoh: Beli Es Batu / Beli Gas"
                   value={cashMovementReason}
                   onChange={(e) => setCashMovementReason(e.target.value)}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-xl p-2.5 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 outline-none focus:border-blue-500"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-xl p-2.5 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 outline-none focus:border-emerald-500"
                   required
                 />
               </div>
@@ -1780,13 +1930,13 @@ export default function POSPage() {
                 <button 
                   type="button" 
                   onClick={() => setIsCashMovementModalOpen(false)}
-                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-bold"
+                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-bold transition-colors"
                 >
                   Batal
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow"
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
                 >
                   Simpan
                 </button>
@@ -1798,22 +1948,28 @@ export default function POSPage() {
 
       {/* --- MODAL TUTUP SHIFT (BLIND CLOSE) --- */}
       {isCloseShiftModalOpen && currentShiftStats && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl my-8">
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto animate-in fade-in duration-200"
+          onClick={() => setIsCloseShiftModalOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl my-8 border border-gray-100 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center space-x-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center text-2xl font-black">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center text-2xl font-black">
                 📊
               </div>
               <div>
                 <h3 className="text-xl font-black text-gray-900 dark:text-white">Tutup Shift Kasir (Z-Report)</h3>
-                <p className="text-xs text-gray-500">Operator: <strong>{currentShiftStats.operatorName}</strong></p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Operator: <strong>{currentShiftStats.operatorName}</strong></p>
               </div>
             </div>
 
             {/* Petunjuk Blind Close */}
-            <div className="bg-blue-50 dark:bg-blue-950/40 p-4 rounded-2xl border border-blue-200 dark:border-blue-800 mb-5">
-              <p className="text-xs font-bold text-blue-900 dark:text-blue-300 mb-1">🔒 Prosedur Blind Close:</p>
-              <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 mb-5">
+              <p className="text-xs font-bold text-emerald-900 dark:text-emerald-300 mb-1">🔒 Prosedur Blind Close:</p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">
                 Silakan hitung seluruh uang fisik (kertas & koin) yang ada di laci kasir saat ini. Angka sistem sengaja disembunyikan agar hasil penghitungan murni objektif.
               </p>
             </div>
@@ -1823,12 +1979,12 @@ export default function POSPage() {
                   Hitung & Masukkan Uang Fisik di Laci (Rp):
                 </label>
                 <input 
-                  type="number"
+                  type="number" 
                   autoFocus
                   placeholder="0"
                   value={countedPhysicalCash}
                   onChange={(e) => setCountedPhysicalCash(e.target.value)}
-                  className="w-full border-2 border-blue-400 rounded-xl p-3 text-2xl font-black text-gray-900 dark:text-white bg-white dark:bg-gray-900 outline-none"
+                  className="w-full border-2 border-emerald-500 rounded-xl p-3 text-2xl font-black text-gray-900 dark:text-white bg-white dark:bg-gray-900 outline-none"
                   required
                 />
               </div>
@@ -1850,11 +2006,11 @@ export default function POSPage() {
               <div>
                 <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Catatan Penutupan (Opsional):</label>
                 <input 
-                  type="text"
+                  type="text" 
                   placeholder="Misal: Uang fisik pas, diserahkan ke Pak Bos"
                   value={closingShiftNotes}
                   onChange={(e) => setClosingShiftNotes(e.target.value)}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-xl p-2 text-xs text-gray-800 dark:text-white bg-gray-50 dark:bg-gray-900"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-xl p-2.5 text-xs text-gray-800 dark:text-white bg-gray-50 dark:bg-gray-900 outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -1862,13 +2018,13 @@ export default function POSPage() {
                 <button 
                   type="button" 
                   onClick={() => setIsCloseShiftModalOpen(false)}
-                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-bold"
+                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-bold transition-colors"
                 >
                   Batal
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black shadow-lg"
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-black shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
                 >
                   Tutup & Cetak Struk
                 </button>
@@ -1878,15 +2034,24 @@ export default function POSPage() {
         </div>
       )}
 
-      {/* Modal Pilihan Modifier & Add-on Menu */}
+      {/* Modal Pilihan Modifier & Add-on Menu (GrabFood Style Bottom Sheet) */}
       {activeModItem && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-200 dark:border-gray-700 my-8">
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
+          onClick={() => setActiveModItem(null)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-200 dark:border-gray-700 relative flex flex-col max-h-[85vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Grab handle for mobile touch */}
+            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-3 sm:hidden" />
+
             <div className="flex justify-between items-start pb-4 border-b border-gray-100 dark:border-gray-700">
               <div>
-                <span className="text-[10px] font-bold tracking-widest text-blue-600 dark:text-blue-400 uppercase">Pilihan Menu</span>
+                <span className="text-[10px] font-bold tracking-widest text-emerald-600 dark:text-emerald-400 uppercase">Pilihan Menu</span>
                 <h3 className="text-lg font-black text-gray-900 dark:text-white leading-tight">{activeModItem.nama}</h3>
-                <p className="text-xs text-yellow-600 dark:text-yellow-400 font-bold mt-0.5">
+                <p className="text-xs text-emerald-700 dark:text-emerald-400 font-bold mt-0.5">
                   Harga Dasar: Rp {activeModItem.harga.toLocaleString('id-ID')}
                 </p>
               </div>
@@ -1900,7 +2065,7 @@ export default function POSPage() {
             </div>
 
             {/* Daftar Kelompok Modifier */}
-            <div className="mt-4 space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            <div className="mt-4 space-y-4 max-h-[55vh] overflow-y-auto pr-1">
               {(activeModItem.modifiers || []).map((group: any) => {
                 const selected = selectedModOptions[group.id] || [];
                 const isSingle = group.maxSelect === 1;
@@ -1931,20 +2096,20 @@ export default function POSPage() {
                             onClick={() => toggleModOption(group, opt)}
                             className={`w-full p-2.5 rounded-xl border text-left flex justify-between items-center transition-all ${
                               isChecked
-                                ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-500 dark:border-blue-500 text-blue-900 dark:text-blue-100 font-bold shadow-sm'
+                                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 dark:border-emerald-500 text-emerald-900 dark:text-emerald-100 font-bold shadow-sm'
                                 : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300'
                             }`}
                           >
                             <div className="flex items-center gap-2.5">
                               <span className={`w-4 h-4 rounded-${isSingle ? 'full' : 'md'} border flex items-center justify-center text-[10px] ${
-                                isChecked ? 'bg-blue-600 border-blue-600 text-white font-bold' : 'border-gray-300 dark:border-gray-600'
+                                isChecked ? 'bg-emerald-600 border-emerald-600 text-white font-bold' : 'border-gray-300 dark:border-gray-600'
                               }`}>
                                 {isChecked ? (isSingle ? '●' : '✓') : ''}
                               </span>
                               <span className="text-xs">{opt.nama}</span>
                             </div>
                             {opt.harga > 0 ? (
-                              <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400">
+                              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
                                 +Rp {opt.harga.toLocaleString('id-ID')}
                               </span>
                             ) : (
@@ -1960,10 +2125,10 @@ export default function POSPage() {
             </div>
 
             {/* Bottom Bar Total & Action */}
-            <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-3">
+            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-3">
               <div>
                 <span className="text-[10px] text-gray-400 block font-semibold">Subtotal Item</span>
-                <span className="text-base font-black text-yellow-600 dark:text-yellow-500">
+                <span className="text-base font-black text-emerald-700 dark:text-emerald-400">
                   Rp {(
                     activeModItem.harga +
                     Object.values(selectedModOptions).flat().reduce((sum: number, opt: any) => sum + (opt.harga || 0), 0)
@@ -1974,14 +2139,14 @@ export default function POSPage() {
                 <button
                   type="button"
                   onClick={() => setActiveModItem(null)}
-                  className="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold"
+                  className="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmModifiers}
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-lg"
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-md transition-transform active:scale-95"
                 >
                   + Tambahkan
                 </button>
@@ -1993,8 +2158,14 @@ export default function POSPage() {
 
       {/* Modal Hasil Blind Close Shift (Z-Report Audit) */}
       {blindCloseResult && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-200 dark:border-gray-700 my-8">
+        <div 
+          className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto animate-in fade-in duration-200"
+          onClick={() => setBlindCloseResult(null)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-200 dark:border-gray-700 my-8"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="text-center pb-4 border-b border-gray-100 dark:border-gray-700">
               <span className="text-4xl">🏁</span>
               <h3 className="text-xl font-black text-gray-900 dark:text-white mt-2">Laporan Tutup Shift (Z-Report)</h3>
@@ -2049,7 +2220,7 @@ export default function POSPage() {
                 <span>Total Kas Fisik Seharusnya:</span>
                 <span className="font-black text-sm">Rp {blindCloseResult.expectedCash?.toLocaleString('id-ID')}</span>
               </div>
-              <div className="flex justify-between text-blue-700 dark:text-blue-400 font-bold">
+              <div className="flex justify-between text-emerald-700 dark:text-emerald-400 font-bold">
                 <span>Hasil Hitung Fisik Kasir:</span>
                 <span className="font-black text-sm">Rp {blindCloseResult.actualCash?.toLocaleString('id-ID')}</span>
               </div>
@@ -2062,12 +2233,12 @@ export default function POSPage() {
             </div>
 
             {/* Info Non-Tunai (Rekonsiliasi Bank/QRIS) */}
-            <div className="mt-3 p-3 bg-blue-50/70 dark:bg-blue-950/30 rounded-xl border border-blue-100 dark:border-blue-900/40 text-xs">
-              <div className="flex justify-between text-blue-900 dark:text-blue-300 font-bold">
+            <div className="mt-3 p-3 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-xl border border-emerald-100 dark:border-emerald-900/40 text-xs">
+              <div className="flex justify-between text-emerald-900 dark:text-emerald-300 font-bold">
                 <span>Penjualan Non-Tunai (QRIS/Transfer):</span>
                 <span>Rp {blindCloseResult.nonCashSales?.toLocaleString('id-ID')}</span>
               </div>
-              <p className="text-[10px] text-blue-700 dark:text-blue-400 mt-1 leading-relaxed">
+              <p className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-1 leading-relaxed">
                 ℹ️ Penjualan QRIS & transfer langsung masuk ke rekening bank/merchant QRIS, tidak dihitung sebagai uang fisik di laci kasir.
               </p>
             </div>
@@ -2093,7 +2264,7 @@ export default function POSPage() {
               <button
                 type="button"
                 onClick={() => setBlindCloseResult(null)}
-                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-lg"
+                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
               >
                 Selesai & Tutup
               </button>
@@ -2104,13 +2275,21 @@ export default function POSPage() {
 
       {/* MODAL SPLIT BILL & PEMBAYARAN PARSIAL */}
       {isSplitBillModalOpen && splitBillTargetOrder && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-6 overflow-y-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 md:p-7 max-w-xl w-full shadow-2xl border border-gray-200 dark:border-gray-700 my-6 flex flex-col max-h-[92vh]">
+        <div 
+          className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
+          onClick={() => setIsSplitBillModalOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-2xl p-5 md:p-7 max-w-xl w-full shadow-2xl border border-gray-200 dark:border-gray-700 my-0 sm:my-6 flex flex-col max-h-[92vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Grab handle for mobile touch */}
+            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-3 sm:hidden" />
             
             {/* Header Modal */}
             <div className="flex justify-between items-start pb-3 border-b border-gray-100 dark:border-gray-700">
               <div>
-                <span className="text-[10px] font-bold tracking-widest text-amber-600 dark:text-amber-400 uppercase">Sistem Pembayaran Fleksibel</span>
+                <span className="text-[10px] font-bold tracking-widest text-emerald-600 dark:text-emerald-400 uppercase">Sistem Pembayaran Fleksibel</span>
                 <h3 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
                   <span>✂️ Split Bill & Cicil Tagihan</span>
                 </h3>
@@ -2435,7 +2614,7 @@ export default function POSPage() {
               <button
                 type="button"
                 onClick={() => setIsSplitBillModalOpen(false)}
-                className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold"
+                className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors"
               >
                 Tutup
               </button>
@@ -2443,7 +2622,7 @@ export default function POSPage() {
                 type="button"
                 onClick={handleExecuteSplitPayment}
                 disabled={isSplitProcessing}
-                className="flex-[2] py-3 bg-amber-500 hover:bg-amber-400 text-gray-950 rounded-xl text-xs font-black shadow-lg flex items-center justify-center gap-1.5"
+                className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-50"
               >
                 {isSplitProcessing ? 'Memproses...' : '💰 Proses Pembayaran Split'}
               </button>
@@ -2455,8 +2634,14 @@ export default function POSPage() {
 
       {/* MODAL OTORISASI REFUND PEMBAYARAN PARSIAL */}
       {isRefundModalOpen && refundTargetPayment && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-200 dark:border-gray-700">
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
+          onClick={() => { setIsRefundModalOpen(false); setRefundTargetPayment(null); }}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-200 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-black text-rose-600 dark:text-rose-400 mb-2">Konfirmasi Refund Pembayaran</h3>
             <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
               Anda akan mengembalikan dana sebesar <b>Rp {refundTargetPayment.amount.toLocaleString('id-ID')}</b> ({refundTargetPayment.paymentMethod}) kepada pelanggan. Sisa tagihan meja akan bertambah kembali.
@@ -2493,14 +2678,14 @@ export default function POSPage() {
               <button
                 type="button"
                 onClick={() => { setIsRefundModalOpen(false); setRefundTargetPayment(null); }}
-                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold"
+                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors"
               >
                 Batal
               </button>
               <button
                 type="button"
                 onClick={handleConfirmRefundPayment}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-lg"
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-lg transition-all active:scale-95"
               >
                 Konfirmasi Refund
               </button>
@@ -2511,22 +2696,28 @@ export default function POSPage() {
 
       {/* Modal Input Diskon */}
       {isDiscountModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-xs w-full shadow-2xl">
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
+          onClick={() => setIsDiscountModalOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-xs w-full shadow-2xl border border-gray-100 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Beri Diskon / Promo</h3>
             
             <div className="flex rounded-xl bg-gray-100 dark:bg-gray-700 p-1 mb-4">
               <button
                 type="button"
                 onClick={() => setDiscountType('percent')}
-                className={'flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ' + (discountType === 'percent' ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-white shadow-sm' : 'text-gray-500')}
+                className={'flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ' + (discountType === 'percent' ? 'bg-white dark:bg-gray-800 text-emerald-700 dark:text-emerald-300 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
               >
                 Persen (%)
               </button>
               <button
                 type="button"
                 onClick={() => setDiscountType('nominal')}
-                className={'flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ' + (discountType === 'nominal' ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-white shadow-sm' : 'text-gray-500')}
+                className={'flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ' + (discountType === 'nominal' ? 'bg-white dark:bg-gray-800 text-emerald-700 dark:text-emerald-300 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
               >
                 Nominal (Rp)
               </button>
@@ -2540,14 +2731,14 @@ export default function POSPage() {
               placeholder={discountType === 'percent' ? 'Contoh: 10' : 'Contoh: 10000'}
               value={tempDiscountVal}
               onChange={(e) => setTempDiscountVal(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl p-3 text-lg font-black text-gray-900 dark:text-white mb-4 outline-none focus:border-blue-500"
+              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl p-3 text-lg font-black text-gray-900 dark:text-white mb-4 outline-none focus:border-emerald-500"
             />
 
             <div className="flex space-x-2">
               <button 
                 type="button"
                 onClick={() => setIsDiscountModalOpen(false)}
-                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-bold text-xs"
+                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-bold text-xs transition-colors"
               >
                 Batal
               </button>
@@ -2575,7 +2766,7 @@ export default function POSPage() {
                   }
                   setIsDiscountModalOpen(false);
                 }}
-                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow"
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
               >
                 Terapkan
               </button>

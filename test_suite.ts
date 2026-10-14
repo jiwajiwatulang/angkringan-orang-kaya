@@ -375,6 +375,111 @@ async function runTestSuite() {
   }
 
   // --------------------------------------------------------------------------
+  console.log('\n[TEST GROUP 8] Store Settings Dual-Layer Persistence & Integrity');
+  // --------------------------------------------------------------------------
+  try {
+    const { saveStoreSettingsAsync, loadStoreSettingsAsync, DEFAULT_SETTINGS } = await import('./src/lib/settings');
+    const customSettings = {
+      ...DEFAULT_SETTINGS,
+      storeName: 'Angkringan Khas Nusantara',
+      storeAddress: 'Jl. Malioboro No. 45, Yogyakarta',
+      storePhone: '081234567890',
+      receiptFooter: 'Matur nuwun sanget, sugeng rawuh malih',
+      taxPercent: 10,
+      enableTax: true,
+      servicePercent: 5,
+      enableService: true
+    };
+
+    // Save asynchronously to Dexie + localStorage
+    await saveStoreSettingsAsync(customSettings);
+
+    // Verify Dexie settings table directly
+    const dexieEntry = await db.table('settings').get('pos_store_settings');
+    assert(dexieEntry !== undefined, 'Settings persisted into Dexie settings table');
+    assert(dexieEntry.value.storeName === 'Angkringan Khas Nusantara', 'Dexie stored correct store name', dexieEntry.value.storeName);
+    assert(dexieEntry.value.taxPercent === 10, 'Dexie stored correct tax percentage', `${dexieEntry.value.taxPercent}%`);
+
+    // Verify loadStoreSettingsAsync
+    const loaded = await loadStoreSettingsAsync();
+    assert(loaded.storeName === 'Angkringan Khas Nusantara', 'loadStoreSettingsAsync retrieves saved store name');
+    assert(loaded.receiptFooter === 'Matur nuwun sanget, sugeng rawuh malih', 'loadStoreSettingsAsync retrieves saved footer');
+
+    // Verify exportAllData includes settings
+    const backupWithSettings = await exportAllData();
+    assert(backupWithSettings.settings !== null && backupWithSettings.settings.storeName === 'Angkringan Khas Nusantara', 'exportAllData contains custom store settings');
+  } catch (err: any) {
+    assert(false, 'Test Group 8 Error', err.message);
+  }
+
+  // --------------------------------------------------------------------------
+  console.log('\n[TEST GROUP 9] Menu & Table CRUD Operations');
+  // --------------------------------------------------------------------------
+  try {
+    const { createMenu, updateMenu, toggleMenuSoldOut, deleteMenus, getMenus, addTable, renameTable, deleteTable, getTables } = await import('./src/lib/api');
+
+    // 1. Create Menu
+    await createMenu({
+      nama: 'Wedang Ronde Spesial',
+      harga: 12000,
+      kategori: 'Minuman Tradisional'
+    });
+    let menus = await getMenus();
+    const createdMenu = menus.find(m => m.nama === 'Wedang Ronde Spesial');
+    assert(createdMenu !== undefined, 'createMenu successfully inserts new menu item');
+    assert(createdMenu!.harga === 12000, 'Menu item price is correct (Rp 12.000)');
+
+    // 2. Update Menu
+    await updateMenu(createdMenu!.id!, {
+      nama: 'Wedang Ronde Jahe Merah',
+      harga: 15000,
+      kategori: 'Minuman Hangat'
+    });
+    menus = await getMenus();
+    const updatedMenu = menus.find(m => m.id === createdMenu!.id);
+    assert(updatedMenu !== undefined, 'Updated menu found');
+    assert(updatedMenu!.nama === 'Wedang Ronde Jahe Merah', 'Menu name successfully updated', updatedMenu!.nama);
+    assert(updatedMenu!.harga === 15000, 'Menu price successfully updated (Rp 15.000)');
+    assert(updatedMenu!.kategori === 'Minuman Hangat', 'Menu category successfully updated');
+
+    // 3. Toggle Sold Out
+    await toggleMenuSoldOut(createdMenu!.id!, true);
+    menus = await getMenus();
+    let checkedItem = menus.find(m => m.id === createdMenu!.id);
+    assert(checkedItem!.isSoldOut === true, 'toggleMenuSoldOut sets isSoldOut = true');
+
+    await toggleMenuSoldOut(createdMenu!.id!, false);
+    menus = await getMenus();
+    checkedItem = menus.find(m => m.id === createdMenu!.id);
+    assert(checkedItem!.isSoldOut === false, 'toggleMenuSoldOut sets isSoldOut = false');
+
+    // 4. Delete Menu
+    await deleteMenus([createdMenu!.id!]);
+    menus = await getMenus();
+    const deletedCheck = menus.find(m => m.id === createdMenu!.id);
+    assert(deletedCheck === undefined, 'deleteMenus removes menu item from database');
+
+    // 5. Table CRUD
+    const initialTables = await getTables();
+    await addTable('Meja VIP 99');
+    let tablesAfter = await getTables();
+    const addedTable = tablesAfter.find(t => t.nomor === 'Meja VIP 99');
+    assert(addedTable !== undefined, 'addTable creates new table');
+
+    await renameTable(addedTable!.id!, 'Meja VIP Exclusive');
+    tablesAfter = await getTables();
+    const renamedTable = tablesAfter.find(t => t.id === addedTable!.id);
+    assert(renamedTable !== undefined && renamedTable.nomor === 'Meja VIP Exclusive', 'renameTable updates table name');
+
+    await deleteTable(addedTable!.id!);
+    tablesAfter = await getTables();
+    const deletedTable = tablesAfter.find(t => t.id === addedTable!.id);
+    assert(deletedTable === undefined, 'deleteTable removes table successfully');
+  } catch (err: any) {
+    assert(false, 'Test Group 9 Error', err.message);
+  }
+
+  // --------------------------------------------------------------------------
   console.log('\n======================================================');
   const passCount = results.filter(r => r.passed).length;
   const failCount = results.filter(r => !r.passed).length;

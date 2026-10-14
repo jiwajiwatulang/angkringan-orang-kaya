@@ -186,4 +186,22 @@ db.version(6).stores({
   }
 });
 
+export interface SettingEntry {
+  key: string;
+  value: any;
+  updatedAt?: string;
+}
+
+db.version(7).stores({
+  menuItems: '++id, nama, kategori, isSoldOut, urutan',
+  tables: '++id, nomor, status',
+  orders: '++id, shiftId, idempotencyKey, tableId, status, createdAt',
+  orderItems: '++id, orderId, menuItemId',
+  payments: '++id, orderId, shiftId, paymentMethod, status, paidAt',
+  auditLogs: '++id, orderId, action, timestamp',
+  shifts: '++id, status, startTime, operatorName',
+  cashMovements: '++id, shiftId, type, timestamp',
+  settings: 'key'
+});
+
 export { db };

@@ -170,6 +170,25 @@ export async function reorderMenus(items: {id: number, urutan: number}[]) {
   });
 }
 
+export async function updateMenu(id: number, data: { nama?: string; harga?: number; kategori?: string; isSoldOut?: boolean; modifiers?: any[] }) {
+  const updateData: any = {};
+  if (data.nama !== undefined) updateData.nama = data.nama.trim();
+  if (data.harga !== undefined) updateData.harga = Number(data.harga);
+  if (data.kategori !== undefined) updateData.kategori = data.kategori.trim();
+  if (data.isSoldOut !== undefined) updateData.isSoldOut = Boolean(data.isSoldOut);
+  if (data.modifiers !== undefined) updateData.modifiers = data.modifiers;
+
+  const count = await db.table('menuItems').update(id, updateData);
+  if (count === 0) {
+    throw new Error(`Menu dengan ID ${id} tidak ditemukan.`);
+  }
+  return true;
+}
+
+export async function toggleMenuSoldOut(id: number, isSoldOut: boolean) {
+  return await updateMenu(id, { isSoldOut });
+}
+
 let isInitializingTables = false;
 
 export async function getTables() {
@@ -814,7 +833,7 @@ export async function openShift(data: { operatorName: string, startingCash: numb
     timestamp: new Date().toISOString()
   });
 
-  return { id, ...shiftData };
+  return { id: Number(id), ...shiftData };
 }
 
 export async function closeShift(shiftId: number, data: { actualCash: number, notes?: string, operatorName?: string }) {
@@ -902,7 +921,13 @@ export async function exportAllData() {
   const cashMovements = await db.table('cashMovements').toArray();
   
   let settings = null;
-  if (typeof window !== 'undefined') {
+  try {
+    const entry = await db.table('settings').get('pos_store_settings');
+    if (entry && entry.value) {
+      settings = entry.value;
+    }
+  } catch (_) {}
+  if (!settings && typeof window !== 'undefined') {
     try {
       const raw = localStorage.getItem('pos_store_settings');
       if (raw) settings = JSON.parse(raw);
@@ -982,10 +1007,20 @@ export async function importAllData(data: any) {
     }
   });
 
-  if (data.settings && typeof window !== 'undefined') {
+  if (data.settings) {
     try {
-      localStorage.setItem('pos_store_settings', JSON.stringify(data.settings));
-    } catch (e) {}
+      await db.table('settings').put({
+        key: 'pos_store_settings',
+        value: data.settings,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (_) {}
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('pos_store_settings', JSON.stringify(data.settings));
+        window.dispatchEvent(new CustomEvent('sakunota:settings_updated', { detail: data.settings }));
+      } catch (e) {}
+    }
   }
 
   return true;
