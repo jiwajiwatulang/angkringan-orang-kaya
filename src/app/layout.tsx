@@ -23,14 +23,14 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Angkringan Orang Kaya POS",
-  description: "Offline Cashier System for Angkringan Orang Kaya",
+  title: "SakuNota - Aplikasi Kasir POS & Cetak Struk UMKM",
+  description: "Aplikasi kasir offline pintar untuk UMKM, kafe, warung makan, dan ritel.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
+      lang="id"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

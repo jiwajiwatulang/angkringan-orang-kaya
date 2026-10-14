@@ -1,8 +1,8 @@
-﻿import type { CapacitorConfig } from '@capacitor/cli';
+import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.angkringan.pos',
-  appName: 'Angkringan Orang Kaya',
+  appId: 'com.sakunota.pos',
+  appName: 'SakuNota',
   webDir: 'out',
   plugins: {
     Keyboard: {
