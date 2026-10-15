@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { App } from "@capacitor/app";
 import { AdminProvider, useAdmin } from "./AdminContext";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: "📊" },
@@ -224,6 +225,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle size="sm" />
+
             {/* Kembali ke Kasir */}
             <Link
               href="/pos"

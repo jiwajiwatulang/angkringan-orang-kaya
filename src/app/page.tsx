@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function SakuNotaLandingPage() {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -102,6 +103,7 @@ export default function SakuNotaLandingPage() {
 
         {/* Action Button */}
         <div className="flex items-center gap-2">
+          <ThemeToggle size="sm" />
           <Link
             href="/pos"
             className="px-4 py-2 bg-accent hover:bg-accent-hover text-white text-xs font-black rounded-xl shadow-md shadow-accent/20 transition-all active:scale-95 flex items-center gap-1.5"

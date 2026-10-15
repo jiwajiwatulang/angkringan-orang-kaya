@@ -25,6 +25,7 @@ import MobileOrdersScreen from '@/components/mobile/MobileOrdersScreen';
 import MobileMoreScreen from '@/components/mobile/MobileMoreScreen';
 import MobileBottomNav, { MobileTab } from '@/components/mobile/MobileBottomNav';
 import MobileFloatingCartBar from '@/components/mobile/MobileFloatingCartBar';
+import ThemeToggle from '@/components/ThemeToggle';
 
 type MenuItem = { id: number; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; modifiers?: any[]; };
 type CartItem = MenuItem & { qty: number; selectedModifiers?: { groupName: string; optionName: string; harga: number }[]; itemKey?: string };
@@ -2351,6 +2352,8 @@ export default function POSPage() {
               <span className="hidden sm:inline">Buka Shift</span>
             </button>
           )}
+
+          <ThemeToggle />
 
           <Link 
             href="/admin" 

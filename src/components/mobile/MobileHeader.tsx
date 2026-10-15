@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { StoreSettings } from "@/lib/settings";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface MobileHeaderProps {
   storeSettings: StoreSettings;
@@ -47,7 +48,9 @@ export default function MobileHeader({
       </Link>
 
       {/* Right Side: Shift Status & Quick Action */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
+        <ThemeToggle size="sm" />
+
         {activeShift ? (
           <button
             type="button"

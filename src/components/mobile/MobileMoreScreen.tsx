@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { StoreSettings } from "@/lib/settings";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface MobileMoreScreenProps {
   storeSettings: StoreSettings;
@@ -170,6 +171,18 @@ export default function MobileMoreScreen({
           </div>
           <span className="text-muted text-xs">→</span>
         </Link>
+
+        {/* Theme Preference Toggle */}
+        <div className="p-3.5 flex items-center justify-between hover:bg-surface/50 active:bg-surface transition-colors">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🌓</span>
+            <div>
+              <h4 className="text-xs font-bold text-fg">Mode Tampilan (Tema)</h4>
+              <p className="text-[10px] text-muted">Beralih antara Mode Gelap (Dark) dan Terang (Light)</p>
+            </div>
+          </div>
+          <ThemeToggle size="sm" showLabel />
+        </div>
 
         <Link
           href="/admin/pengaturan/tentang"
