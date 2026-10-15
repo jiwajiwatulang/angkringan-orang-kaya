@@ -68,14 +68,15 @@ export default function PengaturanTentangPage() {
   const handleDownloadOfflineAssets = async () => {
     setIsDownloadingAssets(true);
     setDownloadProgress({ current: 0, total: 100 });
-    const success = await downloadAllOfflineAssets((curr, tot) => {
+    const res = await downloadAllOfflineAssets((curr, tot) => {
       setDownloadProgress({ current: curr, total: tot });
     });
     setIsDownloadingAssets(false);
-    if (success) {
-      alert("Seluruh aset offline berhasil diunduh dan diverifikasi ke dalam memori perangkat!");
+    if (res.success) {
+      alert(`Sukses: Seluruh ${res.total} aset offline berhasil diunduh dan diverifikasi 100% di memori perangkat!`);
     } else {
-      alert("Sebagian aset belum lengkap terunduh. Pastikan perangkat terhubung internet saat sinkronisasi awal.");
+      const errCount = res.failed.length + res.missingAfterDownload.length;
+      alert(`Peringatan: Pengunduhan belum lengkap (${errCount} file belum tersimpan). Aplikasi belum sepenuhnya siap offline. Pastikan koneksi internet stabil lalu coba lagi.`);
     }
     const diag = await auditOfflineReadiness();
     setOfflineDiag(diag);
@@ -317,13 +318,18 @@ export default function PengaturanTentangPage() {
                 <span className="text-[10px] text-muted font-bold uppercase block">Penyimpanan Offline & Integritas Cache</span>
                 <p className="text-fg font-medium mt-0.5">
                   {offlineDiag ? `${offlineDiag.cachedAssetsCount} dari ${offlineDiag.totalExpectedAssets} file ter-cache (${offlineDiag.storageUsageMb} MB)` : "Sedang memeriksa cache..."}
-                  {offlineDiag?.isPersistentStorage ? " • Storage Persisten Aktif" : " • Storage Standar"}
+                  {offlineDiag?.isPersistentStorage ? " • Storage Persisten Disetujui" : " • Storage Standar (Best-Effort)"}
                 </p>
                 <p className="text-[10px] text-muted mt-0.5">
                   {offlineDiag?.isPersistentStorage 
-                    ? "✓ Browser diizinkan mempertahankan data dari auto-eviction OS." 
-                    : "ℹ Penyimpanan belum persisten. Klik tombol untuk mengunci memori lokal."}
+                    ? "✓ Izin persisten aktif (terlindungi dari auto-eviction OS). Pengguna tetap disarankan melakukan backup JSON berkala." 
+                    : "ℹ Penyimpanan lokal berstatus best-effort. Lakukan backup berkala dan kunci aset untuk keamanan optimal."}
                 </p>
+                {offlineDiag && offlineDiag.missingAssets.length > 0 && (
+                  <p className="text-[10px] text-rose-400 font-bold mt-1">
+                    ⚠️ Ada {offlineDiag.missingAssets.length} file belum tersimpan di cache. Klik tombol di kanan untuk sinkronisasi.
+                  </p>
+                )}
               </div>
 
               <button

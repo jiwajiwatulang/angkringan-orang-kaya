@@ -46,13 +46,20 @@ assert(!landingContent.includes('100% Offline-ready:'), 'Over-promising 100% Off
 assert(landingContent.includes('Arsitektur Offline-First'), 'Accurate engineering copy used');
 assert(landingContent.includes('support@sakunota.my.id'), 'Email domain is sakunota.my.id');
 
-// 4. Verify Persistent Storage & Offline Manager
+// 4. Verify Persistent Storage & Offline Manager Strictness
 const managerPath = path.join(process.cwd(), 'src', 'lib', 'offlineManager.ts');
 assert(fs.existsSync(managerPath), 'offlineManager.ts must exist');
 const managerContent = fs.readFileSync(managerPath, 'utf-8');
+assert(!managerContent.includes('Math.min(result.totalExpectedAssets, 30)'), 'Arbitrary 30-asset threshold removed from offlineManager');
+assert(managerContent.includes('result.missingAssets = missing'), 'Exact missing assets array tracked');
+assert(managerContent.includes('result.isFullyPrecached = missing.length === 0'), 'Strict zero-missing precache definition implemented');
 assert(managerContent.includes('navigator.storage.persist'), 'navigator.storage.persist implemented');
 assert(managerContent.includes('auditOfflineReadiness'), 'auditOfflineReadiness implemented');
 
+// 5. Verify Fail-Closed Service Worker Precache and Scoped Cache Cleanup
+assert(!swContent.includes('await cache.addAll(FALLBACK_CORE_ASSETS)'), 'Partial fallback install removed; SW is strictly fail-closed');
+assert(swContent.includes('key.startsWith(\'sakunota-pos-\') && key !== CACHE_NAME'), 'Scoped cache cleanup only deletes obsolete SakuNota caches');
+
 console.log('\n======================================================');
-console.log('  ✅ ALL OFFLINE RELIABILITY CHECKS PASSED (5/5)');
+console.log('  ✅ ALL STRICT OFFLINE RELIABILITY CHECKS PASSED (5/5)');
 console.log('======================================================\n');

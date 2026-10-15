@@ -1,70 +1,38 @@
 // SakuNota POS — Service Worker v2.5.0
-// Genuine Offline-First Support for PWA and Mobile Web
+// Fail-Closed Atomic Precache & Route Isolation for Genuine Offline Operation
 
 const CACHE_NAME = 'sakunota-pos-v2.5.0';
 
-const FALLBACK_CORE_ASSETS = [
-  '/',
-  '/pos',
-  '/pos.html',
-  '/manifest.json',
-  '/icon.png',
-  '/logo.jpg',
-  '/favicon.ico',
-  '/offline-manifest.json',
-  '/admin',
-  '/admin.html',
-  '/admin/menu',
-  '/admin/menu.html',
-  '/admin/transaksi',
-  '/admin/transaksi.html',
-  '/admin/shift',
-  '/admin/shift.html',
-  '/admin/meja',
-  '/admin/meja.html',
-  '/admin/pengaturan',
-  '/admin/pengaturan.html',
-  '/admin/pengaturan/profil',
-  '/admin/pengaturan/profil.html',
-  '/admin/pengaturan/printer',
-  '/admin/pengaturan/printer.html',
-  '/admin/pengaturan/keamanan',
-  '/admin/pengaturan/keamanan.html',
-  '/admin/pengaturan/pajak',
-  '/admin/pengaturan/pajak.html',
-  '/admin/pengaturan/data',
-  '/admin/pengaturan/data.html',
-  '/admin/pengaturan/tentang',
-  '/admin/pengaturan/tentang.html',
-  '/404.html'
-];
-
-const PRECACHE_ASSETS = FALLBACK_CORE_ASSETS;
+// PRECACHE_ASSETS dikelola secara atomik dan terverifikasi melalui offline-manifest.json
+// Rute wajib ter-cache mencakup: /pos, /admin, /admin/menu, /admin/transaksi, /admin/shift, /admin/meja, /admin/pengaturan/tentang, /admin/pengaturan/printer, /admin/pengaturan/data
+const PRECACHE_ASSETS = '/offline-manifest.json';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
-      try {
-        const manifestRes = await fetch('/offline-manifest.json', { cache: 'no-cache' });
-        if (manifestRes && manifestRes.ok) {
-          const manifest = await manifestRes.json();
-          if (Array.isArray(manifest.allUrls) && manifest.allUrls.length > 0) {
-            // Precache SEMUA rute HTML, JS chunks, CSS, dan font WOFF2 secara atomik
-            await cache.addAll(manifest.allUrls);
-            await cache.put('/offline-manifest.json', new Response(JSON.stringify(manifest), {
-              headers: { 'Content-Type': 'application/json' }
-            }));
-            await self.skipWaiting();
-            return;
-          }
-        }
-      } catch (err) {
-        console.warn('[SW] Manifest fetch gagal, mencoba fallback core assets:', err);
+
+      // Ambil manifes lengkap dari build Next.js
+      const manifestRes = await fetch('/offline-manifest.json', { cache: 'no-cache' });
+      if (!manifestRes.ok) {
+        throw new Error(`[SW] Gagal mengunduh offline-manifest.json (HTTP ${manifestRes.status}). Instalasi dibatalkan untuk mempertahankan versi aktif.`);
       }
 
-      // Fallback jika offline-manifest.json tidak dapat diakses
-      await cache.addAll(FALLBACK_CORE_ASSETS);
+      const manifest = await manifestRes.json();
+      if (!Array.isArray(manifest.allUrls) || manifest.allUrls.length === 0) {
+        throw new Error('[SW] offline-manifest.json kosong atau tidak valid. Instalasi dibatalkan.');
+      }
+
+      // Precache SEMUA rute HTML, JS chunks, CSS, dan font WOFF2 secara atomik.
+      // Jika salah satu file gagal diunduh (404/network fail), cache.addAll() akan throw error
+      // sehingga browser membatalkan aktivasi SW baru ini dan tetap mempertahankan SW lama yang berfungsi.
+      await cache.addAll(manifest.allUrls);
+
+      // Simpan manifes ke cache untuk verifikasi client-side saat offline
+      await cache.put('/offline-manifest.json', new Response(JSON.stringify(manifest), {
+        headers: { 'Content-Type': 'application/json' }
+      }));
+
       await self.skipWaiting();
     })()
   );
@@ -72,15 +40,19 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
+          // Hanya hapus cache lama milik SakuNota, jangan hapus cache lain yang ada di origin
+          if (key.startsWith('sakunota-pos-') && key !== CACHE_NAME) {
+            console.log('[SW] Membersihkan cache lama SakuNota:', key);
             return caches.delete(key);
           }
         })
       );
-    }).then(() => self.clients.claim())
+      await self.clients.claim();
+    })()
   );
 });
 
@@ -94,7 +66,7 @@ self.addEventListener('fetch', (event) => {
   // Abaikan scheme selain http/https
   if (!url.protocol.startsWith('http')) return;
 
-  // 1. Static Assets Next.js & Media: CacheFirst
+  // 1. Static Assets Next.js & Media: CacheFirst dengan ignoreSearch
   if (
     url.pathname.startsWith('/_next/static/') ||
     url.pathname.match(/\.(png|jpg|jpeg|svg|webp|ico|woff2|woff|ttf)$/i)
@@ -113,7 +85,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Navigation / Halaman HTML Kasir: NetworkFirst with Precise Offline Fallback
+  // 2. Navigation / Halaman HTML Kasir: NetworkFirst dengan Fallback Eksak
   if (req.mode === 'navigate' || req.headers.get('accept')?.includes('text/html')) {
     event.respondWith(
       fetch(req).then((networkRes) => {
@@ -125,29 +97,29 @@ self.addEventListener('fetch', (event) => {
       }).catch(async () => {
         const cache = await caches.open(CACHE_NAME);
         
-        // Coba exact URL (dengan ignoreSearch untuk menangani ?tab=menu, ?table=3, dll)
+        // 1. Coba exact URL (dengan ignoreSearch untuk ?tab=menu, ?table=3, dll)
         let cached = await cache.match(req, { ignoreSearch: true });
         if (cached) return cached;
 
         const cleanPath = url.pathname.replace(/\/$/, '') || '/';
         
-        // Coba pathname tanpa slash
+        // 2. Coba pathname tanpa trailing slash
         cached = await cache.match(cleanPath, { ignoreSearch: true });
         if (cached) return cached;
 
-        // Coba pathname dengan akhiran .html
+        // 3. Coba pathname dengan ekstensi .html
         cached = await cache.match(`${cleanPath}.html`, { ignoreSearch: true });
         if (cached) return cached;
 
-        // Fallback khusus untuk kasir POS
+        // 4. Fallback khusus untuk kasir POS (/pos)
         if (cleanPath.startsWith('/pos')) {
           const posFallback = await cache.match('/pos', { ignoreSearch: true }) || 
                               await cache.match('/pos.html', { ignoreSearch: true });
           if (posFallback) return posFallback;
         }
 
-        // PENTING: JANGAN sembarang redirect subhalaman admin yang hilang ke /admin dashboard!
-        // Berikan 404 cache agar pengguna tahu halaman belum ter-cache
+        // 5. JANGAN sembarang lempar subhalaman admin yang hilang ke /admin dashboard!
+        // Berikan halaman 404 ter-cache agar pengguna mengetahui rute belum tersimpan
         const notFound = await cache.match('/404.html') || await cache.match('/_not-found.html');
         if (notFound) return notFound;
 
@@ -157,7 +129,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Request Lainnya (misal JSON manifest / API data): StaleWhileRevalidate
+  // 3. Request Lainnya (JSON manifest, dll): StaleWhileRevalidate
   event.respondWith(
     caches.match(req, { ignoreSearch: true }).then((cached) => {
       const fetchPromise = fetch(req).then((networkRes) => {
