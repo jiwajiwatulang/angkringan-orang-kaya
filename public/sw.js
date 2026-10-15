@@ -1,7 +1,7 @@
 // SakuNota POS — Service Worker v2.4.0
 // 100% Genuine Offline Support for PWA and Mobile Web
 
-const CACHE_NAME = 'sakunota-pos-v2.4.0';
+const CACHE_NAME = 'sakunota-pos-v2.4.1';
 
 const PRECACHE_ASSETS = [
   '/',
@@ -63,7 +63,7 @@ self.addEventListener('fetch', (event) => {
     url.pathname.match(/\.(png|jpg|jpeg|svg|webp|ico|woff2|woff|ttf)$/i)
   ) {
     event.respondWith(
-      caches.match(req).then((cached) => {
+      caches.match(req, { ignoreSearch: true }).then((cached) => {
         if (cached) return cached;
         return fetch(req).then((res) => {
           if (!res || res.status !== 200 || res.type !== 'basic') return res;
@@ -86,9 +86,15 @@ self.addEventListener('fetch', (event) => {
         }
         return networkRes;
       }).catch(() => {
-        return caches.match(req).then((cached) => {
+        return caches.match(req, { ignoreSearch: true }).then((cached) => {
           if (cached) return cached;
-          return caches.match('/');
+          const cleanPath = url.pathname.replace(/\/$/, '') || '/';
+          return caches.match(cleanPath, { ignoreSearch: true }).then((pathMatch) => {
+            if (pathMatch) return pathMatch;
+            if (cleanPath.startsWith('/pos')) return caches.match('/pos', { ignoreSearch: true });
+            if (cleanPath.startsWith('/admin')) return caches.match('/admin', { ignoreSearch: true });
+            return caches.match('/');
+          });
         });
       })
     );

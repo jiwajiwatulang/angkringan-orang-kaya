@@ -145,7 +145,7 @@ async function runCommercialAudit() {
     const content = fs.readFileSync(filePath, 'utf-8');
     assert(content.includes('Rp25.000 Sekali Bayar') || content.includes('SakuNota'), 'Public commercial pricing displayed');
     assert(content.includes('Bantuan WhatsApp'), 'WhatsApp support button exists');
-    assert(content.includes('support@sakunota.id'), 'Support email displayed');
+    assert(content.includes('support@sakunota.my.id'), 'Support email displayed');
     assert(content.includes('Kebijakan Privasi'), 'Privacy policy button exists');
     assert(content.includes('isDiagnosticsOpen'), 'Technical diagnostics is collapsible/toggleable');
   });

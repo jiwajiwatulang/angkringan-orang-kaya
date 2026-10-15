@@ -163,7 +163,7 @@ export default function PengaturanTentangPage() {
 
         {/* Email Card */}
         <a
-          href="mailto:support@sakunota.id?subject=Permintaan%20Bantuan%20SakuNota%20POS"
+          href="mailto:support@sakunota.my.id?subject=Permintaan%20Bantuan%20SakuNota%20POS"
           className="p-5 rounded-3xl bg-surface border border-line hover:border-accent/50 hover:shadow-lg transition-all flex items-center justify-between group"
         >
           <div className="flex items-center gap-3">
@@ -175,7 +175,7 @@ export default function PengaturanTentangPage() {
                 Email Dukungan
               </h4>
               <p className="text-xs text-muted mt-0.5">
-                support@sakunota.id
+                support@sakunota.my.id
               </p>
             </div>
           </div>

@@ -540,8 +540,8 @@ export default function SakuNotaLandingPage() {
               Bantuan WhatsApp
             </a>
             <span className="text-line">•</span>
-            <a href="mailto:support@sakunota.id" className="hover:text-fg transition-colors">
-              support@sakunota.id
+            <a href="mailto:support@sakunota.my.id" className="hover:text-fg transition-colors">
+              support@sakunota.my.id
             </a>
             <span className="text-line">•</span>
             <Link href="/admin/pengaturan/tentang" className="hover:text-fg transition-colors">
