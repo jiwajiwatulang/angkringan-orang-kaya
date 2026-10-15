@@ -69,8 +69,20 @@ export default function PengaturanDataPage() {
     const savedDate = localStorage.getItem("sakunota_last_backup_date");
     if (savedDate) setLastBackupDate(savedDate);
 
-    const snapshot = getPreRestoreSnapshot();
-    if (snapshot) setPreRestoreSnapshot(snapshot);
+    getPreRestoreSnapshot().then(snapshot => {
+      if (snapshot) setPreRestoreSnapshot(snapshot);
+    });
+
+    if (typeof window !== "undefined") {
+      (window as any).__SAKUNOTA_API__ = {
+        exportAllData,
+        importAllData,
+        validateBackupSchema,
+        getPreRestoreSnapshot,
+        rollbackPreRestoreBackup,
+        db
+      };
+    }
   }, []);
 
   // Back button handling
@@ -162,7 +174,7 @@ export default function PengaturanDataPage() {
       await refreshSettings();
       showToast("Data usaha berhasil dikembalikan. Anda bisa mulai menggunakan SakuNota kembali.", "success");
       
-      const newSnapshot = getPreRestoreSnapshot();
+      const newSnapshot = await getPreRestoreSnapshot();
       if (newSnapshot) setPreRestoreSnapshot(newSnapshot);
 
       setPreviewBackupData(null);

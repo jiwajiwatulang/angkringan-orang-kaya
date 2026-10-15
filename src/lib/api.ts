@@ -1686,6 +1686,13 @@ export async function exportAllData() {
     } catch (e) {}
   }
 
+  // Sanitasi keamanan: Jangan pernah sertakan PIN Otorisasi Admin dalam file cadangan publik
+  if (settings) {
+    const safeSettings = { ...settings };
+    delete safeSettings.adminPin;
+    settings = safeSettings;
+  }
+
   const integrity = {
     totalMenus: menus.length,
     totalOrders: orders.length,
@@ -1773,15 +1780,21 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
     throw new Error(validation.error || 'Format file cadangan tidak valid: Data menu tidak ditemukan.');
   }
 
-  // 1. Ambil snapshot cadangan saat ini untuk keamanan (auto rollback & undo)
+  // 1. Ambil snapshot cadangan saat ini untuk keamanan (disimpan di IndexedDB agar bebas dari batas kuota localStorage 5MB)
   let preRestoreSnapshot: any = null;
   if (!options?.skipPreBackup) {
     try {
       preRestoreSnapshot = await exportAllData();
+      await db.table('settings').put({
+        key: 'pre_restore_snapshot',
+        value: preRestoreSnapshot,
+        updatedAt: new Date().toISOString()
+      });
       if (typeof window !== 'undefined') {
-        localStorage.setItem('sakunota_pre_restore_snapshot', JSON.stringify({
+        localStorage.setItem('sakunota_pre_restore_snapshot_meta', JSON.stringify({
           timestamp: new Date().toISOString(),
-          data: preRestoreSnapshot
+          menuCount: preRestoreSnapshot.menus?.length || 0,
+          orderCount: preRestoreSnapshot.orders?.length || 0
         }));
       }
     } catch (snapErr) {
@@ -1789,7 +1802,7 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
     }
   }
 
-  // Helper pemulihan data ke tabel Dexie
+  // Helper pemulihan data ke tabel Dexie - SEMUA tabel DAN pengaturan dieksekusi dalam 1 transaksi ACID
   const restoreToTables = async (payload: any) => {
     await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems', 'payments', 'paymentProofs', 'auditLogs', 'shifts', 'cashMovements', 'settings'], async () => {
       await db.table('auditLogs').clear();
@@ -1847,39 +1860,120 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
       if (payload.cashMovements && payload.cashMovements.length > 0) {
         await db.table('cashMovements').bulkAdd(payload.cashMovements);
       }
-    });
 
-    if (payload.settings) {
-      try {
+      // Pengaturan toko disimpan DI DALAM transaksi yang sama demi konsistensi atomik 100%
+      if (payload.settings) {
+        // Pertahankan PIN Admin yang ada jika file cadangan tidak menyertakan PIN (demi keamanan privasi)
+        const currentEntry = await db.table('settings').get('pos_store_settings');
+        const existingPin = currentEntry?.value?.adminPin || '1234';
+        const settingsToSave = {
+          ...payload.settings,
+          adminPin: payload.settings.adminPin || existingPin
+        };
+
         await db.table('settings').put({
           key: 'pos_store_settings',
-          value: payload.settings,
+          value: settingsToSave,
           updatedAt: new Date().toISOString()
         });
-      } catch (_) {}
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('pos_store_settings', JSON.stringify(payload.settings));
-          window.dispatchEvent(new CustomEvent('sakunota:settings_updated', { detail: payload.settings }));
-        } catch (e) {}
+
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('pos_store_settings', JSON.stringify(settingsToSave));
+            window.dispatchEvent(new CustomEvent('sakunota:settings_updated', { detail: settingsToSave }));
+          } catch (e) {}
+        }
       }
-    }
+    });
   };
 
   try {
     await restoreToTables(data);
 
-    // 2. Round-trip verification check
-    const restoredMenuCount = await db.table('menuItems').count();
+    // 2. Pemeriksaan integritas menyeluruh (Counts, Relasional, Finansial)
+    const [
+      restoredMenuCount,
+      restoredTableCount,
+      restoredOrderCount,
+      restoredOrderItemCount,
+      restoredPaymentCount,
+      restoredProofCount,
+      restoredShiftCount,
+      restoredOrders,
+      restoredPayments,
+      restoredOrderItems
+    ] = await Promise.all([
+      db.table('menuItems').count(),
+      db.table('tables').count(),
+      db.table('orders').count(),
+      db.table('orderItems').count(),
+      db.table('payments').count(),
+      db.table('paymentProofs').count(),
+      db.table('shifts').count(),
+      db.table('orders').toArray(),
+      db.table('payments').toArray(),
+      db.table('orderItems').toArray()
+    ]);
+
     const expectedMenuCount = data.menus?.length || 0;
     if (restoredMenuCount !== expectedMenuCount) {
       throw new Error(`Verifikasi integritas gagal: Jumlah menu tidak cocok (${restoredMenuCount} vs ${expectedMenuCount}).`);
     }
 
-    if (data.paymentProofs && Array.isArray(data.paymentProofs)) {
-      const restoredProofCount = await db.table('paymentProofs').count();
-      if (restoredProofCount !== data.paymentProofs.length) {
-        throw new Error(`Verifikasi integritas gagal: Jumlah bukti pembayaran tidak cocok.`);
+    const expectedTableCount = data.tables?.length || 0;
+    if (restoredTableCount !== expectedTableCount) {
+      throw new Error(`Verifikasi integritas gagal: Jumlah meja tidak cocok (${restoredTableCount} vs ${expectedTableCount}).`);
+    }
+
+    const expectedOrderCount = data.orders?.length || 0;
+    if (restoredOrderCount !== expectedOrderCount) {
+      throw new Error(`Verifikasi integritas gagal: Jumlah pesanan tidak cocok (${restoredOrderCount} vs ${expectedOrderCount}).`);
+    }
+
+    const expectedPaymentCount = data.payments?.length || 0;
+    if (restoredPaymentCount !== expectedPaymentCount) {
+      throw new Error(`Verifikasi integritas gagal: Jumlah pembayaran tidak cocok (${restoredPaymentCount} vs ${expectedPaymentCount}).`);
+    }
+
+    const expectedProofCount = data.paymentProofs?.length || 0;
+    if (restoredProofCount !== expectedProofCount) {
+      throw new Error(`Verifikasi integritas gagal: Jumlah bukti pembayaran tidak cocok (${restoredProofCount} vs ${expectedProofCount}).`);
+    }
+
+    const expectedShiftCount = data.shifts?.length || 0;
+    if (restoredShiftCount !== expectedShiftCount) {
+      throw new Error(`Verifikasi integritas gagal: Jumlah shift tidak cocok (${restoredShiftCount} vs ${expectedShiftCount}).`);
+    }
+
+    // Verifikasi Checksum Integritas File Cadangan
+    if (data.integrity && typeof data.integrity.checksum === 'number') {
+      const calculatedChecksum = (restoredMenuCount * 3) + (restoredOrderCount * 7) + (restoredPaymentCount * 11) + (restoredProofCount * 13);
+      if (calculatedChecksum !== data.integrity.checksum) {
+        throw new Error(`Verifikasi integritas gagal: Checksum file cadangan tidak cocok (${calculatedChecksum} vs ${data.integrity.checksum}). File telah dimodifikasi atau rusak.`);
+      }
+    }
+
+    // Verifikasi total nominal finansial (Omzet & Total Terbayar)
+    if (data.orders && data.orders.length > 0) {
+      const expectedTotalOmzet = data.orders.reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0);
+      const restoredTotalOmzet = restoredOrders.reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0);
+      if (Math.abs(expectedTotalOmzet - restoredTotalOmzet) > 0.01) {
+        throw new Error(`Verifikasi integritas gagal: Total omzet tidak cocok (Rp ${restoredTotalOmzet} vs Rp ${expectedTotalOmzet}).`);
+      }
+    }
+
+    // Verifikasi integritas relasional kunci asing (Order <-> Items & Order <-> Payments)
+    if (restoredOrders.length > 0) {
+      const orderIds = new Set(restoredOrders.map((o: any) => o.id));
+      for (const item of restoredOrderItems) {
+        if (!orderIds.has(item.orderId)) {
+          throw new Error(`Verifikasi integritas relasi gagal: Item pesanan #${item.id} merujuk ke nota #${item.orderId} yang tidak ditemukan.`);
+        }
+      }
+      for (const pay of restoredPayments) {
+        if (!orderIds.has(pay.orderId)) {
+          throw new Error(`Verifikasi integritas relasi gagal: Pembayaran #${pay.id} merujuk ke nota #${pay.orderId} yang tidak ditemukan.`);
+        }
       }
     }
 
@@ -1899,25 +1993,41 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
   }
 }
 
-export function getPreRestoreSnapshot(): { timestamp: string; data: any } | null {
-  if (typeof window === 'undefined') return null;
+export async function getPreRestoreSnapshot(): Promise<{ timestamp: string; data: any } | null> {
   try {
-    const raw = localStorage.getItem('sakunota_pre_restore_snapshot');
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (_) {
-    return null;
+    const entry = await db.table('settings').get('pre_restore_snapshot');
+    if (entry && entry.value) {
+      return {
+        timestamp: entry.updatedAt || new Date().toISOString(),
+        data: entry.value
+      };
+    }
+  } catch (_) {}
+
+  // Fallback to legacy localStorage if available
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('sakunota_pre_restore_snapshot');
+      if (raw) return JSON.parse(raw);
+    } catch (_) {}
   }
+  return null;
 }
 
 export async function rollbackPreRestoreBackup(): Promise<boolean> {
-  const snapshotObj = getPreRestoreSnapshot();
+  const snapshotObj = await getPreRestoreSnapshot();
   if (!snapshotObj || !snapshotObj.data) {
     throw new Error('Tidak ada snapshot cadangan sebelum pemulihan yang tersimpan.');
   }
 
   await importAllData(snapshotObj.data, { skipPreBackup: true });
-  localStorage.removeItem('sakunota_pre_restore_snapshot');
+  try {
+    await db.table('settings').delete('pre_restore_snapshot');
+  } catch (_) {}
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('sakunota_pre_restore_snapshot');
+    localStorage.removeItem('sakunota_pre_restore_snapshot_meta');
+  }
   return true;
 }
 

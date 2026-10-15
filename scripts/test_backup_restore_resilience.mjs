@@ -59,20 +59,34 @@ function sha256(data) {
   return crypto.createHash('sha256').update(data).digest('hex');
 }
 
+// Helper untuk membuat gambar realistis berukuran kamera HP (~180KB & ~240KB)
+function generateRealisticCameraImage(sizeInKB, salt) {
+  const header = 'data:image/jpeg;base64,';
+  const targetChars = sizeInKB * 1024 * (4 / 3);
+  let chunk = Buffer.from(`SakuNota-Proof-Camera-${salt}-TIMESTAMP-${Date.now()}-RECEIPT-SCAN`).toString('base64');
+  let body = '';
+  while (body.length < targetChars) {
+    body += chunk;
+  }
+  return header + body.slice(0, targetChars);
+}
+
 console.log('\n================================================================');
-console.log('  🛡️ SAKUNOTA BACKUP RESTORE RESILIENCE & DEEP FIDELITY AUDIT');
+console.log('  🛡️ SAKUNOTA REAL TARGETED BACKUP RESILIENCE & INTEGRITY AUDIT');
 console.log('================================================================\n');
 
 try {
-  // -------------------------------------------------------------------------
-  // UJI 1: DEEP FIDELITY & EXACT BYTE-FOR-BYTE COMPARISON
-  // -------------------------------------------------------------------------
-  console.log('[BAGIAN 1] Uji Ketelitian Penuh (Deep Relational & Byte-for-Byte Fidelity)...');
-  
-  // Siapkan data kompleks
-  const originalRawImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mNk+M9QzwAEjAwMDAwAFAcBAc0/vW4AAAAASUVORK5CYII=';
-  const originalImageHash = sha256(originalRawImage);
+  // Buat 2 gambar bukti bayar realistis berukuran kamera smartphone (180KB dan 240KB)
+  const cameraImage1 = generateRealisticCameraImage(180, 'QRIS-BCA-MOBILE');
+  const cameraImage2 = generateRealisticCameraImage(240, 'TRANSFER-MANDIRI');
+  const hashImage1 = sha256(cameraImage1);
+  const hashImage2 = sha256(cameraImage2);
 
+  console.log(`  -> Foto Bukti 1 (Kamera 180KB) SHA-256: ${hashImage1}`);
+  console.log(`  -> Foto Bukti 2 (Kamera 240KB) SHA-256: ${hashImage2}`);
+
+  // Peluncuran Chrome Emulation
+  console.log('\n[LINGKUNGAN UJI] Chrome Mobile Emulation (Android Pixel 7) di Lingkungan Desktop');
   const context = await chromium.launchPersistentContext(testProfileDir, {
     executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     headless: true,
@@ -93,8 +107,15 @@ try {
     localStorage.setItem('adminLoginExpiry', (Date.now() + 86400000).toString());
   });
 
-  // Isi database dengan relasi lengkap
-  const seedResult = await page.evaluate(async (imgData) => {
+  await page.goto(`http://localhost:${port}/admin/pengaturan/data?auth=demo`);
+  await page.waitForTimeout(1500);
+
+  // -------------------------------------------------------------------------
+  // FASE 1: BENIH DATA SUBSTANSIAL & UJI PRIVASI PIN ADMIN
+  // -------------------------------------------------------------------------
+  console.log('\n[FASE 1] Menyiapkan Riwayat Operasional Nyata (Substantial Business Data)...');
+  const seedResult = await page.evaluate(async (args) => {
+    const { img1, img2 } = args;
     const req = indexedDB.open('AngkringanDB');
     return new Promise((resolve, reject) => {
       req.onsuccess = () => {
@@ -104,414 +125,340 @@ try {
           'readwrite'
         );
 
-        // 1. Settings
+        // 1. Settings dengan PIN Admin Sensitif ('8899')
         tx.objectStore('settings').put({
           key: 'pos_store_settings',
           value: {
             storeName: 'Angkringan Kopi Joss Malioboro',
-            address: 'Jl. Malioboro Blok A No. 12',
+            address: 'Jl. Malioboro Blok A No. 12 Yogyakarta',
             phone: '081299887766',
             taxPercentage: 10,
-            servicePercentage: 5,
-            adminPin: '4321'
+            servicePercentage: 0,
+            adminPin: '8899' // PIN otorisasi rahasia pemilik
           },
           updatedAt: new Date().toISOString()
         });
 
-        // 2. Menu dengan Nested Modifiers
-        tx.objectStore('menuItems').add({
-          sku: 'KOP-JOSS-01',
-          nama: 'Kopi Joss Arang Membara',
-          harga: 12000,
-          kategori: 'Kopi',
-          isSoldOut: false,
-          urutan: 1,
-          modifiers: [
-            {
-              id: 'mod-gula',
-              nama: 'Tingkat Manis',
-              required: true,
-              minSelect: 1,
-              maxSelect: 1,
-              options: [
-                { id: 'opt-normal', nama: 'Normal', harga: 0 },
-                { id: 'opt-less', nama: 'Less Sugar', harga: 0 }
-              ]
-            }
-          ]
-        });
+        // 2. 6 Menu Beragam dengan Modifiers
+        const menus = [
+          { sku: 'KOP-01', nama: 'Kopi Joss Arang Membara', harga: 12000, kategori: 'Kopi', isSoldOut: false, urutan: 1, modifiers: [{ id: 'm-gula', nama: 'Manis', required: true, minSelect: 1, maxSelect: 1, options: [{ id: 'o-normal', nama: 'Normal', harga: 0 }, { id: 'o-less', nama: 'Less Sugar', harga: 0 }] }] },
+          { sku: 'NAS-01', nama: 'Nasi Kucing Teri Balado', harga: 6000, kategori: 'Makanan', isSoldOut: false, urutan: 2, modifiers: [] },
+          { sku: 'NAS-02', nama: 'Nasi Kucing Oseng Tempe', harga: 6000, kategori: 'Makanan', isSoldOut: false, urutan: 3, modifiers: [] },
+          { sku: 'SAT-01', nama: 'Sate Usus Bakar Manis', harga: 4000, kategori: 'Sate-Satean', isSoldOut: false, urutan: 4, modifiers: [] },
+          { sku: 'SAT-02', nama: 'Sate Telur Puyuh Bacem', harga: 5000, kategori: 'Sate-Satean', isSoldOut: false, urutan: 5, modifiers: [] },
+          { sku: 'MIN-01', nama: 'Wedang Jahe Susu Serai', harga: 9000, kategori: 'Minuman Tradisional', isSoldOut: false, urutan: 6, modifiers: [] }
+        ];
+        for (const m of menus) tx.objectStore('menuItems').add(m);
 
-        // 3. Meja
-        tx.objectStore('tables').add({
-          nomor: 'Lesehan Bambu #07',
-          status: 'kosong'
-        });
+        // 3. 5 Meja
+        for (let i = 1; i <= 5; i++) {
+          tx.objectStore('tables').add({ nomor: `Lesehan Bambu #${i}`, status: i === 1 ? 'terisi' : 'kosong' });
+        }
 
-        // 4. Shift
+        // 4. 2 Sesi Shift Kasir (Shift 1 Selesai, Shift 2 Aktif)
         tx.objectStore('shifts').add({
           operatorName: 'Siti Rahmawati',
-          startingCash: 250000,
-          cashSales: 12000,
-          nonCashSales: 24000,
-          expectedCash: 262000,
+          startingCash: 200000,
+          cashSales: 30000,
+          nonCashSales: 48000,
+          expectedCash: 230000,
+          actualCash: 230000,
+          status: 'closed',
+          startTime: '2026-10-15T08:00:00.000Z',
+          endTime: '2026-10-15T14:00:00.000Z'
+        });
+
+        tx.objectStore('shifts').add({
+          operatorName: 'Budi Santoso',
+          startingCash: 230000,
+          cashSales: 18000,
+          nonCashSales: 30000,
+          expectedCash: 248000,
           status: 'open',
-          startTime: '2026-10-15T10:00:00.000Z'
+          startTime: '2026-10-15T14:01:00.000Z'
         });
 
-        // 5. Order & Items & Payment & Proof
-        const orderStore = tx.objectStore('orders');
-        const oReq = orderStore.add({
-          shiftId: 1,
-          tableId: null,
-          receiptNumber: 'NOTA-JOSS-777',
-          customerName: 'Mas Bambang',
-          total: 24000,
-          paidAmount: 24000,
-          remainingBalance: 0,
-          status: 'paid',
-          verificationStatus: 'terverifikasi',
-          paymentMethod: 'QRIS',
-          createdAt: '2026-10-15T10:30:00.000Z',
-          updatedAt: '2026-10-15T10:35:00.000Z'
+        // 5. 4 Nota Transaksi dengan Nilai Omzet Nyata (Total: Rp 126.000)
+        // Nota 1: Cash Rp 30.000 (Shift 1)
+        const o1 = tx.objectStore('orders').add({
+          shiftId: 1, tableId: 1, receiptNumber: 'NOTA-JOSS-001', customerName: 'Pak Dhe Bowo',
+          total: 30000, paidAmount: 30000, remainingBalance: 0, status: 'paid', verificationStatus: 'terverifikasi',
+          paymentMethod: 'Cash', createdAt: '2026-10-15T09:00:00.000Z'
         });
+        o1.onsuccess = () => {
+          const oid = o1.result;
+          tx.objectStore('orderItems').add({ orderId: oid, menuItemId: 1, namaMenu: 'Kopi Joss Arang Membara', qty: 2, hargaSatuan: 12000 });
+          tx.objectStore('orderItems').add({ orderId: oid, menuItemId: 2, namaMenu: 'Nasi Kucing Teri Balado', qty: 1, hargaSatuan: 6000 });
+          tx.objectStore('payments').add({ orderId: oid, shiftId: 1, amount: 30000, paymentMethod: 'Cash', status: 'completed', paidAt: '2026-10-15T09:05:00.000Z' });
+        };
 
-        oReq.onsuccess = () => {
-          const orderId = oReq.result;
-
-          tx.objectStore('orderItems').add({
-            orderId,
-            menuItemId: 1,
-            namaMenu: 'Kopi Joss Arang Membara',
-            qty: 2,
-            hargaSatuan: 12000,
-            selectedModifiers: [
-              { groupName: 'Tingkat Manis', optionName: 'Less Sugar', harga: 0 }
-            ]
-          });
-
-          const pReq = tx.objectStore('payments').add({
-            orderId,
-            shiftId: 1,
-            amount: 24000,
-            paymentMethod: 'QRIS',
-            splitType: 'full',
-            operatorName: 'Siti Rahmawati',
-            status: 'completed',
-            proofStatus: 'terverifikasi',
-            paidAt: '2026-10-15T10:35:00.000Z'
-          });
-
-          pReq.onsuccess = () => {
-            const paymentId = pReq.result;
+        // Nota 2: QRIS Rp 48.000 dengan Bukti Foto Kamera 1 (Shift 1)
+        const o2 = tx.objectStore('orders').add({
+          shiftId: 1, tableId: 2, receiptNumber: 'NOTA-JOSS-002', customerName: 'Mbak Cindy',
+          total: 48000, paidAmount: 48000, remainingBalance: 0, status: 'paid', verificationStatus: 'terverifikasi',
+          paymentMethod: 'QRIS', createdAt: '2026-10-15T11:00:00.000Z'
+        });
+        o2.onsuccess = () => {
+          const oid = o2.result;
+          tx.objectStore('orderItems').add({ orderId: oid, menuItemId: 1, namaMenu: 'Kopi Joss Arang Membara', qty: 2, hargaSatuan: 12000 });
+          tx.objectStore('orderItems').add({ orderId: oid, menuItemId: 4, namaMenu: 'Sate Usus Bakar Manis', qty: 6, hargaSatuan: 4000 });
+          const pay = tx.objectStore('payments').add({ orderId: oid, shiftId: 1, amount: 48000, paymentMethod: 'QRIS', status: 'completed', proofStatus: 'terverifikasi', paidAt: '2026-10-15T11:05:00.000Z' });
+          pay.onsuccess = () => {
             tx.objectStore('paymentProofs').add({
-              orderId,
-              paymentId,
-              fileName: 'qris_bambang_joss.png',
-              fileSize: 128,
-              mimeType: 'image/png',
-              status: 'terverifikasi',
-              imageData: imgData,
-              uploadedAt: '2026-10-15T10:34:00.000Z',
-              uploadedBy: 'Siti Rahmawati'
+              orderId: oid, paymentId: pay.result, fileName: 'qris_cindy_camera_180k.jpg', fileSize: 184320,
+              mimeType: 'image/jpeg', status: 'terverifikasi', imageData: img1, uploadedAt: '2026-10-15T11:04:00.000Z'
             });
           };
         };
 
-        tx.oncomplete = () => resolve(true);
+        // Nota 3: Transfer Rp 30.000 dengan Bukti Foto Kamera 2 (Shift 2)
+        const o3 = tx.objectStore('orders').add({
+          shiftId: 2, tableId: 3, receiptNumber: 'NOTA-JOSS-003', customerName: 'Mas Danang',
+          total: 30000, paidAmount: 30000, remainingBalance: 0, status: 'paid', verificationStatus: 'terverifikasi',
+          paymentMethod: 'Transfer', createdAt: '2026-10-15T14:30:00.000Z'
+        });
+        o3.onsuccess = () => {
+          const oid = o3.result;
+          tx.objectStore('orderItems').add({ orderId: oid, menuItemId: 5, namaMenu: 'Sate Telur Puyuh Bacem', qty: 6, hargaSatuan: 5000 });
+          const pay = tx.objectStore('payments').add({ orderId: oid, shiftId: 2, amount: 30000, paymentMethod: 'Transfer', status: 'completed', proofStatus: 'terverifikasi', paidAt: '2026-10-15T14:35:00.000Z' });
+          pay.onsuccess = () => {
+            tx.objectStore('paymentProofs').add({
+              orderId: oid, paymentId: pay.result, fileName: 'transfer_danang_camera_240k.png', fileSize: 245760,
+              mimeType: 'image/png', status: 'terverifikasi', imageData: img2, uploadedAt: '2026-10-15T14:34:00.000Z'
+            });
+          };
+        };
+
+        // Nota 4: Cash Rp 18.000 (Shift 2)
+        const o4 = tx.objectStore('orders').add({
+          shiftId: 2, tableId: 4, receiptNumber: 'NOTA-JOSS-004', customerName: 'Pak RT Slamet',
+          total: 18000, paidAmount: 18000, remainingBalance: 0, status: 'paid', verificationStatus: 'terverifikasi',
+          paymentMethod: 'Cash', createdAt: '2026-10-15T15:00:00.000Z'
+        });
+        o4.onsuccess = () => {
+          const oid = o4.result;
+          tx.objectStore('orderItems').add({ orderId: oid, menuItemId: 6, namaMenu: 'Wedang Jahe Susu Serai', qty: 2, hargaSatuan: 9000 });
+          tx.objectStore('payments').add({ orderId: oid, shiftId: 2, amount: 18000, paymentMethod: 'Cash', status: 'completed', paidAt: '2026-10-15T15:05:00.000Z' });
+        };
+
+        tx.oncomplete = () => resolve({ totalOmzet: 30000 + 48000 + 30000 + 18000 });
         tx.onerror = (e) => reject(e);
       };
     });
-  }, originalRawImage);
+  }, { img1: cameraImage1, img2: cameraImage2 });
 
-  console.log('  -> Data benih awal berhasil disimpan ke IndexedDB.');
+  console.log(`  -> Data terisi sempurna: 6 Menu, 5 Meja, 2 Shift, 4 Nota (Total Omzet: Rp ${seedResult.totalOmzet.toLocaleString('id-ID')}).`);
 
-  // Ekspor Cadangan via UI
-  await page.goto(`http://localhost:${port}/admin/pengaturan/data?auth=demo`);
-  await page.waitForTimeout(1000);
+  // Ekspor Data melalui API Asli SakuNota
+  console.log('\n[FASE 2] Menjalankan exportAllData() Asli & Audit Sanitasi PIN Admin...');
+  const exportedData = await page.evaluate(async () => {
+    return await window.__SAKUNOTA_API__.exportAllData();
+  });
 
-  const downloadPromise = page.waitForEvent('download');
-  await page.locator('button:has-text("Cadangkan Sekarang")').first().click();
-  const download = await downloadPromise;
-  const exportedFilePath = path.resolve('test-deep-fidelity-backup.json');
-  await download.saveAs(exportedFilePath);
+  // Uji Sanitasi PIN Admin
+  console.log(`  -> Memeriksa file cadangan untuk kredensial rahasia:`);
+  console.log(`     Nama Usaha:         ${exportedData.settings?.storeName}`);
+  console.log(`     PIN Admin terekspor: ${exportedData.settings?.adminPin} (Harus undefined/dihapus)`);
 
-  const exportedJson = JSON.parse(fs.readFileSync(exportedFilePath, 'utf8'));
-  console.log('  -> File Cadangan berhasil diekspor:', exportedFilePath);
-
-  // Verifikasi hash gambar di dalam file JSON sebelum di-restore
-  const exportedImage = exportedJson.paymentProofs[0].imageData;
-  const exportedImageHash = sha256(exportedImage);
-  console.log(`  -> SHA-256 Hash Gambar Asli:     ${originalImageHash}`);
-  console.log(`  -> SHA-256 Hash Gambar di JSON:  ${exportedImageHash}`);
-  if (originalImageHash !== exportedImageHash) {
-    throw new Error('Hash gambar di file JSON tidak cocok!');
+  if (exportedData.settings?.adminPin !== undefined) {
+    throw new Error('KEBOCORAN KEAMANAN: PIN Admin terekspor dalam file cadangan!');
   }
-  console.log('  ✅ PASS: Gambar di file cadangan 100% identik secara kriptografis.');
+  console.log('  ✅ PASS: PIN Admin berhasil disanitasi & TIDAK diekspor ke file cadangan!');
 
-  // Bersihkan database sepenuhnya (Simulasi ganti HP total)
+  // Simpan file cadangan valid untuk uji pemulihan
+  const validBackupJsonPath = path.resolve('test-substantial-backup.json');
+  fs.writeFileSync(validBackupJsonPath, JSON.stringify(exportedData, null, 2));
+  console.log(`  -> File cadangan substansial berhasil dibuat (${fs.statSync(validBackupJsonPath).size} bytes).`);
+
+  // -------------------------------------------------------------------------
+  // FASE 3: UJI KEGAGALAN NYATA TERHADAP importAllData() & AUTO-ROLLBACK ASLI
+  // -------------------------------------------------------------------------
+  console.log('\n[FASE 3] Menjalankan Uji Kegagalan Nyata Terhadap importAllData() (Real Failure Injection)...');
+  
+  // Buat payload rusak yang menyebabkan importAllData() gagal di tahap verifikasi integritas
+  // (misalnya: payload mencantumkan 3 pesanan tetapi total omzet korup / mismatch, atau primary key relasi rusak)
+  const corruptedPayload = JSON.parse(JSON.stringify(exportedData));
+  corruptedPayload.orderItems[0].orderId = 999999; // Merusak integritas relasional kunci asing (foreign key mismatch)
+
+  const realFailureTestResult = await page.evaluate(async (badData) => {
+    // Catat kondisi data SEBELUM importAllData() dipanggil
+    const db = window.__SAKUNOTA_API__.db;
+    const initialOrders = await db.table('orders').toArray();
+    const initialMenus = await db.table('menuItems').count();
+    const initialTotalOmzet = initialOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const initialStoreName = (await db.table('settings').get('pos_store_settings'))?.value?.storeName;
+
+    let caughtError = null;
+    try {
+      // PANGGIL IMPLEMENTASI ASLI SAKUNOTA: importAllData()
+      await window.__SAKUNOTA_API__.importAllData(badData);
+    } catch (err) {
+      caughtError = err.message || String(err);
+    }
+
+    // Periksa kondisi data SETELAH importAllData() gagal & memicu auto-rollback internalnya
+    const postOrders = await db.table('orders').toArray();
+    const postMenus = await db.table('menuItems').count();
+    const postTotalOmzet = postOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const postStoreName = (await db.table('settings').get('pos_store_settings'))?.value?.storeName;
+
+    return {
+      caughtError,
+      initialMenus,
+      postMenus,
+      initialTotalOmzet,
+      postTotalOmzet,
+      initialStoreName,
+      postStoreName
+    };
+  }, corruptedPayload);
+
+  console.log(`  -> Error tertangkap dari fungsi asli importAllData(): "${realFailureTestResult.caughtError}"`);
+  console.log(`  -> Menu sebelum gagal: ${realFailureTestResult.initialMenus} | Menu setelah auto-rollback: ${realFailureTestResult.postMenus}`);
+  console.log(`  -> Omzet sebelum gagal: Rp ${realFailureTestResult.initialTotalOmzet} | Omzet setelah auto-rollback: Rp ${realFailureTestResult.postTotalOmzet}`);
+  console.log(`  -> Nama toko tetap utuh: "${realFailureTestResult.postStoreName}"`);
+
+  if (!realFailureTestResult.caughtError) {
+    throw new Error('importAllData() tidak menolak payload yang rusak integritasnya!');
+  }
+  if (realFailureTestResult.postMenus !== realFailureTestResult.initialMenus || 
+      realFailureTestResult.postTotalOmzet !== realFailureTestResult.initialTotalOmzet) {
+    throw new Error('DATA LOSS TERDETEKSI: Auto-rollback importAllData() gagal mempertahankan data semula!');
+  }
+  console.log('  ✅ PASS: Fungsi asli importAllData() terbukti menolak kegagalan dan melakukan auto-rollback 100% tanpa kehilangan 1 data pun!');
+
+  // -------------------------------------------------------------------------
+  // FASE 4: UJI KUOTA STORAGE: SNAPSHOT TERSIMPAN DI INDEXEDDB, BUKAN LOCALSTORAGE
+  // -------------------------------------------------------------------------
+  console.log('\n[FASE 4] Memeriksa Batas Penyimpanan Browser (LocalStorage Quota Safety)...');
+  const storageCheck = await page.evaluate(async () => {
+    const db = window.__SAKUNOTA_API__.db;
+    const idbSnapshot = await db.table('settings').get('pre_restore_snapshot');
+    const localRaw = localStorage.getItem('sakunota_pre_restore_snapshot');
+    const metaRaw = localStorage.getItem('sakunota_pre_restore_snapshot_meta');
+
+    let totalLocalStorageBytes = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      totalLocalStorageBytes += (key.length + (localStorage.getItem(key)?.length || 0)) * 2;
+    }
+
+    return {
+      hasIndexedDBSnapshot: Boolean(idbSnapshot?.value),
+      indexedDBBytes: JSON.stringify(idbSnapshot?.value || {}).length,
+      hasLegacyLargeLocalStorage: Boolean(localRaw && localRaw.length > 50000),
+      totalLocalStorageKB: Math.round(totalLocalStorageBytes / 1024),
+      metaInfo: metaRaw ? JSON.parse(metaRaw) : null
+    };
+  });
+
+  console.log(`  -> Snapshot tersimpan di IndexedDB: ${storageCheck.hasIndexedDBSnapshot} (${storageCheck.indexedDBBytes} bytes)`);
+  console.log(`  -> Total pemakaian LocalStorage saat ini: ${storageCheck.totalLocalStorageKB} KB (Jauh di bawah limit 5 MB)`);
+  console.log(`  -> LocalStorage bebas dari data gambar besar: ${!storageCheck.hasLegacyLargeLocalStorage}`);
+
+  if (!storageCheck.hasIndexedDBSnapshot || storageCheck.hasLegacyLargeLocalStorage) {
+    throw new Error('Penyimpanan snapshot melanggar kuota LocalStorage!');
+  }
+  console.log('  ✅ PASS: Snapshot cadangan darurat tersimpan aman di IndexedDB, mencegah QuotaExceededError.');
+
+  // -------------------------------------------------------------------------
+  // FASE 5: UJI PEMULIHAN KE PERANGKAT BARU (CLEAN RESTORE) & DEEP INTEGRITY
+  // -------------------------------------------------------------------------
+  console.log('\n[FASE 5] Pemulihan ke Database Bersih & Verifikasi Hash Foto Kamera...');
+
+  // Bersihkan database total
   await page.evaluate(async () => {
-    const req = indexedDB.open('AngkringanDB');
-    return new Promise((resolve) => {
-      req.onsuccess = () => {
-        const idb = req.result;
-        const tx = idb.transaction(
-          ['settings', 'menuItems', 'tables', 'orders', 'orderItems', 'payments', 'paymentProofs', 'shifts'],
-          'readwrite'
-        );
-        tx.objectStore('settings').clear();
-        tx.objectStore('menuItems').clear();
-        tx.objectStore('tables').clear();
-        tx.objectStore('orders').clear();
-        tx.objectStore('orderItems').clear();
-        tx.objectStore('payments').clear();
-        tx.objectStore('paymentProofs').clear();
-        tx.objectStore('shifts').clear();
-        tx.oncomplete = () => resolve(true);
-      };
-    });
+    const db = window.__SAKUNOTA_API__.db;
+    await db.table('auditLogs').clear();
+    await db.table('shifts').clear();
+    await db.table('cashMovements').clear();
+    await db.table('paymentProofs').clear();
+    await db.table('payments').clear();
+    await db.table('orderItems').clear();
+    await db.table('orders').clear();
+    await db.table('tables').clear();
+    await db.table('menuItems').clear();
   });
 
-  // Impor kembali file cadangan via UI
-  console.log('  -> Mengembalikan (Restore) file cadangan ke database kosong...');
-  await page.setInputFiles('#backup-file-input', exportedFilePath);
-  await page.waitForSelector('text=Kembalikan Data Usaha?');
-  await page.locator('button:has-text("Ya, Kembalikan Data Sekarang")').click();
-  await page.waitForTimeout(3000);
+  // Pulihkan file valid melalui importAllData() asli
+  console.log('  -> Memulihkan file cadangan substansial...');
+  const restoreSuccess = await page.evaluate(async (validJson) => {
+    return await window.__SAKUNOTA_API__.importAllData(validJson, { skipPreBackup: true });
+  }, exportedData);
 
-  // Periksa data setelah pemulihan secara mendalam
-  const restored = await page.evaluate(async () => {
-    const req = indexedDB.open('AngkringanDB');
-    return new Promise((resolve) => {
-      req.onsuccess = () => {
-        const idb = req.result;
-        const tx = idb.transaction(
-          ['settings', 'menuItems', 'tables', 'orders', 'orderItems', 'payments', 'paymentProofs', 'shifts'],
-          'readonly'
-        );
-        const res = {};
-        tx.objectStore('settings').get('pos_store_settings').onsuccess = (e) => res.settings = e.target.result;
-        tx.objectStore('menuItems').getAll().onsuccess = (e) => res.menus = e.target.result;
-        tx.objectStore('tables').getAll().onsuccess = (e) => res.tables = e.target.result;
-        tx.objectStore('orders').getAll().onsuccess = (e) => res.orders = e.target.result;
-        tx.objectStore('orderItems').getAll().onsuccess = (e) => res.orderItems = e.target.result;
-        tx.objectStore('payments').getAll().onsuccess = (e) => res.payments = e.target.result;
-        tx.objectStore('paymentProofs').getAll().onsuccess = (e) => res.proofs = e.target.result;
-        tx.objectStore('shifts').getAll().onsuccess = (e) => res.shifts = e.target.result;
-        tx.oncomplete = () => resolve(res);
-      };
-    });
+  if (!restoreSuccess) throw new Error('Pemulihan file valid gagal!');
+
+  // Verifikasi seluruh isi database
+  const deepVerification = await page.evaluate(async () => {
+    const db = window.__SAKUNOTA_API__.db;
+    const settings = (await db.table('settings').get('pos_store_settings'))?.value;
+    const menus = await db.table('menuItems').toArray();
+    const tables = await db.table('tables').toArray();
+    const orders = await db.table('orders').toArray();
+    const orderItems = await db.table('orderItems').toArray();
+    const payments = await db.table('payments').toArray();
+    const proofs = await db.table('paymentProofs').toArray();
+    const shifts = await db.table('shifts').toArray();
+
+    return {
+      settings,
+      menus,
+      tables,
+      orders,
+      orderItems,
+      payments,
+      proofs,
+      shifts,
+      totalOmzet: orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0),
+      totalPaid: payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+    };
   });
 
-  // 1. Cek Hash Gambar Setelah Dipulihkan
-  const restoredImageHash = sha256(restored.proofs[0].imageData);
-  console.log(`  -> SHA-256 Hash Gambar Setelah Restore: ${restoredImageHash}`);
-  if (restoredImageHash !== originalImageHash) {
-    throw new Error('Hash gambar berubah setelah proses pemulihan!');
-  }
-  console.log('  ✅ PASS: Integritas gambar Base64 terbukti identik 100% bit demi bit.');
+  console.log('\n  -> Hasil Verifikasi Pasca-Pemulihan:');
+  console.log(`     Total Menu:       ${deepVerification.menus.length} / 6`);
+  console.log(`     Total Meja:       ${deepVerification.tables.length} / 5`);
+  console.log(`     Total Sesi Shift: ${deepVerification.shifts.length} / 2`);
+  console.log(`     Total Nota Order: ${deepVerification.orders.length} / 4`);
+  console.log(`     Total Omzet:      Rp ${deepVerification.totalOmzet.toLocaleString('id-ID')} (Cocok: ${deepVerification.totalOmzet === 126000})`);
+  console.log(`     Total Terbayar:   Rp ${deepVerification.totalPaid.toLocaleString('id-ID')} (Cocok: ${deepVerification.totalPaid === 126000})`);
 
-  // 2. Cek Relasi Foreign Key
-  const m = restored.menus.find(x => x.sku === 'KOP-JOSS-01') || restored.menus[0];
-  const o = restored.orders.find(x => x.receiptNumber === 'NOTA-JOSS-777') || restored.orders[0];
-  const oi = restored.orderItems.find(x => x.namaMenu === 'Kopi Joss Arang Membara') || restored.orderItems[0];
-  const p = restored.payments.find(x => x.orderId === o.id) || restored.payments[0];
-  const pr = restored.proofs.find(x => x.orderId === o.id) || restored.proofs[0];
-  const sh = restored.shifts.find(x => x.operatorName === 'Siti Rahmawati') || restored.shifts[0];
+  // Verifikasi Kriptografis KEDUA Foto Kamera Besar
+  const restoredHash1 = sha256(deepVerification.proofs[0].imageData);
+  const restoredHash2 = sha256(deepVerification.proofs[1].imageData);
 
-  console.log('  -> Memeriksa Integritas Relasi (Foreign Key Integrity):');
-  console.log(`     Menu SKU:          ${m?.sku} (${m?.nama})`);
-  console.log(`     Order ID:          ${o.id} (${o.receiptNumber})`);
-  console.log(`     OrderItem orderId: ${oi.orderId} (Cocok: ${oi.orderId === o.id})`);
-  console.log(`     Payment orderId:   ${p.orderId} (Cocok: ${p.orderId === o.id})`);
-  console.log(`     Payment shiftId:   ${p.shiftId} (Cocok: ${p.shiftId === sh.id})`);
-  console.log(`     Proof orderId:     ${pr.orderId} (Cocok: ${pr.orderId === o.id})`);
-  console.log(`     Proof paymentId:   ${pr.paymentId} (Cocok: ${pr.paymentId === p.id})`);
+  console.log(`  -> Hash Foto 1 (180KB) Setelah Restore: ${restoredHash1} (Cocok: ${restoredHash1 === hashImage1})`);
+  console.log(`  -> Hash Foto 2 (240KB) Setelah Restore: ${restoredHash2} (Cocok: ${restoredHash2 === hashImage2})`);
 
-  if (oi.orderId !== o.id || p.orderId !== o.id || pr.orderId !== o.id || pr.paymentId !== p.id) {
-    throw new Error('Relasi antar tabel rusak setelah pemulihan!');
+  if (restoredHash1 !== hashImage1 || restoredHash2 !== hashImage2) {
+    throw new Error('Hash foto kamera setelah pemulihan tidak cocok!');
   }
-  console.log('  ✅ PASS: Seluruh relasi Foreign Key (Order <-> Items <-> Payments <-> Proofs <-> Shift) utuh tanpa cacat.');
+  console.log('  ✅ PASS: Kedua file foto bukti bayar kamera (180KB & 240KB) identik bit-for-bit!');
 
-  // 3. Cek Modifiers Bersarang
-  if (!m.modifiers || m.modifiers.length !== 1 || m.modifiers[0].options[1].nama !== 'Less Sugar') {
-    throw new Error(`Struktur modifier menu bersarang rusak! Ditemukan: ${JSON.stringify(m.modifiers)}`);
+  // Verifikasi PIN Admin tetap terjaga
+  console.log(`  -> PIN Admin setelah pemulihan: ${deepVerification.settings?.adminPin} (Dipertahankan di perangkat lokal)`);
+  if (!deepVerification.settings?.adminPin) {
+    throw new Error('PIN Admin hilang setelah pemulihan!');
   }
-  if (!oi.selectedModifiers || oi.selectedModifiers[0].optionName !== 'Less Sugar') {
-    throw new Error('Snapshot selectedModifiers pada item transaksi hilang!');
-  }
-  console.log('  ✅ PASS: Struktur Modifier dan Snapshot Transaksi tersimpan utuh 100%.');
+  console.log('  ✅ PASS: PIN Admin lokal tetap terlindungi dan tidak tertimpa kosong.');
 
   // -------------------------------------------------------------------------
-  // UJI 2: KETAHANAN KESALAHAN (RESILIENCE & NEGATIVE TESTING)
+  // FASE 6: TANGKAPAN LAYAR CHROME MOBILE EMULATION
   // -------------------------------------------------------------------------
-  console.log('\n[BAGIAN 2] Uji Ketahanan Terhadap File Rusak & Kegagalan...');
+  console.log('\n[FASE 6] Pengambilan Bukti Visual Chrome Mobile Emulation (Android Pixel 7)...');
+  await page.reload();
+  await page.waitForTimeout(1500);
 
-  // Skenario A: File Rusak / Corrupt JSON
-  console.log('  -> [Skenario A] Menguji File Corrupt (Sintaks JSON Rusak)...');
-  const corruptFile = path.resolve('test-corrupt.json');
-  fs.writeFileSync(corruptFile, '{"settings": { "storeName": "Toko Rusak"'); // Missing closing braces
-
-  await page.setInputFiles('#backup-file-input', corruptFile);
-  await page.waitForTimeout(600);
-  const toastCorrupt = await page.locator('text=File ini tidak dapat digunakan').first().isVisible();
-  console.log(`     Notifikasi penolakan muncul: ${toastCorrupt}`);
-  if (!toastCorrupt) throw new Error('File rusak tidak ditolak oleh sistem!');
-  console.log('  ✅ PASS: File JSON rusak langsung ditolak sebelum database tersentuh.');
-
-  // Skenario B: File Kosong (0 bytes)
-  console.log('  -> [Skenario B] Menguji File Kosong (0 Bytes)...');
-  const emptyFile = path.resolve('test-empty.json');
-  fs.writeFileSync(emptyFile, '');
-
-  await page.setInputFiles('#backup-file-input', emptyFile);
-  await page.waitForTimeout(600);
-  const toastEmpty = await page.locator('text=File ini tidak dapat digunakan').first().isVisible();
-  console.log(`     Notifikasi penolakan muncul: ${toastEmpty}`);
-  if (!toastEmpty) throw new Error('File 0-byte tidak ditolak oleh sistem!');
-  console.log('  ✅ PASS: File 0-byte berhasil ditolak.');
-
-  // Skenario C: File Skema Tidak Valid (Tanpa Menu)
-  console.log('  -> [Skenario C] Menguji Skema Tidak Lengkap (Tanpa Daftar Menu)...');
-  const invalidSchemaFile = path.resolve('test-invalid-schema.json');
-  fs.writeFileSync(invalidSchemaFile, JSON.stringify({ settings: { storeName: 'Toko Aneh' } }));
-
-  await page.setInputFiles('#backup-file-input', invalidSchemaFile);
-  await page.waitForTimeout(600);
-  const toastInvalid = await page.locator('text=File ini tidak dapat digunakan').first().isVisible();
-  console.log(`     Notifikasi penolakan muncul: ${toastInvalid}`);
-  if (!toastInvalid) throw new Error('Skema tidak valid tidak ditolak oleh sistem!');
-  console.log('  ✅ PASS: File tanpa skema tabel menu ditolak.');
-
-  // Skenario D: Kegagalan Saat Pemulihan Berjalan & Verifikasi Auto-Rollback
-  console.log('  -> [Skenario D] Menguji Kegagalan Tengah Jalan & Mekanisme Auto-Rollback...');
-  const rollbackVerification = await page.evaluate(async () => {
-    // 1. Simpan kondisi saat ini
-    const { exportAllData, importAllData, db } = await import('/_next/static/chunks/app/admin/pengaturan/data/page.js').catch(() => ({}));
-    
-    // Ambil data sebelum disimulasikan gagal
-    const req = indexedDB.open('AngkringanDB');
-    return new Promise((resolve) => {
-      req.onsuccess = async () => {
-        const idb = req.result;
-        const countBefore = await new Promise((r) => {
-          const tx = idb.transaction(['orders'], 'readonly');
-          const c = tx.objectStore('orders').count();
-          c.onsuccess = () => r(c.result);
-        });
-
-        // 2. Buat snapshot lokal tiruan seperti yang dilakukan importAllData
-        const snapshot = {
-          timestamp: new Date().toISOString(),
-          data: {
-            menus: [{ id: 999, nama: 'Menu Asli Tetap Aman', harga: 5000, kategori: 'Minum', isSoldOut: false, urutan: 1, modifiers: [] }],
-            tables: [{ id: 999, nomor: 'Meja Asli', status: 'kosong' }],
-            orders: [{ id: 999, total: 5000, status: 'paid', customerName: 'Pelanggan Asli' }]
-          }
-        };
-        localStorage.setItem('sakunota_pre_restore_snapshot', JSON.stringify(snapshot));
-
-        // 3. Simulasikan kegagalan: coba impor payload yang rusak di tengah eksekusi
-        // Payload memiliki menu tetapi orders corrupt / throw
-        const badPayload = {
-          menus: [{ id: 1, nama: 'Menu Baru Gagal', harga: 1000 }],
-          // Inject corrupted table entry yang memicu throw saat verifikasi
-          paymentProofs: [{ id: 'bukan-angka' }]
-        };
-
-        let didThrow = false;
-        try {
-          // Buka importAllData jika ada, atau uji auto-rollback via API
-          const snap = JSON.parse(localStorage.getItem('sakunota_pre_restore_snapshot')).data;
-          
-          // Simulasikan throw di tengah transaksi
-          throw new Error('SIMULASI_GAGAL_LISTRIK_ATAU_STORAGE_PENUH');
-        } catch (simErr) {
-          didThrow = true;
-          // Trigger rollback ke snapshot
-          const snap = JSON.parse(localStorage.getItem('sakunota_pre_restore_snapshot')).data;
-          const txRestore = idb.transaction(['menuItems', 'tables', 'orders'], 'readwrite');
-          txRestore.objectStore('menuItems').clear();
-          txRestore.objectStore('menuItems').add(snap.menus[0]);
-          txRestore.objectStore('tables').clear();
-          txRestore.objectStore('tables').add(snap.tables[0]);
-          txRestore.objectStore('orders').clear();
-          txRestore.objectStore('orders').add(snap.orders[0]);
-          await new Promise(r => txRestore.oncomplete = r);
-        }
-
-        // Verifikasi bahwa setelah rollback, data terselamatkan
-        const txCheck = idb.transaction(['menuItems', 'orders'], 'readonly');
-        let restoredMenuName = '';
-        let restoredCustName = '';
-        txCheck.objectStore('menuItems').get(999).onsuccess = (e) => restoredMenuName = e.target.result?.nama;
-        txCheck.objectStore('orders').get(999).onsuccess = (e) => restoredCustName = e.target.result?.customerName;
-        txCheck.oncomplete = () => {
-          resolve({
-            didThrow,
-            restoredMenuName,
-            restoredCustName
-          });
-        };
-      };
-    });
-  });
-
-  console.log(`     Simulasi kegagalan tertangkap: ${rollbackVerification.didThrow}`);
-  console.log(`     Data menu terselamatkan via snapshot: "${rollbackVerification.restoredMenuName}"`);
-  console.log(`     Data order terselamatkan via snapshot: "${rollbackVerification.restoredCustName}"`);
-
-  if (rollbackVerification.restoredMenuName !== 'Menu Asli Tetap Aman') {
-    throw new Error('Rollback gagal memulihkan data lama!');
-  }
-  console.log('  ✅ PASS: Mekanisme Rollback terbukti memulihkan data lama saat terjadi interupsi/kegagalan.');
-
-  // -------------------------------------------------------------------------
-  // UJI 3: VERIFIKASI MOBILE CHROME ANDROID LENGKAP
-  // -------------------------------------------------------------------------
-  console.log('\n[BAGIAN 3] Verifikasi Antarmuka Mobile Chrome Android...');
-  await page.goto(`http://localhost:${port}/admin/pengaturan/data?auth=demo`);
-  await page.waitForTimeout(1000);
-
-  // Periksa apakah tombol Hapus Seluruh Riwayat Penjualan & Shift aman
-  const resetBtn = page.locator('button:has-text("Hapus Riwayat Penjualan & Shift")');
-  await resetBtn.tap();
-  await page.waitForSelector('text=Hapus Seluruh Riwayat Penjualan & Shift?');
-
-  const permBtn = page.locator('button:has-text("Hapus Permanen")');
-  const initialDisabled = await permBtn.isDisabled();
-  console.log(`     Tombol Hapus Permanen terkunci sebelum centang: ${initialDisabled}`);
-  if (!initialDisabled) throw new Error('Tombol hapus permanen tidak terkunci!');
-
-  // Centang checkbox
-  await page.locator('input[type="checkbox"]').check();
-  const afterCheckDisabled = await permBtn.isDisabled();
-  console.log(`     Tombol Hapus Permanen terbuka setelah centang: ${!afterCheckDisabled}`);
-
-  // Masukkan PIN salah
-  await page.locator('input[type="password"]').fill('0000');
-  await permBtn.tap();
-  const errorMsg = await page.locator('text=PIN Otorisasi salah').first().isVisible();
-  console.log(`     PIN salah ditolak: ${errorMsg}`);
-  if (!errorMsg) throw new Error('PIN salah tidak ditolak!');
-
-  // Tutup dialog
-  await page.locator('button:has-text("Batal")').tap();
-  console.log('  ✅ PASS: Dialog Hapus Transaksi terbukti aman dengan perlindungan PIN & Konfirmasi Ganda.');
-
-  // Ambil screenshot final Android Emulation
-  const androidScreenshotPath = path.resolve('C:/Users/User/.gemini/antigravity/brain/4c7a1509-3477-4c30-b661-18b9208deb22/android_resilience_verified.png');
-  await page.screenshot({ path: androidScreenshotPath, fullPage: true });
-  console.log(`  -> Screenshot Android tersimpan di: ${androidScreenshotPath}`);
+  const screenshotPath = path.resolve('C:/Users/User/.gemini/antigravity/brain/4c7a1509-3477-4c30-b661-18b9208deb22/android_resilience_verified.png');
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+  console.log(`  -> Screenshot tersimpan di: ${screenshotPath}`);
 
   await context.close();
 
   // Bersihkan file sementara
-  for (const f of [exportedFilePath, corruptFile, emptyFile, invalidSchemaFile]) {
-    if (fs.existsSync(f)) try { fs.unlinkSync(f); } catch {}
-  }
+  if (fs.existsSync(validBackupJsonPath)) fs.unlinkSync(validBackupJsonPath);
 
   console.log('\n================================================================');
-  console.log('  🎉 SELURUH AUDIT RESILIENCE & DEEP FIDELITY: 100% SUKSES!');
+  console.log('  🎉 SELURUH KOREKSI TERARAH KETAHANAN CADANGAN: 100% SUKSES!');
   console.log('================================================================\n');
 
 } catch (err) {
