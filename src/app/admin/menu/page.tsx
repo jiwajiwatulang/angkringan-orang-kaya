@@ -40,6 +40,18 @@ export default function AdminMenuPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Semua");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+
+  const getCategoryIcon = (category: string, name?: string) => {
+    const c = (category || '').toLowerCase();
+    const n = (name || '').toLowerCase();
+    if (c.includes('minum') || n.includes('teh') || n.includes('kopi') || n.includes('jeruk') || n.includes('wedang') || n.includes('susu') || n.includes('es ') || n.includes('lemon')) return '🥤';
+    if (c.includes('nasi') || n.includes('nasi') || n.includes('ayam') || n.includes('bebek') || n.includes('mie') || n.includes('soto') || n.includes('bakso')) return '🍚';
+    if (c.includes('sate') || n.includes('sate') || n.includes('sunduk')) return '🍢';
+    if (c.includes('snack') || c.includes('gorengan') || n.includes('mendoan') || n.includes('tahu') || n.includes('tempe') || n.includes('pisang') || n.includes('bakwan')) return '🥟';
+    if (c.includes('roti') || n.includes('roti') || n.includes('bakar')) return '🍞';
+    return '🍽️';
+  };
 
   // Multi-select for Bulk Actions
   const [selectedMenuIds, setSelectedMenuIds] = useState<number[]>([]);
@@ -596,29 +608,57 @@ export default function AdminMenuPage() {
           )}
         </div>
 
-        {/* Selection Bar / Select All row */}
+        {/* Selection Bar / Select All row & View Mode Switcher */}
         {sortedMenus.length > 0 && (
-          <div className="flex items-center justify-between px-2 py-1 text-xs text-muted">
-            <label className="flex items-center gap-2 cursor-pointer font-bold select-none">
-              <input
-                type="checkbox"
-                checked={isAllFilteredSelected}
-                onChange={handleSelectAllFiltered}
-                className="w-4 h-4 rounded text-accent-text focus:ring-accent rounded border-line"
-              />
-              <span>Pilih Semua {sortedMenus.length} Menu</span>
-            </label>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-2 py-1 text-xs text-muted">
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer font-bold select-none">
+                <input
+                  type="checkbox"
+                  checked={isAllFilteredSelected}
+                  onChange={handleSelectAllFiltered}
+                  className="w-4 h-4 rounded text-accent-text focus:ring-accent rounded border-line"
+                />
+                <span>Pilih Semua {sortedMenus.length} Menu</span>
+              </label>
 
-            {itemsPerPage > 0 && sortedMenus.length > itemsPerPage && (
-              <span className="text-[11px] text-muted font-semibold">
-                Halaman {currentPage} dari {totalPages}
-              </span>
-            )}
+              {itemsPerPage > 0 && sortedMenus.length > itemsPerPage && (
+                <span className="text-[11px] text-muted font-semibold hidden sm:inline">
+                  (Halaman {currentPage} dari {totalPages})
+                </span>
+              )}
+            </div>
+
+            {/* View Mode Toggle: Table vs Grid */}
+            <div className="flex items-center gap-2">
+              <div className="flex bg-card rounded-xl p-1 border border-line shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("table")}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    viewMode === "table" ? "bg-accent text-white shadow-sm" : "text-muted hover:text-fg"
+                  }`}
+                >
+                  <span>📋</span>
+                  <span>Tabel</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    viewMode === "grid" ? "bg-accent text-white shadow-sm" : "text-muted hover:text-fg"
+                  }`}
+                >
+                  <span>🔲</span>
+                  <span>Grid</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Menu Cards / Grid */}
+      {/* Menu Content: Table View or Grid View */}
       {isLoading ? (
         <div className="py-12 text-center text-muted text-xs">Memuat daftar menu...</div>
       ) : sortedMenus.length === 0 ? (
@@ -629,95 +669,221 @@ export default function AdminMenuPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {paginatedMenus.map((menu) => {
-              const isSelected = selectedMenuIds.includes(menu.id);
-              return (
-                <div
-                  key={menu.id}
-                  onClick={() => handleToggleSelectMenu(menu.id)}
-                  className={`p-4 rounded-2xl sm:rounded-3xl bg-surface border transition-all flex flex-col justify-between cursor-pointer relative select-none ${
-                    isSelected
-                      ? "border-accent bg-accent/20 ring-2 ring-accent/30"
-                      : menu.isSoldOut
-                      ? " border-rose-900/40 bg-rose-500/10"
-                      : " border-line hover:border-accent/50"
-                  }`}
-                >
-                  <div>
-                    <div className="flex justify-between items-start gap-2 mb-1.5">
-                      <div className="flex items-start gap-2.5">
-                        {/* Checkbox */}
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {}} // handled by parent onClick
-                          className="mt-0.5 w-4 h-4 text-accent-text rounded border-line focus:ring-accent cursor-pointer pointer-events-none"
-                        />
-                        <div>
-                          <h4 className="font-black text-sm text-fg leading-snug">
-                            {menu.nama}
-                          </h4>
-                          {menu.sku && (
-                            <span className="text-[10px] text-muted font-mono">
-                              {menu.sku}
+          {viewMode === "table" ? (
+            /* Structured Desktop Table View */
+            <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
+              <table className="w-full text-left text-xs border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-line bg-card/60 text-muted font-bold">
+                    <th className="py-3.5 px-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isAllFilteredSelected}
+                        onChange={handleSelectAllFiltered}
+                        className="w-4 h-4 rounded text-accent-text focus:ring-accent border-line"
+                      />
+                    </th>
+                    <th className="py-3.5 px-3">Foto & Menu</th>
+                    <th className="py-3.5 px-3">SKU</th>
+                    <th className="py-3.5 px-3">Kategori</th>
+                    <th className="py-3.5 px-3">Harga</th>
+                    <th className="py-3.5 px-3">Modifier / Varian</th>
+                    <th className="py-3.5 px-3">Status Stok</th>
+                    <th className="py-3.5 px-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line/60">
+                  {paginatedMenus.map((menu) => {
+                    const isSelected = selectedMenuIds.includes(menu.id);
+                    const modCount = menu.modifiers?.length || 0;
+
+                    return (
+                      <tr
+                        key={menu.id}
+                        onClick={() => handleToggleSelectMenu(menu.id)}
+                        className={`transition-colors cursor-pointer select-none ${
+                          isSelected
+                            ? "bg-accent/15"
+                            : menu.isSoldOut
+                            ? "bg-rose-500/5 hover:bg-rose-500/10"
+                            : "hover:bg-card/50"
+                        }`}
+                      >
+                        <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectMenu(menu.id)}
+                            className="w-4 h-4 text-accent-text rounded border-line focus:ring-accent cursor-pointer"
+                          />
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-card border border-line flex items-center justify-center text-xl shrink-0 shadow-inner">
+                              {getCategoryIcon(menu.kategori, menu.nama)}
+                            </div>
+                            <div className="min-w-0">
+                              <span className="font-black text-sm text-fg block leading-tight truncate">
+                                {menu.nama}
+                              </span>
+                              {menu.isSoldOut && (
+                                <span className="text-[10px] text-rose-400 font-bold">● Stok Habis</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 font-mono text-[11px] text-muted">
+                          {menu.sku || "-"}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className="px-2.5 py-1 rounded-lg bg-card border border-line text-[11px] font-bold text-slate-300">
+                            {menu.kategori}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 font-black text-sm text-accent-text">
+                          Rp {menu.harga.toLocaleString("id-ID")}
+                        </td>
+                        <td className="py-3 px-3 text-muted">
+                          {modCount > 0 ? (
+                            <span className="px-2 py-0.5 rounded-md bg-accent/15 text-accent-text text-[11px] font-bold">
+                              {modCount} grup pilihan
                             </span>
+                          ) : (
+                            <span className="text-[11px] text-muted">-</span>
                           )}
+                        </td>
+                        <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStock(menu)}
+                            className={`px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all active:scale-95 ${
+                              menu.isSoldOut
+                                ? "bg-rose-950/60 text-rose-300 hover:bg-rose-500/25 border border-rose-900/40"
+                                : "bg-accent/20 text-accent-text hover:bg-accent/30 border border-accent/40"
+                            }`}
+                            title="Klik untuk ubah status stok"
+                          >
+                            <span>{menu.isSoldOut ? "🔴 Habis" : "🟢 Tersedia"}</span>
+                          </button>
+                        </td>
+                        <td className="py-3 px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(menu)}
+                              className="w-8 h-8 rounded-xl bg-card hover:bg-line text-slate-300 flex items-center justify-center text-xs font-bold transition-colors"
+                              title="Edit Menu"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setMenuToDelete(menu)}
+                              className="w-8 h-8 rounded-xl bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 flex items-center justify-center text-xs font-bold transition-colors"
+                              title="Hapus Menu"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            /* Grid View */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {paginatedMenus.map((menu) => {
+                const isSelected = selectedMenuIds.includes(menu.id);
+                return (
+                  <div
+                    key={menu.id}
+                    onClick={() => handleToggleSelectMenu(menu.id)}
+                    className={`p-4 rounded-2xl sm:rounded-3xl bg-surface border transition-all flex flex-col justify-between cursor-pointer relative select-none ${
+                      isSelected
+                        ? "border-accent bg-accent/20 ring-2 ring-accent/30"
+                        : menu.isSoldOut
+                        ? " border-rose-900/40 bg-rose-500/10"
+                        : " border-line hover:border-accent/50"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex justify-between items-start gap-2 mb-1.5">
+                        <div className="flex items-start gap-2.5">
+                          {/* Checkbox */}
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}} // handled by parent onClick
+                            className="mt-0.5 w-4 h-4 text-accent-text rounded border-line focus:ring-accent cursor-pointer pointer-events-none"
+                          />
+                          <div>
+                            <h4 className="font-black text-sm text-fg leading-snug">
+                              {menu.nama}
+                            </h4>
+                            {menu.sku && (
+                              <span className="text-[10px] text-muted font-mono">
+                                {menu.sku}
+                              </span>
+                            )}
+                          </div>
                         </div>
+
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-card text-muted shrink-0">
+                          {menu.kategori}
+                        </span>
                       </div>
 
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-card text-muted shrink-0">
-                        {menu.kategori}
-                      </span>
+                      <div className="text-base font-black text-accent-text ml-6">
+                        Rp {menu.harga.toLocaleString("id-ID")}
+                      </div>
                     </div>
 
-                    <div className="text-base font-black text-accent-text ml-6">
-                      Rp {menu.harga.toLocaleString("id-ID")}
-                    </div>
-                  </div>
-
-                  {/* Actions & Stock Toggle */}
-                  <div
-                    className="mt-4 pt-3 border-t border-line flex items-center justify-between gap-2"
-                    onClick={(e) => e.stopPropagation()} // don't toggle selection when clicking buttons
-                  >
-                    {/* 1-Tap Stock Toggle Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleToggleStock(menu)}
-                      className={`px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all active:scale-95 ${
-                        menu.isSoldOut
-                          ? " bg-rose-950/60 text-rose-300 hover:bg-rose-500/25"
-                          : " bg-accent/60 text-accent-text hover:bg-accent/25"
-                      }`}
-                      title="Klik untuk ubah stok di kasir"
+                    {/* Actions & Stock Toggle */}
+                    <div
+                      className="mt-4 pt-3 border-t border-line flex items-center justify-between gap-2"
+                      onClick={(e) => e.stopPropagation()} // don't toggle selection when clicking buttons
                     >
-                      <span>{menu.isSoldOut ? "🔴 Habis" : "🟢 Tersedia"}</span>
-                    </button>
+                      {/* 1-Tap Stock Toggle Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStock(menu)}
+                        className={`px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all active:scale-95 ${
+                          menu.isSoldOut
+                            ? " bg-rose-950/60 text-rose-300 hover:bg-rose-500/25"
+                            : " bg-accent/60 text-accent-text hover:bg-accent/25"
+                        }`}
+                        title="Klik untuk ubah stok di kasir"
+                      >
+                        <span>{menu.isSoldOut ? "🔴 Habis" : "🟢 Tersedia"}</span>
+                      </button>
 
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEdit(menu)}
-                        className="w-8 h-8 rounded-xl bg-card hover:bg-line text-slate-300 flex items-center justify-center text-xs font-bold transition-colors"
-                        title="Edit Menu"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMenuToDelete(menu)}
-                        className="w-8 h-8 rounded-xl bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 flex items-center justify-center text-xs font-bold transition-colors"
-                        title="Hapus Menu"
-                      >
-                        🗑️
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(menu)}
+                          className="w-8 h-8 rounded-xl bg-card hover:bg-line text-slate-300 flex items-center justify-center text-xs font-bold transition-colors"
+                          title="Edit Menu"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMenuToDelete(menu)}
+                          className="w-8 h-8 rounded-xl bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 flex items-center justify-center text-xs font-bold transition-colors"
+                          title="Hapus Menu"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Pagination Navigation Bar */}
           {itemsPerPage > 0 && totalPages > 1 && (

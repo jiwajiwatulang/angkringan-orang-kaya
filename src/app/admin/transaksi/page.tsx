@@ -44,6 +44,7 @@ export default function AdminTransaksiPage() {
   const [sortBy, setSortBy] = useState<"waktu_desc" | "waktu_asc" | "total_desc" | "total_asc">("waktu_desc");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(15);
+  const [viewMode, setViewMode] = useState<"table" | "card">("table");
 
   // Selection for Bulk Actions
   const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
@@ -714,153 +715,361 @@ export default function AdminTransaksiPage() {
         </div>
       ) : (
         <div className="space-y-2.5">
-          {/* Header Row untuk Select All */}
-          <div className="px-4 py-2 flex items-center justify-between text-xs text-muted font-bold">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={selectedOrderIds.length === filteredOrders.length && filteredOrders.length > 0}
-                onChange={handleToggleSelectAll}
-                className="w-4 h-4 accent-accent-text rounded"
-              />
-              <span>Pilih Semua ({filteredOrders.length} Nota)</span>
-            </label>
-            <span>Total Nilai: Rp {filteredOrders.filter(o => o.status !== 'void').reduce((s, o) => s + (o.total || 0), 0).toLocaleString('id-ID')}</span>
+          {/* Header Row untuk Select All & View Switcher */}
+          <div className="px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-muted font-bold bg-card/40 rounded-2xl border border-line">
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedOrderIds.length === filteredOrders.length && filteredOrders.length > 0}
+                  onChange={handleToggleSelectAll}
+                  className="w-4 h-4 accent-accent-text rounded"
+                />
+                <span>Pilih Semua ({filteredOrders.length} Nota)</span>
+              </label>
+              <span className="hidden sm:inline">Total: <strong className="text-fg">Rp {filteredOrders.filter(o => o.status !== 'void').reduce((s, o) => s + (o.total || 0), 0).toLocaleString('id-ID')}</strong></span>
+            </div>
+
+            <div className="flex items-center justify-between sm:justify-end gap-3">
+              <span className="sm:hidden">Total: <strong className="text-fg">Rp {filteredOrders.filter(o => o.status !== 'void').reduce((s, o) => s + (o.total || 0), 0).toLocaleString('id-ID')}</strong></span>
+              
+              {/* View Mode Toggle: Table vs Card */}
+              <div className="flex bg-surface rounded-xl p-0.5 border border-line shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("table")}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                    viewMode === "table" ? "bg-accent text-white shadow-sm" : "text-muted hover:text-fg"
+                  }`}
+                >
+                  <span>📋</span>
+                  <span>Tabel</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("card")}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                    viewMode === "card" ? "bg-accent text-white shadow-sm" : "text-muted hover:text-fg"
+                  }`}
+                >
+                  <span>🔲</span>
+                  <span>Kartu</span>
+                </button>
+              </div>
+            </div>
           </div>
 
-          {paginatedOrders.map((order) => {
-            const isVoid = order.status === "void";
-            const dateDisplay = new Date(order.createdAt).toLocaleString("id-ID", {
-              day: "numeric",
-              month: "short",
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            const isSelected = selectedOrderIds.includes(order.id);
-            const isNonCash = order.paymentMethod === "QRIS" || order.paymentMethod === "Transfer";
-            const vStatus = order.verificationStatus || (isNonCash ? (order.proofs?.length > 0 ? "menunggu_verifikasi" : "menunggu_bukti") : "terverifikasi");
+          {viewMode === "table" ? (
+            /* Structured Desktop Transactions Table */
+            <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
+              <table className="w-full text-left text-xs border-collapse min-w-[760px]">
+                <thead>
+                  <tr className="border-b border-line bg-card/60 text-muted font-bold">
+                    <th className="py-3.5 px-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedOrderIds.length === filteredOrders.length && filteredOrders.length > 0}
+                        onChange={handleToggleSelectAll}
+                        className="w-4 h-4 accent-accent-text rounded cursor-pointer"
+                      />
+                    </th>
+                    <th className="py-3.5 px-3">No. Nota & Waktu</th>
+                    <th className="py-3.5 px-3">Tamu / Meja</th>
+                    <th className="py-3.5 px-3">Metode</th>
+                    <th className="py-3.5 px-3">Bukti Bayar</th>
+                    <th className="py-3.5 px-3">Total Tagihan</th>
+                    <th className="py-3.5 px-3">Status</th>
+                    <th className="py-3.5 px-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line/60">
+                  {paginatedOrders.map((order) => {
+                    const isVoid = order.status === "void";
+                    const dateDisplay = new Date(order.createdAt).toLocaleString("id-ID", {
+                      day: "numeric",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+                    const isSelected = selectedOrderIds.includes(order.id);
+                    const isNonCash = order.paymentMethod === "QRIS" || order.paymentMethod === "Transfer";
+                    const vStatus = order.verificationStatus || (isNonCash ? (order.proofs?.length > 0 ? "menunggu_verifikasi" : "menunggu_bukti") : "terverifikasi");
+                    const hasProof = order.proofs && order.proofs.length > 0;
 
-            return (
-              <div
-                key={order.id}
-                className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-surface border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                  isVoid
-                    ? " border-rose-900/40 bg-rose-500/10"
-                    : isSelected
-                    ? "border-accent ring-2 ring-accent/20"
-                    : " border-line hover:border-accent/40"
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => handleToggleSelectOrder(order.id)}
-                    className="w-4 h-4 mt-1 accent-accent-text rounded cursor-pointer"
-                  />
-
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <span className="font-black text-sm text-fg">
-                        Nota #{order.id}
-                      </span>
-
-                      {/* Status Lunas / Void */}
-                      <span
-                        className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
-                          isVoid
-                            ? " bg-rose-950/60 text-rose-300 line-through"
-                            : order.status === "paid"
-                            ? " bg-accent/60 text-accent-text"
-                            : " bg-amber-950/60 text-amber-300"
+                    return (
+                      <tr
+                        key={order.id}
+                        className={`transition-colors cursor-pointer select-none ${
+                          isSelected
+                            ? "bg-accent/15"
+                            : isVoid
+                            ? "bg-rose-500/5 hover:bg-rose-500/10"
+                            : "hover:bg-card/50"
                         }`}
+                        onClick={() => setReceiptData(order)}
                       >
-                        {isVoid ? "VOID" : order.status === "paid" ? "LUNAS" : "OPEN BILL"}
-                      </span>
+                        <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectOrder(order.id)}
+                            className="w-4 h-4 accent-accent-text rounded cursor-pointer"
+                          />
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-sm text-fg">#{order.id}</span>
+                            {order.isHistorical && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-accent-text">
+                                Historis
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-muted block mt-0.5">{dateDisplay}</span>
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <span className="font-bold text-fg block truncate">
+                            👤 {order.customerName || "Tamu"}
+                          </span>
+                          <span className="text-[10px] text-muted block mt-0.5">
+                            {order.tableName || (order.tableId ? `Meja ${order.tableId}` : order.orderType || "Takeaway")}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <span className="px-2.5 py-1 rounded-lg bg-card border border-line text-[11px] font-bold text-slate-300 inline-block">
+                            {order.paymentMethod || "Cash"}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3" onClick={(e) => e.stopPropagation()}>
+                          {isNonCash ? (
+                            <div className="flex items-center gap-2">
+                              {hasProof ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setZoomProofImage(order.proofs[0].imageData)}
+                                  className="w-8 h-8 rounded-lg overflow-hidden border border-line shrink-0 bg-card hover:scale-105 transition-transform"
+                                  title="Lihat foto bukti transfer"
+                                >
+                                  <img
+                                    src={order.proofs[0].imageData}
+                                    alt="Bukti"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </button>
+                              ) : null}
+                              <span
+                                className={`text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                                  vStatus === "terverifikasi"
+                                    ? "bg-accent/60 text-accent-text"
+                                    : vStatus === "menunggu_verifikasi"
+                                    ? "bg-amber-950/60 text-amber-300 animate-pulse"
+                                    : "bg-rose-950/60 text-rose-300"
+                                }`}
+                              >
+                                <span>{vStatus === "terverifikasi" ? "✓" : vStatus === "menunggu_verifikasi" ? "⏳" : "⚠️"}</span>
+                                <span>
+                                  {vStatus === "terverifikasi"
+                                    ? "Terverifikasi"
+                                    : vStatus === "menunggu_verifikasi"
+                                    ? "Perlu Cek"
+                                    : "Tanpa Bukti"}
+                                </span>
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-muted">-</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <span className={`font-black text-sm block ${isVoid ? "line-through text-muted" : "text-fg"}`}>
+                            Rp {(order.total || 0).toLocaleString("id-ID")}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <span
+                            className={`text-[10px] font-black px-2.5 py-0.5 rounded-full inline-block ${
+                              isVoid
+                                ? "bg-rose-950/60 text-rose-300 line-through"
+                                : order.status === "paid"
+                                ? "bg-accent/60 text-accent-text"
+                                : "bg-amber-950/60 text-amber-300"
+                            }`}
+                          >
+                            {isVoid ? "VOID" : order.status === "paid" ? "LUNAS" : "OPEN BILL"}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setReceiptData(order)}
+                              className="px-2.5 py-1.5 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
+                              title="Lihat detail & cetak ulang"
+                            >
+                              <span>🔍</span>
+                              <span>Rincian</span>
+                            </button>
 
-                      {/* Status Verifikasi Bukti Pembayaran */}
-                      {isNonCash && !isVoid && (
+                            {!isVoid && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setVoidTargetOrder(order);
+                                  setVoidReason("Salah input pesanan");
+                                  setIsRefundCash(order.paymentMethod === "Cash");
+                                  setVoidPinInput("");
+                                  setVoidPinError("");
+                                }}
+                                className="px-2.5 py-1.5 bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 rounded-xl text-xs font-bold transition-colors shadow-sm"
+                                title="Batalkan nota (Void)"
+                              >
+                                Void
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            /* Card View */
+            paginatedOrders.map((order) => {
+              const isVoid = order.status === "void";
+              const dateDisplay = new Date(order.createdAt).toLocaleString("id-ID", {
+                day: "numeric",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+              const isSelected = selectedOrderIds.includes(order.id);
+              const isNonCash = order.paymentMethod === "QRIS" || order.paymentMethod === "Transfer";
+              const vStatus = order.verificationStatus || (isNonCash ? (order.proofs?.length > 0 ? "menunggu_verifikasi" : "menunggu_bukti") : "terverifikasi");
+
+              return (
+                <div
+                  key={order.id}
+                  className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-surface border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                    isVoid
+                      ? " border-rose-900/40 bg-rose-500/10"
+                      : isSelected
+                      ? "border-accent ring-2 ring-accent/20"
+                      : " border-line hover:border-accent/40"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleToggleSelectOrder(order.id)}
+                      className="w-4 h-4 mt-1 accent-accent-text rounded cursor-pointer"
+                    />
+
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="font-black text-sm text-fg">
+                          Nota #{order.id}
+                        </span>
+
+                        {/* Status Lunas / Void */}
                         <span
-                          className={`text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                            vStatus === "terverifikasi"
+                          className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                            isVoid
+                              ? " bg-rose-950/60 text-rose-300 line-through"
+                              : order.status === "paid"
                               ? " bg-accent/60 text-accent-text"
-                              : vStatus === "menunggu_verifikasi"
-                              ? " bg-amber-950/60 text-amber-300 animate-pulse"
-                              : " bg-rose-950/60 text-rose-300"
+                              : " bg-amber-950/60 text-amber-300"
                           }`}
                         >
-                          <span>{vStatus === "terverifikasi" ? "✓" : vStatus === "menunggu_verifikasi" ? "⏳" : "⚠️"}</span>
-                          <span>
-                            {vStatus === "terverifikasi"
-                              ? "Terverifikasi"
-                              : vStatus === "menunggu_verifikasi"
-                              ? "Menunggu Verifikasi"
-                              : "Menunggu Bukti"}
+                          {isVoid ? "VOID" : order.status === "paid" ? "LUNAS" : "OPEN BILL"}
+                        </span>
+
+                        {/* Status Verifikasi Bukti Pembayaran */}
+                        {isNonCash && !isVoid && (
+                          <span
+                            className={`text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                              vStatus === "terverifikasi"
+                                ? " bg-accent/60 text-accent-text"
+                                : vStatus === "menunggu_verifikasi"
+                                ? " bg-amber-950/60 text-amber-300 animate-pulse"
+                                : " bg-rose-950/60 text-rose-300"
+                            }`}
+                          >
+                            <span>{vStatus === "terverifikasi" ? "✓" : vStatus === "menunggu_verifikasi" ? "⏳" : "⚠️"}</span>
+                            <span>
+                              {vStatus === "terverifikasi"
+                                ? "Terverifikasi"
+                                : vStatus === "menunggu_verifikasi"
+                                ? "Menunggu Verifikasi"
+                                : "Menunggu Bukti"}
+                            </span>
                           </span>
-                        </span>
-                      )}
+                        )}
 
-                      {order.isHistorical && (
-                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-accent/60 text-accent-text">
-                          Migrasi Historis
-                        </span>
-                      )}
+                        {order.isHistorical && (
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-accent/60 text-accent-text">
+                            Migrasi Historis
+                          </span>
+                        )}
 
-                      <span className="text-[10px] text-muted">{dateDisplay}</span>
+                        <span className="text-[10px] text-muted">{dateDisplay}</span>
+                      </div>
+
+                      <p className="text-xs text-muted">
+                        {order.tableName || (order.tableId ? `Meja ${order.tableId}` : order.orderType || "Takeaway")} • Tamu: <strong className=" text-fg">{order.customerName || "Tamu"}</strong>
+                      </p>
+
+                      {isVoid && order.voidReason && (
+                        <div className="mt-2 text-[11px] text-rose-400 bg-rose-950/40 px-2.5 py-1 rounded-lg">
+                          <span className="font-bold">Alasan Batal:</span> {order.voidReason}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-0 border-line">
+                    <div className="text-left sm:text-right">
+                      <span className={`text-base font-black ${isVoid ? "line-through text-muted" : " text-fg"}`}>
+                        Rp {(order.total || 0).toLocaleString("id-ID")}
+                      </span>
+                      <span className="text-[10px] text-muted block font-semibold">
+                        {order.paymentMethod || "Cash"}
+                      </span>
                     </div>
 
-                    <p className="text-xs text-muted">
-                      {order.tableName || (order.tableId ? `Meja ${order.tableId}` : order.orderType || "Takeaway")} • Tamu: <strong className=" text-fg">{order.customerName || "Tamu"}</strong>
-                    </p>
-
-                    {isVoid && order.voidReason && (
-                      <div className="mt-2 text-[11px] text-rose-400 bg-rose-950/40 px-2.5 py-1 rounded-lg">
-                        <span className="font-bold">Alasan Batal:</span> {order.voidReason}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-0 border-line">
-                  <div className="text-left sm:text-right">
-                    <span className={`text-base font-black ${isVoid ? "line-through text-muted" : " text-fg"}`}>
-                      Rp {(order.total || 0).toLocaleString("id-ID")}
-                    </span>
-                    <span className="text-[10px] text-muted block font-semibold">
-                      {order.paymentMethod || "Cash"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setReceiptData(order)}
-                      className="px-3 py-2 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors flex items-center gap-1"
-                    >
-                      <span>🔍</span>
-                      <span>Rincian & Bukti</span>
-                    </button>
-
-                    {!isVoid && (
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => {
-                          setVoidTargetOrder(order);
-                          setVoidReason("Salah input pesanan");
-                          setIsRefundCash(order.paymentMethod === "Cash");
-                          setVoidPinInput("");
-                          setVoidPinError("");
-                        }}
-                        className="px-3 py-2 bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 rounded-xl text-xs font-bold transition-colors"
+                        onClick={() => setReceiptData(order)}
+                        className="px-3 py-2 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors flex items-center gap-1"
                       >
-                        Void
+                        <span>🔍</span>
+                        <span>Rincian & Bukti</span>
                       </button>
-                    )}
+
+                      {!isVoid && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setVoidTargetOrder(order);
+                            setVoidReason("Salah input pesanan");
+                            setIsRefundCash(order.paymentMethod === "Cash");
+                            setVoidPinInput("");
+                            setVoidPinError("");
+                          }}
+                          className="px-3 py-2 bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 rounded-xl text-xs font-bold transition-colors"
+                        >
+                          Void
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
 
           {/* Pagination Navigation Bar */}
           {itemsPerPage > 0 && totalPages > 1 && (

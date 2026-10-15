@@ -201,6 +201,23 @@ export default function POSPage() {
   const [oldCart, setOldCart] = useState<CartItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
+  const [menuPage, setMenuPage] = useState<number>(1);
+  const [modItemNotes, setModItemNotes] = useState<string>("");
+
+  useEffect(() => {
+    setMenuPage(1);
+  }, [searchQuery, activeCategory]);
+
+  const getCategoryIcon = (category: string, name?: string) => {
+    const c = (category || '').toLowerCase();
+    const n = (name || '').toLowerCase();
+    if (c.includes('minum') || n.includes('teh') || n.includes('kopi') || n.includes('jeruk') || n.includes('wedang') || n.includes('susu') || n.includes('es ') || n.includes('lemon')) return '🥤';
+    if (c.includes('nasi') || n.includes('nasi') || n.includes('ayam') || n.includes('bebek') || n.includes('mie') || n.includes('soto') || n.includes('bakso')) return '🍚';
+    if (c.includes('sate') || n.includes('sate') || n.includes('sunduk')) return '🍢';
+    if (c.includes('snack') || c.includes('gorengan') || n.includes('mendoan') || n.includes('tahu') || n.includes('tempe') || n.includes('pisang') || n.includes('bakwan')) return '🥟';
+    if (c.includes('roti') || n.includes('roti') || n.includes('bakar')) return '🍞';
+    return '🍽️';
+  };
 
   // Payment & Modal State
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -1748,7 +1765,7 @@ export default function POSPage() {
   if (isLoading) return <div className="flex h-screen bg-surface text-fg items-center justify-center">Memuat data...</div>;
   return (
     <>
-    <div id="main-app-container" className={`flex h-screen font-sans relative flex-col md:flex-row bg-surface text-fg transition-colors duration-200`}>
+    <div id="main-app-container" className="flex flex-col h-screen font-sans relative bg-surface text-fg transition-colors duration-200 overflow-hidden">
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body * { visibility: hidden !important; }
@@ -1803,6 +1820,19 @@ export default function POSPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto pr-1">
+              {/* Prominent Total Tagihan at TOP */}
+              <div className="bg-surface border border-line rounded-2xl p-4 text-center mb-4 shadow-inner">
+                <span className="text-[11px] uppercase tracking-wider text-muted font-bold block">Total Tagihan</span>
+                <span className="text-3xl font-black text-accent-text tracking-tight">
+                  Rp {totalPrice.toLocaleString('id-ID')}
+                </span>
+                {discountAmount > 0 && (
+                  <span className="text-[11px] text-accent-text font-bold block mt-0.5">
+                    (Diskon Rp {discountAmount.toLocaleString('id-ID')})
+                  </span>
+                )}
+              </div>
+
               <div className="space-y-4 mb-4">
                 <div>
                   <label className="block text-xs font-bold text-muted mb-1.5">Tipe Pesanan</label>
@@ -2200,79 +2230,201 @@ export default function POSPage() {
             <button onClick={() => setActiveVariantGroup(null)} className="w-full mt-4 py-3 rounded-2xl bg-line text-fg font-bold hover:bg-slate-600 transition-colors">Batal</button>
           </div>
         </div>
-      )}      <div className="flex-1 flex flex-col md:flex-row w-full print:hidden">
-        
-        {/* Left Panel */}
-        <div className="flex-1 flex flex-col border-r border-line h-full pb-24 lg:pb-0 overflow-hidden transition-colors">
-          <div className="p-4 bg-card border-b border-line flex justify-between items-center transition-colors">
-              <div className="flex items-center space-x-3">
-                {storeSettings.storeLogo ? (
-                  <img
-                    src={storeSettings.storeLogo}
-                    alt="Logo Toko"
-                    className="w-10 h-10 rounded-xl object-contain bg-card border border-line shadow-sm flex-shrink-0 p-0.5"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center font-black text-sm shadow-md shadow-accent/30 flex-shrink-0">
-                    SN
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <h1 className="text-base md:text-lg font-black text-fg leading-tight truncate">
-                    {storeSettings.storeName || 'SakuNota POS'}
-                  </h1>
-                  <span className="text-[11px] text-muted font-medium line-clamp-1">
-                    {storeSettings.storeAddress || 'Aplikasi Kasir Pintar UMKM'}
+      )}
+
+      {/* Top Application Header (Full Width) */}
+      <header className="h-16 bg-card border-b border-line px-4 flex items-center justify-between shrink-0 z-30 transition-colors">
+        {/* Left: Brand & Store Name */}
+        <div className="flex items-center space-x-3">
+          {storeSettings.storeLogo ? (
+            <img
+              src={storeSettings.storeLogo}
+              alt="Logo Toko"
+              className="w-10 h-10 rounded-xl object-contain bg-surface border border-line shadow-sm flex-shrink-0 p-0.5"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center font-black text-sm shadow-md shadow-accent/30 flex-shrink-0">
+              SN
+            </div>
+          )}
+          <div className="min-w-0">
+            <h1 className="text-sm md:text-base font-black text-fg leading-tight truncate">
+              {storeSettings.storeName || 'SakuNota POS'}
+            </h1>
+            <span className="text-[11px] text-muted font-medium line-clamp-1">
+              {storeSettings.storeAddress || 'Aplikasi Kasir Pintar UMKM'}
+            </span>
+          </div>
+        </div>
+
+        {/* Center: Switcher Meja / Menu */}
+        <div className="flex bg-surface rounded-xl p-1 border border-line shadow-inner">
+          <button 
+            type="button"
+            onClick={() => setView('meja')} 
+            className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
+              view === 'meja' 
+                ? 'bg-accent text-white shadow-sm' 
+                : 'text-muted hover:text-fg'
+            }`}
+          >
+            🍽️ Meja
+          </button>
+          <button 
+            type="button"
+            onClick={() => setView('menu')} 
+            className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
+              view === 'menu' 
+                ? 'bg-accent text-white shadow-sm' 
+                : 'text-muted hover:text-fg'
+            }`}
+          >
+            ☕ Menu
+          </button>
+        </div>
+
+        {/* Right: Shift Status & Admin Button */}
+        <div className="flex items-center space-x-2 md:space-x-3">
+          {activeShift ? (
+            <div className="flex items-center gap-1.5 bg-accent/20 border border-accent/40 px-3 py-1.5 rounded-full text-xs shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-accent animate-pulse shrink-0"></span>
+              <span className="font-bold text-accent-text truncate max-w-[80px] md:max-w-none">{activeShift.operatorName}</span>
+              <span className="hidden md:inline text-muted">|</span>
+              <span className="hidden md:inline font-bold text-accent-text">Rp {(currentShiftStats?.expectedCash || activeShift.startingCash || 0).toLocaleString('id-ID')}</span>
+              <button 
+                type="button"
+                onClick={() => setIsCashMovementModalOpen(true)}
+                className="ml-1 text-[11px] font-bold text-accent-text hover:underline"
+                title="Catat Kas Masuk / Keluar"
+              >
+                [+/- Kas]
+              </button>
+              <button 
+                type="button"
+                onClick={openCloseShiftModal}
+                className="text-[11px] font-bold text-rose-400 hover:underline"
+                title="Tutup Shift Kasir"
+              >
+                [Tutup]
+              </button>
+            </div>
+          ) : (
+            <button 
+              type="button"
+              onClick={() => setIsOpenShiftModalOpen(true)}
+              className="flex items-center gap-1.5 bg-accent/20 border border-accent/40 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold text-accent-text hover:bg-accent/30 shadow-sm transition-transform active:scale-95 shrink-0"
+              title="Buka Shift Kasir"
+            >
+              <span>💼</span>
+              <span className="hidden sm:inline">Buka Shift</span>
+            </button>
+          )}
+
+          <Link 
+            href="/admin" 
+            className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-surface border border-line text-xs font-bold text-fg hover:border-accent hover:text-accent-text transition-colors flex items-center gap-1.5"
+            title="Halaman Admin"
+          >
+            <span>⚙️</span>
+            <span className="hidden sm:inline">Admin</span>
+          </Link>
+        </div>
+      </header>
+
+      {/* Main Horizontal Workspace Below Top Header */}
+      <div className="flex-1 flex overflow-hidden w-full print:hidden">
+        {/* Left Navigation Sidebar (Desktop) */}
+        <aside className="hidden lg:flex flex-col w-52 bg-card border-r border-line p-3 justify-between shrink-0 select-none">
+          <div className="space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-muted px-2.5 py-1 block">Navigasi Utama</span>
+            <button
+              type="button"
+              onClick={() => setView('menu')}
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
+                view === 'menu'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-muted hover:text-fg hover:bg-surface'
+              }`}
+            >
+              <span className="text-sm">☕</span>
+              <span>Kasir & Menu</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('meja')}
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
+                view === 'meja'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-muted hover:text-fg hover:bg-surface'
+              }`}
+            >
+              <span className="text-sm">🍽️</span>
+              <span>Kelola Meja</span>
+            </button>
+            <Link
+              href="/admin/transaksi"
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
+            >
+              <span className="text-sm">🧾</span>
+              <span>Riwayat Transaksi</span>
+            </Link>
+            <Link
+              href="/admin/shift"
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
+            >
+              <span className="text-sm">💼</span>
+              <span>Shift & Kas Laci</span>
+            </Link>
+            <Link
+              href="/admin/menu"
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
+            >
+              <span className="text-sm">📦</span>
+              <span>Katalog & Stok</span>
+            </Link>
+            <Link
+              href="/admin/pengaturan"
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
+            >
+              <span className="text-sm">⚙️</span>
+              <span>Pengaturan POS</span>
+            </Link>
+          </div>
+
+          <div className="pt-3 border-t border-line">
+            <div className="px-2.5 py-2 rounded-xl bg-surface border border-line text-[11px] text-muted flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="font-semibold">Offline Ready (Dexie)</span>
+            </div>
+          </div>
+        </aside>
+
+        {/* Central Workspace */}
+        <div className="flex-1 flex flex-col h-full pb-20 lg:pb-0 overflow-hidden bg-surface transition-colors">
+          {view === 'meja' && (
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-surface flex flex-col">
+              {/* Meja Summary Bar */}
+              <div className="mb-4 p-3 bg-card rounded-2xl border border-line flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-fg text-sm">Denah Meja</span>
+                  <span className="text-[11px] text-muted">
+                    Total {tableData.length} Meja
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full bg-line text-slate-300 font-bold text-[10px]">
+                    Kosong: {tableData.filter(t => getTableStatus(t) === 'kosong').length}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 font-bold text-[10px]">
+                    Terisi: {tableData.filter(t => getTableStatus(t) === 'open').length}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-accent/20 text-accent-text font-bold text-[10px]">
+                    Lunas: {tableData.filter(t => getTableStatus(t) === 'lunas').length}
                   </span>
                 </div>
               </div>
-            <div className="flex items-center space-x-2 md:space-x-3">
 
-            {/* Shift Indicator */}
-            {activeShift ? (
-              <div className="flex items-center gap-1.5 bg-accent/40 border border-accent/40 px-3 py-1.5 rounded-full text-xs shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
-                <span className="font-bold text-accent-text">Shift: {activeShift.operatorName}</span>
-                <span className="hidden md:inline opacity-70 text-accent-text">| Laci: Rp {(currentShiftStats?.expectedCash || activeShift.startingCash || 0).toLocaleString('id-ID')}</span>
-                <button 
-                  onClick={() => setIsCashMovementModalOpen(true)}
-                  className="ml-1 text-[11px] font-bold text-accent-text hover:underline"
-                  title="Catat Kas Masuk / Keluar"
-                >
-                  [+/- Kas]
-                </button>
-                <button 
-                  onClick={openCloseShiftModal}
-                  className="text-[11px] font-bold text-rose-400 hover:underline"
-                  title="Tutup Shift Kasir"
-                >
-                  [Tutup]
-                </button>
-              </div>
-            ) : (
-              <button 
-                onClick={() => setIsOpenShiftModalOpen(true)}
-                className="flex items-center gap-1.5 bg-accent/40 border border-accent/40 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold text-accent-text hover:bg-accent/15 shadow-sm transition-transform active:scale-95 shrink-0"
-                title="Buka Shift Kasir"
-              >
-                <span>💼</span>
-                <span className="hidden sm:inline">Buka Shift</span>
-              </button>
-            )}
-
-              <div className="flex bg-surface rounded-xl p-1 border border-line">
-                <button onClick={() => setView('meja')} className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${view === 'meja' ? ' bg-card shadow-sm text-accent-text' : ' text-muted hover:text-fg'}`}>🍽️ Meja</button>
-                <button onClick={() => setView('menu')} className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${view === 'menu' ? ' bg-card shadow-sm text-accent-text' : ' text-muted hover:text-fg'}`}>☕ Menu</button>
-              </div>
-              <Link href="/admin" className="p-2 rounded-full bg-card text-slate-300 hover:bg-line transition-colors" title="Halaman Admin">
-                ⚙️
-              </Link>
-            </div>
-          </div>
-
-          {view === 'meja' && (
-            <div className="flex-1 overflow-y-auto p-6 bg-surface">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-4">
                 {tableData.map(table => {
                   const tStatus = getTableStatus(table);
                   const openOrder = activeOrders.find(o => o.tableId === table.id && o.status !== 'paid' && o.status !== 'void');
@@ -2338,100 +2490,155 @@ export default function POSPage() {
             </div>
           )}
 
-          {view === 'menu' && (
-            <div className="flex-1 p-4 md:p-6 overflow-y-auto">
-              <div className="flex flex-col space-y-3 mb-4 md:mb-6">
-                <div className="flex space-x-2 overflow-x-auto pb-1 no-scrollbar">
-                  {categories.map(cat => (
-                    <button 
-                      key={cat} 
-                      onClick={() => setActiveCategory(cat)} 
-                      className={`px-4 py-2 rounded-full whitespace-nowrap text-xs md:text-sm font-bold border transition-all ${
-                        activeCategory === cat 
-                          ? 'bg-accent border-accent text-white shadow-md shadow-accent/20' 
-                          : ' bg-card border-line text-slate-300 hover:bg-surface'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
+          {view === 'menu' && (() => {
+            const menuItemsPerPage = 12;
+            const totalMenuPages = Math.max(1, Math.ceil(filteredMenu.length / menuItemsPerPage));
+            const paginatedMenu = filteredMenu.slice((menuPage - 1) * menuItemsPerPage, menuPage * menuItemsPerPage);
+
+            return (
+              <div className="flex-1 flex flex-col h-full overflow-hidden">
+                <div className="p-4 md:p-6 pb-2 shrink-0">
+                  <div className="flex flex-col space-y-3 mb-2">
+                    <div className="flex space-x-2 overflow-x-auto pb-1 no-scrollbar">
+                      {categories.map(cat => (
+                        <button 
+                          key={cat} 
+                          onClick={() => setActiveCategory(cat)} 
+                          className={`px-4 py-2 rounded-full whitespace-nowrap text-xs md:text-sm font-bold border transition-all ${
+                            activeCategory === cat 
+                              ? 'bg-accent border-accent text-white shadow-md shadow-accent/20' 
+                              : ' bg-card border-line text-slate-300 hover:bg-surface'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                    <input 
+                      type="text" 
+                      placeholder="Cari menu makanan atau minuman..." 
+                      value={searchQuery} 
+                      onChange={e => setSearchQuery(e.target.value)} 
+                      className="w-full bg-card border border-line rounded-xl p-3 text-sm text-fg focus:border-accent outline-none transition-colors shadow-sm" 
+                    />
+                  </div>
                 </div>
-                <input 
-                  type="text" 
-                  placeholder="Cari menu..." 
-                  value={searchQuery} 
-                  onChange={e => setSearchQuery(e.target.value)} 
-                  className="w-full bg-card border border-line rounded-xl p-3 text-sm text-fg focus:border-accent outline-none transition-colors shadow-sm" 
-                />
+
+                <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-6">
+                  {paginatedMenu.length === 0 ? (
+                    <div className="h-64 flex flex-col items-center justify-center text-center p-8 bg-card rounded-2xl border border-line">
+                      <span className="text-4xl mb-2">🔍</span>
+                      <p className="text-sm font-bold text-fg">Tidak ada menu yang sesuai</p>
+                      <p className="text-xs text-muted mt-1">Coba kata kunci lain atau pilih kategori Semua.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+                      {paginatedMenu.map(item => {
+                        const hasModifiers = item.modifiers && item.modifiers.length > 0;
+                        const isSoldOut = item.isSoldOut;
+
+                        return (
+                          <button 
+                            key={item.id} 
+                            disabled={isSoldOut}
+                            onClick={() => {
+                              if (isSoldOut) return;
+                              if (item.isGroup) {
+                                setActiveVariantGroup({ title: item.nama, variants: item.variants });
+                              } else if (hasModifiers) {
+                                openModifierModal(item);
+                              } else {
+                                addToCart(item);
+                              }
+                            }} 
+                            className={`group bg-card rounded-2xl border text-left transition-all flex flex-col justify-between overflow-hidden relative shadow-sm ${
+                              isSoldOut 
+                                ? 'opacity-60 border-line bg-surface/50 cursor-not-allowed' 
+                                : 'border-line hover:border-accent hover:shadow-lg active:scale-[0.98]'
+                            }`}
+                          >
+                            {/* Culinary Thumbnail Image Box */}
+                            <div className="h-24 sm:h-28 w-full bg-surface/70 flex items-center justify-center text-3xl sm:text-4xl relative border-b border-line group-hover:scale-105 transition-transform duration-200">
+                              <span>{getCategoryIcon(item.kategori, item.nama)}</span>
+                              
+                              {isSoldOut ? (
+                                <span className="absolute top-2 right-2 text-[10px] bg-red-950 text-red-400 border border-red-800 px-2 py-0.5 rounded-full font-bold">
+                                  Habis
+                                </span>
+                              ) : item.isGroup ? (
+                                <span className="absolute top-2 right-2 text-[10px] bg-accent/80 text-white px-2 py-0.5 rounded-full font-bold shadow-sm">
+                                  Varian
+                                </span>
+                              ) : hasModifiers ? (
+                                <span className="absolute top-2 right-2 text-[10px] bg-accent/25 border border-accent/40 text-accent-text px-2 py-0.5 rounded-full font-bold shadow-sm">
+                                  + Pilihan
+                                </span>
+                              ) : null}
+                            </div>
+
+                            <div className="p-3 flex-1 flex flex-col justify-between">
+                              <div>
+                                <h3 className="font-bold line-clamp-1 leading-tight text-xs sm:text-sm text-fg">
+                                  {item.nama}
+                                </h3>
+                                <span className="text-[10px] text-muted mt-0.5 block font-medium">
+                                  {item.kategori}
+                                </span>
+                              </div>
+                              
+                              <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-line/60">
+                                <p className="text-accent-text font-black text-xs sm:text-sm">
+                                  Rp {item.harga.toLocaleString('id-ID')}
+                                </p>
+                                {!isSoldOut && (
+                                  <span className="w-6 h-6 rounded-lg bg-accent text-white flex items-center justify-center text-xs font-bold shadow-sm group-hover:scale-110 transition-transform">
+                                    +
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Catalog Pagination Footer */}
+                {filteredMenu.length > menuItemsPerPage && (
+                  <div className="p-3 border-t border-line flex items-center justify-between text-xs bg-card shrink-0">
+                    <span className="text-muted font-semibold">
+                      Menampilkan {((menuPage - 1) * menuItemsPerPage) + 1} - {Math.min(menuPage * menuItemsPerPage, filteredMenu.length)} dari {filteredMenu.length} menu
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={menuPage === 1}
+                        onClick={() => setMenuPage(p => Math.max(1, p - 1))}
+                        className="px-3 py-1.5 rounded-xl bg-surface border border-line font-bold disabled:opacity-40 hover:border-accent text-fg transition-colors"
+                      >
+                        ← Prev
+                      </button>
+                      <span className="px-2 font-bold text-accent-text">
+                        {menuPage} / {totalMenuPages}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={menuPage === totalMenuPages}
+                        onClick={() => setMenuPage(p => Math.min(totalMenuPages, p + 1))}
+                        className="px-3 py-1.5 rounded-xl bg-surface border border-line font-bold disabled:opacity-40 hover:border-accent text-fg transition-colors"
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
-                {filteredMenu.map(item => {
-                  const hasModifiers = item.modifiers && item.modifiers.length > 0;
-                  const isSoldOut = item.isSoldOut;
-
-                  return (
-                    <button 
-                      key={item.id} 
-                      disabled={isSoldOut}
-                      onClick={() => {
-                        if (isSoldOut) return;
-                        if (item.isGroup) {
-                          setActiveVariantGroup({ title: item.nama, variants: item.variants });
-                        } else if (hasModifiers) {
-                          openModifierModal(item);
-                        } else {
-                          addToCart(item);
-                        }
-                      }} 
-                      className={` bg-card p-3.5 md:p-4 rounded-2xl border text-left transition-all flex flex-col justify-between h-32 md:h-36 relative ${
-                        isSoldOut 
-                          ? 'opacity-60 border-line bg-surface cursor-not-allowed' 
-                          : ' border-line hover:border-accent hover:shadow-md active:scale-[0.98]'
-                      }`}
-                    >
-                      {isSoldOut ? (
-                        <span className="absolute top-2.5 right-2.5 text-[10px] bg-red-950 text-red-400 px-2 py-0.5 rounded-full font-bold">
-                          Habis
-                        </span>
-                      ) : item.isGroup ? (
-                        <span className="absolute top-2.5 right-2.5 text-[10px] bg-accent/60 text-accent-text px-2 py-0.5 rounded-full font-bold">
-                          Varian
-                        </span>
-                      ) : hasModifiers ? (
-                        <span className="absolute top-2.5 right-2.5 text-[10px] border bg-accent/40 text-accent-text border-accent/40 px-1.5 py-0.5 rounded-full font-semibold">
-                          + Pilihan
-                        </span>
-                      ) : null}
-
-                      <div>
-                        <h3 className="font-bold line-clamp-2 leading-tight text-sm md:text-base text-fg">
-                          {item.nama}
-                        </h3>
-                        <span className="text-[11px] text-muted mt-1 block font-medium">
-                          {item.kategori}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-line/60">
-                        <p className=" text-accent-text font-extrabold text-sm md:text-base">
-                          Rp {item.harga.toLocaleString('id-ID')}
-                        </p>
-                        {!isSoldOut && (
-                          <span className="w-6 h-6 rounded-lg bg-accent/60 text-accent-text flex items-center justify-center text-sm font-bold">
-                            +
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
-        {/* Floating Cart Button (Mobile - GoFood / Grab Style) */}
+        {/* Floating Cart Button (Mobile) */}
         {(!isMobileCartOpen && (cart.length > 0 || selectedTable)) && (
           <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-surface/90 backdrop-blur-md border-t border-line shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-30">
             <button 
@@ -2457,31 +2664,31 @@ export default function POSPage() {
           </div>
         )}
 
-          {/* Desktop Sidebar Cart */}
-          <div className="hidden lg:flex flex-col w-96 bg-card border-l border-line shadow-2xl z-40">
-             {renderCartInner(false)}
-          </div>
-
-          {/* Mobile Bottom Sheet Cart (Gojek/McD Style) */}
-          {isMobileCartOpen && (
-            <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
-              <div 
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
-                onClick={closeMobileCart}
-                aria-label="Tutup keranjang"
-              />
-              <div 
-                className="relative bg-surface rounded-t-3xl shadow-2xl flex flex-col max-h-[88vh] w-full animate-in slide-in-from-bottom-2 duration-200 transition-transform ease-out"
-                style={{
-                  transform: cartSheetDragY > 0 ? `translateY(${cartSheetDragY}px)` : undefined,
-                  touchAction: 'pan-y'
-                }}
-              >
-                {renderCartInner(true)}
-              </div>
-            </div>
-          )}
+        {/* Desktop Sidebar Cart */}
+        <div className="hidden lg:flex flex-col w-80 xl:w-96 bg-card border-l border-line shadow-2xl z-20 shrink-0">
+          {renderCartInner(false)}
         </div>
+
+        {/* Mobile Bottom Sheet Cart */}
+        {isMobileCartOpen && (
+          <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
+            <div 
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+              onClick={closeMobileCart}
+              aria-label="Tutup keranjang"
+            />
+            <div 
+              className="relative bg-surface rounded-t-3xl shadow-2xl flex flex-col max-h-[88vh] w-full animate-in slide-in-from-bottom-2 duration-200 transition-transform ease-out"
+              style={{
+                transform: cartSheetDragY > 0 ? `translateY(${cartSheetDragY}px)` : undefined,
+                touchAction: 'pan-y'
+              }}
+            >
+              {renderCartInner(true)}
+            </div>
+          </div>
+        )}
+      </div>
 
       
       {/* --- MODAL BUKA SHIFT --- */}
@@ -2749,22 +2956,27 @@ export default function POSPage() {
             </div>
 
             <div 
-              className="flex justify-between items-start pb-4 border-b border-line"
+              className="flex justify-between items-center pb-4 border-b border-line gap-3"
               onTouchStart={handleModTouchStart}
               onTouchMove={handleModTouchMove}
               onTouchEnd={handleModTouchEnd}
             >
-              <div>
-                <span className="text-[10px] font-bold tracking-widest text-accent-text uppercase">Pilihan Menu</span>
-                <h3 className="text-lg font-black text-fg leading-tight">{activeModItem.nama}</h3>
-                <p className="text-xs text-accent-text font-bold mt-0.5">
-                  Harga Dasar: Rp {activeModItem.harga.toLocaleString('id-ID')}
-                </p>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-14 h-14 rounded-2xl bg-surface border border-line flex items-center justify-center text-3xl shrink-0 shadow-inner">
+                  {getCategoryIcon(activeModItem.kategori, activeModItem.nama)}
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold tracking-widest text-accent-text uppercase block">Pilihan Menu</span>
+                  <h3 className="text-base sm:text-lg font-black text-fg leading-tight truncate">{activeModItem.nama}</h3>
+                  <p className="text-xs text-accent-text font-bold mt-0.5">
+                    Harga Dasar: Rp {activeModItem.harga.toLocaleString('id-ID')}
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={handleCloseModifiers}
-                className="w-9 h-9 rounded-full bg-line text-muted hover:text-fg flex items-center justify-center text-sm font-bold active:scale-90 transition-all"
+                className="w-9 h-9 rounded-full bg-line text-muted hover:text-fg flex items-center justify-center text-sm font-bold active:scale-90 transition-all shrink-0"
               >
                 ✕
               </button>
@@ -2791,43 +3003,84 @@ export default function POSPage() {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-1.5">
-                      {group.options.map((opt: any) => {
-                        const isChecked = selected.some((o: any) => o.id === opt.id);
-
-                        return (
-                          <button
-                            key={opt.id}
-                            type="button"
-                            onClick={() => toggleModOption(group, opt)}
-                            className={`w-full p-2.5 rounded-xl border text-left flex justify-between items-center transition-all ${
-                              isChecked
-                                ? ' bg-accent/40 border-accent text-blue-100 font-bold shadow-sm'
-                                : ' bg-card border-line text-slate-300 hover:border-line'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <span className={`w-4 h-4 rounded-${isSingle ? 'full' : 'md'} border flex items-center justify-center text-[10px] ${
-                                isChecked ? 'bg-accent border-accent text-white font-bold' : ' border-line'
-                              }`}>
-                                {isChecked ? (isSingle ? '●' : '✓') : ''}
-                              </span>
-                              <span className="text-xs">{opt.nama}</span>
-                            </div>
-                            {opt.harga > 0 ? (
-                              <span className="text-xs font-bold text-accent-text">
-                                +Rp {opt.harga.toLocaleString('id-ID')}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-muted">Gratis</span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {isSingle ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {group.options.map((opt: any) => {
+                          const isChecked = selected.some((o: any) => o.id === opt.id);
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => toggleModOption(group, opt)}
+                              className={`p-2.5 rounded-xl border text-center transition-all ${
+                                isChecked
+                                  ? 'bg-accent border-accent text-white font-bold shadow-md shadow-accent/20'
+                                  : 'bg-card border-line text-slate-300 hover:border-slate-500'
+                              }`}
+                            >
+                              <div className="text-xs font-bold leading-tight">{opt.nama}</div>
+                              <div className={`text-[10px] mt-0.5 ${isChecked ? 'text-blue-100 font-extrabold' : 'text-accent-text font-bold'}`}>
+                                {opt.harga > 0 ? `+Rp ${opt.harga.toLocaleString('id-ID')}` : 'Gratis'}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-1.5">
+                        {group.options.map((opt: any) => {
+                          const isChecked = selected.some((o: any) => o.id === opt.id);
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => toggleModOption(group, opt)}
+                              className={`w-full p-2.5 rounded-xl border text-left flex justify-between items-center transition-all ${
+                                isChecked
+                                  ? 'bg-accent/20 border-accent text-accent-text font-bold shadow-sm'
+                                  : 'bg-card border-line text-slate-300 hover:border-slate-500'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span className={`w-4 h-4 rounded-md border flex items-center justify-center text-[10px] ${
+                                  isChecked ? 'bg-accent border-accent text-white font-black' : 'border-line'
+                                }`}>
+                                  {isChecked ? '✓' : ''}
+                                </span>
+                                <span className="text-xs font-medium text-fg">{opt.nama}</span>
+                              </div>
+                              {opt.harga > 0 ? (
+                                <span className="text-xs font-bold text-accent-text">
+                                  +Rp {opt.harga.toLocaleString('id-ID')}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-muted">Gratis</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
+
+              {/* Catatan Khusus Dapur */}
+              <div className="bg-surface/80 p-3.5 rounded-2xl border border-line">
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  Catatan Khusus untuk Dapur (Opsional):
+                </label>
+                <input
+                  type="text"
+                  value={modItemNotes}
+                  onChange={(e) => {
+                    modDirtyRef.current = true;
+                    setModItemNotes(e.target.value);
+                  }}
+                  placeholder="Contoh: jangan terlalu pedas, es dipisah..."
+                  className="w-full bg-card border border-line rounded-xl p-2.5 text-xs text-fg focus:border-accent outline-none"
+                />
+              </div>
             </div>
 
             {/* Bottom Bar Total & Action */}
