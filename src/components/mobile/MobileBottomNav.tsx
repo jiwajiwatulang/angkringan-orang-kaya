@@ -1,0 +1,57 @@
+"use client";
+
+import React from "react";
+
+export type MobileTab = "home" | "menu" | "meja" | "nota" | "lainnya";
+
+interface MobileBottomNavProps {
+  currentTab: MobileTab;
+  onTabChange: (tab: MobileTab) => void;
+  occupiedTablesCount?: number;
+}
+
+export default function MobileBottomNav({
+  currentTab,
+  onTabChange,
+  occupiedTablesCount = 0,
+}: MobileBottomNavProps) {
+  const tabs = [
+    { id: "home" as MobileTab, label: "Home", icon: "🏠" },
+    { id: "menu" as MobileTab, label: "Menu", icon: "🍽️" },
+    { id: "meja" as MobileTab, label: "Meja", icon: "🪑", badge: occupiedTablesCount > 0 ? occupiedTablesCount : undefined },
+    { id: "nota" as MobileTab, label: "Nota", icon: "🧾" },
+    { id: "lainnya" as MobileTab, label: "Lainnya", icon: "⚙️" },
+  ];
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-md border-t border-line z-30 px-2 py-1.5 grid grid-cols-5 items-center select-none">
+      {tabs.map((tab) => {
+        const isActive = currentTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => onTabChange(tab.id)}
+            className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all relative ${
+              isActive
+                ? "text-accent-text font-black scale-105"
+                : "text-muted hover:text-fg"
+            }`}
+          >
+            <div className="relative text-lg leading-none mb-1">
+              <span>{tab.icon}</span>
+              {tab.badge !== undefined && (
+                <span className="absolute -top-1 -right-2 bg-amber-500 text-slate-900 font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                  {tab.badge}
+                </span>
+              )}
+            </div>
+            <span className="truncate w-full text-center leading-tight">
+              {tab.label}
+            </span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}

@@ -6,7 +6,7 @@ import { Printer } from '@capgo/capacitor-printer';
 import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
 import { App } from '@capacitor/app';
 import { getStoreSettings, loadStoreSettingsAsync, subscribeStoreSettings, StoreSettings } from '@/lib/settings';
-import { getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement, recordPayment, refundPartialPayment, getOrderPayments, exportAllData } from '@/lib/api';
+import { getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement, recordPayment, refundPartialPayment, getOrderPayments, exportAllData, clearTable } from '@/lib/api';
 import { 
   generateEscPosReceipt, 
   generatePartialPaymentReceipt, 
@@ -17,6 +17,14 @@ import {
 } from '@/lib/receipt';
 import PaymentProofUpload from '@/components/PaymentProofUpload';
 import OnboardingWizard from '@/components/OnboardingWizard';
+import MobileHeader from '@/components/mobile/MobileHeader';
+import MobileHomeScreen from '@/components/mobile/MobileHomeScreen';
+import MobileCatalogScreen from '@/components/mobile/MobileCatalogScreen';
+import MobileTableScreen from '@/components/mobile/MobileTableScreen';
+import MobileOrdersScreen from '@/components/mobile/MobileOrdersScreen';
+import MobileMoreScreen from '@/components/mobile/MobileMoreScreen';
+import MobileBottomNav, { MobileTab } from '@/components/mobile/MobileBottomNav';
+import MobileFloatingCartBar from '@/components/mobile/MobileFloatingCartBar';
 
 type MenuItem = { id: number; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; modifiers?: any[]; };
 type CartItem = MenuItem & { qty: number; selectedModifiers?: { groupName: string; optionName: string; harga: number }[]; itemKey?: string };
@@ -27,6 +35,7 @@ export default function POSPage() {
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [view, setView] = useState<'meja' | 'menu'>('meja');
+  const [mobileTab, setMobileTab] = useState<MobileTab>('home');
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -240,8 +249,20 @@ export default function POSPage() {
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
-    if (typeof window !== 'undefined' && window.location.search.includes('view=menu')) {
-      setView('menu');
+    if (typeof window !== 'undefined') {
+      if (window.location.search.includes('view=menu') || window.location.search.includes('tab=menu')) {
+        setView('menu');
+        setMobileTab('menu');
+      } else if (window.location.search.includes('tab=meja') || window.location.search.includes('view=meja')) {
+        setView('meja');
+        setMobileTab('meja');
+      } else if (window.location.search.includes('tab=nota')) {
+        setMobileTab('nota');
+      } else if (window.location.search.includes('tab=lainnya')) {
+        setMobileTab('lainnya');
+      } else if (window.location.search.includes('tab=home')) {
+        setMobileTab('home');
+      }
     }
   }, []);
 
@@ -393,6 +414,7 @@ export default function POSPage() {
   };
 
   const openPaymentModal = () => {
+    setIsMobileCartOpen(false);
     setIsPaymentModalOpen(true);
     setPaymentSheetDragY(0);
     pushModalHistory("payment");
@@ -1784,7 +1806,7 @@ export default function POSPage() {
       {/* Payment Modal */}
       {isPaymentModalOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
           onClick={handleClosePaymentModal}
         >
           <div 
@@ -2238,8 +2260,12 @@ export default function POSPage() {
         </div>
       )}
 
-      {/* Top Application Header (Full Width) */}
-      <header className="h-16 bg-card border-b border-line px-4 flex items-center justify-between shrink-0 z-30 transition-colors">
+      {/* ======================================================== */}
+      {/* --- DESKTOP APPLICATION WORKSPACE (>= 1024px / lg:flex) --- */}
+      {/* ======================================================== */}
+      <div className="hidden lg:flex flex-col h-full w-full overflow-hidden">
+        {/* Top Application Header (Full Width) */}
+        <header className="h-16 bg-card border-b border-line px-4 flex items-center justify-between shrink-0 z-30 transition-colors">
         {/* Left: Brand & Store Name */}
         <Link href="/" className="flex items-center space-x-3 hover:opacity-85 transition-opacity" title="Kembali ke Beranda SakuNota">
           {storeSettings.storeLogo ? (
@@ -2678,6 +2704,156 @@ export default function POSPage() {
         {/* Mobile Bottom Sheet Cart */}
         {isMobileCartOpen && (
           <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
+            <div 
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+              onClick={closeMobileCart}
+              aria-label="Tutup keranjang"
+            />
+            <div 
+              className="relative bg-surface rounded-t-3xl shadow-2xl flex flex-col max-h-[88vh] w-full animate-in slide-in-from-bottom-2 duration-200 transition-transform ease-out"
+              style={{
+                transform: cartSheetDragY > 0 ? `translateY(${cartSheetDragY}px)` : undefined,
+                touchAction: 'pan-y'
+              }}
+            >
+              {renderCartInner(true)}
+            </div>
+          </div>
+        )}
+      </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* --- DEDICATED MOBILE & TABLET APPLICATION SHELL (< 1024px) --- */}
+      {/* ======================================================== */}
+      <div className="flex lg:hidden flex-col h-full w-full overflow-hidden bg-app">
+        {/* Mobile Top Header */}
+        <MobileHeader
+          storeSettings={storeSettings}
+          activeShift={activeShift}
+          currentShiftStats={currentShiftStats}
+          onOpenCashMovement={() => setIsCashMovementModalOpen(true)}
+          onOpenShiftModal={() => setIsOpenShiftModalOpen(true)}
+          onOpenCloseShiftModal={openCloseShiftModal}
+        />
+
+        {/* Mobile Active Screen Views */}
+        <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+          {mobileTab === 'home' && (
+            <MobileHomeScreen
+              menuData={menuData}
+              activeShift={activeShift}
+              currentShiftStats={currentShiftStats}
+              tableData={tableData}
+              activeOrders={activeOrders}
+              onNavigate={(t) => setMobileTab(t)}
+              onAddToCart={(item) => addToCart(item)}
+              onOpenShiftModal={() => setIsOpenShiftModalOpen(true)}
+              onOpenCloseShiftModal={openCloseShiftModal}
+              onOpenCashMovement={() => setIsCashMovementModalOpen(true)}
+              onSearchFocus={(q) => {
+                setSearchQuery(q);
+                setMobileTab('menu');
+              }}
+            />
+          )}
+
+          {mobileTab === 'menu' && (
+            <MobileCatalogScreen
+              menuData={menuData}
+              categories={categories}
+              activeCategory={activeCategory}
+              onSelectCategory={setActiveCategory}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onAddToCart={(item) => addToCart(item)}
+            />
+          )}
+
+          {mobileTab === 'meja' && (
+            <MobileTableScreen
+              tableData={tableData}
+              activeOrders={activeOrders}
+              selectedTable={selectedTable}
+              onSelectTable={(id) => setSelectedTable(id)}
+              onTableAction={(table) => {
+                handleTableClick(table);
+                setMobileTab('menu');
+              }}
+              onOpenNewOrderForTable={(tableId) => {
+                setSelectedTable(tableId);
+                setOrderType('Dine-in');
+                setMobileTab('menu');
+              }}
+              onClearTable={async (tableId) => {
+                await clearTable(tableId);
+                await loadData();
+              }}
+            />
+          )}
+
+          {mobileTab === 'nota' && (
+            <MobileOrdersScreen
+              allOrders={allOrders}
+              onReprintReceipt={(order) => {
+                const receiptDoc = {
+                  id: order.id,
+                  tableId: order.tableId,
+                  customerName: order.customerName,
+                  orderType: order.orderType,
+                  items: order.items,
+                  total: order.total,
+                  paymentMethod: order.paymentMethod,
+                  cashTendered: order.cashTendered,
+                  change: order.change,
+                  date: order.createdAt || new Date().toISOString(),
+                  tax: order.tax || 0,
+                  service: order.service || 0,
+                  discount: order.discount || 0,
+                  subtotal: order.subtotal || order.total,
+                };
+                handlePrint('all', receiptDoc);
+              }}
+              onOpenSplitBill={(order) => {
+                setSplitBillTargetOrder(order);
+                setIsSplitBillModalOpen(true);
+                pushModalHistory('splitbill');
+              }}
+            />
+          )}
+
+          {mobileTab === 'lainnya' && (
+            <MobileMoreScreen
+              storeSettings={storeSettings}
+              activeShift={activeShift}
+              currentShiftStats={currentShiftStats}
+              onOpenShiftModal={() => setIsOpenShiftModalOpen(true)}
+              onOpenCloseShiftModal={openCloseShiftModal}
+              onOpenCashMovement={() => setIsCashMovementModalOpen(true)}
+              onOpenOnboarding={() => setIsOnboardingOpen(true)}
+            />
+          )}
+
+          {/* Floating Cart Bar (appears when items exist in cart and cart sheet is closed) */}
+          {!isMobileCartOpen && (
+            <MobileFloatingCartBar
+              itemCount={cart.reduce((s, i) => s + i.qty, 0)}
+              totalPrice={totalPrice}
+              onOpenCart={openMobileCart}
+            />
+          )}
+        </div>
+
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNav
+          currentTab={mobileTab}
+          onTabChange={setMobileTab}
+          occupiedTablesCount={tableData.filter((t) => t.status === 'terisi').length}
+        />
+
+        {/* Mobile Bottom Sheet Cart */}
+        {isMobileCartOpen && (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end">
             <div 
               className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
               onClick={closeMobileCart}
