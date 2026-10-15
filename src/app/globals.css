@@ -1,29 +1,84 @@
 @import "tailwindcss";
 
+/* Dark-only app: every `dark:` utility always applies because <html> carries the .dark class. */
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * SakuNota "Dark Blue Pro" design tokens — single source of truth.
+ * Every page/component uses these semantic names (bg-app, bg-surface, bg-card, border-line,
+ * bg-accent, text-fg, text-muted …) instead of hardcoded palette colours.
+ */
+@theme {
+  --color-app: #0B0F17;          /* main background */
+  --color-surface: #111827;      /* sidebar, header, primary surfaces */
+  --color-card: #1E293B;         /* cards & elevated elements */
+  --color-line: #334155;         /* standard border */
+  --color-accent: #2563EB;       /* primary action */
+  --color-accent-hover: #3B82F6; /* hover / active / interactive accent */
+  --color-accent-text: #60A5FA;  /* accent-coloured text on dark surfaces (AA contrast) */
+  --color-fg: #F8FAFC;           /* primary text */
+  --color-muted: #94A3B8;        /* secondary text */
+  --color-success: #22C55E;      /* semantic only: paid / verified / balanced */
+  --color-warning: #F59E0B;      /* semantic only */
+  --color-danger: #EF4444;       /* semantic only */
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --radius-card: 12px;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: var(--color-app);
+  color: var(--color-fg);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Enable manual dark mode toggle for Tailwind v4 */
-@custom-variant dark (&:is(.dark *));
+/* Consistent keyboard focus indicator across every interactive element */
+:where(button, a, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--color-accent-hover);
+  outline-offset: 2px;
+}
+
+/* Native form controls & scrollbars follow the dark surface */
+input,
+select,
+textarea {
+  color-scheme: dark;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #64748B;
+}
+* {
+  scrollbar-color: #334155 transparent;
+}
+
+/*
+ * Print safety: printers ignore dark backgrounds, so force black-on-white for any printed view
+ * (receipts, Z-Report, reprints, printer test) regardless of the on-screen theme.
+ */
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+  *,
+  *::before,
+  *::after {
+    background: transparent !important;
+    color: #000 !important;
+    border-color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}

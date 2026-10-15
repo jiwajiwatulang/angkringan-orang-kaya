@@ -23,28 +23,10 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const [passwordInput, setPasswordInput] = useState("");
   const [pinError, setPinError] = useState("");
   const [isLainnyaOpen, setIsLainnyaOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      setIsDark(true);
-      document.documentElement.classList.add('dark');
-    } else {
-      setIsDark(false);
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.add('dark');
   }, []);
-
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    if (!isDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.theme = 'dark';
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.theme = 'light';
-    }
-  };
 
   // Auth verification
   useEffect(() => {
@@ -99,13 +81,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   // Unauthenticated: PIN Login Screen
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center p-4">
-        <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-gray-800 text-center animate-in zoom-in-95 duration-200">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-sm">
+      <div className="min-h-screen bg-app flex flex-col items-center justify-center p-4">
+        <div className=" bg-surface rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-line text-center animate-in zoom-in-95 duration-200">
+          <div className="w-16 h-16 rounded-2xl bg-accent/60 text-accent-text flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-sm">
             🔒
           </div>
-          <h2 className="text-2xl font-black text-gray-900 dark:text-white">Login Admin</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-6">
+          <h2 className="text-2xl font-black text-fg">Login Admin</h2>
+          <p className="text-xs text-muted mt-1 mb-6">
             Masukkan PIN Otorisasi untuk membuka Backoffice SakuNota.
           </p>
 
@@ -121,29 +103,29 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                   setPinError("");
                 }}
                 placeholder="Masukkan PIN..."
-                className="w-full text-center text-2xl tracking-widest font-black border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-500 rounded-2xl py-3 px-4 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white outline-none transition-all"
+                className="w-full text-center text-2xl tracking-widest font-black border-2 border-line focus:border-accent rounded-2xl py-3 px-4 bg-card text-fg outline-none transition-all"
                 required
               />
             </div>
 
             {pinError && (
-              <p className="text-xs font-bold text-rose-600 dark:text-rose-400 animate-in fade-in">
+              <p className="text-xs font-bold text-rose-400 animate-in fade-in">
                 ⚠️ {pinError}
               </p>
             )}
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black rounded-2xl text-sm shadow-lg shadow-emerald-600/20 transition-all"
+              className="w-full py-3.5 bg-accent hover:bg-accent-hover active:scale-95 text-white font-black rounded-2xl text-sm shadow-lg shadow-accent/20 transition-all"
             >
               Masuk Backoffice
             </button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
+          <div className="mt-6 pt-4 border-t border-line">
             <Link
               href="/"
-              className="text-xs font-bold text-gray-500 hover:text-emerald-600 dark:text-gray-400 dark:hover:text-emerald-400 inline-flex items-center gap-1.5 transition-colors"
+              className="text-xs font-bold text-muted hover:text-accent-text inline-flex items-center gap-1.5 transition-colors"
             >
               <span>← Kembali ke Kasir</span>
             </Link>
@@ -161,20 +143,20 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-app text-fg flex flex-col md:flex-row">
       {/* --- DESKTOP & TABLET SIDEBAR --- */}
-      <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 shrink-0 select-none">
+      <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-surface border-r border-line shrink-0 select-none">
         {/* Brand */}
-        <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+        <div className="p-5 border-b border-line flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-emerald-600/20">
+            <div className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center font-black text-lg shadow-md shadow-accent/20">
               SN
             </div>
             <div>
-              <h1 className="text-base font-black tracking-tight text-gray-900 dark:text-white leading-none">
+              <h1 className="text-base font-black tracking-tight text-fg leading-none">
                 SakuNota
               </h1>
-              <span className="text-[10px] font-bold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase">
+              <span className="text-[10px] font-bold tracking-wider text-accent-text uppercase">
                 Admin Backoffice
               </span>
             </div>
@@ -191,8 +173,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 className={`flex items-center gap-3.5 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
                   active
-                    ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/20"
-                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/60 hover:text-gray-900 dark:hover:text-white"
+                    ? "bg-accent text-white shadow-lg shadow-accent/20"
+                    : " text-muted hover:bg-card/60 hover:text-fg"
                 }`}
               >
                 <span className="text-lg">{item.icon}</span>
@@ -203,17 +185,17 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
-          <div className="px-3.5 py-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200/50 dark:border-gray-700/50">
-            <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider block">Toko Aktif</span>
-            <span className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate block">
+        <div className="p-3 border-t border-line space-y-2">
+          <div className="px-3.5 py-2.5 rounded-2xl bg-card/40 border border-line/50">
+            <span className="text-[10px] text-muted uppercase font-bold tracking-wider block">Toko Aktif</span>
+            <span className="text-xs font-bold text-fg truncate block">
               {storeSettings.storeName || "Toko SakuNota"}
             </span>
           </div>
 
           <button
             onClick={logout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-950/40 transition-colors"
           >
             <span>🚪</span>
             <span>Keluar Admin</span>
@@ -224,37 +206,28 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       {/* --- MAIN CONTENT AREA --- */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
-        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-3.5 flex items-center justify-between sticky top-0 z-30">
+        <header className=" bg-surface border-b border-line px-4 sm:px-6 py-3.5 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
             {/* Mobile Brand indicator */}
             <div className="flex items-center gap-2 md:hidden">
-              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs">
+              <div className="w-8 h-8 rounded-xl bg-accent text-white flex items-center justify-center font-black text-xs">
                 SN
               </div>
-              <span className="text-sm font-black text-gray-900 dark:text-white">Admin</span>
+              <span className="text-sm font-black text-fg">Admin</span>
             </div>
 
             {/* Store Name pill */}
-            <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+            <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/40 border border-accent/40 text-xs font-bold text-accent-text">
               <span>🏪</span>
               <span>{storeSettings.storeName || "SakuNota POS"}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 flex items-center justify-center text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              title="Ganti Tema"
-            >
-              {isDark ? "☀️" : "🌙"}
-            </button>
-
             {/* Kembali ke Kasir */}
             <Link
               href="/"
-              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-black flex items-center gap-1.5 shadow-sm shadow-emerald-600/20 transition-all"
+              className="px-3.5 py-2 rounded-xl bg-accent hover:bg-accent-hover active:scale-95 text-white text-xs font-black flex items-center gap-1.5 shadow-sm shadow-accent/20 transition-all"
             >
               <span>←</span>
               <span>Kasir</span>
@@ -264,7 +237,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
         {/* Security Reminder if PIN is still default */}
         {isDefaultPin && (
-          <div className="bg-amber-50 dark:bg-amber-950/50 border-b border-amber-200 dark:border-amber-900/60 px-4 py-2.5 flex items-center justify-between text-xs text-amber-900 dark:text-amber-200">
+          <div className=" bg-amber-950/50 border-b border-amber-900/60 px-4 py-2.5 flex items-center justify-between text-xs text-amber-200">
             <div className="flex items-center gap-2">
               <span className="text-base">🔒</span>
               <span>
@@ -287,13 +260,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* --- MOBILE BOTTOM NAVIGATION (HP < 768px) --- */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 z-40 px-1 py-1.5 grid grid-cols-4 items-center">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-md border-t border-line z-40 px-1 py-1.5 grid grid-cols-4 items-center">
         <Link
           href="/admin"
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
             pathname === "/admin"
-              ? "text-emerald-600 dark:text-emerald-400 font-black"
-              : "text-gray-500 dark:text-gray-400"
+              ? " text-accent-text font-black"
+              : " text-muted"
           }`}
         >
           <span className="text-lg">📊</span>
@@ -304,8 +277,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           href="/admin/menu"
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
             pathname.startsWith("/admin/menu")
-              ? "text-emerald-600 dark:text-emerald-400 font-black"
-              : "text-gray-500 dark:text-gray-400"
+              ? " text-accent-text font-black"
+              : " text-muted"
           }`}
         >
           <span className="text-lg">🍽️</span>
@@ -316,8 +289,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           href="/admin/transaksi"
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
             pathname.startsWith("/admin/transaksi")
-              ? "text-emerald-600 dark:text-emerald-400 font-black"
-              : "text-gray-500 dark:text-gray-400"
+              ? " text-accent-text font-black"
+              : " text-muted"
           }`}
         >
           <span className="text-lg">🧾</span>
@@ -329,8 +302,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           onClick={() => setIsLainnyaOpen(true)}
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
             isLainnyaOpen || pathname.startsWith("/admin/meja") || pathname.startsWith("/admin/shift") || pathname.startsWith("/admin/pengaturan")
-              ? "text-emerald-600 dark:text-emerald-400 font-black"
-              : "text-gray-500 dark:text-gray-400"
+              ? " text-accent-text font-black"
+              : " text-muted"
           }`}
         >
           <span className="text-lg">⚙️</span>
@@ -345,22 +318,22 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           onClick={() => setIsLainnyaOpen(false)}
         >
           <div
-            className="bg-white dark:bg-gray-900 rounded-t-3xl w-full p-5 shadow-2xl border-t border-gray-100 dark:border-gray-800 animate-in slide-in-from-bottom duration-250 max-h-[85vh] overflow-y-auto"
+            className=" bg-surface rounded-t-3xl w-full p-5 shadow-2xl border-t border-line animate-in slide-in-from-bottom duration-250 max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mb-4" />
-            <h3 className="text-base font-black text-gray-900 dark:text-white mb-3">Menu Lainnya</h3>
+            <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-4" />
+            <h3 className="text-base font-black text-fg mb-3">Menu Lainnya</h3>
 
             <div className="grid grid-cols-1 gap-2 mb-4">
               <Link
                 href="/admin/meja"
                 onClick={() => setIsLainnyaOpen(false)}
-                className="flex items-center gap-3 p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-gray-800 dark:text-gray-200 text-xs font-bold transition-colors"
+                className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
                 <span className="text-xl">🪑</span>
                 <div className="flex-1">
                   <div className="font-bold text-sm">Kelola Meja</div>
-                  <div className="text-[10px] text-gray-500 dark:text-gray-400">Atur nomor meja dan status dine-in</div>
+                  <div className="text-[10px] text-muted">Atur nomor meja dan status dine-in</div>
                 </div>
                 <span>→</span>
               </Link>
@@ -368,12 +341,12 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               <Link
                 href="/admin/shift"
                 onClick={() => setIsLainnyaOpen(false)}
-                className="flex items-center gap-3 p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-gray-800 dark:text-gray-200 text-xs font-bold transition-colors"
+                className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
                 <span className="text-xl">💼</span>
                 <div className="flex-1">
                   <div className="font-bold text-sm">Shift & Kas Laci</div>
-                  <div className="text-[10px] text-gray-500 dark:text-gray-400">Laporan Z-Report, uang fisik, dan kas operasional</div>
+                  <div className="text-[10px] text-muted">Laporan Z-Report, uang fisik, dan kas operasional</div>
                 </div>
                 <span>→</span>
               </Link>
@@ -381,32 +354,32 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               <Link
                 href="/admin/pengaturan"
                 onClick={() => setIsLainnyaOpen(false)}
-                className="flex items-center gap-3 p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-gray-800 dark:text-gray-200 text-xs font-bold transition-colors"
+                className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
                 <span className="text-xl">⚙️</span>
                 <div className="flex-1">
                   <div className="font-bold text-sm">Pengaturan Toko</div>
-                  <div className="text-[10px] text-gray-500 dark:text-gray-400">Profil, Printer Bluetooth, Pajak, PIN, & Backup</div>
+                  <div className="text-[10px] text-muted">Profil, Printer Bluetooth, Pajak, PIN, & Backup</div>
                 </div>
                 <span>→</span>
               </Link>
             </div>
 
-            <div className="pt-2 border-t border-gray-100 dark:border-gray-800 flex gap-2">
+            <div className="pt-2 border-t border-line flex gap-2">
               <button
                 type="button"
                 onClick={() => {
                   setIsLainnyaOpen(false);
                   logout();
                 }}
-                className="flex-1 py-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold text-xs text-center"
+                className="flex-1 py-3 rounded-2xl bg-rose-950/40 text-rose-400 font-bold text-xs text-center"
               >
                 Keluar Admin
               </button>
               <button
                 type="button"
                 onClick={() => setIsLainnyaOpen(false)}
-                className="flex-1 py-3 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 font-bold text-xs text-center"
+                className="flex-1 py-3 rounded-2xl bg-card text-fg font-bold text-xs text-center"
               >
                 Tutup
               </button>

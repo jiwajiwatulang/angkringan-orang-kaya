@@ -108,16 +108,16 @@ export default function PengaturanPajakPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-200 max-w-4xl">
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex items-center justify-between pb-3 border-b border-line">
         <div>
           <button
             type="button"
             onClick={() => handleNavigateBack()}
-            className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 mb-1"
+            className="text-xs font-bold text-accent-text hover:underline flex items-center gap-1 mb-1"
           >
             <span>← Kembali ke Pengaturan</span>
           </button>
-          <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+          <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
             <span>💵</span>
             <span>Pajak (PBJT) & Biaya Layanan</span>
           </h2>
@@ -125,7 +125,7 @@ export default function PengaturanPajakPage() {
 
         <button
           onClick={handleSubmit}
-          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+          className="px-4 py-2.5 bg-accent hover:bg-accent-hover text-white font-black text-xs rounded-xl shadow-lg shadow-accent/20 active:scale-95 transition-all"
         >
           Simpan Pengaturan
         </button>
@@ -135,13 +135,13 @@ export default function PengaturanPajakPage() {
         {/* Settings Controls (2 Cols) */}
         <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-4">
           {/* PBJT / Pajak Restoran */}
-          <div className="bg-white dark:bg-gray-900 p-5 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-sm space-y-4">
+          <div className=" bg-surface p-5 rounded-3xl border border-line shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-black text-gray-900 dark:text-white">
+                <h3 className="text-sm font-black text-fg">
                   Pajak Barang & Jasa Tertentu (PBJT Restoran)
                 </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                <p className="text-xs text-muted mt-0.5">
                   Pajak daerah 10% untuk restoran, kafe, atau rumah makan.
                 </p>
               </div>
@@ -149,13 +149,13 @@ export default function PengaturanPajakPage() {
                 type="checkbox"
                 checked={enableTax}
                 onChange={(e) => setEnableTax(e.target.checked)}
-                className="w-5 h-5 accent-emerald-600 rounded cursor-pointer"
+                className="w-5 h-5 accent-accent-text rounded cursor-pointer"
               />
             </div>
 
             {enableTax && (
-              <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-3">
-                <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+              <div className="pt-3 border-t border-line flex items-center gap-3">
+                <label className="text-xs font-bold text-slate-300">
                   Persentase Pajak (%):
                 </label>
                 <input
@@ -164,7 +164,7 @@ export default function PengaturanPajakPage() {
                   max="100"
                   value={taxPercent}
                   onChange={(e) => setTaxPercent(Number(e.target.value))}
-                  className="w-24 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 text-center text-sm font-black text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                  className="w-24 bg-card border border-line rounded-xl p-2.5 text-center text-sm font-black text-fg outline-none focus:border-accent"
                   required
                 />
               </div>
@@ -172,13 +172,13 @@ export default function PengaturanPajakPage() {
           </div>
 
           {/* Service Charge */}
-          <div className="bg-white dark:bg-gray-900 p-5 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-sm space-y-4">
+          <div className=" bg-surface p-5 rounded-3xl border border-line shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-black text-gray-900 dark:text-white">
+                <h3 className="text-sm font-black text-fg">
                   Biaya Layanan (Service Charge)
                 </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                <p className="text-xs text-muted mt-0.5">
                   Biaya tambahan untuk pelayanan kafe/resto (biasanya 5% atau sesuai kebijakan).
                 </p>
               </div>
@@ -186,14 +186,14 @@ export default function PengaturanPajakPage() {
                 type="checkbox"
                 checked={enableService}
                 onChange={(e) => setEnableService(e.target.checked)}
-                className="w-5 h-5 accent-emerald-600 rounded cursor-pointer"
+                className="w-5 h-5 accent-accent-text rounded cursor-pointer"
               />
             </div>
 
             {enableService && (
-              <div className="pt-3 border-t border-gray-100 dark:border-gray-800 space-y-3">
+              <div className="pt-3 border-t border-line space-y-3">
                 <div className="flex items-center gap-3">
-                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                  <label className="text-xs font-bold text-slate-300">
                     Persentase Layanan (%):
                   </label>
                   <input
@@ -202,20 +202,20 @@ export default function PengaturanPajakPage() {
                     max="100"
                     value={servicePercent}
                     onChange={(e) => setServicePercent(Number(e.target.value))}
-                    className="w-24 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 text-center text-sm font-black text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                    className="w-24 bg-card border border-line rounded-xl p-2.5 text-center text-sm font-black text-fg outline-none focus:border-accent"
                     required
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60">
-                  <span className="text-xs text-gray-600 dark:text-gray-300">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-card/60">
+                  <span className="text-xs text-slate-300">
                     Pajak juga dikenakan pada Service Charge?
                   </span>
                   <input
                     type="checkbox"
                     checked={taxAppliesToService}
                     onChange={(e) => setTaxAppliesToService(e.target.checked)}
-                    className="w-4 h-4 accent-emerald-600 rounded cursor-pointer"
+                    className="w-4 h-4 accent-accent-text rounded cursor-pointer"
                   />
                 </div>
               </div>
@@ -225,38 +225,38 @@ export default function PengaturanPajakPage() {
 
         {/* Live Simulator (1 Col) */}
         <div>
-          <div className="bg-white dark:bg-gray-900 p-5 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-sm sticky top-20 space-y-3">
-            <h4 className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
+          <div className=" bg-surface p-5 rounded-3xl border border-line shadow-sm sticky top-20 space-y-3">
+            <h4 className="text-xs font-black text-fg flex items-center gap-1.5 uppercase tracking-wider">
               <span>🧮</span>
               <span>Simulasi Hitungan Kasir</span>
             </h4>
-            <p className="text-[11px] text-gray-400">
+            <p className="text-[11px] text-muted">
               Contoh pesanan dengan subtotal Rp 100.000:
             </p>
 
-            <div className="space-y-2 text-xs pt-2 border-t border-gray-100 dark:border-gray-800">
-              <div className="flex justify-between text-gray-500">
+            <div className="space-y-2 text-xs pt-2 border-t border-line">
+              <div className="flex justify-between text-muted">
                 <span>Subtotal Pesanan:</span>
-                <span className="font-bold text-gray-800 dark:text-gray-200">Rp 100.000</span>
+                <span className="font-bold text-fg">Rp 100.000</span>
               </div>
 
               {enableService && (
-                <div className="flex justify-between text-gray-500">
+                <div className="flex justify-between text-muted">
                   <span>Service ({servicePercent}%):</span>
-                  <span className="font-bold text-gray-800 dark:text-gray-200">+Rp {simService.toLocaleString("id-ID")}</span>
+                  <span className="font-bold text-fg">+Rp {simService.toLocaleString("id-ID")}</span>
                 </div>
               )}
 
               {enableTax && (
-                <div className="flex justify-between text-gray-500">
+                <div className="flex justify-between text-muted">
                   <span>PBJT Restoran ({taxPercent}%):</span>
-                  <span className="font-bold text-gray-800 dark:text-gray-200">+Rp {simTax.toLocaleString("id-ID")}</span>
+                  <span className="font-bold text-fg">+Rp {simTax.toLocaleString("id-ID")}</span>
                 </div>
               )}
 
-              <div className="pt-2 border-t border-dashed border-gray-300 dark:border-gray-700 flex justify-between items-center text-sm">
-                <span className="font-bold text-gray-900 dark:text-white">Total Struk:</span>
-                <span className="font-black text-emerald-700 dark:text-emerald-400 text-base">
+              <div className="pt-2 border-t border-dashed border-line flex justify-between items-center text-sm">
+                <span className="font-bold text-fg">Total Struk:</span>
+                <span className="font-black text-accent-text text-base">
                   Rp {simTotal.toLocaleString("id-ID")}
                 </span>
               </div>
@@ -272,23 +272,23 @@ export default function PengaturanPajakPage() {
           onClick={() => setUnsavedConfirm(null)}
         >
           <div
-            className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-gray-700 text-center"
+            className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
+            <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
               ⚠️
             </div>
-            <h3 className="text-base font-black text-gray-900 dark:text-white mb-1">
+            <h3 className="text-base font-black text-fg mb-1">
               Perubahan Pajak Belum Disimpan
             </h3>
-            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed mb-5">
+            <p className="text-xs text-slate-300 leading-relaxed mb-5">
               Nilai persentase pajak atau biaya layanan yang baru saja Anda ubah belum disimpan. Yakin ingin keluar?
             </p>
             <div className="flex space-x-2">
               <button
                 type="button"
                 onClick={() => setUnsavedConfirm(null)}
-                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors"
+                className="flex-1 py-2.5 bg-line text-fg rounded-xl text-xs font-bold transition-colors"
               >
                 Lanjut Mengisi
               </button>

@@ -264,13 +264,13 @@ export default function AdminMejaPage() {
   return (
     <div className="space-y-5 animate-in fade-in duration-200 pb-24">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line">
         <div>
-          <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+          <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
             <span>🪑</span>
             <span>Kelola Meja ({tables.length})</span>
           </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          <p className="text-xs text-muted mt-0.5">
             Pengaturan tata letak dan nama meja pelanggan untuk Dine-in POS.
           </p>
         </div>
@@ -285,7 +285,7 @@ export default function AdminMejaPage() {
               setBulkCount("10");
               setIsBulkCreateOpen(true);
             }}
-            className="px-3.5 py-2.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 active:scale-95 text-blue-700 dark:text-blue-300 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all border border-blue-200 dark:border-blue-800"
+            className="px-3.5 py-2.5 bg-accent/60 hover:bg-accent-hover/60 active:scale-95 text-accent-text font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all border border-accent/40"
             title="Tambah banyak meja sekaligus (contoh: Meja 1 sampai 20)"
           >
             <span>⚡</span>
@@ -299,7 +299,7 @@ export default function AdminMejaPage() {
               setNewTableName(`Meja ${tables.length + 1}`);
               setIsAddOpen(true);
             }}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition-all"
+            className="px-4 py-2.5 bg-accent hover:bg-accent-hover active:scale-95 text-white font-black text-xs rounded-xl shadow-lg shadow-accent/20 flex items-center justify-center gap-1.5 transition-all"
           >
             <span className="text-base leading-none">+</span>
             <span>Tambah Meja</span>
@@ -309,18 +309,18 @@ export default function AdminMejaPage() {
 
       {/* Select All Toggle Bar */}
       {tables.length > 0 && (
-        <div className="flex items-center justify-between px-2 py-1 text-xs text-gray-600 dark:text-gray-400">
+        <div className="flex items-center justify-between px-2 py-1 text-xs text-muted">
           <label className="flex items-center gap-2 cursor-pointer font-bold select-none">
             <input
               type="checkbox"
               checked={tables.length > 0 && selectedTableIds.length === tables.length}
               onChange={handleSelectAll}
-              className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300"
+              className="w-4 h-4 rounded text-accent-text focus:ring-accent border-line"
             />
             <span>Pilih Semua Meja ({tables.length})</span>
           </label>
           {selectedTableIds.length > 0 && (
-            <span className="text-emerald-600 dark:text-emerald-400 font-black">
+            <span className=" text-accent-text font-black">
               {selectedTableIds.length} meja dipilih
             </span>
           )}
@@ -329,12 +329,12 @@ export default function AdminMejaPage() {
 
       {/* Grid of Tables */}
       {isLoading ? (
-        <div className="py-12 text-center text-gray-400 text-xs">Memuat daftar meja...</div>
+        <div className="py-12 text-center text-muted text-xs">Memuat daftar meja...</div>
       ) : tables.length === 0 ? (
-        <div className="py-12 text-center bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 p-8">
+        <div className="py-12 text-center bg-surface rounded-3xl border border-line p-8">
           <div className="text-4xl mb-2">🪑</div>
-          <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">Belum ada meja</h3>
-          <p className="text-xs text-gray-400 mt-1">
+          <h3 className="text-sm font-bold text-slate-300">Belum ada meja</h3>
+          <p className="text-xs text-muted mt-1">
             Klik tombol di atas untuk menambahkan meja atau gunakan fitur Tambah Massal.
           </p>
         </div>
@@ -349,10 +349,10 @@ export default function AdminMejaPage() {
               <div
                 key={table.id}
                 onClick={() => handleToggleSelectTable(table.id)}
-                className={`p-4 rounded-2xl sm:rounded-3xl bg-white dark:bg-gray-900 border shadow-sm flex flex-col justify-between cursor-pointer select-none transition-all ${
+                className={`p-4 rounded-2xl sm:rounded-3xl bg-surface border shadow-sm flex flex-col justify-between cursor-pointer select-none transition-all ${
                   isSelected
-                    ? "border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20 ring-2 ring-emerald-500/30"
-                    : "border-gray-200/80 dark:border-gray-800 hover:border-emerald-500/50"
+                    ? "border-accent bg-accent/20 ring-2 ring-accent/30"
+                    : " border-line hover:border-accent/50"
                 }`}
               >
                 <div>
@@ -362,7 +362,7 @@ export default function AdminMejaPage() {
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => {}} // handled by parent onClick
-                        className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 pointer-events-none"
+                        className="w-4 h-4 text-accent-text rounded border-line focus:ring-accent pointer-events-none"
                       />
                       <span className="text-lg">🪑</span>
                     </div>
@@ -370,26 +370,26 @@ export default function AdminMejaPage() {
                     <span
                       className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
                         isOpenBill
-                          ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
+                          ? " bg-rose-950/60 text-rose-300"
                           : isPaid
-                          ? "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
-                          : "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+                          ? " bg-accent/60 text-accent-text"
+                          : " bg-accent/60 text-accent-text"
                       }`}
                     >
                       {isOpenBill ? "TERISI" : isPaid ? "LUNAS" : "KOSONG"}
                     </span>
                   </div>
 
-                  <h4 className="font-black text-base text-gray-900 dark:text-white truncate">
+                  <h4 className="font-black text-base text-fg truncate">
                     {table.nomor}
                   </h4>
-                  <span className="text-[10px] text-gray-400 block mt-0.5">
+                  <span className="text-[10px] text-muted block mt-0.5">
                     ID #{table.id}
                   </span>
                 </div>
 
                 <div
-                  className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex gap-1.5"
+                  className="mt-4 pt-3 border-t border-line flex gap-1.5"
                   onClick={(e) => e.stopPropagation()} // don't toggle select
                 >
                   <button
@@ -398,14 +398,14 @@ export default function AdminMejaPage() {
                       setTableToEdit(table);
                       setTableEditName(table.nomor);
                     }}
-                    className="flex-1 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-[11px] font-bold transition-colors"
+                    className="flex-1 py-1.5 bg-card hover:bg-line text-slate-300 rounded-xl text-[11px] font-bold transition-colors"
                   >
                     Ubah
                   </button>
                   <button
                     type="button"
                     onClick={() => setTableToDelete(table)}
-                    className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xs font-bold transition-colors shrink-0"
+                    className="w-8 h-8 rounded-xl bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 flex items-center justify-center text-xs font-bold transition-colors shrink-0"
                     title="Hapus Meja"
                   >
                     🗑️
@@ -419,15 +419,15 @@ export default function AdminMejaPage() {
 
       {/* --- FLOATING BULK TOOLBAR (WHEN TABLES SELECTED) --- */}
       {selectedTableIds.length > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-[460px] z-40 bg-gray-900/95 dark:bg-gray-800/95 backdrop-blur-md text-white p-3.5 rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-700/80 animate-in slide-in-from-bottom-5 duration-200 flex flex-col gap-2">
-          <div className="flex items-center justify-between border-b border-gray-700/60 pb-2">
-            <span className="text-xs font-black text-emerald-400 flex items-center gap-1.5">
+        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-[460px] z-40 bg-card/95 backdrop-blur-md text-white p-3.5 rounded-2xl sm:rounded-3xl shadow-2xl border border-line/80 animate-in slide-in-from-bottom-5 duration-200 flex flex-col gap-2">
+          <div className="flex items-center justify-between border-b border-line/60 pb-2">
+            <span className="text-xs font-black text-accent-text flex items-center gap-1.5">
               <span>✓</span>
               <span>{selectedTableIds.length} Meja Dipilih</span>
             </span>
             <button
               onClick={() => setSelectedTableIds([])}
-              className="text-[11px] text-gray-400 hover:text-white font-bold transition-colors"
+              className="text-[11px] text-muted hover:text-white font-bold transition-colors"
             >
               Batal Pilih ✕
             </button>
@@ -441,7 +441,7 @@ export default function AdminMejaPage() {
                 setRenamePattern("Meja {N}");
                 setIsBulkRenameOpen(true);
               }}
-              className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              className="flex-1 py-2 bg-line hover:bg-slate-600 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
             >
               <span>✏️</span>
               <span>Rename Massal</span>
@@ -467,20 +467,20 @@ export default function AdminMejaPage() {
           onClick={() => setIsBulkCreateOpen(false)}
         >
           <div
-            className="bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-gray-100 dark:border-gray-800 animate-in slide-in-from-bottom duration-200"
+            className=" bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-line animate-in slide-in-from-bottom duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mb-3 sm:hidden" />
-            <h3 className="text-lg font-black text-gray-900 dark:text-white mb-1">
+            <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
+            <h3 className="text-lg font-black text-fg mb-1">
               ⚡ Tambah Meja Massal
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-xs text-muted mb-4">
               Buat serangkaian meja secara otomatis sekaligus.
             </p>
 
             <form onSubmit={handleBulkCreateSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-bold text-slate-300 mb-1">
                   Awalan / Prefix Meja:
                 </label>
                 <input
@@ -488,13 +488,13 @@ export default function AdminMejaPage() {
                   placeholder="Contoh: Meja , VIP , Lesehan "
                   value={bulkPrefix}
                   onChange={(e) => setBulkPrefix(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                  className="w-full bg-card border border-line rounded-xl p-2.5 text-xs font-bold text-fg outline-none focus:border-accent"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
                     Nomor Mulai:
                   </label>
                   <input
@@ -502,12 +502,12 @@ export default function AdminMejaPage() {
                     min="1"
                     value={bulkStartNum}
                     onChange={(e) => setBulkStartNum(e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                    className="w-full bg-card border border-line rounded-xl p-2.5 text-xs font-bold text-fg outline-none focus:border-accent"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
                     Jumlah Meja:
                   </label>
                   <input
@@ -516,18 +516,18 @@ export default function AdminMejaPage() {
                     max="100"
                     value={bulkCount}
                     onChange={(e) => setBulkCount(e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                    className="w-full bg-card border border-line rounded-xl p-2.5 text-xs font-bold text-fg outline-none focus:border-accent"
                     required
                   />
                 </div>
               </div>
 
               {/* Live Preview */}
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200/60 dark:border-emerald-900/40 text-xs">
-                <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block">
+              <div className="p-3 bg-accent/40 rounded-xl border border-accent/40 text-xs">
+                <span className="text-[10px] uppercase font-bold text-accent-text block">
                   Pratinjau Meja yang Akan Dibuat:
                 </span>
-                <span className="font-black text-emerald-800 dark:text-emerald-200">
+                <span className="font-black text-accent-text">
                   {bulkPrefix}
                   {bulkStartNum || "1"} s/d {bulkPrefix}
                   {(parseInt(bulkStartNum) || 1) + (parseInt(bulkCount) || 1) - 1} (
@@ -539,13 +539,13 @@ export default function AdminMejaPage() {
                 <button
                   type="button"
                   onClick={() => setIsBulkCreateOpen(false)}
-                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold"
+                  className="flex-1 py-3 bg-card text-slate-300 rounded-xl text-xs font-bold"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+                  className="flex-[2] py-3 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-black shadow-lg shadow-accent/20 active:scale-95 transition-all"
                 >
                   Buat {bulkCount} Meja
                 </button>
@@ -562,20 +562,20 @@ export default function AdminMejaPage() {
           onClick={() => setIsBulkRenameOpen(false)}
         >
           <div
-            className="bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-gray-100 dark:border-gray-800 animate-in slide-in-from-bottom duration-200"
+            className=" bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-line animate-in slide-in-from-bottom duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mb-3 sm:hidden" />
-            <h3 className="text-lg font-black text-gray-900 dark:text-white mb-1">
+            <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
+            <h3 className="text-lg font-black text-fg mb-1">
               ✏️ Rename Massal Meja
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-xs text-muted mb-4">
               Ubah format nama <strong>{selectedTableIds.length}</strong> meja terpilih secara berurutan.
             </p>
 
             <form onSubmit={handleBulkRenameSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-bold text-slate-300 mb-1">
                   Pola Penamaan (Gunakan `{"{N}"}` untuk nomor urut):
                 </label>
                 <input
@@ -583,15 +583,15 @@ export default function AdminMejaPage() {
                   placeholder="Contoh: Meja {N} atau Lesehan {N}"
                   value={renamePattern}
                   onChange={(e) => setRenamePattern(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                  className="w-full bg-card border border-line rounded-xl p-3 text-sm font-bold text-fg outline-none focus:border-accent"
                   autoFocus
                   required
                 />
               </div>
 
               {/* Preview */}
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-gray-400 block">
+              <div className="p-3 bg-card rounded-xl border border-line text-xs text-slate-300 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-muted block">
                   Contoh Hasil Penamaan:
                 </span>
                 <div>1. {renamePattern.replace("{N}", "1")}</div>
@@ -603,13 +603,13 @@ export default function AdminMejaPage() {
                 <button
                   type="button"
                   onClick={() => setIsBulkRenameOpen(false)}
-                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold"
+                  className="flex-1 py-3 bg-card text-slate-300 rounded-xl text-xs font-bold"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+                  className="flex-[2] py-3 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-black shadow-lg shadow-accent/20 active:scale-95 transition-all"
                 >
                   Terapkan Nama Baru
                 </button>
@@ -626,23 +626,23 @@ export default function AdminMejaPage() {
           onClick={() => setIsBulkDeleteOpen(false)}
         >
           <div
-            className="bg-white dark:bg-gray-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-gray-800 text-center"
+            className=" bg-surface rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
+            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
               🗑️
             </div>
-            <h3 className="text-base font-black text-gray-900 dark:text-white mb-1">
+            <h3 className="text-base font-black text-fg mb-1">
               Hapus {selectedTableIds.length} Meja Terpilih?
             </h3>
-            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed mb-4 text-left bg-gray-50 dark:bg-gray-800/60 p-3 rounded-xl border border-gray-100 dark:border-gray-700/60">
+            <p className="text-xs text-slate-300 leading-relaxed mb-4 text-left bg-card/60 p-3 rounded-xl border border-line/60">
               🛡️ <strong>Fitur Pengaman Tagihan:</strong> Meja yang sedang memiliki pesanan/tagihan aktif (Status Open Bill atau Terisi) tidak akan dapat dihapus untuk mencegah kehilangan data keuangan kasir.
             </p>
             <div className="flex space-x-2">
               <button
                 type="button"
                 onClick={() => setIsBulkDeleteOpen(false)}
-                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors"
+                className="flex-1 py-2.5 bg-card text-fg rounded-xl text-xs font-bold transition-colors"
               >
                 Batal
               </button>
@@ -665,20 +665,20 @@ export default function AdminMejaPage() {
           onClick={handleCloseAdd}
         >
           <div
-            className="bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-gray-100 dark:border-gray-800 animate-in slide-in-from-bottom duration-250"
+            className=" bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-line animate-in slide-in-from-bottom duration-250"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mb-3 sm:hidden" />
-            <h3 className="text-lg font-black text-gray-900 dark:text-white mb-1">
+            <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
+            <h3 className="text-lg font-black text-fg mb-1">
               ➕ Tambah Meja Baru
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-xs text-muted mb-4">
               Masukkan nomor atau nama meja makan pelanggan.
             </p>
 
             <form onSubmit={handleAddSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-bold text-slate-300 mb-1">
                   Nama / Nomor Meja:
                 </label>
                 <input
@@ -686,7 +686,7 @@ export default function AdminMejaPage() {
                   placeholder="Contoh: Meja 16 / VIP 1"
                   value={newTableName}
                   onChange={(e) => setNewTableName(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm font-semibold text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                  className="w-full bg-card border border-line rounded-xl p-3 text-sm font-semibold text-fg outline-none focus:border-accent"
                   autoFocus
                   required
                 />
@@ -696,13 +696,13 @@ export default function AdminMejaPage() {
                 <button
                   type="button"
                   onClick={handleCloseAdd}
-                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold transition-colors"
+                  className="flex-1 py-3 bg-card text-slate-300 rounded-xl text-xs font-bold transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+                  className="flex-[2] py-3 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-black shadow-lg shadow-accent/20 active:scale-95 transition-all"
                 >
                   Simpan Meja
                 </button>
@@ -719,27 +719,27 @@ export default function AdminMejaPage() {
           onClick={handleCloseEdit}
         >
           <div
-            className="bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-gray-100 dark:border-gray-800 animate-in slide-in-from-bottom duration-250"
+            className=" bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-line animate-in slide-in-from-bottom duration-250"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mb-3 sm:hidden" />
-            <h3 className="text-lg font-black text-gray-900 dark:text-white mb-1">
+            <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
+            <h3 className="text-lg font-black text-fg mb-1">
               ✏️ Ubah Nama Meja
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-xs text-muted mb-4">
               Ganti nama meja ID #{tableToEdit.id}.
             </p>
 
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-bold text-slate-300 mb-1">
                   Nama Meja:
                 </label>
                 <input
                   type="text"
                   value={tableEditName}
                   onChange={(e) => setTableEditName(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm font-semibold text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                  className="w-full bg-card border border-line rounded-xl p-3 text-sm font-semibold text-fg outline-none focus:border-accent"
                   autoFocus
                   required
                 />
@@ -749,13 +749,13 @@ export default function AdminMejaPage() {
                 <button
                   type="button"
                   onClick={handleCloseEdit}
-                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold transition-colors"
+                  className="flex-1 py-3 bg-card text-slate-300 rounded-xl text-xs font-bold transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+                  className="flex-[2] py-3 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-black shadow-lg shadow-accent/20 active:scale-95 transition-all"
                 >
                   Simpan Perubahan
                 </button>
@@ -772,23 +772,23 @@ export default function AdminMejaPage() {
           onClick={() => setTableToDelete(null)}
         >
           <div
-            className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-gray-700 text-center"
+            className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
+            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
               🗑️
             </div>
-            <h3 className="text-base font-black text-gray-900 dark:text-white mb-1">
+            <h3 className="text-base font-black text-fg mb-1">
               Hapus Meja Ini?
             </h3>
-            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed mb-5">
+            <p className="text-xs text-slate-300 leading-relaxed mb-5">
               Apakah Anda yakin ingin menghapus <strong>"{tableToDelete.nomor}"</strong>? Pastikan meja tidak sedang memiliki tagihan aktif.
             </p>
             <div className="flex space-x-2">
               <button
                 type="button"
                 onClick={() => setTableToDelete(null)}
-                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors"
+                className="flex-1 py-2.5 bg-line text-fg rounded-xl text-xs font-bold transition-colors"
               >
                 Batal
               </button>
@@ -811,23 +811,23 @@ export default function AdminMejaPage() {
           onClick={() => setUnsavedConfirm(null)}
         >
           <div
-            className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-gray-700 text-center"
+            className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
+            <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
               ⚠️
             </div>
-            <h3 className="text-base font-black text-gray-900 dark:text-white mb-1">
+            <h3 className="text-base font-black text-fg mb-1">
               Batalkan Perubahan?
             </h3>
-            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed mb-5">
+            <p className="text-xs text-slate-300 leading-relaxed mb-5">
               Input nama meja yang Anda ketik belum disimpan. Yakin ingin menutup?
             </p>
             <div className="flex space-x-2">
               <button
                 type="button"
                 onClick={() => setUnsavedConfirm(null)}
-                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors"
+                className="flex-1 py-2.5 bg-line text-fg rounded-xl text-xs font-bold transition-colors"
               >
                 Lanjut Mengisi
               </button>

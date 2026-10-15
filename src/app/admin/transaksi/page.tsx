@@ -485,13 +485,13 @@ export default function AdminTransaksiPage() {
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-16">
       {/* --- TOP BAR & ACTION TOOLS --- */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white dark:bg-gray-900 p-4 sm:p-5 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-3xl border border-line shadow-sm">
         <div>
-          <h2 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-lg font-black text-fg flex items-center gap-2">
             <span>🧾</span>
             <span>Riwayat Transaksi & Pembatalan</span>
           </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          <p className="text-xs text-muted mt-0.5">
             Daftar seluruh nota penjualan, verifikasi bukti bayar QRIS/Transfer, dan audit void.
           </p>
         </div>
@@ -499,14 +499,14 @@ export default function AdminTransaksiPage() {
         {/* Global Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Tab Filter */}
-          <div className="bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl flex items-center text-xs font-bold">
+          <div className=" bg-card p-1 rounded-2xl flex items-center text-xs font-bold">
             <button
               type="button"
               onClick={() => setActiveTab('orders')}
               className={`px-3 py-1.5 rounded-xl transition-all ${
                 activeTab === 'orders'
-                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm font-black"
-                  : "text-gray-500 dark:text-gray-400"
+                  ? " bg-line text-fg shadow-sm font-black"
+                  : " text-muted"
               }`}
             >
               Semua Nota ({orders.filter(o => o.status !== 'void').length})
@@ -517,11 +517,11 @@ export default function AdminTransaksiPage() {
               className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
                 activeTab === 'voids'
                   ? "bg-rose-600 text-white shadow-sm font-black"
-                  : "text-rose-600 dark:text-rose-400"
+                  : " text-rose-400"
               }`}
             >
               <span>Void & Refund</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200 text-[10px]">
+              <span className="px-1.5 py-0.2 rounded-full bg-rose-900 text-rose-200 text-[10px]">
                 {orders.filter(o => o.status === 'void').length}
               </span>
             </button>
@@ -532,7 +532,7 @@ export default function AdminTransaksiPage() {
             <button
               type="button"
               onClick={() => handleBulkExport('xlsx')}
-              className="px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
+              className="px-3 py-2 bg-accent/40 text-accent-text border border-accent/40 hover:bg-accent/15 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
             >
               <span>📤</span>
               <span>Export Excel</span>
@@ -541,7 +541,7 @@ export default function AdminTransaksiPage() {
             <button
               type="button"
               onClick={() => setIsHistoricalModalOpen(true)}
-              className="px-3 py-2 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
+              className="px-3 py-2 bg-accent/40 text-accent-text border border-accent/40 hover:bg-accent/15 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
             >
               <span>📥</span>
               <span>Import Historis</span>
@@ -550,7 +550,7 @@ export default function AdminTransaksiPage() {
             <button
               type="button"
               onClick={() => setIsBulkProofModalOpen(true)}
-              className="px-3 py-2 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
+              className="px-3 py-2 bg-amber-950/40 text-amber-300 border border-amber-800 hover:bg-amber-500/15 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
             >
               <span>📷</span>
               <span>Bulk Bukti Bayar</span>
@@ -560,17 +560,17 @@ export default function AdminTransaksiPage() {
       </div>
 
       {/* --- FILTER & SEARCH BAR --- */}
-      <div className="bg-white dark:bg-gray-900 p-4 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-3">
+      <div className=" bg-surface p-4 rounded-3xl border border-line shadow-sm space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
           {/* Search */}
           <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-xs">🔍</span>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari No. Nota, Tamu, Meja..."
-              className="w-full pl-9 pr-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-900 dark:text-white outline-none focus:border-emerald-500 font-semibold"
+              className="w-full pl-9 pr-3 py-2.5 bg-card border border-line rounded-xl text-xs text-fg outline-none focus:border-accent font-semibold"
             />
           </div>
 
@@ -579,7 +579,7 @@ export default function AdminTransaksiPage() {
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="w-full py-2.5 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 outline-none"
+              className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
             >
               <option value="all">📅 Semua Waktu</option>
               <option value="today">📅 Hari Ini</option>
@@ -593,7 +593,7 @@ export default function AdminTransaksiPage() {
             <select
               value={paymentFilter}
               onChange={(e) => setPaymentFilter(e.target.value)}
-              className="w-full py-2.5 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 outline-none"
+              className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
             >
               <option value="Semua">💳 Semua Pembayaran</option>
               <option value="Cash">💵 Tunai (Cash)</option>
@@ -607,7 +607,7 @@ export default function AdminTransaksiPage() {
             <select
               value={verificationFilter}
               onChange={(e) => setVerificationFilter(e.target.value)}
-              className="w-full py-2.5 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 outline-none"
+              className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
             >
               <option value="Semua">🔍 Semua Status Verifikasi</option>
               <option value="terverifikasi">✓ Terverifikasi</option>
@@ -621,7 +621,7 @@ export default function AdminTransaksiPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full py-2.5 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 outline-none"
+              className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
             >
               <option value="waktu_desc">⏱️ Waktu (Terbaru)</option>
               <option value="waktu_asc">⏱️ Waktu (Terlama)</option>
@@ -635,7 +635,7 @@ export default function AdminTransaksiPage() {
             <select
               value={itemsPerPage}
               onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              className="w-full py-2.5 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 outline-none"
+              className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
             >
               <option value={15}>📄 15 Nota / Hal</option>
               <option value={30}>📄 30 Nota / Hal</option>
@@ -647,19 +647,19 @@ export default function AdminTransaksiPage() {
 
         {/* Custom Date Range Inputs */}
         {dateFilter === "custom" && (
-          <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-2 pt-2 border-t border-line">
             <input
               type="date"
               value={customStartDate}
               onChange={(e) => setCustomStartDate(e.target.value)}
-              className="py-1.5 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold"
+              className="py-1.5 px-3 bg-card border border-line rounded-xl text-xs font-semibold"
             />
-            <span className="text-xs text-gray-400">s/d</span>
+            <span className="text-xs text-muted">s/d</span>
             <input
               type="date"
               value={customEndDate}
               onChange={(e) => setCustomEndDate(e.target.value)}
-              className="py-1.5 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold"
+              className="py-1.5 px-3 bg-card border border-line rounded-xl text-xs font-semibold"
             />
           </div>
         )}
@@ -667,9 +667,9 @@ export default function AdminTransaksiPage() {
 
       {/* --- STICKY BULK ACTION BAR JIKA ADA NOTA TERPILIH --- */}
       {selectedOrderIds.length > 0 && (
-        <div className="sticky top-16 z-20 bg-emerald-700 text-white p-3 sm:p-4 rounded-2xl shadow-xl flex items-center justify-between gap-3 animate-in slide-in-from-top-2 duration-200">
+        <div className="sticky top-16 z-20 bg-accent text-white p-3 sm:p-4 rounded-2xl shadow-xl flex items-center justify-between gap-3 animate-in slide-in-from-top-2 duration-200">
           <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center font-black text-xs">
+            <span className="w-6 h-6 rounded-lg bg-card/20 flex items-center justify-center font-black text-xs">
               {selectedOrderIds.length}
             </span>
             <span className="text-xs font-black">Nota Terpilih</span>
@@ -679,7 +679,7 @@ export default function AdminTransaksiPage() {
             <button
               type="button"
               onClick={handleBulkReprint}
-              className="px-3 py-1.5 bg-white text-emerald-800 hover:bg-emerald-50 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95"
+              className="px-3 py-1.5 bg-card text-accent-text hover:bg-accent/10 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95"
             >
               <span>🖨️</span>
               <span>Cetak Terpilih</span>
@@ -687,7 +687,7 @@ export default function AdminTransaksiPage() {
             <button
               type="button"
               onClick={() => handleBulkExport('xlsx')}
-              className="px-3 py-1.5 bg-emerald-800 text-white hover:bg-emerald-900 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
+              className="px-3 py-1.5 bg-accent text-white hover:bg-accent-hover rounded-xl text-xs font-bold transition-all flex items-center gap-1"
             >
               <span>📤</span>
               <span>Export (.xlsx)</span>
@@ -695,7 +695,7 @@ export default function AdminTransaksiPage() {
             <button
               type="button"
               onClick={() => setSelectedOrderIds([])}
-              className="px-2.5 py-1.5 text-emerald-200 hover:text-white text-xs font-semibold"
+              className="px-2.5 py-1.5 text-blue-200 hover:text-white text-xs font-semibold"
             >
               Batal
             </button>
@@ -705,23 +705,23 @@ export default function AdminTransaksiPage() {
 
       {/* --- TABLE / CARD LIST TRANSAKSI --- */}
       {isLoading ? (
-        <div className="p-12 text-center text-gray-400 text-xs">Memuat daftar transaksi...</div>
+        <div className="p-12 text-center text-muted text-xs">Memuat daftar transaksi...</div>
       ) : filteredOrders.length === 0 ? (
-        <div className="bg-white dark:bg-gray-900 rounded-3xl p-12 text-center border border-gray-100 dark:border-gray-800">
+        <div className=" bg-surface rounded-3xl p-12 text-center border border-line">
           <span className="text-4xl block mb-2">🧾</span>
-          <p className="text-sm font-bold text-gray-700 dark:text-gray-300">Tidak ada nota ditemukan</p>
-          <p className="text-xs text-gray-400 mt-1">Coba sesuaikan filter pencarian atau rentang tanggal Anda.</p>
+          <p className="text-sm font-bold text-slate-300">Tidak ada nota ditemukan</p>
+          <p className="text-xs text-muted mt-1">Coba sesuaikan filter pencarian atau rentang tanggal Anda.</p>
         </div>
       ) : (
         <div className="space-y-2.5">
           {/* Header Row untuk Select All */}
-          <div className="px-4 py-2 flex items-center justify-between text-xs text-gray-500 font-bold">
+          <div className="px-4 py-2 flex items-center justify-between text-xs text-muted font-bold">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={selectedOrderIds.length === filteredOrders.length && filteredOrders.length > 0}
                 onChange={handleToggleSelectAll}
-                className="w-4 h-4 accent-emerald-600 rounded"
+                className="w-4 h-4 accent-accent-text rounded"
               />
               <span>Pilih Semua ({filteredOrders.length} Nota)</span>
             </label>
@@ -743,12 +743,12 @@ export default function AdminTransaksiPage() {
             return (
               <div
                 key={order.id}
-                className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-gray-900 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-surface border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                   isVoid
-                    ? "border-rose-200 dark:border-rose-900/40 bg-rose-50/20"
+                    ? " border-rose-900/40 bg-rose-500/10"
                     : isSelected
-                    ? "border-emerald-500 ring-2 ring-emerald-500/20"
-                    : "border-gray-200/80 dark:border-gray-800 hover:border-emerald-500/40"
+                    ? "border-accent ring-2 ring-accent/20"
+                    : " border-line hover:border-accent/40"
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -756,12 +756,12 @@ export default function AdminTransaksiPage() {
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => handleToggleSelectOrder(order.id)}
-                    className="w-4 h-4 mt-1 accent-emerald-600 rounded cursor-pointer"
+                    className="w-4 h-4 mt-1 accent-accent-text rounded cursor-pointer"
                   />
 
                   <div>
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <span className="font-black text-sm text-gray-900 dark:text-white">
+                      <span className="font-black text-sm text-fg">
                         Nota #{order.id}
                       </span>
 
@@ -769,10 +769,10 @@ export default function AdminTransaksiPage() {
                       <span
                         className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
                           isVoid
-                            ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 line-through"
+                            ? " bg-rose-950/60 text-rose-300 line-through"
                             : order.status === "paid"
-                            ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
-                            : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300"
+                            ? " bg-accent/60 text-accent-text"
+                            : " bg-amber-950/60 text-amber-300"
                         }`}
                       >
                         {isVoid ? "VOID" : order.status === "paid" ? "LUNAS" : "OPEN BILL"}
@@ -783,10 +783,10 @@ export default function AdminTransaksiPage() {
                         <span
                           className={`text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
                             vStatus === "terverifikasi"
-                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                              ? " bg-accent/60 text-accent-text"
                               : vStatus === "menunggu_verifikasi"
-                              ? "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 animate-pulse"
-                              : "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                              ? " bg-amber-950/60 text-amber-300 animate-pulse"
+                              : " bg-rose-950/60 text-rose-300"
                           }`}
                         >
                           <span>{vStatus === "terverifikasi" ? "✓" : vStatus === "menunggu_verifikasi" ? "⏳" : "⚠️"}</span>
@@ -801,32 +801,32 @@ export default function AdminTransaksiPage() {
                       )}
 
                       {order.isHistorical && (
-                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-accent/60 text-accent-text">
                           Migrasi Historis
                         </span>
                       )}
 
-                      <span className="text-[10px] text-gray-400">{dateDisplay}</span>
+                      <span className="text-[10px] text-muted">{dateDisplay}</span>
                     </div>
 
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {order.tableName || (order.tableId ? `Meja ${order.tableId}` : order.orderType || "Takeaway")} • Tamu: <strong className="text-gray-800 dark:text-gray-200">{order.customerName || "Tamu"}</strong>
+                    <p className="text-xs text-muted">
+                      {order.tableName || (order.tableId ? `Meja ${order.tableId}` : order.orderType || "Takeaway")} • Tamu: <strong className=" text-fg">{order.customerName || "Tamu"}</strong>
                     </p>
 
                     {isVoid && order.voidReason && (
-                      <div className="mt-2 text-[11px] text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-2.5 py-1 rounded-lg">
+                      <div className="mt-2 text-[11px] text-rose-400 bg-rose-950/40 px-2.5 py-1 rounded-lg">
                         <span className="font-bold">Alasan Batal:</span> {order.voidReason}
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-0 border-gray-100 dark:border-gray-800">
+                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-0 border-line">
                   <div className="text-left sm:text-right">
-                    <span className={`text-base font-black ${isVoid ? "line-through text-gray-400" : "text-gray-900 dark:text-white"}`}>
+                    <span className={`text-base font-black ${isVoid ? "line-through text-muted" : " text-fg"}`}>
                       Rp {(order.total || 0).toLocaleString("id-ID")}
                     </span>
-                    <span className="text-[10px] text-gray-400 block font-semibold">
+                    <span className="text-[10px] text-muted block font-semibold">
                       {order.paymentMethod || "Cash"}
                     </span>
                   </div>
@@ -835,7 +835,7 @@ export default function AdminTransaksiPage() {
                     <button
                       type="button"
                       onClick={() => setReceiptData(order)}
-                      className="px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1"
+                      className="px-3 py-2 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors flex items-center gap-1"
                     >
                       <span>🔍</span>
                       <span>Rincian & Bukti</span>
@@ -851,7 +851,7 @@ export default function AdminTransaksiPage() {
                           setVoidPinInput("");
                           setVoidPinError("");
                         }}
-                        className="px-3 py-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-bold transition-colors"
+                        className="px-3 py-2 bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 rounded-xl text-xs font-bold transition-colors"
                       >
                         Void
                       </button>
@@ -864,8 +864,8 @@ export default function AdminTransaksiPage() {
 
           {/* Pagination Navigation Bar */}
           {itemsPerPage > 0 && totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-gray-200 dark:border-gray-800 text-xs">
-              <span className="text-gray-500 dark:text-gray-400 font-semibold">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-line text-xs">
+              <span className=" text-muted font-semibold">
                 Menampilkan {Math.min(startIndex + 1, sortedOrders.length)} - {Math.min(startIndex + itemsPerPage, sortedOrders.length)} dari {sortedOrders.length} nota
               </span>
 
@@ -874,7 +874,7 @@ export default function AdminTransaksiPage() {
                   type="button"
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 disabled:opacity-40 font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 transition-all active:scale-95"
+                  className="px-3 py-1.5 rounded-xl bg-card border border-line disabled:opacity-40 font-bold text-slate-300 hover:bg-card transition-all active:scale-95"
                 >
                   ← Sebelumnya
                 </button>
@@ -886,15 +886,15 @@ export default function AdminTransaksiPage() {
                     return (
                       <React.Fragment key={p}>
                         {prev && p - prev > 1 && (
-                          <span className="px-1 text-gray-400">...</span>
+                          <span className="px-1 text-muted">...</span>
                         )}
                         <button
                           type="button"
                           onClick={() => setCurrentPage(p)}
                           className={`w-8 h-8 rounded-xl font-black text-xs transition-all ${
                             currentPage === p
-                              ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
-                              : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100"
+                              ? "bg-accent text-white shadow-md shadow-accent/20"
+                              : " bg-card border border-line text-slate-300 hover:bg-card"
                           }`}
                         >
                           {p}
@@ -907,7 +907,7 @@ export default function AdminTransaksiPage() {
                   type="button"
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  className="px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 disabled:opacity-40 font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 transition-all active:scale-95"
+                  className="px-3 py-1.5 rounded-xl bg-card border border-line disabled:opacity-40 font-bold text-slate-300 hover:bg-card transition-all active:scale-95"
                 >
                   Berikutnya →
                 </button>
@@ -924,20 +924,20 @@ export default function AdminTransaksiPage() {
           onClick={() => setReceiptData(null)}
         >
           <div
-            className="bg-white dark:bg-gray-900 rounded-3xl p-5 sm:p-6 max-w-lg w-full shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[92vh] flex flex-col"
+            className=" bg-surface rounded-3xl p-5 sm:p-6 max-w-lg w-full shadow-2xl border border-line max-h-[92vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="font-black text-sm text-gray-900 dark:text-white flex items-center gap-2">
+            <div className="flex justify-between items-center pb-3 border-b border-line">
+              <h3 className="font-black text-sm text-fg flex items-center gap-2">
                 <span>Rincian Transaksi Nota #{receiptData.id}</span>
                 {receiptData.status === "void" && (
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">VOID</span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400">VOID</span>
                 )}
               </h3>
               <button
                 type="button"
                 onClick={() => setReceiptData(null)}
-                className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-800 text-xs font-bold"
+                className="w-7 h-7 rounded-full bg-card text-muted hover:text-fg text-xs font-bold"
               >
                 ✕
               </button>
@@ -945,17 +945,17 @@ export default function AdminTransaksiPage() {
 
             <div className="flex-1 overflow-y-auto py-3 space-y-3">
               {/* Thermal Slip Simulation */}
-              <div className="font-mono text-[11px] leading-tight space-y-2 bg-gray-50 dark:bg-gray-800/40 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800">
-                <div className="text-center font-bold text-xs pb-1 border-b border-dashed border-gray-300 dark:border-gray-700">
+              <div className="font-mono text-[11px] leading-tight space-y-2 bg-card/40 p-3.5 rounded-2xl border border-line">
+                <div className="text-center font-bold text-xs pb-1 border-b border-dashed border-line">
                   {storeSettings.storeName || "SakuNota POS"}
                 </div>
-                <div className="text-gray-500 text-[10px]">
+                <div className="text-muted text-[10px]">
                   Nota: #{receiptData.id} • {receiptData.tableName || receiptData.orderType}
                 </div>
-                <div className="text-gray-500 text-[10px]">
+                <div className="text-muted text-[10px]">
                   Tamu: {receiptData.customerName || "Tamu"} • {new Date(receiptData.createdAt).toLocaleString("id-ID")}
                 </div>
-                <div className="border-b border-dashed border-gray-300 dark:border-gray-700 pb-1" />
+                <div className="border-b border-dashed border-line pb-1" />
 
                 <div className="space-y-1">
                   {(receiptData.items || []).map((it: any, idx: number) => (
@@ -966,12 +966,12 @@ export default function AdminTransaksiPage() {
                   ))}
                 </div>
 
-                <div className="border-b border-dashed border-gray-300 dark:border-gray-700 pt-1" />
+                <div className="border-b border-dashed border-line pt-1" />
                 <div className="flex justify-between font-bold text-xs pt-1">
                   <span>TOTAL:</span>
                   <span>Rp {(receiptData.total || 0).toLocaleString("id-ID")}</span>
                 </div>
-                <div className="flex justify-between text-[10px] text-gray-500">
+                <div className="flex justify-between text-[10px] text-muted">
                   <span>Metode:</span>
                   <span>{receiptData.paymentMethod || "Cash"}</span>
                 </div>
@@ -979,9 +979,9 @@ export default function AdminTransaksiPage() {
 
               {/* SEKSI BUKTI PEMBAYARAN (QRIS / TRANSFER) */}
               {(receiptData.paymentMethod === "QRIS" || receiptData.paymentMethod === "Transfer" || receiptData.proofs?.length > 0) && (
-                <div className="p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
+                <div className="p-3.5 bg-card/60 rounded-2xl border border-line space-y-3">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-1.5">
+                    <h4 className="text-xs font-black text-fg flex items-center gap-1.5">
                       <span>📷</span>
                       <span>Bukti Pembayaran ({receiptData.paymentMethod})</span>
                     </h4>
@@ -989,13 +989,13 @@ export default function AdminTransaksiPage() {
                     {receiptData.proofs && receiptData.proofs.length > 0 ? (
                       <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
                         receiptData.proofs[0].status === 'terverifikasi'
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                          ? ' bg-accent text-accent-text'
+                          : ' bg-amber-950 text-amber-300'
                       }`}>
                         {receiptData.proofs[0].status === 'terverifikasi' ? '✓ Terverifikasi' : '⏳ Menunggu Verifikasi'}
                       </span>
                     ) : (
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400">
                         ⚠️ Belum Ada Bukti
                       </span>
                     )}
@@ -1004,12 +1004,12 @@ export default function AdminTransaksiPage() {
                   {/* List Bukti Pembayaran */}
                   {receiptData.proofs && receiptData.proofs.length > 0 ? (
                     receiptData.proofs.map((pr: any) => (
-                      <div key={pr.id} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 space-y-2.5">
+                      <div key={pr.id} className="p-3 bg-card rounded-xl border border-line space-y-2.5">
                         <div className="flex items-center gap-3">
                           {/* Thumbnail */}
                           <div
                             onClick={() => setZoomProofImage(pr.imageData)}
-                            className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0 cursor-pointer border border-gray-200 dark:border-gray-600 group"
+                            className="relative w-16 h-16 rounded-lg overflow-hidden bg-line flex-shrink-0 cursor-pointer border border-line group"
                             title="Klik untuk melihat foto penuh"
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1020,15 +1020,15 @@ export default function AdminTransaksiPage() {
                           </div>
 
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{pr.fileName}</p>
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                            <p className="text-xs font-bold text-fg truncate">{pr.fileName}</p>
+                            <p className="text-[10px] text-muted">
                               Ukuran: {formatBytes(pr.fileSize)} • Unggah: {new Date(pr.uploadedAt).toLocaleTimeString()}
                             </p>
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                              Oleh: <span className="font-semibold text-gray-700 dark:text-gray-300">{pr.uploadedBy}</span>
+                            <p className="text-[10px] text-muted">
+                              Oleh: <span className="font-semibold text-slate-300">{pr.uploadedBy}</span>
                             </p>
                             {pr.verifiedAt && (
-                              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                              <p className="text-[10px] text-accent-text font-bold">
                                 Diverifikasi oleh {pr.verifiedBy} pada {new Date(pr.verifiedAt).toLocaleTimeString()}
                               </p>
                             )}
@@ -1036,12 +1036,12 @@ export default function AdminTransaksiPage() {
                         </div>
 
                         {/* Action Verifikasi / Hapus */}
-                        <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                        <div className="flex items-center gap-2 pt-2 border-t border-line">
                           {pr.status !== 'terverifikasi' && (
                             <button
                               type="button"
                               onClick={() => handleVerifyProof(pr.id)}
-                              className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1"
+                              className="flex-1 py-1.5 px-3 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1"
                             >
                               <span>✓</span>
                               <span>Verifikasi Sekarang</span>
@@ -1050,7 +1050,7 @@ export default function AdminTransaksiPage() {
                           <button
                             type="button"
                             onClick={() => handleDeleteProof(pr.id)}
-                            className="py-1.5 px-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-bold hover:bg-rose-100 transition-colors"
+                            className="py-1.5 px-3 rounded-lg bg-rose-950/40 text-rose-400 text-xs font-bold hover:bg-rose-500/15 transition-colors"
                           >
                             Hapus Bukti
                           </button>
@@ -1071,12 +1071,12 @@ export default function AdminTransaksiPage() {
                         type="button"
                         onClick={() => detailProofInputRef.current?.click()}
                         disabled={isUploadingDetailProof}
-                        className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5"
+                        className="w-full py-2.5 px-4 bg-accent hover:bg-accent-hover active:scale-95 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-accent/20 flex items-center justify-center gap-1.5"
                       >
                         <span>📷</span>
                         <span>{isUploadingDetailProof ? "Mengompresi..." : "Upload Bukti Pembayaran Sekarang"}</span>
                       </button>
-                      <p className="text-[10px] text-gray-400 mt-1.5">
+                      <p className="text-[10px] text-muted mt-1.5">
                         Dapat diambil langsung dari kamera ponsel atau galeri file gambar.
                       </p>
                     </div>
@@ -1086,11 +1086,11 @@ export default function AdminTransaksiPage() {
             </div>
 
             {/* Print Buttons */}
-            <div className="space-y-2 pt-3 border-t border-gray-100 dark:border-gray-800">
+            <div className="space-y-2 pt-3 border-t border-line">
               <button
                 type="button"
                 onClick={() => handlePrint('all')}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
+                className="w-full py-2.5 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-bold shadow-md shadow-accent/20 active:scale-95 transition-all"
               >
                 🖨️ Cetak Ulang Struk Tamu
               </button>
@@ -1098,14 +1098,14 @@ export default function AdminTransaksiPage() {
                 <button
                   type="button"
                   onClick={() => handlePrint('food')}
-                  className="flex-1 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-800 dark:text-amber-300 rounded-xl text-[11px] font-bold"
+                  className="flex-1 py-2 bg-amber-950/40 hover:bg-amber-500/15 text-amber-300 rounded-xl text-[11px] font-bold"
                 >
                   🍳 Struk Dapur
                 </button>
                 <button
                   type="button"
                   onClick={() => handlePrint('drink')}
-                  className="flex-1 py-2 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-800 dark:text-blue-300 rounded-xl text-[11px] font-bold"
+                  className="flex-1 py-2 bg-accent/40 hover:bg-accent/15 text-accent-text rounded-xl text-[11px] font-bold"
                 >
                   ☕ Struk Bar
                 </button>
@@ -1132,7 +1132,7 @@ export default function AdminTransaksiPage() {
             <button
               type="button"
               onClick={() => setZoomProofImage(null)}
-              className="mt-4 px-6 py-2 rounded-full bg-white/20 hover:bg-white/30 text-white text-xs font-bold backdrop-blur-md"
+              className="mt-4 px-6 py-2 rounded-full bg-card/20 hover:bg-card/30 text-white text-xs font-bold backdrop-blur-md"
             >
               ✕ Tutup Pratinjau
             </button>
@@ -1147,46 +1147,46 @@ export default function AdminTransaksiPage() {
           onClick={() => setIsHistoricalModalOpen(false)}
         >
           <div
-            className="bg-white dark:bg-gray-900 rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[90vh] flex flex-col"
+            className=" bg-surface rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-line max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
+            <div className="flex justify-between items-center pb-3 border-b border-line">
+              <h3 className="text-sm font-black text-fg flex items-center gap-2">
                 <span>📥</span>
                 <span>Import Riwayat Transaksi Historis</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setIsHistoricalModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-800 text-xs font-bold"
+                className="w-7 h-7 rounded-full bg-card text-muted hover:text-fg text-xs font-bold"
               >
                 ✕
               </button>
             </div>
 
             <div className="py-4 overflow-y-auto space-y-4">
-              <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-2xl border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-300 text-xs leading-relaxed">
+              <div className="p-3 bg-accent/40 rounded-2xl border border-accent/40 text-accent-text text-xs leading-relaxed">
                 ℹ️ Transaksi historis akan diberi tanda <b>Migrasi Historis</b> untuk menjaga audit finansial tanpa mengubah shift laci kasir saat ini.
               </div>
 
               {/* Unduh Template */}
-              <div className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between p-3.5 bg-card/60 rounded-2xl border border-line">
                 <div>
-                  <h4 className="text-xs font-bold text-gray-900 dark:text-white">Unduh Template Resmi</h4>
-                  <p className="text-[10px] text-gray-500">Gunakan format kolom yang sudah disesuaikan</p>
+                  <h4 className="text-xs font-bold text-fg">Unduh Template Resmi</h4>
+                  <p className="text-[10px] text-muted">Gunakan format kolom yang sudah disesuaikan</p>
                 </div>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => downloadHistoricalTransactionTemplate('xlsx')}
-                    className="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-xs font-bold hover:bg-gray-100"
+                    className="px-3 py-1.5 bg-line border border-line rounded-xl text-xs font-bold hover:bg-card"
                   >
                     .xlsx
                   </button>
                   <button
                     type="button"
                     onClick={() => downloadHistoricalTransactionTemplate('csv')}
-                    className="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-xs font-bold hover:bg-gray-100"
+                    className="px-3 py-1.5 bg-line border border-line rounded-xl text-xs font-bold hover:bg-card"
                   >
                     .csv
                   </button>
@@ -1195,35 +1195,35 @@ export default function AdminTransaksiPage() {
 
               {/* Upload File */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
                   Pilih File (.xlsx / .csv):
                 </label>
                 <input
                   type="file"
                   accept=".xlsx, .xls, .csv"
                   onChange={handleHistoricalFileChange}
-                  className="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 dark:file:bg-emerald-950/60 dark:file:text-emerald-300"
+                  className="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold hover:file:bg-accent/15 file:bg-accent/60 file:text-accent-text"
                 />
               </div>
 
               {/* Preview Hasil Parsing */}
               {parsedHistorical && (
-                <div className="p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2">
+                <div className="p-3.5 bg-card/60 rounded-2xl border border-line space-y-2">
                   <div className="flex justify-between items-center text-xs font-bold">
-                    <span>Baris Valid: <strong className="text-emerald-600">{parsedHistorical.validTransactions.length}</strong></span>
-                    <span>Gagal: <strong className="text-rose-600">{parsedHistorical.invalidRows.length}</strong></span>
+                    <span>Baris Valid: <strong className="text-accent-text">{parsedHistorical.validTransactions.length}</strong></span>
+                    <span>Gagal: <strong className="text-rose-400">{parsedHistorical.invalidRows.length}</strong></span>
                   </div>
 
                   {parsedHistorical.validTransactions.length > 0 && (
-                    <div className="max-h-40 overflow-y-auto text-[11px] space-y-1 bg-white dark:bg-gray-900 p-2 rounded-xl">
+                    <div className="max-h-40 overflow-y-auto text-[11px] space-y-1 bg-surface p-2 rounded-xl">
                       {parsedHistorical.validTransactions.slice(0, 5).map((t: any, idx: number) => (
-                        <div key={idx} className="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-1">
+                        <div key={idx} className="flex justify-between border-b border-line pb-1">
                           <span>{t.receiptNumber} • {t.customerName}</span>
                           <span className="font-bold">Rp {t.total.toLocaleString('id-ID')} ({t.paymentMethod})</span>
                         </div>
                       ))}
                       {parsedHistorical.validTransactions.length > 5 && (
-                        <p className="text-[10px] text-gray-400 text-center pt-1">
+                        <p className="text-[10px] text-muted text-center pt-1">
                           ...dan {parsedHistorical.validTransactions.length - 5} transaksi lainnya
                         </p>
                       )}
@@ -1233,11 +1233,11 @@ export default function AdminTransaksiPage() {
               )}
             </div>
 
-            <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex gap-2">
+            <div className="pt-3 border-t border-line flex gap-2">
               <button
                 type="button"
                 onClick={() => setIsHistoricalModalOpen(false)}
-                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold"
+                className="flex-1 py-2.5 bg-card text-slate-300 rounded-xl text-xs font-bold"
               >
                 Batal
               </button>
@@ -1245,7 +1245,7 @@ export default function AdminTransaksiPage() {
                 type="button"
                 onClick={handleConfirmHistoricalImport}
                 disabled={!parsedHistorical || !parsedHistorical.validTransactions.length || isImportingHistorical}
-                className="flex-[2] py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20"
+                className="flex-[2] py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-accent/20"
               >
                 {isImportingHistorical ? "Mengimpor..." : `Impor ${parsedHistorical?.validTransactions?.length || 0} Transaksi`}
               </button>
@@ -1261,30 +1261,30 @@ export default function AdminTransaksiPage() {
           onClick={() => setIsBulkProofModalOpen(false)}
         >
           <div
-            className="bg-white dark:bg-gray-900 rounded-3xl p-6 max-w-xl w-full shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[90vh] flex flex-col"
+            className=" bg-surface rounded-3xl p-6 max-w-xl w-full shadow-2xl border border-line max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
+            <div className="flex justify-between items-center pb-3 border-b border-line">
+              <h3 className="text-sm font-black text-fg flex items-center gap-2">
                 <span>📷</span>
                 <span>Pencocokan Massal Bukti Bayar QRIS / Transfer</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setIsBulkProofModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-800 text-xs font-bold"
+                className="w-7 h-7 rounded-full bg-card text-muted hover:text-fg text-xs font-bold"
               >
                 ✕
               </button>
             </div>
 
             <div className="py-4 overflow-y-auto space-y-4">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-muted">
                 Pilih beberapa file gambar bukti transfer/QRIS sekaligus. SakuNota otomatis membaca nama file (misal: <code>INV-12.jpg</code>, <code>PAY-45.png</code>, atau <code>12.jpg</code>) untuk dicocokkan ke transaksi kasir.
               </p>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
                   Pilih Banyak Gambar Bukti Bayar:
                 </label>
                 <input
@@ -1293,12 +1293,12 @@ export default function AdminTransaksiPage() {
                   accept="image/jpeg,image/png,image/webp"
                   onChange={handleBulkProofFilesChange}
                   disabled={isMatchingProofs}
-                  className="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-50 file:text-amber-800 hover:file:bg-amber-100 dark:file:bg-amber-950/60 dark:file:text-amber-300"
+                  className="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold hover:file:bg-amber-500/15 file:bg-amber-950/60 file:text-amber-300"
                 />
               </div>
 
               {isMatchingProofs && (
-                <div className="text-center py-6 text-xs text-gray-500 font-semibold animate-pulse">
+                <div className="text-center py-6 text-xs text-muted font-semibold animate-pulse">
                   ⏳ Sedang membaca dan mencocokkan gambar ke nota transaksi...
                 </div>
               )}
@@ -1308,8 +1308,8 @@ export default function AdminTransaksiPage() {
                   <div className="flex justify-between items-center text-xs font-bold px-1">
                     <span>Hasil Pencocokan:</span>
                     <span>
-                      <strong className="text-emerald-600">{matchedProofResults.filter(m => m.matched).length} Cocok</strong> •{" "}
-                      <strong className="text-rose-600">{matchedProofResults.filter(m => !m.matched).length} Tidak Cocok</strong>
+                      <strong className="text-accent-text">{matchedProofResults.filter(m => m.matched).length} Cocok</strong> •{" "}
+                      <strong className="text-rose-400">{matchedProofResults.filter(m => !m.matched).length} Tidak Cocok</strong>
                     </span>
                   </div>
 
@@ -1319,8 +1319,8 @@ export default function AdminTransaksiPage() {
                         key={idx}
                         className={`p-3 rounded-xl border flex items-center gap-3 text-xs ${
                           m.matched
-                            ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
-                            : "bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800"
+                            ? " bg-accent/20 border-accent/40"
+                            : " bg-rose-950/20 border-rose-800"
                         }`}
                       >
                         {/* Thumbnail */}
@@ -1328,14 +1328,14 @@ export default function AdminTransaksiPage() {
                         <img src={m.file.imageData} alt={m.file.fileName} className="w-10 h-10 object-cover rounded-lg flex-shrink-0" />
 
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-900 dark:text-white truncate">{m.file.fileName}</p>
-                          <p className={`text-[10px] ${m.matched ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"}`}>
+                          <p className="font-bold text-fg truncate">{m.file.fileName}</p>
+                          <p className={`text-[10px] ${m.matched ? " text-accent-text" : " text-rose-300"}`}>
                             {m.reason}
                           </p>
                         </div>
 
                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${
-                          m.matched ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                          m.matched ? "bg-accent/15 text-accent-text" : "bg-rose-500/15 text-rose-400"
                         }`}>
                           {m.matched ? "✓ Cocok" : "✕ Gagal"}
                         </span>
@@ -1346,11 +1346,11 @@ export default function AdminTransaksiPage() {
               )}
             </div>
 
-            <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex gap-2">
+            <div className="pt-3 border-t border-line flex gap-2">
               <button
                 type="button"
                 onClick={() => setIsBulkProofModalOpen(false)}
-                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold"
+                className="flex-1 py-2.5 bg-card text-slate-300 rounded-xl text-xs font-bold"
               >
                 Batal
               </button>
@@ -1358,7 +1358,7 @@ export default function AdminTransaksiPage() {
                 type="button"
                 onClick={handleConfirmBulkProofs}
                 disabled={matchedProofResults.filter(m => m.matched).length === 0 || isSavingBulkProofs}
-                className="flex-[2] py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20"
+                className="flex-[2] py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-accent/20"
               >
                 {isSavingBulkProofs ? "Menyimpan..." : `Simpan ${matchedProofResults.filter(m => m.matched).length} Bukti Cocok`}
               </button>
@@ -1374,22 +1374,22 @@ export default function AdminTransaksiPage() {
           onClick={() => setVoidTargetOrder(null)}
         >
           <div
-            className="bg-white dark:bg-gray-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-gray-800"
+            className=" bg-surface rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
+            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
               ⚠️
             </div>
-            <h3 className="text-base font-black text-gray-900 dark:text-white text-center">
+            <h3 className="text-base font-black text-fg text-center">
               Batalkan Nota #{voidTargetOrder.id}?
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-1 mb-4">
+            <p className="text-xs text-muted text-center mt-1 mb-4">
               Nilai: <strong>Rp {(voidTargetOrder.total || 0).toLocaleString("id-ID")}</strong> ({voidTargetOrder.paymentMethod})
             </p>
 
             <form onSubmit={handleProcessVoidSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">
                   Alasan Pembatalan (Audit):
                 </label>
                 <input
@@ -1397,18 +1397,18 @@ export default function AdminTransaksiPage() {
                   value={voidReason}
                   onChange={(e) => setVoidReason(e.target.value)}
                   placeholder="Contoh: Salah input meja / Menu tumpah"
-                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 text-xs text-gray-900 dark:text-white outline-none focus:border-rose-500 font-semibold"
+                  className="w-full bg-card border border-line rounded-xl p-2.5 text-xs text-fg outline-none focus:border-rose-500 font-semibold"
                   required
                 />
               </div>
 
               {voidTargetOrder.paymentMethod === "Cash" && (
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200/60 dark:border-amber-800/60 flex items-center justify-between">
+                <div className="p-3 bg-amber-950/40 rounded-xl border border-amber-800/60 flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-amber-900 dark:text-amber-200 block">
+                    <span className="text-xs font-bold text-amber-200 block">
                       Kembalikan Uang Kas?
                     </span>
-                    <span className="text-[10px] text-amber-700 dark:text-amber-400">
+                    <span className="text-[10px] text-amber-400">
                       Mengurangi expected cash laci kasir
                     </span>
                   </div>
@@ -1422,7 +1422,7 @@ export default function AdminTransaksiPage() {
               )}
 
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">
                   PIN Otorisasi Admin:
                 </label>
                 <input
@@ -1434,12 +1434,12 @@ export default function AdminTransaksiPage() {
                     setVoidPinError("");
                   }}
                   placeholder="Ketik PIN..."
-                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 text-sm font-black text-center text-gray-900 dark:text-white outline-none focus:border-rose-500 tracking-widest"
+                  className="w-full bg-card border border-line rounded-xl p-2.5 text-sm font-black text-center text-fg outline-none focus:border-rose-500 tracking-widest"
                   autoFocus
                   required
                 />
                 {voidPinError && (
-                  <p className="text-[10px] font-bold text-rose-600 mt-1">{voidPinError}</p>
+                  <p className="text-[10px] font-bold text-rose-400 mt-1">{voidPinError}</p>
                 )}
               </div>
 
@@ -1447,7 +1447,7 @@ export default function AdminTransaksiPage() {
                 <button
                   type="button"
                   onClick={() => setVoidTargetOrder(null)}
-                  className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold transition-colors"
+                  className="flex-1 py-2.5 bg-card text-slate-300 rounded-xl text-xs font-bold transition-colors"
                 >
                   Batal
                 </button>

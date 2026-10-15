@@ -94,10 +94,10 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
             onClick={() => removeToast(t.id)}
             className={`pointer-events-auto cursor-pointer p-3.5 rounded-2xl shadow-xl border flex items-center gap-3 animate-in slide-in-from-bottom-2 fade-in duration-200 ${
               t.type === 'success'
-                ? 'bg-emerald-900/90 border-emerald-700 text-white dark:bg-emerald-950 dark:border-emerald-600'
+                ? ' text-white bg-accent border-accent'
                 : t.type === 'error'
-                ? 'bg-rose-900/90 border-rose-700 text-white dark:bg-rose-950 dark:border-rose-600'
-                : 'bg-gray-900/90 border-gray-700 text-white dark:bg-gray-800 dark:border-gray-600'
+                ? ' text-white bg-rose-950 border-rose-600'
+                : ' text-white bg-card border-line'
             }`}
           >
             <span className="text-lg">
