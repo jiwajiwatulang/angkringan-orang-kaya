@@ -1,11 +1,7 @@
-// SakuNota POS — Service Worker v2.5.0
-// Fail-Closed Atomic Precache & Route Isolation for Genuine Offline Operation
+// SakuNota POS — Service Worker v2.6.0
+// Resilient Offline-First Precache, CSS Fallback, & Multi-Route Isolation
 
-const CACHE_NAME = 'sakunota-pos-v2.5.0';
-
-// PRECACHE_ASSETS dikelola secara atomik dan terverifikasi melalui offline-manifest.json
-// Rute wajib ter-cache mencakup: /pos, /admin, /admin/menu, /admin/transaksi, /admin/shift, /admin/meja, /admin/pengaturan/tentang, /admin/pengaturan/printer, /admin/pengaturan/data
-const PRECACHE_ASSETS = '/offline-manifest.json';
+const CACHE_NAME = 'sakunota-pos-v2.6.0-1792054954956';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -13,22 +9,47 @@ self.addEventListener('install', (event) => {
       const cache = await caches.open(CACHE_NAME);
 
       // Ambil manifes lengkap dari build Next.js
-      const manifestRes = await fetch('/offline-manifest.json', { cache: 'no-cache' });
-      if (!manifestRes.ok) {
-        throw new Error(`[SW] Gagal mengunduh offline-manifest.json (HTTP ${manifestRes.status}). Instalasi dibatalkan untuk mempertahankan versi aktif.`);
+      let manifest = null;
+      try {
+        const manifestRes = await fetch('/offline-manifest.json', { cache: 'no-cache' });
+        if (manifestRes.ok) {
+          manifest = await manifestRes.json();
+        }
+      } catch (err) {
+        console.warn('[SW] Gagal fetch offline-manifest.json:', err);
       }
 
-      const manifest = await manifestRes.json();
-      if (!Array.isArray(manifest.allUrls) || manifest.allUrls.length === 0) {
-        throw new Error('[SW] offline-manifest.json kosong atau tidak valid. Instalasi dibatalkan.');
+      if (!manifest || !Array.isArray(manifest.allUrls) || manifest.allUrls.length === 0) {
+        throw new Error('[SW] offline-manifest.json kosong atau tidak valid.');
       }
 
-      // Precache SEMUA rute HTML, JS chunks, CSS, dan font WOFF2 secara atomik.
-      // Jika salah satu file gagal diunduh (404/network fail), cache.addAll() akan throw error
-      // sehingga browser membatalkan aktivasi SW baru ini dan tetap mempertahankan SW lama yang berfungsi.
-      await cache.addAll(manifest.allUrls);
+      const urls = manifest.allUrls;
+      let cachedCount = 0;
 
-      // Simpan manifes ke cache untuk verifikasi client-side saat offline
+      // Unduh setiap file dan simpan ke CacheStorage
+      await Promise.all(
+        urls.map(async (url) => {
+          try {
+            const res = await fetch(url, { cache: 'no-cache' });
+            if (res.ok) {
+              await cache.put(url, res.clone());
+              // Untuk rute tanpa ekstensi (misal /pos, /admin), simpan juga alias .html
+              if (!url.includes('.') && url !== '/') {
+                await cache.put(`${url}.html`, res.clone());
+              }
+              cachedCount++;
+            } else {
+              console.warn(`[SW] Precache non-200 dilewati: ${url} (HTTP ${res.status})`);
+            }
+          } catch (fetchErr) {
+            console.warn(`[SW] Gagal mengunduh aset: ${url}`, fetchErr);
+          }
+        })
+      );
+
+      console.log(`[SW] Precache selesai: ${cachedCount}/${urls.length} tersimpan di ${CACHE_NAME}`);
+
+      // Simpan manifest itu sendiri ke cache
       await cache.put('/offline-manifest.json', new Response(JSON.stringify(manifest), {
         headers: { 'Content-Type': 'application/json' }
       }));
@@ -44,7 +65,7 @@ self.addEventListener('activate', (event) => {
       const keys = await caches.keys();
       await Promise.all(
         keys.map((key) => {
-          // Hanya hapus cache lama milik SakuNota, jangan hapus cache lain yang ada di origin
+          // Bersihkan cache lama milik SakuNota
           if (key.startsWith('sakunota-pos-') && key !== CACHE_NAME) {
             console.log('[SW] Membersihkan cache lama SakuNota:', key);
             return caches.delete(key);
@@ -66,70 +87,133 @@ self.addEventListener('fetch', (event) => {
   // Abaikan scheme selain http/https
   if (!url.protocol.startsWith('http')) return;
 
-  // 1. Static Assets Next.js & Media: CacheFirst dengan ignoreSearch
+  // 1. Static Assets (CSS, JS Chunks, Fonts, Images)
   if (
     url.pathname.startsWith('/_next/static/') ||
-    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|ico|woff2|woff|ttf)$/i)
+    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|ico|woff2|woff|ttf|css|js)$/i)
   ) {
     event.respondWith(
-      caches.match(req, { ignoreSearch: true }).then((cached) => {
+      (async () => {
+        // Coba match request penuh
+        let cached = await caches.match(req, { ignoreSearch: true });
         if (cached) return cached;
-        return fetch(req).then((res) => {
-          if (!res || res.status !== 200 || res.type !== 'basic') return res;
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
-          return res;
-        }).catch(() => caches.match('/icon.png'));
-      })
+
+        // Coba match pathname
+        cached = await caches.match(url.pathname, { ignoreSearch: true });
+        if (cached) return cached;
+
+        // Jika online, fetch dari jaringan
+        try {
+          const networkRes = await fetch(req);
+          if (networkRes && networkRes.status === 200) {
+            const clone = networkRes.clone();
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(req, clone);
+          }
+          return networkRes;
+        } catch (_) {
+          // OFFLINE FALLBACK KHUSUS CSS:
+          // Jika file CSS dengan hash spesifik tidak ditemukan di cache (misal beda build hash),
+          // gunakan file CSS apa pun yang ada di cache agar halaman TIDAK PERNAH tampil polosan (unstyled)!
+          if (url.pathname.endsWith('.css') || url.pathname.includes('/css/')) {
+            const cache = await caches.open(CACHE_NAME);
+            const keys = await cache.keys();
+            const cssKey = keys.find((k) => k.url.includes('.css'));
+            if (cssKey) {
+              const fallbackCss = await cache.match(cssKey);
+              if (fallbackCss) return fallbackCss;
+            }
+          }
+
+          // Fallback untuk icon gambar
+          if (url.pathname.match(/\.(png|jpg|jpeg|svg|webp|ico)$/i)) {
+            const iconFallback = await caches.match('/icon.png');
+            if (iconFallback) return iconFallback;
+          }
+
+          return new Response('Asset not found in offline cache', {
+            status: 404,
+            statusText: 'Not Found',
+            headers: { 'Content-Type': 'text/plain' },
+          });
+        }
+      })()
     );
     return;
   }
 
-  // 2. Navigation / Halaman HTML Kasir: NetworkFirst dengan Fallback Eksak
+  // 2. Next.js Client-Side Router Data (?_rsc=...)
+  if (url.searchParams.has('_rsc')) {
+    event.respondWith(
+      (async () => {
+        let cached = await caches.match(req);
+        if (cached) return cached;
+
+        try {
+          return await fetch(req);
+        } catch (_) {
+          // Saat offline, jika Next.js meminta RSC payload dan tidak ada di cache,
+          // kembalikan 204 No Content agar Next.js Router fallback ke hard navigation
+          return new Response(null, { status: 204 });
+        }
+      })()
+    );
+    return;
+  }
+
+  // 3. Navigation / Halaman HTML (req.mode === 'navigate' atau request text/html)
   if (req.mode === 'navigate' || req.headers.get('accept')?.includes('text/html')) {
     event.respondWith(
-      fetch(req).then((networkRes) => {
-        if (networkRes && networkRes.status === 200) {
-          const clone = networkRes.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+      (async () => {
+        // Jika online, utamakan network lalu cache hasilnya
+        try {
+          const networkRes = await fetch(req);
+          if (networkRes && networkRes.status === 200) {
+            const clone = networkRes.clone();
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(req, clone);
+          }
+          return networkRes;
+        } catch (_) {
+          // Saat OFFLINE, ambil dari cache
+          const cache = await caches.open(CACHE_NAME);
+          const cleanPath = url.pathname.replace(/\/$/, '') || '/';
+
+          // 1. Cek exact match
+          let cached = await cache.match(req, { ignoreSearch: true });
+          if (cached) return cached;
+
+          // 2. Cek cleanPath
+          cached = await cache.match(cleanPath, { ignoreSearch: true });
+          if (cached) return cached;
+
+          // 3. Cek cleanPath.html
+          cached = await cache.match(`${cleanPath}.html`, { ignoreSearch: true });
+          if (cached) return cached;
+
+          // 4. Fallback khusus untuk kasir POS (/pos)
+          if (cleanPath.startsWith('/pos')) {
+            const posFallback = (await cache.match('/pos', { ignoreSearch: true })) ||
+                                (await cache.match('/pos.html', { ignoreSearch: true }));
+            if (posFallback) return posFallback;
+          }
+
+          // 5. Fallback untuk Admin (/admin/...)
+          if (cleanPath.startsWith('/admin')) {
+            const adminFallback = (await cache.match('/admin', { ignoreSearch: true })) ||
+                                  (await cache.match('/admin.html', { ignoreSearch: true }));
+            if (adminFallback) return adminFallback;
+          }
+
+          // 6. Terakhir: kembalikan homepage /
+          return (await cache.match('/')) || new Response('Offline page not found', { status: 503 });
         }
-        return networkRes;
-      }).catch(async () => {
-        const cache = await caches.open(CACHE_NAME);
-        
-        // 1. Coba exact URL (dengan ignoreSearch untuk ?tab=menu, ?table=3, dll)
-        let cached = await cache.match(req, { ignoreSearch: true });
-        if (cached) return cached;
-
-        const cleanPath = url.pathname.replace(/\/$/, '') || '/';
-        
-        // 2. Coba pathname tanpa trailing slash
-        cached = await cache.match(cleanPath, { ignoreSearch: true });
-        if (cached) return cached;
-
-        // 3. Coba pathname dengan ekstensi .html
-        cached = await cache.match(`${cleanPath}.html`, { ignoreSearch: true });
-        if (cached) return cached;
-
-        // 4. Fallback khusus untuk kasir POS (/pos)
-        if (cleanPath.startsWith('/pos')) {
-          const posFallback = await cache.match('/pos', { ignoreSearch: true }) || 
-                              await cache.match('/pos.html', { ignoreSearch: true });
-          if (posFallback) return posFallback;
-        }
-
-        // 5. JANGAN sembarang lempar subhalaman admin yang hilang ke /admin dashboard!
-        // Berikan halaman 404 ter-cache agar pengguna mengetahui rute belum tersimpan
-        const notFound = await cache.match('/404.html') || await cache.match('/_not-found.html');
-        if (notFound) return notFound;
-
-        return cache.match('/');
-      })
+      })()
     );
     return;
   }
 
-  // 3. Request Lainnya (JSON manifest, dll): StaleWhileRevalidate
+  // 4. Request lainnya: StaleWhileRevalidate
   event.respondWith(
     caches.match(req, { ignoreSearch: true }).then((cached) => {
       const fetchPromise = fetch(req).then((networkRes) => {

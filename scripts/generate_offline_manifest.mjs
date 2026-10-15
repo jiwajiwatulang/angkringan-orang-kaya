@@ -39,18 +39,21 @@ const validFiles = allFiles.filter(f => {
   return true;
 });
 
-// Separate into routes and static assets
+// Separate into clean canonical routes and static assets
 const routes = new Set();
 const staticAssets = [];
 
 for (const file of validFiles) {
   if (file.path.endsWith('.html')) {
-    // Add raw html
-    routes.add(file.path);
-    // Add clean route without .html
     let cleanRoute = file.path.replace(/\.html$/, '');
     if (cleanRoute === '/index') cleanRoute = '/';
     if (cleanRoute.endsWith('/index')) cleanRoute = cleanRoute.replace(/\/index$/, '');
+    
+    // Ignore internal Next.js error fallback pages from precache routes
+    if (cleanRoute === '/404' || cleanRoute === '/_not-found') {
+      continue;
+    }
+    
     routes.add(cleanRoute);
   } else {
     staticAssets.push(file.path);
@@ -64,8 +67,11 @@ const allPrecachableUrls = Array.from(new Set([...routesList, ...staticAssetsLis
 
 const totalBytes = validFiles.reduce((acc, cur) => acc + cur.size, 0);
 
+const buildTimestamp = Date.now();
+const cacheVersion = `sakunota-pos-v2.6.0-${buildTimestamp}`;
+
 const manifestData = {
-  version: `sakunota-${Date.now()}`,
+  version: cacheVersion,
   generatedAt: new Date().toISOString(),
   totalFiles: allPrecachableUrls.length,
   totalBytes,
@@ -82,4 +88,16 @@ if (fs.existsSync(publicDir)) {
   fs.writeFileSync(path.join(publicDir, 'offline-manifest.json'), jsonContent);
 }
 
-console.log(`[offline-manifest] Berhasil dibuat: ${allPrecachableUrls.length} file terdaftar (${manifestData.totalSizeFormatted}).`);
+// Auto-update CACHE_NAME in public/sw.js and out/sw.js so every build triggers SW update in client browsers
+const updateSwCacheName = (swPath) => {
+  if (fs.existsSync(swPath)) {
+    let content = fs.readFileSync(swPath, 'utf8');
+    content = content.replace(/const CACHE_NAME = 'sakunota-pos-[^']+';/, `const CACHE_NAME = '${cacheVersion}';`);
+    fs.writeFileSync(swPath, content, 'utf8');
+  }
+};
+
+updateSwCacheName(path.join(publicDir, 'sw.js'));
+updateSwCacheName(path.join(outDir, 'sw.js'));
+
+console.log(`[offline-manifest] Berhasil dibuat: ${allPrecachableUrls.length} file terdaftar (${manifestData.totalSizeFormatted}), Cache: ${cacheVersion}`);
