@@ -7,8 +7,14 @@ import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
 import { App } from '@capacitor/app';
 import { getStoreSettings, loadStoreSettingsAsync, subscribeStoreSettings, StoreSettings } from '@/lib/settings';
 import { getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement, recordPayment, refundPartialPayment, getOrderPayments, exportAllData } from '@/lib/api';
-import { generateZReportReceipt } from '@/lib/receipt';
-import { generateEscPosReceipt, generatePartialPaymentReceipt } from '@/lib/receipt';
+import { 
+  generateEscPosReceipt, 
+  generatePartialPaymentReceipt, 
+  generateReceiptHtml, 
+  generateZReportReceipt, 
+  generateZReportHtml, 
+  executePrintDocument 
+} from '@/lib/receipt';
 import PaymentProofUpload from '@/components/PaymentProofUpload';
 import OnboardingWizard from '@/components/OnboardingWizard';
 
@@ -776,17 +782,16 @@ export default function POSPage() {
       setIsCloseShiftModalOpen(false);
       setBlindCloseResult(closed);
 
-      // Otomatis cetak struk Z-Report
-      const zReceiptText = generateZReportReceipt(closed, storeSettings);
+      // Otomatis cetak struk Z-Report terisolasi
       try {
-        const mac = localStorage.getItem('bt_printer_mac');
-        const isAndroid = /android/i.test(navigator.userAgent);
-        if (isAndroid && mac) {
-          try { await BluetoothSerial.connect({ address: mac }); } catch(e) {}
-          await BluetoothSerial.write({ address: mac, value: zReceiptText });
-        } else {
-          await Printer.printWebView({ name: 'Z_Report_Tutup_Shift' });
-        }
+        const escposText = generateZReportReceipt(closed, storeSettings);
+        const htmlContent = generateZReportHtml(closed, storeSettings);
+        await executePrintDocument({
+          title: 'Z_Report_Tutup_Shift',
+          escposText,
+          htmlContent,
+          settings: storeSettings
+        });
       } catch (printErr) {
         console.warn("Print Z-report fallback:", printErr);
       }
@@ -843,24 +848,32 @@ export default function POSPage() {
       alert(e.message || "Gagal mengosongkan meja");
     }
   };
-  const printReceiptText = async (rawText: string, jobName: string = 'Struk') => {
+  const printReceiptText = async (rawText: string, jobName: string = 'Struk', htmlContent?: string) => {
     try {
-      const isAndroid = /android/i.test(navigator.userAgent);
-      const mac = localStorage.getItem('bt_printer_mac');
-      if (isAndroid && mac) {
-        try { await BluetoothSerial.connect({ address: mac }); } catch(e) {}
-        await BluetoothSerial.write({ address: mac, value: rawText });
-        alert("Berhasil dicetak langsung ke Printer Bluetooth!");
-      } else {
-        await Printer.printWebView({ name: jobName });
-      }
+      const is80 = storeSettings.paperWidth === '80mm';
+      const defaultHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            @page { margin: 0; size: ${is80 ? '80mm' : '58mm'} auto; }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { font-family: 'Courier New', Courier, monospace; font-size: ${is80 ? '13px' : '11px'}; line-height: 1.25; background: #fff !important; color: #000 !important; width: ${is80 ? '72mm' : '52mm'}; margin: 0 auto; padding: 8px 4px; white-space: pre-wrap; }
+          </style>
+        </head>
+        <body>${rawText}</body>
+        </html>
+      `;
+      await executePrintDocument({
+        title: jobName,
+        escposText: rawText,
+        htmlContent: htmlContent || defaultHtml,
+        settings: storeSettings
+      });
     } catch (err: any) {
       console.warn("Print error:", err);
-      try {
-        await Printer.printWebView({ name: jobName });
-      } catch(e) {
-        alert("Gagal mencetak struk: " + JSON.stringify(err));
-      }
+      alert("Gagal mencetak struk: " + (err.message || err));
     }
   };
 
@@ -1461,33 +1474,26 @@ export default function POSPage() {
     return btoa(txt);
   };
 
-    const handlePrint = async (mode: 'all' | 'food' | 'drink', autoReceiptData?: any) => {
+  const handlePrint = async (mode: 'all' | 'food' | 'drink', autoReceiptData?: any) => {
     const dataToPrint = autoReceiptData || receiptData;
+    if (!dataToPrint) return;
     setPrintMode(mode);
     
-    setTimeout(async () => {
-      try {
-        const mac = localStorage.getItem('bt_printer_mac');
-        const isAndroid = /android/i.test(navigator.userAgent);
-        
-        if (isAndroid && mac && dataToPrint) {
-          const rawText = generateEscPosReceipt(dataToPrint, mode, storeSettings);
-          try {
-            await BluetoothSerial.connect({ address: mac });
-          } catch (e) {}
-          await BluetoothSerial.write({ address: mac, value: rawText });
-        } else {
-          await Printer.printWebView({ name: 'Nota_POS' });
-        }
-      } catch (e) {
-        try {
-          await Printer.printWebView({ name: 'Nota_POS' });
-        } catch (e2) {
-          alert('Gagal memanggil print: ' + e);
-        }
-      }
-      setPrintMode('all');
-    }, 100);
+    try {
+      const escposText = generateEscPosReceipt(dataToPrint, mode, storeSettings);
+      const htmlContent = generateReceiptHtml(dataToPrint, mode, storeSettings);
+      const modeLabel = mode === 'food' ? 'Dapur' : mode === 'drink' ? 'Bar' : 'Nota_POS';
+      await executePrintDocument({
+        title: modeLabel,
+        escposText,
+        htmlContent,
+        settings: storeSettings
+      });
+    } catch (e: any) {
+      console.warn('Gagal memanggil print:', e);
+      alert('Gagal memanggil print: ' + (e.message || e));
+    }
+    setPrintMode('all');
   };
   const closeReceipt = () => {
     setReceiptData(null);

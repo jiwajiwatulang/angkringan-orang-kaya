@@ -4,9 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useAdmin } from "../AdminContext";
 import { getAllShifts, getActiveShift, getShiftLiveStats } from "@/lib/api";
 import { db } from "@/lib/dexie";
-import { generateZReportReceipt } from "@/lib/receipt";
-import { Printer } from "@capgo/capacitor-printer";
-import { BluetoothSerial } from "@ascentio-it/capacitor-bluetooth-serial";
+import { generateZReportReceipt, generateZReportHtml, executePrintDocument } from "@/lib/receipt";
 
 export default function AdminShiftPage() {
   const { storeSettings, showToast } = useAdmin();
@@ -46,26 +44,20 @@ export default function AdminShiftPage() {
   }, []);
 
   const handlePrintZReport = async (shift: any) => {
-    const isAndroid = /android/i.test(navigator.userAgent);
-    const mac = localStorage.getItem("bt_printer_mac");
-
     try {
-      const zReportText = generateZReportReceipt(shift, storeSettings);
-      if (isAndroid && mac) {
-        try {
-          await BluetoothSerial.connect({ address: mac });
-        } catch (_) {}
-        await BluetoothSerial.write({ address: mac, value: zReportText });
-        showToast("Z-Report berhasil dikirim ke printer Bluetooth!", "success");
-      } else {
-        await Printer.printWebView({ name: `Z_Report_Shift_${shift.id}` });
+      const escposText = generateZReportReceipt(shift, storeSettings);
+      const htmlContent = generateZReportHtml(shift, storeSettings);
+      const result = await executePrintDocument({
+        title: `Z_Report_Shift_${shift.id}`,
+        escposText,
+        htmlContent,
+        settings: storeSettings
+      });
+      if (result.success) {
+        showToast(result.message, "success");
       }
     } catch (e: any) {
-      try {
-        await Printer.printWebView({ name: `Z_Report_Shift_${shift.id}` });
-      } catch (_) {
-        alert("Gagal memanggil printer: " + e.message);
-      }
+      alert("Gagal mencetak Z-Report: " + (e.message || e));
     }
   };
 

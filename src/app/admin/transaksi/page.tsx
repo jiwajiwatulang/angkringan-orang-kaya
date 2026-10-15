@@ -18,9 +18,7 @@ import {
   parseHistoricalTransactionsFile,
 } from "@/lib/excelUtils";
 import { compressPaymentProof, formatBytes } from "@/lib/imageUtils";
-import { generateEscPosReceipt } from "@/lib/receipt";
-import { Printer } from "@capgo/capacitor-printer";
-import { BluetoothSerial } from "@ascentio-it/capacitor-bluetooth-serial";
+import { generateEscPosReceipt, generateReceiptHtml, executePrintDocument } from "@/lib/receipt";
 import { App } from "@capacitor/app";
 
 export default function AdminTransaksiPage() {
@@ -238,61 +236,21 @@ export default function AdminTransaksiPage() {
 
   const handlePrintSingleOrder = async (order: any, mode: 'all' | 'food' | 'drink' = 'all') => {
     try {
-      const isAndroid = typeof window !== "undefined" && /android/i.test(navigator.userAgent);
-      const mac = typeof window !== "undefined" ? localStorage.getItem('bt_printer_mac') : null;
-
-      if (isAndroid && mac) {
-        const escPosData = generateEscPosReceipt(order, mode, storeSettings);
-        try { await BluetoothSerial.connect({ address: mac }); } catch(e) {}
-        await BluetoothSerial.write({ address: mac, value: escPosData });
-        return;
-      }
-
-      const receiptContent = `
-        <html>
-          <head>
-            <style>
-              body { font-family: monospace; padding: 10px; width: ${storeSettings.paperWidth === '80mm' ? '76mm' : '56mm'}; font-size: 11px; }
-              .center { text-align: center; }
-              .divider { border-bottom: 1px dashed #000; margin: 6px 0; }
-              .row { display: flex; justify-content: space-between; }
-              .bold { font-weight: bold; }
-            </style>
-          </head>
-          <body>
-            <div class="center bold">${storeSettings.storeName || "SakuNota POS"}</div>
-            <div class="center">${storeSettings.storeAddress || ""}</div>
-            <div class="divider"></div>
-            <div class="row"><span>Nota #${order.id}</span><span>${new Date(order.createdAt).toLocaleTimeString()}</span></div>
-            <div class="row"><span>Tamu: ${order.customerName || "Tamu"}</span><span>${order.tableName || order.orderType}</span></div>
-            <div class="divider"></div>
-            ${(order.items || []).map((it: any) => `
-              <div class="row">
-                <span>${it.qty}x ${it.nama || it.namaMenu}</span>
-                <span>Rp ${(it.harga * it.qty).toLocaleString("id-ID")}</span>
-              </div>
-            `).join('')}
-            <div class="divider"></div>
-            <div class="row bold"><span>TOTAL:</span><span>Rp ${(order.total || 0).toLocaleString("id-ID")}</span></div>
-            <div class="row"><span>Metode:</span><span>${order.paymentMethod || "Cash"}</span></div>
-          </body>
-        </html>
-      `;
-
-      if (typeof window !== "undefined" && (window as any).Capacitor) {
-        await Printer.printWebView({ name: `Nota #${order.id}` });
-      } else {
-        const printWindow = window.open("", "_blank");
-        if (printWindow) {
-          printWindow.document.write(receiptContent);
-          printWindow.document.close();
-          printWindow.focus();
-          printWindow.print();
-          printWindow.close();
-        }
+      const escposText = generateEscPosReceipt(order, mode, storeSettings);
+      const htmlContent = generateReceiptHtml(order, mode, storeSettings);
+      const modeLabel = mode === 'food' ? 'Dapur' : mode === 'drink' ? 'Bar' : 'Nota';
+      const result = await executePrintDocument({
+        title: `${modeLabel}_#${order.id}`,
+        escposText,
+        htmlContent,
+        settings: storeSettings
+      });
+      if (result.success) {
+        showToast(result.message, "success");
       }
     } catch (e: any) {
       console.error("Gagal mencetak nota:", e);
+      alert("Gagal mencetak nota: " + (e.message || e));
     }
   };
 

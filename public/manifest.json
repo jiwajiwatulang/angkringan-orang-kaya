@@ -1,0 +1,19 @@
+{
+  "name": "SakuNota POS - Kasir Pintar UMKM",
+  "short_name": "SakuNota",
+  "description": "Aplikasi Kasir POS Offline Pintar untuk UMKM, Kafe, Angkringan, dan Ritel",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0B0F17",
+  "theme_color": "#0B0F17",
+  "categories": ["business", "finance", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

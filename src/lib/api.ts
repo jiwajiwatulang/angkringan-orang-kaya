@@ -1712,85 +1712,212 @@ export async function exportAllData() {
   };
 }
 
-export async function importAllData(data: any) {
-  if (!data || !Array.isArray(data.menus)) {
-    throw new Error('Format file cadangan tidak valid: Data menu tidak ditemukan.');
+export function validateBackupSchema(data: any): {
+  isValid: boolean;
+  version?: number;
+  error?: string;
+  stats: {
+    menus: number;
+    tables: number;
+    orders: number;
+    payments: number;
+    proofs: number;
+    shifts: number;
+    hasSettings: boolean;
+    storeName?: string;
+  };
+} {
+  if (!data || typeof data !== 'object') {
+    return {
+      isValid: false,
+      error: 'Format file tidak valid (bukan JSON object).',
+      stats: { menus: 0, tables: 0, orders: 0, payments: 0, proofs: 0, shifts: 0, hasSettings: false }
+    };
   }
 
-  await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems', 'payments', 'paymentProofs', 'auditLogs', 'shifts', 'cashMovements', 'settings'], async () => {
-    await db.table('auditLogs').clear();
-    await db.table('shifts').clear();
-    await db.table('cashMovements').clear();
-    await db.table('paymentProofs').clear();
-    await db.table('payments').clear();
-    await db.table('orderItems').clear();
-    await db.table('orders').clear();
-    await db.table('tables').clear();
-    await db.table('menuItems').clear();
+  if (!Array.isArray(data.menus)) {
+    return {
+      isValid: false,
+      error: 'Format file cadangan tidak valid: Data menu tidak ditemukan.',
+      stats: { menus: 0, tables: 0, orders: 0, payments: 0, proofs: 0, shifts: 0, hasSettings: false }
+    };
+  }
 
-    if (data.menus && data.menus.length > 0) {
-      const cleanMenus = data.menus.map((m: any) => ({
-        id: m.id,
-        sku: m.sku || undefined,
-        nama: m.nama,
-        harga: Number(m.harga),
-        kategori: m.kategori || 'Umum',
-        isSoldOut: Boolean(m.isSoldOut),
-        urutan: Number(m.urutan || 0),
-        modifiers: m.modifiers || []
-      }));
-      await db.table('menuItems').bulkAdd(cleanMenus);
+  const menusCount = data.menus.length;
+  const tablesCount = Array.isArray(data.tables) ? data.tables.length : 0;
+  const ordersCount = Array.isArray(data.orders) ? data.orders.length : 0;
+  const paymentsCount = Array.isArray(data.payments) ? data.payments.length : 0;
+  const proofsCount = Array.isArray(data.paymentProofs) ? data.paymentProofs.length : 0;
+  const shiftsCount = Array.isArray(data.shifts) ? data.shifts.length : 0;
+  const storeName = data.settings?.storeName;
+
+  return {
+    isValid: true,
+    version: data.version || 1,
+    stats: {
+      menus: menusCount,
+      tables: tablesCount,
+      orders: ordersCount,
+      payments: paymentsCount,
+      proofs: proofsCount,
+      shifts: shiftsCount,
+      hasSettings: Boolean(data.settings),
+      storeName
     }
+  };
+}
 
-    if (data.tables && data.tables.length > 0) {
-      await db.table('tables').bulkAdd(data.tables);
-    }
+export async function importAllData(data: any, options?: { skipPreBackup?: boolean }) {
+  const validation = validateBackupSchema(data);
+  if (!validation.isValid) {
+    throw new Error(validation.error || 'Format file cadangan tidak valid: Data menu tidak ditemukan.');
+  }
 
-    if (data.orders && data.orders.length > 0) {
-      await db.table('orders').bulkAdd(data.orders);
-    }
-
-    if (data.orderItems && data.orderItems.length > 0) {
-      await db.table('orderItems').bulkAdd(data.orderItems);
-    }
-
-    if (data.payments && data.payments.length > 0) {
-      await db.table('payments').bulkAdd(data.payments);
-    }
-
-    if (data.paymentProofs && data.paymentProofs.length > 0) {
-      await db.table('paymentProofs').bulkAdd(data.paymentProofs);
-    }
-
-    if (data.auditLogs && data.auditLogs.length > 0) {
-      await db.table('auditLogs').bulkAdd(data.auditLogs);
-    }
-
-    if (data.shifts && data.shifts.length > 0) {
-      await db.table('shifts').bulkAdd(data.shifts);
-    }
-
-    if (data.cashMovements && data.cashMovements.length > 0) {
-      await db.table('cashMovements').bulkAdd(data.cashMovements);
-    }
-  });
-
-  if (data.settings) {
+  // 1. Ambil snapshot cadangan saat ini untuk keamanan (auto rollback & undo)
+  let preRestoreSnapshot: any = null;
+  if (!options?.skipPreBackup) {
     try {
-      await db.table('settings').put({
-        key: 'pos_store_settings',
-        value: data.settings,
-        updatedAt: new Date().toISOString()
-      });
-    } catch (_) {}
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('pos_store_settings', JSON.stringify(data.settings));
-        window.dispatchEvent(new CustomEvent('sakunota:settings_updated', { detail: data.settings }));
-      } catch (e) {}
+      preRestoreSnapshot = await exportAllData();
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('sakunota_pre_restore_snapshot', JSON.stringify({
+          timestamp: new Date().toISOString(),
+          data: preRestoreSnapshot
+        }));
+      }
+    } catch (snapErr) {
+      console.warn('Gagal membuat snapshot pre-restore otomatis:', snapErr);
     }
   }
 
+  // Helper pemulihan data ke tabel Dexie
+  const restoreToTables = async (payload: any) => {
+    await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems', 'payments', 'paymentProofs', 'auditLogs', 'shifts', 'cashMovements', 'settings'], async () => {
+      await db.table('auditLogs').clear();
+      await db.table('shifts').clear();
+      await db.table('cashMovements').clear();
+      await db.table('paymentProofs').clear();
+      await db.table('payments').clear();
+      await db.table('orderItems').clear();
+      await db.table('orders').clear();
+      await db.table('tables').clear();
+      await db.table('menuItems').clear();
+
+      if (payload.menus && payload.menus.length > 0) {
+        const cleanMenus = payload.menus.map((m: any) => ({
+          id: m.id,
+          sku: m.sku || undefined,
+          nama: m.nama,
+          harga: Number(m.harga) || 0,
+          kategori: m.kategori || 'Umum',
+          isSoldOut: Boolean(m.isSoldOut),
+          urutan: Number(m.urutan || 0),
+          modifiers: m.modifiers || []
+        }));
+        await db.table('menuItems').bulkAdd(cleanMenus);
+      }
+
+      if (payload.tables && payload.tables.length > 0) {
+        await db.table('tables').bulkAdd(payload.tables);
+      }
+
+      if (payload.orders && payload.orders.length > 0) {
+        await db.table('orders').bulkAdd(payload.orders);
+      }
+
+      if (payload.orderItems && payload.orderItems.length > 0) {
+        await db.table('orderItems').bulkAdd(payload.orderItems);
+      }
+
+      if (payload.payments && payload.payments.length > 0) {
+        await db.table('payments').bulkAdd(payload.payments);
+      }
+
+      if (payload.paymentProofs && payload.paymentProofs.length > 0) {
+        await db.table('paymentProofs').bulkAdd(payload.paymentProofs);
+      }
+
+      if (payload.auditLogs && payload.auditLogs.length > 0) {
+        await db.table('auditLogs').bulkAdd(payload.auditLogs);
+      }
+
+      if (payload.shifts && payload.shifts.length > 0) {
+        await db.table('shifts').bulkAdd(payload.shifts);
+      }
+
+      if (payload.cashMovements && payload.cashMovements.length > 0) {
+        await db.table('cashMovements').bulkAdd(payload.cashMovements);
+      }
+    });
+
+    if (payload.settings) {
+      try {
+        await db.table('settings').put({
+          key: 'pos_store_settings',
+          value: payload.settings,
+          updatedAt: new Date().toISOString()
+        });
+      } catch (_) {}
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('pos_store_settings', JSON.stringify(payload.settings));
+          window.dispatchEvent(new CustomEvent('sakunota:settings_updated', { detail: payload.settings }));
+        } catch (e) {}
+      }
+    }
+  };
+
+  try {
+    await restoreToTables(data);
+
+    // 2. Round-trip verification check
+    const restoredMenuCount = await db.table('menuItems').count();
+    const expectedMenuCount = data.menus?.length || 0;
+    if (restoredMenuCount !== expectedMenuCount) {
+      throw new Error(`Verifikasi integritas gagal: Jumlah menu tidak cocok (${restoredMenuCount} vs ${expectedMenuCount}).`);
+    }
+
+    if (data.paymentProofs && Array.isArray(data.paymentProofs)) {
+      const restoredProofCount = await db.table('paymentProofs').count();
+      if (restoredProofCount !== data.paymentProofs.length) {
+        throw new Error(`Verifikasi integritas gagal: Jumlah bukti pembayaran tidak cocok.`);
+      }
+    }
+
+    return true;
+  } catch (err: any) {
+    // 3. Rollback otomatis jika snapshot tersedia
+    if (preRestoreSnapshot) {
+      console.warn('Terjadi kesalahan saat memulihkan database. Menjalankan auto-rollback ke kondisi semula...', err);
+      try {
+        await restoreToTables(preRestoreSnapshot);
+        console.info('Auto-rollback berhasil. Database dikembalikan ke kondisi sebelum pemulihan gagal.');
+      } catch (rbErr) {
+        console.error('Kritis: Gagal melakukan auto-rollback:', rbErr);
+      }
+    }
+    throw new Error(`Gagal memulihkan cadangan: ${err.message || err}`);
+  }
+}
+
+export function getPreRestoreSnapshot(): { timestamp: string; data: any } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('sakunota_pre_restore_snapshot');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (_) {
+    return null;
+  }
+}
+
+export async function rollbackPreRestoreBackup(): Promise<boolean> {
+  const snapshotObj = getPreRestoreSnapshot();
+  if (!snapshotObj || !snapshotObj.data) {
+    throw new Error('Tidak ada snapshot cadangan sebelum pemulihan yang tersimpan.');
+  }
+
+  await importAllData(snapshotObj.data, { skipPreBackup: true });
+  localStorage.removeItem('sakunota_pre_restore_snapshot');
   return true;
 }
 

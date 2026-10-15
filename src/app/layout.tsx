@@ -20,8 +20,18 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "SakuNota - Aplikasi Kasir POS & Cetak Struk UMKM",
+  title: "SakuNota POS - Kasir Pintar & Cetak Struk UMKM",
   description: "Aplikasi kasir offline pintar untuk UMKM, kafe, warung makan, dan ritel.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "SakuNota POS",
+  },
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -31,7 +41,24 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       // SakuNota Dark Blue Pro is a dark-only design system.
       className={`dark ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-app text-fg font-sans">{children}</body>
+      <body className="min-h-full flex flex-col bg-app text-fg font-sans">
+        {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                    console.log('[SakuNota] Service Worker registered, scope:', reg.scope);
+                  }).catch(function(err) {
+                    console.warn('[SakuNota] SW registration error:', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />
+      </body>
     </html>
   );
 }
