@@ -124,7 +124,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
           <div className="mt-6 pt-4 border-t border-line">
             <Link
-              href="/"
+              href="/pos"
               className="text-xs font-bold text-muted hover:text-accent-text inline-flex items-center gap-1.5 transition-colors"
             >
               <span>← Kembali ke Kasir</span>
@@ -226,7 +226,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Kembali ke Kasir */}
             <Link
-              href="/"
+              href="/pos"
               className="px-3.5 py-2 rounded-xl bg-accent hover:bg-accent-hover active:scale-95 text-white text-xs font-black flex items-center gap-1.5 shadow-sm shadow-accent/20 transition-all"
             >
               <span>←</span>

@@ -48,8 +48,7 @@ export default function AdminPengaturanHubPage() {
       href: "/admin/pengaturan/tentang",
       icon: "ℹ️",
       title: "Tentang Aplikasi & Bantuan",
-      desc: "Versi komersial, kontak WhatsApp support resmi, kebijakan privasi & ketentuan.",
-      badge: "v2.4.0 Pro",
+      badge: "Informasi",
     },
   ];
 
@@ -108,8 +107,8 @@ export default function AdminPengaturanHubPage() {
               🏪
             </span>
             <div>
-              <h3 className="font-black text-sm text-fg">SakuNota POS — Edisi Komersial UMKM</h3>
-              <p className="text-xs text-muted">Aplikasi kasir pintar 100% offline tanpa biaya langganan bulanan.</p>
+              <h3 className="font-black text-sm text-fg">SakuNota — Kasir Simpel, Usaha Lebih Tertata</h3>
+              <p className="text-xs text-muted">Aplikasi kasir praktis tanpa biaya bulanan. Cukup Rp25.000 sekali bayar.</p>
             </div>
           </div>
 

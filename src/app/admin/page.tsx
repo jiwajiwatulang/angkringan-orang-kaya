@@ -119,7 +119,7 @@ export default function AdminDashboardPage() {
             <span>Tambah Menu</span>
           </Link>
           <Link
-            href="/"
+            href="/pos"
             className="px-3.5 py-2 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors"
           >
             Buka Kasir

@@ -100,13 +100,13 @@ export default function PengaturanTentangPage() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-xl font-black text-fg">SakuNota POS</h3>
-                <span className="px-2.5 py-0.5 rounded-full bg-accent/20 text-accent-text font-black text-[11px] border border-accent/40">
-                  v2.4.0 Pro
+                <h3 className="text-xl font-black text-fg">SakuNota</h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-accent/20 text-accent-text font-bold text-[11px] border border-accent/40">
+                  Rp25.000 Sekali Bayar
                 </span>
               </div>
               <p className="text-xs text-muted mt-0.5">
-                Aplikasi Kasir Pintar UMKM, Kafe, Angkringan & Ritel
+                Kasir simpel, usaha lebih tertata. Tanpa langganan bulanan.
               </p>
             </div>
           </div>

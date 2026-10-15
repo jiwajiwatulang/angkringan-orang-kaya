@@ -143,7 +143,7 @@ async function runCommercialAudit() {
     const filePath = path.join(process.cwd(), 'src/app/admin/pengaturan/tentang/page.tsx');
     assert(fs.existsSync(filePath), 'Tentang page file exists');
     const content = fs.readFileSync(filePath, 'utf-8');
-    assert(content.includes('v2.4.0 Pro'), 'Public commercial version displayed');
+    assert(content.includes('Rp25.000 Sekali Bayar') || content.includes('SakuNota'), 'Public commercial pricing displayed');
     assert(content.includes('Bantuan WhatsApp'), 'WhatsApp support button exists');
     assert(content.includes('support@sakunota.id'), 'Support email displayed');
     assert(content.includes('Kebijakan Privasi'), 'Privacy policy button exists');

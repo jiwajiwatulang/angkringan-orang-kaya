@@ -5,6 +5,7 @@ const CACHE_NAME = 'sakunota-pos-v2.4.0';
 
 const PRECACHE_ASSETS = [
   '/',
+  '/pos',
   '/manifest.json',
   '/icon.png',
   '/logo.jpg',
