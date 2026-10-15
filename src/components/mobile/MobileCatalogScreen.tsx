@@ -137,22 +137,22 @@ export default function MobileCatalogScreen({
               return (
                 <div
                   key={item.id}
-                  className={`bg-card border border-line rounded-2xl p-3 flex flex-col justify-between shadow-sm relative transition-all ${
-                    isSoldOut ? "opacity-60 grayscale-[40%]" : "hover:border-accent/60"
+                  className={`bg-card border border-line/70 rounded-2xl p-3 flex flex-col justify-between shadow-sm relative transition-all ${
+                    isSoldOut ? "opacity-50 grayscale" : "hover:border-slate-500"
                   }`}
                 >
                   {/* Top: Thumbnail / Icon container */}
-                  <div className="w-full h-24 rounded-xl bg-surface/80 flex items-center justify-center text-3xl mb-2.5 border border-line/40 relative overflow-hidden">
+                  <div className="w-full h-24 rounded-xl bg-surface/60 flex items-center justify-center text-3xl mb-2.5 border border-line/30 relative overflow-hidden">
                     {getCategoryIcon(item.kategori, item.nama)}
 
                     {isSoldOut && (
-                      <span className="absolute top-2 right-2 bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm">
+                      <span className="absolute top-2 right-2 bg-rose-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
                         Habis
                       </span>
                     )}
 
                     {hasModifiers && !isSoldOut && (
-                      <span className="absolute top-2 right-2 bg-accent/90 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm">
+                      <span className="absolute top-2 right-2 bg-slate-900/80 text-slate-300 border border-slate-700 text-[9px] font-semibold px-1.5 py-0.5 rounded">
                         Varian
                       </span>
                     )}
@@ -168,7 +168,7 @@ export default function MobileCatalogScreen({
                     </h3>
                   </div>
 
-                  {/* Bottom: Price & Clear "+" Action Button */}
+                  {/* Bottom: Price & Tactile "+" Button */}
                   <div className="flex items-center justify-between pt-1 border-t border-line/30">
                     <span className="text-xs font-black text-accent-text truncate">
                       Rp {item.harga.toLocaleString("id-ID")}
@@ -178,10 +178,10 @@ export default function MobileCatalogScreen({
                       type="button"
                       disabled={isSoldOut}
                       onClick={() => onAddToCart(item)}
-                      className={`w-8 h-8 rounded-xl font-bold flex items-center justify-center text-sm shadow-sm active:scale-90 transition-transform ${
+                      className={`w-8 h-8 rounded-xl font-black flex items-center justify-center text-sm active:scale-90 transition-transform ${
                         isSoldOut
-                          ? "bg-line text-muted cursor-not-allowed"
-                          : "bg-accent hover:bg-accent-hover text-white shadow-accent/20"
+                          ? "bg-line/40 text-muted cursor-not-allowed"
+                          : "bg-accent hover:bg-accent-hover text-white shadow-sm shadow-accent/20"
                       }`}
                       title={isSoldOut ? "Menu Habis" : "Tambah ke Keranjang"}
                     >

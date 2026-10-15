@@ -19,7 +19,7 @@ interface MobileHomeScreenProps {
   currentShiftStats: any;
   tableData: any[];
   activeOrders: any[];
-  onNavigate: (tab: 'home' | 'menu' | 'meja' | 'nota' | 'lainnya') => void;
+  onNavigate: (tab: "home" | "menu" | "meja" | "nota" | "lainnya") => void;
   onAddToCart: (item: MenuItem) => void;
   onOpenShiftModal: () => void;
   onOpenCloseShiftModal: () => void;
@@ -46,220 +46,217 @@ export default function MobileHomeScreen({
     e.preventDefault();
     if (localSearch.trim()) {
       onSearchFocus(localSearch.trim());
-      onNavigate('menu');
+      onNavigate("menu");
     }
   };
 
   const getCategoryIcon = (category: string, name?: string) => {
-    const c = (category || '').toLowerCase();
-    const n = (name || '').toLowerCase();
-    if (c.includes('minum') || n.includes('teh') || n.includes('kopi') || n.includes('jeruk') || n.includes('wedang') || n.includes('susu') || n.includes('es ') || n.includes('lemon')) return '🥤';
-    if (c.includes('nasi') || n.includes('ayam') || n.includes('bebek') || n.includes('mie') || n.includes('soto') || n.includes('bakso')) return '🍚';
-    if (c.includes('sate') || n.includes('sate') || n.includes('sunduk')) return '🍢';
-    if (c.includes('snack') || c.includes('gorengan') || n.includes('mendoan') || n.includes('tahu') || n.includes('tempe') || n.includes('pisang')) return '🥟';
-    return '🍽️';
+    const c = (category || "").toLowerCase();
+    const n = (name || "").toLowerCase();
+    if (c.includes("minum") || n.includes("teh") || n.includes("kopi") || n.includes("jeruk") || n.includes("es ")) return "🥤";
+    if (c.includes("nasi") || n.includes("ayam") || n.includes("bebek") || n.includes("mie")) return "🍚";
+    if (c.includes("sate") || n.includes("sunduk")) return "🍢";
+    if (c.includes("snack") || n.includes("gorengan") || n.includes("mendoan")) return "🥟";
+    return "🍽️";
   };
 
   // Top 4 favorite items from menu
-  const favoriteItems = menuData.filter(m => !m.isSoldOut).slice(0, 4);
+  const favoriteItems = menuData.filter((m) => !m.isSoldOut).slice(0, 4);
 
-  // Active tables count
-  const occupiedTablesCount = tableData.filter(t => t.status === 'terisi').length;
+  // Active metrics
+  const occupiedTables = tableData.filter((t) => t.status === "terisi").length;
+  const totalTables = tableData.length;
+  const todayOrdersCount = activeOrders.length;
+  const expectedCash = currentShiftStats?.expectedCash || activeShift?.startingCash || 0;
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 pb-28">
-      {/* 1. Search Bar */}
-      <form onSubmit={handleSearchSubmit} className="relative">
-        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-sm">
-          🔍
-        </span>
-        <input
-          type="text"
-          value={localSearch}
-          onChange={(e) => setLocalSearch(e.target.value)}
-          placeholder="Cari menu..."
-          className="w-full bg-card border border-line rounded-2xl pl-10 pr-4 py-3 text-sm text-fg placeholder:text-muted focus:outline-none focus:border-accent transition-colors shadow-sm"
-        />
-        {localSearch && (
-          <button
-            type="submit"
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 px-3 py-1 bg-accent hover:bg-accent-hover text-white text-xs font-bold rounded-xl transition-all"
-          >
-            Cari
-          </button>
-        )}
-      </form>
-
-      {/* 2. Hero Status Card (KASIR HARI INI) */}
-      <div className="bg-gradient-to-br from-card to-card/90 border border-line rounded-3xl p-5 shadow-lg relative overflow-hidden">
-        <div className="absolute right-3 -bottom-3 text-7xl opacity-5 select-none pointer-events-none">
-          ☕
-        </div>
-        <div className="relative z-10">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-black uppercase tracking-wider text-accent-text bg-accent/20 px-2.5 py-0.5 rounded-full border border-accent/30">
-              Kasir Hari Ini
+    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-28 select-none">
+      {/* 1. Shift & Operator Status Strip (Functional, Non-Marketing) */}
+      <div className="bg-card border border-line rounded-2xl p-3.5 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${activeShift ? "bg-emerald-400 animate-pulse" : "bg-slate-500"}`} />
+          <div className="min-w-0">
+            <span className="text-xs font-black text-fg block truncate">
+              {activeShift ? `Shift Aktif • ${activeShift.operatorName}` : "Shift Kasir Tutup"}
             </span>
-            {activeShift && (
-              <span className="flex items-center gap-1.5 text-[11px] font-bold text-accent-text">
-                <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
-                Shift Aktif
-              </span>
-            )}
+            <span className="text-[11px] text-muted block truncate">
+              {activeShift ? `Kas di Laci: Rp ${expectedCash.toLocaleString("id-ID")}` : "Buka shift untuk mulai mencatat arus kas"}
+            </span>
           </div>
+        </div>
 
-          <h2 className="text-xl font-black text-fg mb-1">
-            Siap melayani pelanggan?
-          </h2>
-          <p className="text-xs text-muted mb-4">
-            Mulai transaksi dengan cepat dan pantau penjualan secara instan.
-          </p>
-
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="shrink-0 flex items-center gap-1.5">
+          {activeShift ? (
             <button
               type="button"
-              onClick={() => onNavigate('menu')}
-              className="px-4 py-2 bg-accent hover:bg-accent-hover active:scale-95 text-white font-bold text-xs rounded-xl shadow-md shadow-accent/20 transition-all flex items-center gap-1.5"
+              onClick={onOpenCashMovement}
+              className="px-2.5 py-1.5 bg-surface hover:bg-line border border-line text-[11px] font-bold text-accent-text rounded-xl active:scale-95 transition-all"
+              title="Catat Kas Masuk atau Keluar"
             >
-              <span>🛒</span>
-              <span>Buka Katalog Menu</span>
+              +/- Kas
             </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenShiftModal}
+              className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-white text-[11px] font-bold rounded-xl active:scale-95 transition-all shadow-sm"
+            >
+              Buka Shift
+            </button>
+          )}
+        </div>
+      </div>
 
-            {activeShift ? (
-              <button
-                type="button"
-                onClick={onOpenCashMovement}
-                className="px-3 py-2 bg-surface hover:bg-line border border-line text-xs font-bold text-fg rounded-xl transition-colors flex items-center gap-1"
-              >
-                <span>💵</span>
-                <span>+/- Kas</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onOpenShiftModal}
-                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1"
-              >
-                <span>💼</span>
-                <span>Buka Shift Baru</span>
-              </button>
-            )}
+      {/* 2. Primary POS Operational Action */}
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => onNavigate("menu")}
+          className="w-full py-3.5 bg-accent hover:bg-accent-hover active:scale-98 text-white font-black text-sm rounded-2xl shadow-lg shadow-accent/25 transition-all flex items-center justify-center gap-2"
+        >
+          <span className="text-base font-black">+</span>
+          <span>Transaksi Baru / Buka Katalog</span>
+        </button>
+
+        {/* Quick Search */}
+        <form onSubmit={handleSearchSubmit} className="relative">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-xs">
+            🔍
+          </span>
+          <input
+            type="text"
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
+            placeholder="Cari menu cepat..."
+            className="w-full bg-card border border-line rounded-xl pl-9 pr-4 py-2.5 text-xs text-fg placeholder:text-muted focus:outline-none focus:border-accent transition-colors"
+          />
+        </form>
+      </div>
+
+      {/* 3. Live Metrics Row (High-Utility, Clean) */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {/* Meja Status */}
+        <button
+          type="button"
+          onClick={() => onNavigate("meja")}
+          className="p-3 bg-card border border-line rounded-2xl text-left active:scale-95 transition-transform"
+        >
+          <span className="text-[10px] font-bold text-muted uppercase tracking-wider block">
+            Status Meja
+          </span>
+          <div className="flex items-baseline gap-1 mt-0.5">
+            <span className="text-lg font-black text-fg">{occupiedTables}</span>
+            <span className="text-xs text-muted">/ {totalTables} terisi</span>
           </div>
-        </div>
+          <span className="text-[10px] text-accent-text font-bold mt-1 block">
+            Lihat Denah Meja →
+          </span>
+        </button>
+
+        {/* Nota / Order Status */}
+        <button
+          type="button"
+          onClick={() => onNavigate("nota")}
+          className="p-3 bg-card border border-line rounded-2xl text-left active:scale-95 transition-transform"
+        >
+          <span className="text-[10px] font-bold text-muted uppercase tracking-wider block">
+            Pesanan Berjalan
+          </span>
+          <div className="flex items-baseline gap-1 mt-0.5">
+            <span className="text-lg font-black text-fg">{todayOrdersCount}</span>
+            <span className="text-xs text-muted">aktif</span>
+          </div>
+          <span className="text-[10px] text-accent-text font-bold mt-1 block">
+            Lihat Riwayat Nota →
+          </span>
+        </button>
       </div>
 
-      {/* 3. Akses Cepat (4 Circular Icons) */}
+      {/* 4. Akses Cepat Navigasi (Minimalist 4-Column Row) */}
       <div>
-        <h3 className="text-sm font-black text-fg mb-3 px-1">
+        <span className="text-[11px] font-bold text-muted uppercase tracking-wider px-1 block mb-2">
           Akses Cepat
-        </h3>
-        <div className="grid grid-cols-4 gap-2.5">
-          {/* Menu */}
+        </span>
+        <div className="grid grid-cols-4 gap-2">
           <button
             type="button"
-            onClick={() => onNavigate('menu')}
-            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-card border border-line hover:border-accent active:scale-95 transition-all text-center group"
+            onClick={() => onNavigate("menu")}
+            className="p-2.5 rounded-xl bg-card border border-line hover:border-accent active:scale-95 transition-all text-center flex flex-col items-center"
           >
-            <div className="w-12 h-12 rounded-full bg-accent/20 group-hover:bg-accent/30 text-accent-text flex items-center justify-center text-xl mb-1.5 transition-colors shadow-sm">
-              🍽️
-            </div>
-            <span className="text-xs font-bold text-fg group-hover:text-accent-text transition-colors">
-              Menu
-            </span>
+            <span className="text-base mb-1">🍽️</span>
+            <span className="text-[11px] font-bold text-fg">Menu</span>
           </button>
 
-          {/* Meja */}
           <button
             type="button"
-            onClick={() => onNavigate('meja')}
-            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-card border border-line hover:border-accent active:scale-95 transition-all text-center group"
+            onClick={() => onNavigate("meja")}
+            className="p-2.5 rounded-xl bg-card border border-line hover:border-accent active:scale-95 transition-all text-center flex flex-col items-center"
           >
-            <div className="w-12 h-12 rounded-full bg-accent/20 group-hover:bg-accent/30 text-accent-text flex items-center justify-center text-xl mb-1.5 transition-colors shadow-sm">
-              🪑
-            </div>
-            <span className="text-xs font-bold text-fg group-hover:text-accent-text transition-colors">
-              Meja
-            </span>
-            {occupiedTablesCount > 0 && (
-              <span className="text-[10px] text-amber-400 font-bold mt-0.5">
-                {occupiedTablesCount} Terisi
-              </span>
-            )}
+            <span className="text-base mb-1">🪑</span>
+            <span className="text-[11px] font-bold text-fg">Meja</span>
           </button>
 
-          {/* Nota */}
           <button
             type="button"
-            onClick={() => onNavigate('nota')}
-            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-card border border-line hover:border-accent active:scale-95 transition-all text-center group"
+            onClick={() => onNavigate("nota")}
+            className="p-2.5 rounded-xl bg-card border border-line hover:border-accent active:scale-95 transition-all text-center flex flex-col items-center"
           >
-            <div className="w-12 h-12 rounded-full bg-accent/20 group-hover:bg-accent/30 text-accent-text flex items-center justify-center text-xl mb-1.5 transition-colors shadow-sm">
-              🧾
-            </div>
-            <span className="text-xs font-bold text-fg group-hover:text-accent-text transition-colors">
-              Nota
-            </span>
+            <span className="text-base mb-1">🧾</span>
+            <span className="text-[11px] font-bold text-fg">Nota</span>
           </button>
 
-          {/* Laporan */}
           <button
             type="button"
-            onClick={() => onNavigate('lainnya')}
-            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-card border border-line hover:border-accent active:scale-95 transition-all text-center group"
+            onClick={() => onNavigate("lainnya")}
+            className="p-2.5 rounded-xl bg-card border border-line hover:border-accent active:scale-95 transition-all text-center flex flex-col items-center"
           >
-            <div className="w-12 h-12 rounded-full bg-accent/20 group-hover:bg-accent/30 text-accent-text flex items-center justify-center text-xl mb-1.5 transition-colors shadow-sm">
-              📊
-            </div>
-            <span className="text-xs font-bold text-fg group-hover:text-accent-text transition-colors">
-              Laporan
-            </span>
+            <span className="text-base mb-1">⚙️</span>
+            <span className="text-[11px] font-bold text-fg">Lainnya</span>
           </button>
         </div>
       </div>
 
-      {/* 4. Menu Favorit */}
+      {/* 5. Menu Terlaris (1-Tap Direct Add) */}
       <div>
-        <div className="flex items-center justify-between mb-3 px-1">
-          <h3 className="text-sm font-black text-fg">
-            Menu Favorit
-          </h3>
+        <div className="flex items-center justify-between px-1 mb-2">
+          <span className="text-[11px] font-bold text-muted uppercase tracking-wider">
+            Menu Sering Dipesan
+          </span>
           <button
             type="button"
-            onClick={() => onNavigate('menu')}
+            onClick={() => onNavigate("menu")}
             className="text-xs font-bold text-accent-text hover:underline"
           >
-            Lihat Semua →
+            Semua Menu →
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           {favoriteItems.map((item) => (
             <div
               key={item.id}
-              className="bg-card border border-line rounded-2xl p-3 flex flex-col justify-between shadow-sm hover:border-accent/60 transition-all"
+              className="bg-card border border-line rounded-xl p-3 flex flex-col justify-between shadow-sm"
             >
-              {/* Image/Icon Box */}
-              <div className="w-full h-24 rounded-xl bg-surface/80 flex items-center justify-center text-3xl mb-2.5 border border-line/40">
-                {getCategoryIcon(item.kategori, item.nama)}
-              </div>
-
-              {/* Title & Price */}
-              <div>
-                <h4 className="font-bold text-xs text-fg leading-tight truncate mb-1" title={item.nama}>
-                  {item.nama}
-                </h4>
-                <span className="text-xs font-black text-accent-text block">
-                  Rp {item.harga.toLocaleString('id-ID')}
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="min-w-0">
+                  <h4 className="font-bold text-xs text-fg leading-tight truncate" title={item.nama}>
+                    {item.nama}
+                  </h4>
+                  <span className="text-xs font-black text-accent-text mt-0.5 block">
+                    Rp {item.harga.toLocaleString("id-ID")}
+                  </span>
+                </div>
+                <span className="text-base shrink-0">
+                  {getCategoryIcon(item.kategori, item.nama)}
                 </span>
               </div>
 
-              {/* Action Button */}
               <button
                 type="button"
                 onClick={() => onAddToCart(item)}
-                className="mt-2.5 w-full py-1.5 bg-accent/20 hover:bg-accent active:scale-95 text-accent-text hover:text-white font-bold text-xs rounded-xl border border-accent/40 hover:border-transparent transition-all flex items-center justify-center gap-1"
+                className="w-full py-1.5 bg-surface hover:bg-line border border-line text-accent-text font-bold text-xs rounded-lg active:scale-95 transition-all flex items-center justify-center gap-1"
               >
-                <span>Tambah +</span>
+                <span>+ Tambah</span>
               </button>
             </div>
           ))}

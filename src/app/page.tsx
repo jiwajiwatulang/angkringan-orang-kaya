@@ -117,7 +117,7 @@ export default function SakuNotaLandingPage() {
         {/* Category Pill */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-accent/20 border border-accent/40 text-accent-text text-xs font-bold">
           <span>🏪</span>
-          <span>APLIKASI KASIR UNTUK UMKM</span>
+          <span>HARGA PERKENALAN • COBA GRATIS 7 HARI</span>
         </div>
 
         {/* Headline */}
@@ -127,15 +127,18 @@ export default function SakuNotaLandingPage() {
 
         {/* Subtitle */}
         <p className="text-sm sm:text-lg text-muted max-w-2xl mx-auto leading-relaxed">
-          Kelola pesanan, meja, pembayaran, dan laporan dalam satu aplikasi kasir yang praktis. Coba gratis, lalu bayar sekali untuk akses berkelanjutan.
+          Kelola pesanan, meja, pembayaran, dan laporan langsung dari browser. Mulai gratis selama 7 hari, lalu bayar satu kali untuk akses berkelanjutan.
         </p>
 
         {/* Price Highlight Badge */}
         <div className="inline-block pt-1">
-          <div className="px-5 py-2.5 rounded-2xl bg-surface border border-accent/50 shadow-lg shadow-accent/10 inline-flex items-center gap-3">
-            <span className="text-2xl font-black text-accent-text">Rp25.000</span>
+          <div className="px-5 py-3 rounded-2xl bg-surface border border-accent/40 shadow-lg shadow-accent/10 inline-flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted line-through font-bold">Rp50.000</span>
+              <span className="text-3xl font-black text-accent-text">Rp25.000</span>
+            </div>
             <span className="text-xs text-muted font-bold uppercase tracking-wider">
-              / Sekali Bayar
+              / Sekali Bayar • Tanpa Biaya Bulanan
             </span>
           </div>
         </div>
@@ -146,7 +149,7 @@ export default function SakuNotaLandingPage() {
             href="/pos"
             className="w-full sm:w-auto px-7 py-3.5 bg-accent hover:bg-accent-hover text-white font-black text-sm rounded-2xl shadow-xl shadow-accent/25 transition-all active:scale-95 flex items-center justify-center gap-2"
           >
-            <span>Mulai Kasir Sekarang</span>
+            <span>Buka Kasir Sekarang</span>
             <span>→</span>
           </Link>
 
@@ -154,7 +157,6 @@ export default function SakuNotaLandingPage() {
             href="/pos"
             className="w-full sm:w-auto px-7 py-3.5 bg-card hover:bg-line text-fg font-bold text-sm rounded-2xl border border-line transition-all flex items-center justify-center gap-2"
           >
-            <span>👁️</span>
             <span>Lihat Demo Kasir</span>
           </Link>
         </div>
@@ -162,13 +164,16 @@ export default function SakuNotaLandingPage() {
         {/* Trust Badges */}
         <div className="pt-4 flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-muted">
           <span className="flex items-center gap-1.5">
-            <span className="text-emerald-400">✓</span> Tanpa langganan bulanan
+            <span className="text-emerald-400">✓</span> Coba gratis 7 hari
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="text-emerald-400">✓</span> Bisa digunakan offline setelah setup
+            <span className="text-emerald-400">✓</span> Bayar satu kali setelah trial
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="text-emerald-400">✓</span> Tanpa iklan mengganggu
+            <span className="text-emerald-400">✓</span> Dirancang bisa digunakan offline setelah aktivasi
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="text-emerald-400">✓</span> Tanpa potongan komisi per transaksi
           </span>
         </div>
       </section>
@@ -356,32 +361,39 @@ export default function SakuNotaLandingPage() {
           {/* Card SakuNota */}
           <div className="p-8 rounded-3xl bg-gradient-to-b from-surface to-card border-2 border-accent shadow-2xl shadow-accent/10 space-y-6 flex flex-col justify-between relative">
             <div className="absolute -top-3 right-6 px-3 py-1 rounded-full bg-accent text-white text-[10px] font-black tracking-wider uppercase">
-              Pilihan Hemat UMKM
+              Harga Perkenalan
             </div>
 
             <div className="space-y-4">
               <span className="text-xs font-bold text-accent-text uppercase tracking-wider block">
-                SakuNota POS
+                SakuNota
               </span>
-              <div className="text-4xl font-black text-fg">
-                Rp 25.000 <span className="text-xs font-normal text-muted">/ sekali bayar</span>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-sm text-muted line-through font-bold">Rp 50.000</span>
+                  <span className="text-4xl font-black text-fg">Rp 25.000</span>
+                  <span className="text-xs font-bold text-accent-text">sekali bayar</span>
+                </div>
+                <p className="text-xs text-muted">
+                  Harga perkenalan untuk pemilik usaha di tahap awal. Tanpa biaya bulanan.
+                </p>
               </div>
-              <p className="text-xs text-slate-300">
-                Akses berkelanjutan untuk satu perangkat kasir usaha Anda. Tanpa iuran bulanan.
-              </p>
 
               <div className="space-y-2.5 pt-2 text-xs text-fg divide-y divide-line/60">
                 <div className="pt-2 flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span> <strong>Rp0 biaya langganan</strong> seumur hidup
+                  <span className="text-emerald-400 font-bold">✓</span> <strong>Coba gratis 7 hari:</strong> Akses seluruh fitur kasir tanpa komitmen awal
                 </div>
                 <div className="pt-2 flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span> <strong>100% Offline:</strong> Jualan tetap jalan walau internet mati
+                  <span className="text-emerald-400 font-bold">✓</span> <strong>Rp0 biaya langganan:</strong> Akses berkelanjutan tanpa tanggal kedaluwarsa
                 </div>
                 <div className="pt-2 flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span> <strong>Coba gratis</strong> selama masa beta
+                  <span className="text-emerald-400 font-bold">✓</span> <strong>100% Offline-ready:</strong> Jualan tetap jalan walau internet mati
                 </div>
                 <div className="pt-2 flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span> <strong>Data privat:</strong> Semua transaksi tersimpan di memori HP Anda
+                  <span className="text-emerald-400 font-bold">✓</span> <strong>1 Bisnis 1 Instalasi Aktif:</strong> Lisensi untuk satu perangkat kasir operasional
+                </div>
+                <div className="pt-2 flex items-center gap-2">
+                  <span className="text-emerald-400 font-bold">✓</span> <strong>Data privat:</strong> Semua transaksi tersimpan di memori perangkat Anda
                 </div>
               </div>
             </div>
@@ -391,7 +403,7 @@ export default function SakuNotaLandingPage() {
                 href="/pos"
                 className="w-full py-3.5 bg-accent hover:bg-accent-hover text-white text-xs font-black rounded-2xl shadow-lg shadow-accent/25 transition-all active:scale-95 flex items-center justify-center gap-2"
               >
-                <span>Buka Kasir Sekarang (Gratis)</span>
+                <span>Mulai Coba Kasir Sekarang</span>
                 <span>→</span>
               </Link>
             </div>
