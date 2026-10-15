@@ -61,7 +61,7 @@ export default function SakuNotaLandingPage() {
     },
     {
       icon: "💾",
-      title: "Cadangan Mandiri 100% Offline",
+      title: "Cadangan Mandiri Offline-First",
       desc: "Data sepenuhnya milik Anda di memori HP. Dilengkapi validasi berkas, pratinjau data, dan snapshot darurat auto-rollback.",
     },
   ];
@@ -387,7 +387,7 @@ export default function SakuNotaLandingPage() {
                   <span className="text-emerald-400 font-bold">✓</span> <strong>Rp0 biaya langganan:</strong> Akses berkelanjutan tanpa tanggal kedaluwarsa
                 </div>
                 <div className="pt-2 flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span> <strong>100% Offline-ready:</strong> Jualan tetap jalan walau internet mati
+                  <span className="text-emerald-400 font-bold">✓</span> <strong>Arsitektur Offline-First:</strong> Dirancang dapat melayani transaksi tanpa internet setelah instalasi awal
                 </div>
                 <div className="pt-2 flex items-center gap-2">
                   <span className="text-emerald-400 font-bold">✓</span> <strong>1 Bisnis 1 Instalasi Aktif:</strong> Lisensi untuk satu perangkat kasir operasional

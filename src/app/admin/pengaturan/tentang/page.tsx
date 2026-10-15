@@ -5,6 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
+import { 
+  auditOfflineReadiness, 
+  requestPersistentStorage, 
+  downloadAllOfflineAssets, 
+  OfflineDiagnostics 
+} from "@/lib/offlineManager";
 
 export default function PengaturanTentangPage() {
   const router = useRouter();
@@ -15,6 +21,9 @@ export default function PengaturanTentangPage() {
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const [storageUsage, setStorageUsage] = useState<string>("Memeriksa...");
   const [isNative, setIsNative] = useState(false);
+  const [offlineDiag, setOfflineDiag] = useState<OfflineDiagnostics | null>(null);
+  const [isDownloadingAssets, setIsDownloadingAssets] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number } | null>(null);
 
   useEffect(() => {
     setIsNative(Capacitor.isNativePlatform());
@@ -27,6 +36,14 @@ export default function PengaturanTentangPage() {
 
       window.addEventListener("online", handleOnline);
       window.addEventListener("offline", handleOffline);
+
+      // Audit offline & minta persistent storage otomatis
+      const runAudit = async () => {
+        await requestPersistentStorage();
+        const diag = await auditOfflineReadiness();
+        setOfflineDiag(diag);
+      };
+      runAudit();
 
       // Cek perkiraan penggunaan penyimpanan lokal
       if (navigator.storage && navigator.storage.estimate) {
@@ -47,6 +64,22 @@ export default function PengaturanTentangPage() {
       };
     }
   }, []);
+
+  const handleDownloadOfflineAssets = async () => {
+    setIsDownloadingAssets(true);
+    setDownloadProgress({ current: 0, total: 100 });
+    const success = await downloadAllOfflineAssets((curr, tot) => {
+      setDownloadProgress({ current: curr, total: tot });
+    });
+    setIsDownloadingAssets(false);
+    if (success) {
+      alert("Seluruh aset offline berhasil diunduh dan diverifikasi ke dalam memori perangkat!");
+    } else {
+      alert("Sebagian aset belum lengkap terunduh. Pastikan perangkat terhubung internet saat sinkronisasi awal.");
+    }
+    const diag = await auditOfflineReadiness();
+    setOfflineDiag(diag);
+  };
 
   // Back button
   useEffect(() => {
@@ -111,26 +144,44 @@ export default function PengaturanTentangPage() {
             </div>
           </div>
 
-          {/* Live Network Status Indicator */}
-          <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-card border border-line self-start sm:self-auto">
-            <span
-              className={`w-3 h-3 rounded-full shrink-0 ${
-                isOnline ? "bg-emerald-500 shadow-md shadow-emerald-500/40 animate-pulse" : "bg-amber-500"
-              }`}
-            />
-            <div className="text-xs">
-              <span className="text-[10px] text-muted block font-bold uppercase leading-none">
-                Status Jaringan
-              </span>
-              <strong className="text-fg font-black">
-                {isOnline ? "Terhubung Online" : "Mode Offline (Aktif)"}
-              </strong>
+          {/* Live Network & Offline Readiness Badges */}
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-card border border-line">
+              <span
+                className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                  isOnline ? "bg-emerald-500 shadow-sm shadow-emerald-500/40 animate-pulse" : "bg-amber-500"
+                }`}
+              />
+              <div className="text-[11px]">
+                <span className="text-[9px] text-muted block font-bold uppercase leading-none">
+                  Jaringan
+                </span>
+                <strong className="text-fg font-black">
+                  {isOnline ? "Online" : "Offline"}
+                </strong>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-card border border-line">
+              <span
+                className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                  offlineDiag?.isFullyPrecached ? "bg-emerald-500" : "bg-amber-500"
+                }`}
+              />
+              <div className="text-[11px]">
+                <span className="text-[9px] text-muted block font-bold uppercase leading-none">
+                  Cache Aset
+                </span>
+                <strong className="text-fg font-black">
+                  {offlineDiag ? `${offlineDiag.cachedAssetsCount}/${offlineDiag.totalExpectedAssets} File` : "Memeriksa..."}
+                </strong>
+              </div>
             </div>
           </div>
         </div>
 
         <p className="text-xs text-muted leading-relaxed pt-2 border-t border-line">
-          SakuNota dirancang khusus untuk kenyamanan transaksi UMKM di Indonesia. Beroperasi <strong>100% mandiri secara lokal (offline)</strong> tanpa ketergantungan koneksi internet, menjamin kasir Anda tetap dapat melayani pelanggan tanpa kendala sinyal.
+          SakuNota dirancang khusus untuk kenyamanan transaksi UMKM di Indonesia. Beroperasi <strong>mandiri secara lokal (offline-first)</strong> tanpa ketergantungan koneksi internet setelah instalasi awal, menjamin kasir Anda tetap dapat melayani pelanggan tanpa kendala sinyal.
         </p>
       </div>
 
@@ -258,6 +309,33 @@ export default function PengaturanTentangPage() {
             <div className="p-3 rounded-2xl bg-card border border-line/60 text-xs">
               <span className="text-[10px] text-muted font-bold uppercase block">Kapasitas Penyimpanan IndexedDB</span>
               <strong className="text-fg font-mono">{storageUsage}</strong>
+            </div>
+
+            {/* Offline Cache & Storage Persistence Details */}
+            <div className="p-3.5 rounded-2xl bg-card border border-line/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div>
+                <span className="text-[10px] text-muted font-bold uppercase block">Penyimpanan Offline & Integritas Cache</span>
+                <p className="text-fg font-medium mt-0.5">
+                  {offlineDiag ? `${offlineDiag.cachedAssetsCount} dari ${offlineDiag.totalExpectedAssets} file ter-cache (${offlineDiag.storageUsageMb} MB)` : "Sedang memeriksa cache..."}
+                  {offlineDiag?.isPersistentStorage ? " • Storage Persisten Aktif" : " • Storage Standar"}
+                </p>
+                <p className="text-[10px] text-muted mt-0.5">
+                  {offlineDiag?.isPersistentStorage 
+                    ? "✓ Browser diizinkan mempertahankan data dari auto-eviction OS." 
+                    : "ℹ Penyimpanan belum persisten. Klik tombol untuk mengunci memori lokal."}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                disabled={isDownloadingAssets}
+                onClick={handleDownloadOfflineAssets}
+                className="px-3.5 py-2 bg-accent hover:bg-accent-hover disabled:bg-line text-white font-bold text-xs rounded-xl shadow-sm transition-all shrink-0 active:scale-95"
+              >
+                {isDownloadingAssets 
+                  ? `Mengunduh... (${downloadProgress?.current || 0}/${downloadProgress?.total || 0})`
+                  : "⬇ Unduh & Kunci Aset Offline"}
+              </button>
             </div>
 
             <p className="text-[11px] text-muted leading-relaxed">
