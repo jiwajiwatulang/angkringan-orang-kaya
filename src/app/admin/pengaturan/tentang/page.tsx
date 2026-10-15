@@ -297,37 +297,37 @@ export default function PengaturanTentangPage() {
               </div>
 
               <div className="p-3 rounded-2xl bg-card border border-line/60">
-                <span className="text-[10px] text-muted font-bold uppercase block">Basis Data</span>
-                <strong className="text-fg font-mono">Dexie DB v8</strong>
+                <span className="text-[10px] text-muted font-bold uppercase block">Data Usaha</span>
+                <strong className="text-fg font-mono">Tersimpan di HP</strong>
               </div>
 
               <div className="p-3 rounded-2xl bg-card border border-line/60">
-                <span className="text-[10px] text-muted font-bold uppercase block">Platform Runtime</span>
-                <strong className="text-fg font-mono">{isNative ? "Android APK" : "Modern PWA"}</strong>
+                <span className="text-[10px] text-muted font-bold uppercase block">Tipe Aplikasi</span>
+                <strong className="text-fg font-mono">{isNative ? "Aplikasi Android" : "Aplikasi Kasir Web"}</strong>
               </div>
             </div>
 
             <div className="p-3 rounded-2xl bg-card border border-line/60 text-xs">
-              <span className="text-[10px] text-muted font-bold uppercase block">Kapasitas Penyimpanan IndexedDB</span>
+              <span className="text-[10px] text-muted font-bold uppercase block">Penyimpanan Perangkat</span>
               <strong className="text-fg font-mono">{storageUsage}</strong>
             </div>
 
             {/* Offline Cache & Storage Persistence Details */}
             <div className="p-3.5 rounded-2xl bg-card border border-line/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
               <div>
-                <span className="text-[10px] text-muted font-bold uppercase block">Penyimpanan Offline & Integritas Cache</span>
+                <span className="text-[10px] text-muted font-bold uppercase block">Status Penggunaan Tanpa Internet (Offline)</span>
                 <p className="text-fg font-medium mt-0.5">
-                  {offlineDiag ? `${offlineDiag.cachedAssetsCount} dari ${offlineDiag.totalExpectedAssets} file ter-cache (${offlineDiag.storageUsageMb} MB)` : "Sedang memeriksa cache..."}
-                  {offlineDiag?.isPersistentStorage ? " • Storage Persisten Disetujui" : " • Storage Standar (Best-Effort)"}
+                  {offlineDiag ? `${offlineDiag.cachedAssetsCount} dari ${offlineDiag.totalExpectedAssets} aset siap offline (${offlineDiag.storageUsageMb} MB)` : "Sedang memeriksa..."}
+                  {offlineDiag?.isPersistentStorage ? " • Perlindungan Data Aktif" : " • Penyimpanan Standar"}
                 </p>
                 <p className="text-[10px] text-muted mt-0.5">
                   {offlineDiag?.isPersistentStorage 
-                    ? "✓ Izin persisten aktif (terlindungi dari auto-eviction OS). Pengguna tetap disarankan melakukan backup JSON berkala." 
-                    : "ℹ Penyimpanan lokal berstatus best-effort. Lakukan backup berkala dan kunci aset untuk keamanan optimal."}
+                    ? "✓ Data usaha terlindungi dari pembersihan otomatis browser. Tetap simpan cadangan berkala untuk keamanan optimal." 
+                    : "ℹ Data usaha tersimpan di browser HP. Simpan cadangan secara berkala agar data tetap aman saat ganti HP."}
                 </p>
                 {offlineDiag && offlineDiag.missingAssets.length > 0 && (
                   <p className="text-[10px] text-rose-400 font-bold mt-1">
-                    ⚠️ Ada {offlineDiag.missingAssets.length} file belum tersimpan di cache. Klik tombol di kanan untuk sinkronisasi.
+                    ⚠️ Ada {offlineDiag.missingAssets.length} file belum tersimpan. Klik tombol di kanan untuk menyiapkan offline.
                   </p>
                 )}
               </div>
@@ -339,8 +339,8 @@ export default function PengaturanTentangPage() {
                 className="px-3.5 py-2 bg-accent hover:bg-accent-hover disabled:bg-line text-white font-bold text-xs rounded-xl shadow-sm transition-all shrink-0 active:scale-95"
               >
                 {isDownloadingAssets 
-                  ? `Mengunduh... (${downloadProgress?.current || 0}/${downloadProgress?.total || 0})`
-                  : "⬇ Unduh & Kunci Aset Offline"}
+                  ? `Menyiapkan... (${downloadProgress?.current || 0}/${downloadProgress?.total || 0})`
+                  : "⬇ Siapkan Penggunaan Offline"}
               </button>
             </div>
 
@@ -373,19 +373,19 @@ export default function PengaturanTentangPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto pr-2 text-xs text-slate-300 space-y-3 leading-relaxed">
-              <h4 className="font-bold text-fg">1. Penyimpanan Data 100% Offline</h4>
+              <h4 className="font-bold text-fg">1. Penyimpanan Data Aman di Perangkat Anda</h4>
               <p>
-                SakuNota beroperasi sepenuhnya secara lokal di perangkat Anda. Seluruh katalog menu, harga, pesanan, dan bukti transfer tersimpan aman di database IndexedDB perangkat. Pengembang tidak mengumpulkan, melihat, atau membagikan data keuangan usaha Anda ke pihak mana pun.
+                SakuNota beroperasi sepenuhnya secara lokal di perangkat kasir Anda. Seluruh menu, harga, pesanan, dan bukti transfer tersimpan aman di memori HP Anda. Pengembang tidak mengumpulkan, melihat, atau membagikan data keuangan usaha Anda ke pihak mana pun.
               </p>
 
               <h4 className="font-bold text-fg">2. Izin Perangkat (Bluetooth & Penyimpanan)</h4>
               <p>
-                Aplikasi hanya meminta izin Bluetooth untuk menyambungkan struk ke printer thermal portabel kasir, dan izin penyimpanan untuk mengunduh berkas cadangan .JSON atau laporan Excel yang Anda minta.
+                Aplikasi hanya meminta izin Bluetooth untuk menyambungkan struk ke printer thermal kasir, dan izin penyimpanan untuk mengunduh file cadangan data usaha atau laporan penjualan yang Anda minta.
               </p>
 
-              <h4 className="font-bold text-fg">3. Cadangan & Tanggung Jawab Data</h4>
+              <h4 className="font-bold text-fg">3. Tanggung Jawab Cadangan Data</h4>
               <p>
-                Karena tidak menggunakan server cloud pihak ketiga, keamanan data berada sepenuhnya dalam kendali Anda. Sangat disarankan untuk rutin mengekspor file cadangan melalui menu Cadangan & Pemulihan.
+                Karena data tersimpan aman di HP Anda sendiri tanpa ketergantungan server luar, Anda memiliki kendali penuh atas data usaha Anda. Sangat disarankan untuk rutin menyimpan cadangan melalui menu Data & Cadangan.
               </p>
             </div>
 

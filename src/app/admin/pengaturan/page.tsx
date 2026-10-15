@@ -40,9 +40,9 @@ export default function AdminPengaturanHubPage() {
     {
       href: "/admin/pengaturan/data",
       icon: "💾",
-      title: "Cadangan, Pulihkan & Reset",
-      desc: "Ekspor file cadangan .JSON ke memori HP, pulihkan data, dan kelola database.",
-      badge: "Ekspor JSON",
+      title: "Data & Cadangan",
+      desc: "Simpan salinan data usaha, kembalikan data lama, atau pindah ke HP baru.",
+      badge: "Simpan Data",
     },
     {
       href: "/admin/pengaturan/tentang",

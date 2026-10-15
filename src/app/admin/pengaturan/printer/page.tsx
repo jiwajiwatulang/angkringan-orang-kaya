@@ -100,10 +100,9 @@ export default function PengaturanPrinterPage() {
       setBtDevices(list);
       showToast(`Ditemukan ${list.length} perangkat Bluetooth`, "info");
       setStatusMessage(`Ditemukan ${list.length} perangkat. Pilih printer kasir Anda dari daftar di bawah.`);
-    } catch (e: any) {
-      const errMsg = e?.message || JSON.stringify(e);
-      alert("Gagal memindai Bluetooth: " + errMsg + "\n\nPastikan izin Lokasi/Bluetooth telah diberikan pada aplikasi SakuNota.");
-      setStatusMessage("Pemindaian gagal: " + errMsg);
+    } catch (_) {
+      alert("Printer belum tersambung. Pastikan Bluetooth di HP menyala dan izin Bluetooth telah diizinkan, lalu coba lagi.");
+      setStatusMessage("Printer belum tersambung. Periksa Bluetooth dan coba lagi.");
     } finally {
       setIsScanning(false);
     }
@@ -117,8 +116,8 @@ export default function PengaturanPrinterPage() {
     localStorage.setItem("bt_printer_mac", mac);
     localStorage.setItem("bt_printer_name", devName);
     setConnectionStatus('connected');
-    setStatusMessage(`Printer terpilih: ${devName} (${mac})`);
-    showToast(`Printer Bluetooth "${devName}" berhasil dipilih & disimpan!`, "success");
+    setStatusMessage(`Printer terhubung: ${devName}`);
+    showToast(`Printer "${devName}" berhasil dipilih & disimpan!`, "success");
   };
 
   const handleDisconnectPrinter = () => {
@@ -127,8 +126,8 @@ export default function PengaturanPrinterPage() {
     localStorage.removeItem("bt_printer_mac");
     localStorage.removeItem("bt_printer_name");
     setConnectionStatus('disconnected');
-    setStatusMessage("Printer Bluetooth telah dilepas dari sistem kasir.");
-    showToast("Printer Bluetooth berhasil dilepas", "info");
+    setStatusMessage("Printer telah dilepas.");
+    showToast("Printer berhasil dilepas", "info");
   };
 
   const handleTestPrint = async () => {
@@ -150,13 +149,12 @@ export default function PengaturanPrinterPage() {
       });
 
       if (result.success) {
-        showToast(result.message, "success");
-        setStatusMessage(`Tes cetak berhasil (${result.platform})!`);
+        showToast("Struk uji cetak berhasil dikirim ke printer!", "success");
+        setStatusMessage("Struk uji cetak berhasil dikirim ke printer.");
       }
-    } catch (err: any) {
-      const msg = err.message || "Terjadi kesalahan saat memanggil printer";
-      alert("Gagal melakukan tes cetak:\n" + msg);
-      setStatusMessage("Tes cetak gagal: " + msg);
+    } catch (_) {
+      alert("Printer belum tersambung. Periksa Bluetooth dan coba lagi.\n\nTips:\n1. Pastikan printer thermal menyala dan kertas terpasang.\n2. Pastikan printer sudah terhubung (paired) di Bluetooth HP Anda.");
+      setStatusMessage("Printer belum tersambung. Periksa Bluetooth dan coba lagi.");
     } finally {
       setIsPrintingTest(false);
     }

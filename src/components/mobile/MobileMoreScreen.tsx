@@ -151,8 +151,8 @@ export default function MobileMoreScreen({
           <div className="flex items-center gap-3">
             <span className="text-xl">💾</span>
             <div>
-              <h4 className="text-xs font-bold text-fg">Cadangan & Pemulihan Data</h4>
-              <p className="text-[10px] text-muted">Ekspor cadangan JSON dan pulihkan data</p>
+              <h4 className="text-xs font-bold text-fg">Data & Cadangan</h4>
+              <p className="text-[10px] text-muted">Simpan data usaha atau pindah ke HP baru</p>
             </div>
           </div>
           <span className="text-muted text-xs">→</span>

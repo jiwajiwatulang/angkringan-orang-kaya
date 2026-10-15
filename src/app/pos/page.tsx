@@ -2429,7 +2429,7 @@ export default function POSPage() {
           <div className="pt-3 border-t border-line">
             <div className="px-2.5 py-2 rounded-xl bg-surface border border-line text-[11px] text-muted flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="font-semibold">Offline Ready (Dexie)</span>
+              <span className="font-semibold text-emerald-400">Siap Tanpa Internet</span>
             </div>
           </div>
         </aside>

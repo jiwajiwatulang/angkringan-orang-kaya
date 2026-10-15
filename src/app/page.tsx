@@ -14,7 +14,7 @@ export default function SakuNotaLandingPage() {
   const faqs = [
     {
       q: "Apakah SakuNota benar-benar bisa digunakan tanpa internet?",
-      a: "Ya. Setelah dibuka dan dipasang pertama kali di browser Anda, seluruh aset aplikasi disimpan oleh Service Worker dan seluruh data transaksi, menu, serta meja tersimpan di memori lokal perangkat (IndexedDB). Anda tetap bisa melayani pesanan dan mencetak struk thermal walau sinyal mati total.",
+      a: "Ya. Setelah dibuka dan dipasang pertama kali di browser HP Anda, seluruh data menu, meja, dan transaksi tersimpan aman di memori perangkat Anda. Anda tetap bisa melayani pesanan dan mencetak struk thermal walau sinyal mati total atau tanpa kuota data.",
     },
     {
       q: "Apakah ada biaya langganan bulanan atau tahunan?",
@@ -22,7 +22,7 @@ export default function SakuNotaLandingPage() {
     },
     {
       q: "Bagaimana jika HP kasir hilang, rusak, atau ganti baru?",
-      a: "Karena data tersimpan secara lokal tanpa database cloud pihak ketiga, Anda dapat menggunakan fitur 'Cadangkan Data (.JSON)' kapan saja dan menyimpannya di WhatsApp atau Google Drive pribadi. Di HP baru, cukup buka SakuNota dan klik 'Pulihkan Data' untuk mengembalikan seluruh menu dan transaksi.",
+      a: "Karena data tersimpan aman di perangkat Anda, Anda cukup menggunakan fitur 'Simpan Cadangan' kapan saja dan menyimpannya di WhatsApp pribadi atau Google Drive. Di HP baru, buka SakuNota dan pilih 'Kembalikan Data' untuk membawa seluruh menu dan riwayat penjualan Anda.",
     },
     {
       q: "Printer apa saja yang didukung oleh SakuNota?",
@@ -191,7 +191,7 @@ export default function SakuNotaLandingPage() {
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80 inline-block" />
             </div>
             <span className="font-mono text-[11px] text-muted">sakunota.my.id/pos</span>
-            <span className="text-[10px] font-bold text-emerald-400">🟢 Offline Ready</span>
+            <span className="text-[10px] font-bold text-emerald-400">🟢 Siap Tanpa Internet</span>
           </div>
 
           {/* Visual Workspace Grid Showcase */}
