@@ -34,6 +34,7 @@ export default function PengaturanDataPage() {
   const [isMigrateModalOpen, setIsMigrateModalOpen] = useState(false);
   const [resetPinInput, setResetPinInput] = useState("");
   const [resetPinError, setResetPinError] = useState("");
+  const [confirmDeleteChecked, setConfirmDeleteChecked] = useState(false);
 
   // Preview Restore Modal State
   const [previewBackupData, setPreviewBackupData] = useState<any | null>(null);
@@ -117,7 +118,7 @@ export default function PengaturanDataPage() {
       const nowIso = new Date().toISOString();
       localStorage.setItem("sakunota_last_backup_date", nowIso);
       setLastBackupDate(nowIso);
-      showToast("Data usaha berhasil dicadangkan. Simpan file ini di tempat yang aman.", "success");
+      showToast("Cadangan sudah dibuat. Periksa folder Unduhan di perangkat Anda dan simpan file tersebut di tempat yang aman.", "success");
     } catch {
       showToast("Data belum berhasil disimpan. Silakan coba lagi.", "error");
     } finally {
@@ -199,9 +200,13 @@ export default function PengaturanDataPage() {
     }
   };
 
-  // Bersihkan Transaksi Percobaan
+  // Hapus Seluruh Riwayat Penjualan & Shift
   const handleResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!confirmDeleteChecked) {
+      setResetPinError("Centang kotak persetujuan konfirmasi terlebih dahulu.");
+      return;
+    }
     const correctPin = storeSettings.adminPin || "1234";
 
     if (resetPinInput !== correctPin) {
@@ -214,12 +219,13 @@ export default function PengaturanDataPage() {
       setIsResetModalOpen(false);
       setResetPinInput("");
       setResetPinError("");
-      showToast("Transaksi percobaan berhasil dibersihkan. Menu dan meja tetap aman.", "info");
+      setConfirmDeleteChecked(false);
+      showToast("Seluruh riwayat penjualan dan shift telah dihapus. Daftar menu dan meja tetap aman.", "info");
       setTimeout(() => {
         window.location.reload();
       }, 800);
     } catch {
-      showToast("Gagal membersihkan data percobaan. Silakan coba lagi.", "error");
+      showToast("Gagal menghapus data riwayat transaksi. Silakan coba lagi.", "error");
     }
   };
 
@@ -298,11 +304,11 @@ export default function PengaturanDataPage() {
             </h4>
             <p className="text-xs text-fg font-medium mt-0.5">
               {lastBackupDate
-                ? `Terakhir dicadangkan: ${new Date(lastBackupDate).toLocaleString("id-ID", {
+                ? `File dibuat pada: ${new Date(lastBackupDate).toLocaleString("id-ID", {
                     dateStyle: "medium",
                     timeStyle: "short",
-                  })}`
-                : "Data usaha belum dicadangkan. Simpan cadangan untuk berjaga-jaga jika HP hilang atau rusak."}
+                  })} (Periksa folder Unduhan di perangkat Anda)`
+                : "Belum pernah membuat file cadangan di perangkat ini. Buat cadangan sekarang untuk berjaga-jaga."}
             </p>
           </div>
         </div>
@@ -436,31 +442,36 @@ export default function PengaturanDataPage() {
         </div>
       </div>
 
-      {/* Pembersihan Data Percobaan (Sebelum Mulai Resmi) */}
+      {/* Pembersihan Riwayat Transaksi (Selesai Percobaan / Mulai Resmi) */}
       <div className="p-5 rounded-3xl bg-red-950/20 border border-red-900/40 space-y-3">
         <div className="flex items-center gap-3">
           <span className="w-10 h-10 rounded-2xl bg-red-900/40 text-red-400 flex items-center justify-center text-xl">
             ⚠️
           </span>
           <div>
-            <h3 className="font-black text-sm text-red-300">Bersihkan Transaksi Percobaan</h3>
+            <h3 className="font-black text-sm text-red-300">Hapus Seluruh Riwayat Penjualan & Shift</h3>
             <p className="text-xs text-red-400/80 mt-0.5">
-              Hapus pesanan latihan atau demo sebelum mulai beroperasi resmi. Menu dan daftar meja Anda tidak akan terhapus.
+              Hapus seluruh nota transaksi, pembayaran, dan riwayat shift kasir (biasanya dilakukan setelah selesai masa uji coba/latihan sebelum mulai operasional resmi). Menu makanan/minuman dan denah meja TIDAK akan dihapus.
             </p>
           </div>
         </div>
 
         <div className="pt-3 border-t border-red-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <p className="text-[11px] text-muted">
-            Disarankan untuk mencadangkan data terlebih dahulu sebelum melakukan pembersihan.
+          <p className="text-[11px] text-amber-300/90 font-medium">
+            ⚠️ PERINGATAN: Tindakan ini permanen. Pastikan Anda sudah membuat cadangan data sebelum menghapus transaksi.
           </p>
 
           <button
             type="button"
-            onClick={() => setIsResetModalOpen(true)}
+            onClick={() => {
+              setConfirmDeleteChecked(false);
+              setResetPinInput("");
+              setResetPinError("");
+              setIsResetModalOpen(true);
+            }}
             className="px-4 py-2 bg-red-600/20 hover:bg-red-600 border border-red-600/40 hover:border-red-600 text-red-300 hover:text-white text-xs font-bold rounded-xl transition-all active:scale-95 shrink-0"
           >
-            Bersihkan Transaksi Percobaan
+            Hapus Riwayat Penjualan & Shift
           </button>
         </div>
       </div>
@@ -581,6 +592,16 @@ export default function PengaturanDataPage() {
               </button>
             </div>
 
+            {/* Keamanan & Privasi Data */}
+            <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 space-y-1">
+              <div className="flex items-center gap-2 text-amber-300 font-black text-xs">
+                <span>🔒 Keamanan & Privasi Data</span>
+              </div>
+              <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                File cadangan berisi data keuangan, riwayat penjualan, dan nama pelanggan usaha Anda. Simpan file hanya di tempat pribadi (seperti chat WhatsApp ke nomor Anda sendiri atau Google Drive pribadi). <strong>Jangan bagikan file ini ke grup publik atau pihak yang tidak berwenang.</strong>
+              </p>
+            </div>
+
             {/* Steps Container */}
             <div className="space-y-4 text-xs">
               {/* Langkah 1 */}
@@ -645,6 +666,21 @@ export default function PengaturanDataPage() {
               </div>
             </div>
 
+            {/* Pemindahan Lisensi Berbayar */}
+            <div className="p-3.5 rounded-2xl bg-card border border-line/60 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <h4 className="font-black text-fg text-xs flex items-center gap-1.5">
+                  <span>🔑 Pemindahan Lisensi SakuNota</span>
+                </h4>
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-400 font-black text-[10px] tracking-wider uppercase">
+                  Belum Tersedia Otomatis
+                </span>
+              </div>
+              <p className="text-[11px] text-muted leading-relaxed">
+                Panduan 4 langkah di atas untuk memindahkan <strong>data catatan usaha</strong> Anda. Pemindahan lisensi berbayar antar-perangkat belum tersedia otomatis dan akan dibantu manual oleh Customer Support saat masa rilis komersial.
+              </p>
+            </div>
+
             <div className="pt-2 flex justify-end">
               <button
                 type="button"
@@ -659,7 +695,7 @@ export default function PengaturanDataPage() {
       )}
 
       {/* ======================================================== */}
-      {/* MODAL 3: Konfirmasi Pembersihan Data Percobaan */}
+      {/* MODAL 3: Konfirmasi Hapus Seluruh Riwayat Penjualan & Shift */}
       {/* ======================================================== */}
       {isResetModalOpen && (
         <div 
@@ -667,13 +703,13 @@ export default function PengaturanDataPage() {
           onClick={() => setIsResetModalOpen(false)}
         >
           <div 
-            className="bg-surface text-fg p-6 rounded-3xl w-full max-w-sm shadow-2xl relative border border-line space-y-4"
+            className="bg-surface text-fg p-6 rounded-3xl w-full max-w-md shadow-2xl relative border border-line space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <div className="flex items-center gap-2">
                 <span className="text-xl">⚠️</span>
-                <h3 className="font-black text-base text-red-400">Konfirmasi Pembersihan</h3>
+                <h3 className="font-black text-base text-red-400">Hapus Seluruh Riwayat Penjualan & Shift?</h3>
               </div>
               <button
                 type="button"
@@ -684,23 +720,56 @@ export default function PengaturanDataPage() {
               </button>
             </div>
 
-            <p className="text-xs text-muted leading-relaxed">
-              Tindakan ini akan menghapus seluruh transaksi latihan. Masukkan PIN Admin Anda untuk melanjutkan:
-            </p>
+            <div className="p-3.5 rounded-2xl bg-red-950/40 border border-red-800/60 text-xs text-red-200 space-y-2 leading-relaxed">
+              <p className="font-bold text-red-300">
+                PERINGATAN: Tindakan ini permanen dan tidak dapat dibatalkan!
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-[11px] text-red-200/90">
+                <li>
+                  Akan menghapus: <strong>{businessCounts.transaksi} nota transaksi</strong>, pembayaran, bukti bayar, dan <strong>{businessCounts.shift} riwayat shift</strong>.
+                </li>
+                <li>
+                  Tetap tersimpan: <strong>{businessCounts.menu} menu</strong> dan <strong>{businessCounts.meja} denah meja</strong>.
+                </li>
+              </ul>
+              <p className="text-[11px] text-amber-200 font-semibold">
+                Jangan gunakan fitur ini jika Anda sudah mulai berjualan nyata kecuali telah mencadangkan file data Anda sebelumnya.
+              </p>
+            </div>
 
-            <form onSubmit={handleResetSubmit} className="space-y-3">
-              <input
-                type="password"
-                inputMode="numeric"
-                autoFocus
-                placeholder="Masukkan PIN Admin (bawaan: 1234)"
-                value={resetPinInput}
-                onChange={(e) => {
-                  setResetPinInput(e.target.value);
-                  setResetPinError("");
-                }}
-                className="w-full px-4 py-2.5 rounded-xl bg-card border border-line text-fg text-xs focus:border-red-500 focus:outline-none"
-              />
+            <form onSubmit={handleResetSubmit} className="space-y-4 pt-1">
+              <label className="flex items-start gap-2.5 p-3 rounded-2xl bg-card border border-line cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={confirmDeleteChecked}
+                  onChange={(e) => {
+                    setConfirmDeleteChecked(e.target.checked);
+                    setResetPinError("");
+                  }}
+                  className="mt-0.5 rounded border-line text-red-600 focus:ring-red-500 cursor-pointer w-4 h-4"
+                />
+                <span className="text-xs text-fg font-medium leading-tight">
+                  Saya mengerti bahwa seluruh data penjualan dan shift akan dihapus permanen.
+                </span>
+              </label>
+
+              <div>
+                <label className="text-[11px] font-bold text-muted block mb-1">
+                  Masukkan PIN Admin untuk otorisasi:
+                </label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  autoFocus
+                  placeholder="PIN Admin (bawaan: 1234)"
+                  value={resetPinInput}
+                  onChange={(e) => {
+                    setResetPinInput(e.target.value);
+                    setResetPinError("");
+                  }}
+                  className="w-full px-4 py-2.5 rounded-xl bg-card border border-line text-fg text-xs focus:border-red-500 focus:outline-none"
+                />
+              </div>
 
               {resetPinError && (
                 <p className="text-[11px] font-bold text-red-400">{resetPinError}</p>
@@ -710,15 +779,16 @@ export default function PengaturanDataPage() {
                 <button
                   type="button"
                   onClick={() => setIsResetModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-card hover:bg-line text-xs font-bold text-muted transition-colors"
+                  className="px-4 py-2.5 rounded-xl bg-card hover:bg-line text-xs font-bold text-muted transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black transition-colors"
+                  disabled={!confirmDeleteChecked}
+                  className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-red-600/20"
                 >
-                  Ya, Bersihkan Data
+                  Hapus Permanen
                 </button>
               </div>
             </form>
