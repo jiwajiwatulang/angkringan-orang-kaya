@@ -75,9 +75,12 @@ export function generateEscPosReceipt(
   const doubleDivider = "=".repeat(width) + "\n";
 
   const center = (text: string): string => {
-    if (text.length >= width) return text.substring(0, width) + "\n";
-    const pad = Math.floor((width - text.length) / 2);
-    return " ".repeat(pad) + text + "\n";
+    if (!text) return "";
+    const lines = wrapText(text, width);
+    return lines.map(l => {
+      const pad = Math.max(0, Math.floor((width - l.length) / 2));
+      return " ".repeat(pad) + l + "\n";
+    }).join("");
   };
 
   const lineTwoCols = (left: string, right: string): string => {
@@ -274,9 +277,12 @@ export function generatePartialPaymentReceipt(order: any, payment: any, settings
   const doubleDivider = "=".repeat(width) + "\n";
 
   const center = (text: string): string => {
-    if (text.length >= width) return text.substring(0, width) + "\n";
-    const pad = Math.floor((width - text.length) / 2);
-    return " ".repeat(pad) + text + "\n";
+    if (!text) return "";
+    const lines = wrapText(text, width);
+    return lines.map(l => {
+      const pad = Math.max(0, Math.floor((width - l.length) / 2));
+      return " ".repeat(pad) + l + "\n";
+    }).join("");
   };
 
   const lineTwoCols = (left: string, right: string): string => {
@@ -346,9 +352,12 @@ export function generateZReportReceipt(stats: any, settings?: StoreSettings): st
   const doubleDivider = "=".repeat(width) + "\n";
 
   const center = (text: string): string => {
-    if (text.length >= width) return text.substring(0, width) + "\n";
-    const pad = Math.floor((width - text.length) / 2);
-    return " ".repeat(pad) + text + "\n";
+    if (!text) return "";
+    const lines = wrapText(text, width);
+    return lines.map(l => {
+      const pad = Math.max(0, Math.floor((width - l.length) / 2));
+      return " ".repeat(pad) + l + "\n";
+    }).join("");
   };
 
   const lineTwoCols = (left: string, right: string): string => {
