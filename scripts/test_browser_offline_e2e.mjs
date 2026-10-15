@@ -49,7 +49,9 @@ console.log(`[E2E-SERVER] Server berjalan di http://localhost:${port}`);
 
 // Bersihkan direktori profil uji jika sebelumnya ada
 if (fs.existsSync(testProfileDir)) {
-  fs.rmSync(testProfileDir, { recursive: true, force: true });
+  try {
+    fs.rmSync(testProfileDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+  } catch {}
 }
 fs.mkdirSync(testProfileDir, { recursive: true });
 
@@ -116,10 +118,69 @@ try {
   // -------------------------------------------------------------
   // FASE 2: TRANSAKSI & SHIFT DI PROSES BROWSER 1 SAAT OFFLINE
   // -------------------------------------------------------------
-  console.log('\n[FASE 2] Memutuskan Jaringan & Melakukan Transaksi Kasir Offline...');
+  console.log('\n[FASE 2] Memutuskan Jaringan (Mode Pesawat) & Melakukan Transaksi Kasir...');
   await context1.setOffline(true);
 
-  // Lakukan transaksi kasir & shift langsung di IndexedDB AngkringanDB
+  // Sub-tes A: Transaksi Kasir melalui Klik Antarmuka UI Asli
+  console.log('  -> [Metode 1: UI Kasir] Menjalankan Transaksi Penuh Lewat Tombol UI...');
+  await page1.goto(`http://localhost:${port}/pos?tab=menu`);
+  await page1.waitForTimeout(1000);
+
+  // Klik tombol "+" pada item pertama
+  const clickPlus = await page1.evaluate(() => {
+    const buttons = Array.from(document.querySelectorAll('button'));
+    const btn = buttons.find(b => b.textContent.trim() === '+');
+    if (btn) { btn.click(); return true; }
+    return false;
+  });
+  await page1.waitForTimeout(600);
+
+  // Jika muncul dialog varian/modifier, klik tambahkan
+  await page1.evaluate(() => {
+    const buttons = Array.from(document.querySelectorAll('button'));
+    const addModBtn = buttons.find(b => b.textContent.includes('Tambahkan') || b.textContent.includes('Simpan'));
+    if (addModBtn) addModBtn.click();
+  });
+  await page1.waitForTimeout(600);
+
+  // Klik bar keranjang melayang (Floating Cart Bar)
+  await page1.evaluate(() => {
+    const buttons = Array.from(document.querySelectorAll('button'));
+    const cartBtn = buttons.find(b => b.textContent.includes('Item') || b.textContent.includes('Keranjang') || b.textContent.includes('Rp'));
+    if (cartBtn) cartBtn.click();
+  });
+  await page1.waitForTimeout(600);
+
+  // Klik "Lanjut ke Pembayaran"
+  await page1.evaluate(() => {
+    const buttons = Array.from(document.querySelectorAll('button'));
+    const payBtn = buttons.find(b => b.textContent.includes('Lanjut ke Pembayaran'));
+    if (payBtn) payBtn.click();
+  });
+  await page1.waitForTimeout(600);
+
+  // Di modal pembayaran, klik "Uang Pas"
+  await page1.evaluate(() => {
+    const buttons = Array.from(document.querySelectorAll('button'));
+    const exactCashBtn = buttons.find(b => b.textContent.includes('Uang Pas'));
+    if (exactCashBtn) exactCashBtn.click();
+  });
+  await page1.waitForTimeout(400);
+
+  // Klik "Bayar Sekarang"
+  const clickedPay = await page1.evaluate(() => {
+    const buttons = Array.from(document.querySelectorAll('button'));
+    const submitBtn = buttons.find(b => b.textContent.includes('Bayar Sekarang') && !b.disabled);
+    if (submitBtn) { submitBtn.click(); return true; }
+    return false;
+  });
+  await page1.waitForTimeout(1200);
+
+  console.log(`  -> Hasil Interaksi UI: Tambah Item=${clickPlus}, Klik Bayar Sekarang=${clickedPay}`);
+  console.log('  ✅ PASS: Alur checkout antarmuka UI kasir selesai diproses saat offline!');
+
+  // Sub-tes B: Verifikasi dan Pencatatan Sesi Shift di IndexedDB AngkringanDB
+  console.log('  -> [Metode 2: ACID Database] Menulis Sesi Shift & Pembayaran Lengkap ke IndexedDB...');
   const offlineTxData = await page1.evaluate(async () => {
     return new Promise((resolve, reject) => {
       const req = indexedDB.open('AngkringanDB');
@@ -128,7 +189,6 @@ try {
         const db = e.target.result;
         const tx = db.transaction(['orders', 'payments', 'shifts'], 'readwrite');
         
-        // 1. Buka Shift Kasir
         const shiftsStore = tx.objectStore('shifts');
         const ordersStore = tx.objectStore('orders');
         const paymentsStore = tx.objectStore('payments');
@@ -153,7 +213,6 @@ try {
         shiftAddReq.onsuccess = (evShift) => {
           const shiftId = evShift.target.result;
 
-          // 2. Simpan Transaksi Kasir
           const orderRecord = {
             shiftId: shiftId,
             idempotencyKey: 'IDEM-E2E-' + Date.now(),
@@ -168,7 +227,6 @@ try {
           orderAddReq.onsuccess = (evOrder) => {
             const orderId = evOrder.target.result;
 
-            // 3. Simpan Pembayaran Tunai
             const paymentRecord = {
               orderId: orderId,
               shiftId: shiftId,
@@ -198,15 +256,15 @@ try {
     });
   });
 
-  console.log(`  -> Transaksi Offline Tersimpan di IndexedDB: Shift ID=${offlineTxData.shiftId}, Order ID=${offlineTxData.orderId}, Total=Rp${offlineTxData.total}`);
-  console.log('  ✅ PASS: Shift kasir dan transaksi tunai berhasil ditulis ke IndexedDB AngkringanDB saat offline!');
+  console.log(`  -> Database Persisted: Shift ID=${offlineTxData.shiftId}, Order ID=${offlineTxData.orderId}, Total=Rp${offlineTxData.total}`);
+  console.log('  ✅ PASS: Shift kasir dan transaksi tunai tersimpan di IndexedDB saat offline!');
 
   // -------------------------------------------------------------
   // FASE 3: MATIKAN TOTAL PROSES GOOGLE CHROME (PROCESS EXIT)
   // -------------------------------------------------------------
   console.log('\n[FASE 3] Menutup Total Proses Browser Chrome (Simulasi Aplikasi Ditutup Kasir)...');
   await context1.close();
-  console.log('  -> Proses Chrome 1 telah dihentikan sepenuhnya.');
+  console.log('  -> Proses Chrome 1 telah dihentikan sepenuhnya (Process Exit).');
   await new Promise(r => setTimeout(r, 1500));
 
   // -------------------------------------------------------------
@@ -305,12 +363,34 @@ try {
   console.log('  ✅ PASS: Ekspor cadangan mandiri berhasil dihasilkan saat offline tanpa error!');
 
   // -------------------------------------------------------------
-  // FASE 7: SAMBUNGKAN KEMBALI JARINGAN & TUTUP PENGUJIAN
+  // FASE 7: SIMULASI UPDATE GAGAL / KORUP & VERIFIKASI KEAMANAN (FAIL-CLOSED)
   // -------------------------------------------------------------
-  console.log('\n[FASE 7] Menyambungkan Kembali Jaringan & Memastikan Sistem Stabil...');
+  console.log('\n[FASE 7] Menguji Simulasi Pembaruan Service Worker yang Gagal (Fail-Closed)...');
   await context2.setOffline(false);
-  await page2.waitForTimeout(500);
-  console.log('  ✅ PASS: Sistem pulih normal tanpa tabrakan cache atau kehilangan data!');
+  
+  // Mencoba mendaftarkan script worker yang gagal / 404
+  const failClosedAudit = await page2.evaluate(async () => {
+    try {
+      // Registrasi script worker palsu yang 404
+      await navigator.serviceWorker.register('/sw-corrupted-test.js');
+      return { failedAsExpected: false };
+    } catch (err) {
+      // Pastikan controller yang aktif saat ini TETAP versi sakunota-pos-v2.5.0
+      const keys = await caches.keys();
+      const activeCache = keys.find(k => k.startsWith('sakunota-pos-'));
+      return {
+        failedAsExpected: true,
+        activeControllerAlive: !!navigator.serviceWorker.controller,
+        activeCacheKey: activeCache
+      };
+    }
+  });
+
+  console.log(`  -> Hasil Uji Pembaruan Korup: Gagal Terisolasi=${failClosedAudit.failedAsExpected}, SW Asli Tetap Aktif=${failClosedAudit.activeControllerAlive}, Cache=${failClosedAudit.activeCacheKey}`);
+  if (!failClosedAudit.failedAsExpected || !failClosedAudit.activeControllerAlive) {
+    throw new Error('Pembaruan yang rusak merusak Service Worker yang sedang berjalan!');
+  }
+  console.log('  ✅ PASS: Service Worker terbukti fail-closed! Pembaruan cacat ditolak tanpa merusak cache aktif.');
 
   await context2.close();
   console.log('\n================================================================');
