@@ -693,13 +693,24 @@ export default function POSPage() {
   const handleTableClick = (table: any) => {
     const status = getTableStatus(table);
     resetCart();
-    setCustomerName("");
     setOrderType("Dine-in");
     setSelectedTable(table.id.toString());
     
     if (status === 'open') {
       const order = activeOrders.find(o => o.tableId === table.id && o.status !== 'paid' && o.status !== 'void');
-      if (order) loadOrderIntoCart(order);
+      if (order) {
+        loadOrderIntoCart(order);
+        setCustomerName(order.customerName || "");
+      } else {
+        setCustomerName("");
+      }
+    } else if (status === 'lunas') {
+      const paidOrder = allOrders
+        .filter(o => o.tableId === table.id && o.status === 'paid')
+        .sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+      setCustomerName(paidOrder?.customerName || "");
+    } else {
+      setCustomerName("");
     }
     
     setView('menu');
@@ -1534,25 +1545,81 @@ export default function POSPage() {
             )}
           </div>
         )}
+
+        {selectedTableStatus !== 'lunas' && (
+          <div className="mt-2.5">
+            <div className="relative flex items-center">
+              <span className="absolute left-3 text-xs text-muted">👤</span>
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Nama Pelanggan (opsional)..."
+                className="w-full pl-8 pr-7 py-2 bg-surface border border-line rounded-xl text-xs font-semibold text-fg placeholder:text-muted focus:border-accent outline-none transition-colors"
+              />
+              {customerName && (
+                <button
+                  type="button"
+                  onClick={() => setCustomerName("")}
+                  className="absolute right-2 text-xs text-muted hover:text-fg p-1"
+                  title="Hapus nama"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className={`flex-1 overflow-y-auto ${isMobile ? 'p-6' : 'p-5'} space-y-4 bg-card`}>
-        {cart.length === 0 && selectedTableStatus === 'lunas' && (
-          <div className="text-center mt-6 flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-accent/40 flex items-center justify-center text-3xl mb-3 border border-accent/40">✅</div>
-            <p className="font-bold text-fg">Tagihan Meja Ini Sudah LUNAS</p>
-            <div className=" bg-surface border border-line rounded-xl p-3.5 mt-3 text-xs text-slate-300 text-left w-full space-y-1">
-              <p className="font-bold text-fg">Meja Siap Dikosongkan:</p>
-              <p className="leading-snug">Klik tombol di bawah untuk melepas meja agar siap dipakai tamu berikutnya, atau langsung pilih menu untuk membuat nota baru.</p>
+        {cart.length === 0 && selectedTableStatus === 'lunas' && (() => {
+          const paidOrder = allOrders
+            .filter(o => o.tableId === selectedTableObj?.id && o.status === 'paid')
+            .sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+          const displayCustomer = customerName || paidOrder?.customerName || (selectedTableObj ? `Meja ${selectedTableObj.nomor.replace(/^Meja\s*/i, '')}` : "Tamu");
+
+          return (
+            <div className="text-center mt-6 flex flex-col items-center">
+              <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center text-3xl mb-3 border border-accent/40 shadow-sm">✅</div>
+              <p className="font-extrabold text-base text-fg">Tagihan Meja Ini Sudah LUNAS</p>
+              
+              <div className="bg-surface border border-line rounded-xl p-3.5 mt-3 text-xs text-slate-300 text-left w-full space-y-2">
+                <div className="flex justify-between items-center pb-2 border-b border-line">
+                  <span className="text-muted font-medium">Pelanggan:</span>
+                  <span className="font-bold text-accent-text text-sm">👤 {displayCustomer}</span>
+                </div>
+                {paidOrder && (
+                  <>
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-muted">No. Nota:</span>
+                      <span className="font-mono text-fg font-semibold">#{paidOrder.id}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-muted">Total Bayar:</span>
+                      <span className="font-extrabold text-fg">Rp {paidOrder.total.toLocaleString('id-ID')}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-muted">Metode:</span>
+                      <span className="font-semibold text-fg">{paidOrder.paymentMethod || 'Cash'}</span>
+                    </div>
+                  </>
+                )}
+                <p className="text-[11px] text-muted pt-1 leading-snug">
+                  Meja siap dikosongkan untuk tamu berikutnya, atau pilih menu di samping untuk membuat pesanan baru.
+                </p>
+              </div>
+
+              <button 
+                onClick={() => { handleClearTable(); setIsMobileCartOpen(false); }} 
+                className="w-full mt-4 py-3.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-extrabold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <span>🔄</span>
+                <span>Kosongkan Meja (Lepas)</span>
+              </button>
             </div>
-            <button 
-              onClick={() => { handleClearTable(); setIsMobileCartOpen(false); }} 
-              className="w-full mt-4 py-3.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-extrabold text-sm shadow-md transition-all active:scale-95"
-            >
-              🔄 Kosongkan Meja (Lepas)
-            </button>
-          </div>
-        )}
+          );
+        })()}
         
         {cart.length === 0 && selectedTableStatus !== 'lunas' && (
           <div className="text-center text-muted mt-12 flex flex-col items-center justify-center">
@@ -2208,8 +2275,12 @@ export default function POSPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {tableData.map(table => {
                   const tStatus = getTableStatus(table);
-                  const order = activeOrders.find(o => o.tableId === table.id && o.status !== 'paid' && o.status !== 'void');
-                  const name = order?.customerName;
+                  const openOrder = activeOrders.find(o => o.tableId === table.id && o.status !== 'paid' && o.status !== 'void');
+                  const paidOrder = tStatus === 'lunas' 
+                    ? allOrders.filter(o => o.tableId === table.id && o.status === 'paid').sort((a, b) => (b.id || 0) - (a.id || 0))[0] 
+                    : null;
+                  const activeTableOrder = openOrder || paidOrder;
+                  const name = activeTableOrder?.customerName;
                   const isSelected = selectedTable === table.id.toString();
                   const style = tStatus === 'open' 
                     ? { card: 'border-rose-400/80 bg-card shadow-rose-500/10', badge: 'bg-rose-600', label: 'Terisi (Open)', labelCls: 'bg-rose-500/10 text-rose-400' } 
@@ -2225,12 +2296,25 @@ export default function POSPage() {
                       <span className={`w-12 h-12 rounded-full ${style.badge} text-white font-black text-lg flex items-center justify-center shadow-md mt-1`}>
                         {table.nomor.replace(/^Meja\s*/i, '')}
                       </span>
-                      <div className="flex flex-col items-center text-center w-full">
+                      <div className="flex flex-col items-center text-center w-full px-1">
                         <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${style.labelCls}`}>
                           {style.label}
                         </span>
-                        {name && <span className="mt-1 text-xs text-slate-300 font-semibold truncate max-w-full">{name}</span>}
-                        {order && <span className="text-[11px] font-extrabold text-rose-400 mt-0.5">Rp {order.total.toLocaleString('id-ID')}</span>}
+                        {name && (
+                          <span className={`mt-1 text-xs font-bold truncate max-w-full ${tStatus === 'lunas' ? 'text-accent-text' : 'text-fg'}`}>
+                            👤 {name}
+                          </span>
+                        )}
+                        {openOrder && (
+                          <span className="text-[11px] font-extrabold text-rose-400 mt-0.5">
+                            Rp {openOrder.total.toLocaleString('id-ID')}
+                          </span>
+                        )}
+                        {paidOrder && (
+                          <span className="text-[10px] font-semibold text-muted mt-0.5 truncate max-w-full">
+                            Nota #{paidOrder.id} • Rp {paidOrder.total.toLocaleString('id-ID')}
+                          </span>
+                        )}
                       </div>
 
                       {tStatus === 'lunas' ? (
@@ -2360,7 +2444,9 @@ export default function POSPage() {
                   {cart.reduce((s, i) => s + i.qty, 0)}
                 </div>
                 <div className="text-left leading-tight text-white">
-                   <span className="block text-[11px] opacity-90 font-bold uppercase tracking-wider">{selectedTableObj ? `Meja ${selectedTableObj.nomor.replace(/^Meja\s*/i, '')}` : 'Tanpa Meja'}</span>
+                   <span className="block text-[11px] opacity-90 font-bold uppercase tracking-wider">
+                     {customerName ? `${selectedTableObj ? `Meja ${selectedTableObj.nomor.replace(/^Meja\s*/i, '')} • ` : ''}${customerName}` : (selectedTableObj ? `Meja ${selectedTableObj.nomor.replace(/^Meja\s*/i, '')}` : 'Tanpa Meja')}
+                   </span>
                    <span className="block font-black text-sm">Lihat Keranjang</span>
                 </div>
               </div>
