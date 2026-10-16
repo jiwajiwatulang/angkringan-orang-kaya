@@ -2478,13 +2478,13 @@ export default function POSPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-full bg-line text-slate-300 font-bold text-[10px]">
+                  <span className="px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[10px]">
                     Kosong: {tableData.filter(t => getTableStatus(t) === 'kosong').length}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 font-bold text-[10px]">
+                  <span className="px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold text-[10px]">
                     Terisi: {tableData.filter(t => getTableStatus(t) === 'open').length}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-accent/20 text-accent-text font-bold text-[10px]">
+                  <span className="px-2.5 py-0.5 rounded-full bg-accent/20 text-accent-text font-bold text-[10px]">
                     Lunas: {tableData.filter(t => getTableStatus(t) === 'lunas').length}
                   </span>
                 </div>
@@ -2501,21 +2501,21 @@ export default function POSPage() {
                   const name = activeTableOrder?.customerName;
                   const isSelected = selectedTable === table.id.toString();
                   const style = tStatus === 'open' 
-                    ? { card: 'border-rose-400/80 bg-card shadow-rose-500/10', badge: 'bg-rose-600', label: 'Terisi (Open)', labelCls: 'bg-rose-500/10 text-rose-400' } 
+                    ? { card: 'border-rose-500 bg-card shadow-rose-500/10', badge: 'bg-rose-600 text-white', label: 'Terisi (Open)', labelCls: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold' } 
                     : tStatus === 'lunas' 
-                    ? { card: 'border-accent/80 bg-card shadow-accent/10', badge: 'bg-accent', label: 'Lunas', labelCls: 'bg-accent/10 text-accent-text' } 
-                    : { card: ' border-line bg-card/80', badge: 'bg-line text-fg', label: 'Kosong', labelCls: ' bg-line text-slate-300' };
+                    ? { card: 'border-accent bg-card shadow-accent/10', badge: 'bg-accent text-white', label: 'Lunas', labelCls: 'bg-accent/15 text-accent-text font-bold' } 
+                    : { card: 'border-line bg-card hover:border-accent/40', badge: 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-black', label: 'Kosong', labelCls: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold' };
                   return (
                     <div 
                       key={table.id} 
                       onClick={() => handleTableClick(table)} 
                       className={`relative rounded-2xl border-2 ${style.card} p-4 h-40 flex flex-col items-center justify-between shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer ${isSelected ? 'ring-4 ring-accent/70' : ''}`}
                     >
-                      <span className={`w-12 h-12 rounded-full ${style.badge} text-white font-black text-lg flex items-center justify-center shadow-md mt-1`}>
+                      <span className={`w-12 h-12 rounded-full ${style.badge} text-xl flex items-center justify-center shadow-md mt-1`}>
                         {table.nomor.replace(/^Meja\s*/i, '')}
                       </span>
                       <div className="flex flex-col items-center text-center w-full px-1">
-                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${style.labelCls}`}>
+                        <span className={`text-[11px] px-2 py-0.5 rounded-full ${style.labelCls}`}>
                           {style.label}
                         </span>
                         {name && (
@@ -2573,7 +2573,7 @@ export default function POSPage() {
                           className={`px-4 py-2 rounded-full whitespace-nowrap text-xs md:text-sm font-bold border transition-all ${
                             activeCategory === cat 
                               ? 'bg-accent border-accent text-white shadow-md shadow-accent/20' 
-                              : ' bg-card border-line text-slate-300 hover:bg-surface'
+                              : ' bg-card border-line text-slate-700 dark:text-slate-300 hover:text-fg hover:border-slate-400'
                           }`}
                         >
                           {cat}

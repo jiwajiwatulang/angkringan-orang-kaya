@@ -6,7 +6,6 @@ import { useAdmin } from "../AdminContext";
 
 export default function AdminPengaturanHubPage() {
   const { storeSettings } = useAdmin();
-  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
 
   const settingsCategories = [
     {
@@ -108,7 +107,7 @@ export default function AdminPengaturanHubPage() {
             </span>
             <div>
               <h3 className="font-black text-sm text-fg">SakuNota — Kasir Tetap Jalan, Meski Tanpa Internet</h3>
-              <p className="text-xs text-muted">Aplikasi kasir praktis tanpa biaya bulanan. Cukup Rp65.000 promo lisensi.</p>
+              <p className="text-xs text-muted">Aplikasi kasir praktis tanpa biaya bulanan. Solusi mandiri untuk UMKM.</p>
             </div>
           </div>
 
@@ -120,39 +119,6 @@ export default function AdminPengaturanHubPage() {
               Lihat Detail & Bantuan →
             </Link>
           </div>
-        </div>
-
-        {/* Collapsible Technical Diagnostics Drawer */}
-        <div className="pt-2 border-t border-line/60">
-          <button
-            type="button"
-            onClick={() => setIsDiagnosticsOpen(!isDiagnosticsOpen)}
-            className="flex items-center justify-between w-full text-[11px] font-bold text-muted hover:text-fg transition-colors"
-          >
-            <span>🔧 Diagnostik Sistem (Khusus Tim Teknis)</span>
-            <span>{isDiagnosticsOpen ? "▲ Sembunyikan" : "▼ Tampilkan"}</span>
-          </button>
-
-          {isDiagnosticsOpen && (
-            <div className="mt-3 p-3 rounded-2xl bg-card/60 border border-line grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono animate-in fade-in duration-150">
-              <div>
-                <span className="text-[9px] text-muted uppercase block font-sans">Versi Build</span>
-                <span className="text-fg font-bold">v2.4.0-pro</span>
-              </div>
-              <div>
-                <span className="text-[9px] text-muted uppercase block font-sans">Git Commit</span>
-                <span className="text-accent-text font-bold">2b5f65f</span>
-              </div>
-              <div>
-                <span className="text-[9px] text-muted uppercase block font-sans">Database</span>
-                <span className="text-fg font-bold">Dexie DB v8</span>
-              </div>
-              <div>
-                <span className="text-[9px] text-muted uppercase block font-sans">Penyimpanan</span>
-                <span className="text-emerald-400 font-bold">100% Offline ACID</span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

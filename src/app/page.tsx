@@ -4,19 +4,43 @@ import React, { useState } from "react";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 
+export interface CustomerOrder {
+  orderId: string;
+  buyerName: string;
+  businessName: string;
+  whatsapp: string;
+  email?: string;
+  amount: number;
+  paymentMethod: string;
+  bankAccount: string;
+  transferProofName?: string;
+  status: "menunggu_verifikasi" | "lunas_lisensi_terbit" | "batal";
+  licenseKey?: string;
+  createdAt: string;
+  verifiedAt?: string;
+}
+
 export default function SakuNotaLandingPage() {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
   // Purchase Modal State
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
-  const [checkoutStep, setCheckoutStep] = useState<"form" | "payment" | "success">("form");
+  const [checkoutStep, setCheckoutStep] = useState<"form" | "payment" | "waiting">("form");
   const [buyerName, setBuyerName] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [consentChecked, setConsentChecked] = useState(false);
   const [formError, setFormError] = useState("");
-  const [issuedLicense, setIssuedLicense] = useState("");
+  const [currentOrderId, setCurrentOrderId] = useState("");
+  const [transferProofSimulated, setTransferProofSimulated] = useState(false);
+
+  // Check Order / License Status State
+  const [isCheckStatusModalOpen, setIsCheckStatusModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResult, setSearchResult] = useState<CustomerOrder | null>(null);
+  const [searchAttempted, setSearchAttempted] = useState(false);
+  const [copiedLicense, setCopiedLicense] = useState(false);
 
   // Offline Readiness Check Tool State
   const [isCheckingOffline, setIsCheckingOffline] = useState(false);
@@ -35,6 +59,7 @@ export default function SakuNotaLandingPage() {
     setIsBuyModalOpen(true);
     setCheckoutStep("form");
     setFormError("");
+    setTransferProofSimulated(false);
   };
 
   const handleFillSampleData = () => {
@@ -57,22 +82,78 @@ export default function SakuNotaLandingPage() {
       return;
     }
     setFormError("");
+
+    // Generate unique order ID
+    const randomNum = Math.floor(100 + Math.random() * 900);
+    const ordId = `SN-2026-${randomNum}`;
+    setCurrentOrderId(ordId);
     setCheckoutStep("payment");
   };
 
-  const handleConfirmPayment = () => {
-    // Generate simulated license key
-    const randomHex = () => Math.random().toString(36).substring(2, 6).toUpperCase();
-    const license = `SN-${randomHex()}-${randomHex()}-${randomHex()}`;
-    setIssuedLicense(license);
-    setCheckoutStep("success");
+  const handleSubmitTransferProof = () => {
+    // Save to customer orders (shared with /owner)
+    const newOrder: CustomerOrder = {
+      orderId: currentOrderId,
+      buyerName: buyerName.trim(),
+      businessName: businessName.trim(),
+      whatsapp: whatsappNumber.trim(),
+      email: buyerEmail.trim() || undefined,
+      amount: 65000,
+      paymentMethod: "Transfer Bank BCA",
+      bankAccount: "8030 554 912 a.n. Reza",
+      transferProofName: "bukti_transfer_pembeli.jpg",
+      status: "menunggu_verifikasi",
+      createdAt: new Date().toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+
+    if (typeof window !== "undefined") {
+      let existing: CustomerOrder[] = [];
+      const stored = localStorage.getItem("sakunota_customer_orders");
+      if (stored) {
+        try {
+          existing = JSON.parse(stored);
+        } catch (_) {}
+      }
+      existing.unshift(newOrder);
+      localStorage.setItem("sakunota_customer_orders", JSON.stringify(existing));
+    }
+
+    setCheckoutStep("waiting");
+  };
+
+  const handleSearchOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSearchAttempted(true);
+    setSearchResult(null);
+
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return;
+
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("sakunota_customer_orders");
+      if (stored) {
+        try {
+          const list: CustomerOrder[] = JSON.parse(stored);
+          const found = list.find((o) => 
+            o.orderId.toLowerCase() === query || 
+            o.whatsapp.toLowerCase().includes(query) ||
+            o.businessName.toLowerCase().includes(query)
+          );
+          setSearchResult(found || null);
+        } catch (_) {}
+      }
+    }
   };
 
   const handleCheckOfflineReadiness = async () => {
     setIsCheckingOffline(true);
     setOfflineCheckResult(null);
 
-    // Simulate genuine browser environment inspection
     await new Promise((resolve) => setTimeout(resolve, 800));
 
     const swSupported = typeof window !== "undefined" && "serviceWorker" in navigator;
@@ -88,7 +169,6 @@ export default function SakuNotaLandingPage() {
     setIsCheckingOffline(false);
   };
 
-  // 4 Core Questions & Answers
   const coreQuestions = [
     {
       q: "1. Untuk apa aplikasi SakuNota?",
@@ -112,7 +192,6 @@ export default function SakuNotaLandingPage() {
     },
   ];
 
-  // Merchant-friendly features (technical jargon translated)
   const features = [
     {
       icon: "📋",
@@ -146,11 +225,14 @@ export default function SakuNotaLandingPage() {
     },
   ];
 
-  // FAQs
   const faqs = [
     {
       q: "Apakah ada biaya langganan bulanan?",
       a: "Tidak ada biaya bulanan sama sekali. Cukup bayar promo Rp65.000 untuk 1 lisensi perangkat kasir operasional Anda. Tidak ada komisi penjualan dan tidak ada iklan.",
+    },
+    {
+      q: "Bagaimana alur pembayaran transfer manual?",
+      a: "Setelah mengisi formulir, Anda mentransfer Rp65.000 ke rekening resmi BCA 8030 554 912 a.n. Reza. Kirim bukti transfer dan Reza (Owner SakuNota) akan memverifikasi mutasi bank lalu menerbitkan lisensi resmi untuk perangkat Anda.",
     },
     {
       q: "Bagaimana jika kasir berganti HP baru?",
@@ -179,7 +261,7 @@ export default function SakuNotaLandingPage() {
               SakuNota
             </span>
             <span className="text-[10px] text-muted font-bold tracking-wider uppercase block mt-0.5">
-              Kasir Simpel UMKM
+              Kasir Tetap Jalan, Meski Tanpa Internet
             </span>
           </div>
         </div>
@@ -208,6 +290,18 @@ export default function SakuNotaLandingPage() {
           <ThemeToggle size="sm" />
           <button
             type="button"
+            onClick={() => {
+              setIsCheckStatusModalOpen(true);
+              setSearchAttempted(false);
+              setSearchResult(null);
+            }}
+            className="hidden sm:inline-flex px-3 py-2 bg-card hover:bg-line text-xs font-bold text-fg rounded-xl border border-line transition-colors items-center gap-1.5"
+          >
+            <span>🔍</span>
+            <span>Cek Status Lisensi</span>
+          </button>
+          <button
+            type="button"
             onClick={handleOpenBuyModal}
             className="hidden sm:inline-flex px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-md shadow-emerald-600/20 transition-all active:scale-95 items-center gap-1.5"
           >
@@ -226,18 +320,15 @@ export default function SakuNotaLandingPage() {
 
       {/* 2. Hero Section */}
       <section className="relative px-4 sm:px-8 pt-14 pb-16 md:pt-20 md:pb-24 max-w-5xl mx-auto text-center space-y-6">
-        {/* Category Pill */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/15 border border-accent/30 text-accent-text text-xs font-black">
           <span>🏪</span>
           <span>SakuNota — Kasir Tetap Jalan, Meski Tanpa Internet</span>
         </div>
 
-        {/* Headline */}
         <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-fg tracking-tight leading-[1.15] max-w-3xl mx-auto">
           Jualan Lancar, Internet Mati Bukan Masalah.
         </h1>
 
-        {/* Subtitle */}
         <p className="text-sm sm:text-base md:text-lg text-muted max-w-2xl mx-auto leading-relaxed">
           Catat pesanan, hitung pembayaran, cetak struk, dan lihat hasil jualan dalam satu aplikasi kasir yang mudah digunakan.
         </p>
@@ -246,7 +337,7 @@ export default function SakuNotaLandingPage() {
         <div className="inline-block pt-2">
           <div className="px-6 py-4 rounded-3xl bg-surface border-2 border-accent/40 shadow-xl shadow-accent/10 inline-flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
             <div className="text-left">
-              <span className="text-[10px] text-muted uppercase font-bold tracking-wider block">Harga Promo Terbatas</span>
+              <span className="text-[10px] text-muted uppercase font-bold tracking-wider block">Harga Promo Peluncuran</span>
               <div className="flex items-baseline gap-2.5">
                 <span className="text-sm sm:text-base text-muted line-through font-bold">Rp99.000</span>
                 <span className="text-3xl sm:text-4xl font-black text-emerald-600 dark:text-emerald-400">Rp65.000</span>
@@ -257,7 +348,7 @@ export default function SakuNotaLandingPage() {
                 Hemat Rp34.000 (34%)
               </span>
               <span className="text-[11px] text-muted font-semibold block mt-1">
-                Tanpa biaya bulanan • 1 Lisensi Perangkat
+                Transfer Bank BCA Manual • 1 Lisensi Perangkat
               </span>
             </div>
           </div>
@@ -281,6 +372,18 @@ export default function SakuNotaLandingPage() {
             <span>Coba Kasir Gratis Sekarang</span>
             <span>→</span>
           </Link>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsCheckStatusModalOpen(true);
+              setSearchAttempted(false);
+              setSearchResult(null);
+            }}
+            className="w-full sm:w-auto px-6 py-4 bg-surface hover:bg-card text-muted hover:text-fg font-bold text-xs rounded-2xl border border-line transition-all"
+          >
+            🔍 Cek Status Pesanan Saya
+          </button>
         </div>
 
         {/* Trust Badges */}
@@ -289,15 +392,15 @@ export default function SakuNotaLandingPage() {
             <span className="text-emerald-500 font-black">✓</span> Kasir tetap bisa dipakai tanpa internet
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="text-emerald-500 font-black">✓</span> Tanpa potongan komisi penjualan
+            <span className="text-emerald-500 font-black">✓</span> Rekening resmi BCA a.n. Reza
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="text-emerald-500 font-black">✓</span> Pasang mudah langsung di layar HP
+            <span className="text-emerald-500 font-black">✓</span> Tanpa potongan komisi penjualan
           </span>
         </div>
       </section>
 
-      {/* 3. Empat Pertanyaan Calon Pembeli (The 4 Questions Section) */}
+      {/* 3. Empat Pertanyaan Calon Pembeli */}
       <section id="tanya-jawab-utama" className="px-4 sm:px-8 py-16 bg-surface/50 border-t border-b border-line">
         <div className="max-w-5xl mx-auto space-y-10">
           <div className="text-center space-y-2">
@@ -349,7 +452,6 @@ export default function SakuNotaLandingPage() {
           </p>
         </div>
 
-        {/* 3 Langkah Visual */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <div className="p-6 rounded-3xl bg-surface border border-line shadow-sm space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-accent text-white font-black text-lg flex items-center justify-center shadow-md shadow-accent/20">
@@ -643,7 +745,7 @@ export default function SakuNotaLandingPage() {
         </div>
       </section>
 
-      {/* 9. Interactive Buy Modal (Alur Pembelian Pelanggan) */}
+      {/* 9. Interactive Buy Modal (Alur Transfer Bank Manual & Verifikasi Owner) */}
       {isBuyModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-150">
           <div className="bg-surface border border-line rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl my-8">
@@ -655,7 +757,7 @@ export default function SakuNotaLandingPage() {
                 </div>
                 <div>
                   <h3 className="font-black text-base text-fg">Formulir Pembelian SakuNota</h3>
-                  <span className="text-[10px] text-muted">Promo Rp65.000 (Hemat Rp34.000)</span>
+                  <span className="text-[10px] text-muted">Promo Rp65.000 (Transfer Bank Manual)</span>
                 </div>
               </div>
               <button
@@ -781,40 +883,93 @@ export default function SakuNotaLandingPage() {
                     type="submit"
                     className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95"
                   >
-                    Lanjut ke Pembayaran →
+                    Lanjut ke Rekening Transfer →
                   </button>
                 </div>
               </form>
             )}
 
-            {/* Step 2: Pembayaran Resmi */}
+            {/* Step 2: Instruksi Transfer Bank Resmi BCA */}
             {checkoutStep === "payment" && (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <span className="text-xs font-bold text-fg">Langkah 2 dari 2: Konfirmasi Pembayaran</span>
+                  <span className="text-xs font-bold text-fg">Langkah 2 dari 2: Transfer Bank Resmi</span>
                   <p className="text-[11px] text-muted">
-                    Selesaikan pembayaran Rp65.000 untuk nama usaha <strong>{businessName}</strong> ({buyerName}).
+                    Selesaikan transfer untuk pesanan <strong>{currentOrderId}</strong> ({businessName}).
                   </p>
                 </div>
 
-                {/* Simulated QRIS / Bank Transfer Box */}
-                <div className="p-4 rounded-2xl bg-card border border-line text-center space-y-3">
-                  <div className="inline-block px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[10px]">
-                    QRIS & Transfer Bank Resmi
+                {/* Bank BCA Details Card */}
+                <div className="p-4 rounded-2xl bg-card border border-line space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-blue-600 dark:text-blue-400">
+                      BANK BCA
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold">
+                      Rekening Resmi SakuNota
+                    </span>
                   </div>
-                  <div className="w-36 h-36 mx-auto bg-white p-2 rounded-xl border border-neutral-300 flex flex-col items-center justify-center shadow-inner">
-                    <span className="text-3xl">📱</span>
-                    <span className="text-[10px] text-neutral-800 font-black mt-1">QRIS SAKUNOTA</span>
-                    <span className="text-[9px] text-neutral-500">BCA • Mandiri • GoPay</span>
+
+                  <div className="space-y-1 bg-surface p-3 rounded-xl border border-line">
+                    <span className="text-[10px] text-muted block font-bold uppercase">Nomor Rekening:</span>
+                    <div className="flex items-center justify-between">
+                      <strong className="text-lg font-mono font-black text-fg select-all">
+                        8030 554 912
+                      </strong>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText("8030554912");
+                          alert("Nomor rekening BCA berhasil disalin!");
+                        }}
+                        className="text-[10px] font-bold text-accent-text hover:underline"
+                      >
+                        Salin No Rek
+                      </button>
+                    </div>
+                    <span className="text-[11px] text-muted block">Atas Nama: <strong>Reza / SakuNota Official</strong></span>
                   </div>
-                  <div className="text-xs">
-                    <span className="text-muted block text-[11px]">Jumlah yang Harus Dibayar:</span>
-                    <strong className="text-lg font-black text-fg">Rp65.000</strong>
+
+                  <div className="flex justify-between items-center text-xs pt-1">
+                    <span className="text-muted">Nominal Transfer:</span>
+                    <strong className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                      Rp 65.000
+                    </strong>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted">Nomor Pesanan (Berita Transfer):</span>
+                    <strong className="font-mono font-bold text-fg">
+                      {currentOrderId}
+                    </strong>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-accent/10 border border-accent/20 text-[11px] text-muted leading-relaxed">
-                  💡 <em>Dalam sistem produksi, pembayaran diverifikasi otomatis oleh payment gateway (Midtrans / Xendit).</em>
+                {/* Simulasi Bukti Transfer */}
+                <div className="p-3.5 rounded-2xl bg-card border border-line space-y-2">
+                  <span className="text-[11px] font-bold text-fg block">
+                    Upload Bukti Transfer:
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTransferProofSimulated(true)}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+                        transferProofSimulated
+                          ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
+                          : "bg-surface border-line text-muted hover:text-fg"
+                      }`}
+                    >
+                      {transferProofSimulated ? "✅ File Bukti Terlampir (bukti_transfer.jpg)" : "📎 Pilih Foto Bukti Transfer"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed space-y-1">
+                  <strong className="block">ℹ️ Proses Verifikasi Owner:</strong>
+                  <p>
+                    Setelah Anda mengirim bukti transfer, status pesanan akan menjadi <strong>Menunggu Verifikasi</strong>. Reza (Owner SakuNota) akan mencocokkan mutasi rekening sebelum menerbitkan kode lisensi resmi.
+                  </p>
                 </div>
 
                 <div className="pt-2 flex gap-2">
@@ -827,56 +982,76 @@ export default function SakuNotaLandingPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={handleConfirmPayment}
+                    onClick={handleSubmitTransferProof}
                     className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95"
                   >
-                    Simulasikan Pembayaran Berhasil ✅
+                    Kirim Bukti Transfer Sekarang →
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Step 3: Pembayaran Berhasil & Lisensi Aktif */}
-            {checkoutStep === "success" && (
-              <div className="space-y-4 text-center">
-                <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-3xl mx-auto flex items-center justify-center">
-                  🎉
+            {/* Step 3: Status Menunggu Verifikasi Owner */}
+            {checkoutStep === "waiting" && (
+              <div className="space-y-5 text-center">
+                <div className="w-14 h-14 rounded-full bg-amber-500/20 text-amber-500 text-3xl mx-auto flex items-center justify-center animate-pulse">
+                  ⏳
                 </div>
+
                 <div className="space-y-1">
-                  <h4 className="text-lg font-black text-fg">Pembayaran Berhasil!</h4>
+                  <h4 className="text-lg font-black text-fg">Bukti Transfer Telah Dikirim!</h4>
                   <p className="text-xs text-muted">
-                    Selamat, lisensi SakuNota untuk usaha <strong>{businessName}</strong> sudah aktif.
+                    Pesanan Anda sedang menunggu pengecekan mutasi bank oleh Owner SakuNota.
                   </p>
                 </div>
 
-                {/* License Card */}
-                <div className="p-4 rounded-2xl bg-card border border-emerald-500/40 text-left space-y-2">
-                  <div className="flex justify-between items-center text-[10px] text-muted font-bold">
-                    <span>KODE LISENSI PERANGKAT:</span>
-                    <span className="text-emerald-500 font-black">AKTIF</span>
+                {/* Status Box */}
+                <div className="p-4 rounded-2xl bg-card border border-line text-left space-y-2.5 text-xs">
+                  <div className="flex justify-between items-center pb-2 border-b border-line">
+                    <span className="text-muted">Nomor Pesanan:</span>
+                    <strong className="font-mono font-black text-fg text-sm">{currentOrderId}</strong>
                   </div>
-                  <div className="font-mono font-black text-base text-accent-text bg-surface px-3 py-2 rounded-xl border border-line text-center select-all">
-                    {issuedLicense}
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted">Status:</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-black text-[11px] border border-amber-500/30">
+                      Menunggu Verifikasi Owner
+                    </span>
                   </div>
-                  <p className="text-[10px] text-muted leading-relaxed">
-                    Simpan kode ini. Salinan lisensi dan tanda terima telah dicatat untuk nomor WhatsApp <strong>{whatsappNumber}</strong>.
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted">Nama Usaha:</span>
+                    <strong className="text-fg">{businessName}</strong>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted">Nominal:</span>
+                    <strong className="text-fg font-black">Rp 65.000</strong>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-surface border border-line text-left text-xs text-muted space-y-1.5 leading-relaxed">
+                  <strong className="text-fg block">💡 Apa yang terjadi selanjutnya?</strong>
+                  <p>
+                    1. Reza (Owner SakuNota) memeriksa dana masuk di mutasi BCA.<br />
+                    2. Setelah dana cocok, lisensi resmi akan langsung diterbitkan.<br />
+                    3. Anda dapat mengecek nomor lisensi kapan saja lewat tombol <strong>Cek Status Lisensi</strong> di halaman depan.
                   </p>
                 </div>
 
                 <div className="pt-2 flex flex-col gap-2">
-                  <Link
-                    href="/pos"
-                    onClick={() => setIsBuyModalOpen(false)}
-                    className="w-full py-3.5 bg-accent hover:bg-accent-hover text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95"
+                  <a
+                    href={`https://wa.me/6281234567890?text=Halo%20Mas%20Reza%20(Owner%20SakuNota),%20saya%20sudah%20transfer%20Rp65.000%20untuk%20pesanan%20${currentOrderId}%20(${businessName}).%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
                   >
-                    Mulai Buka Kasir Sekarang →
-                  </Link>
+                    <span>💬</span>
+                    <span>Konfirmasi Cepat via WhatsApp Reza</span>
+                  </a>
                   <button
                     type="button"
                     onClick={() => setIsBuyModalOpen(false)}
                     className="w-full py-2.5 text-xs font-bold text-muted hover:text-fg transition-colors"
                   >
-                    Tutup
+                    Simpan & Tutup Halaman
                   </button>
                 </div>
               </div>
@@ -885,7 +1060,128 @@ export default function SakuNotaLandingPage() {
         </div>
       )}
 
-      {/* 10. Footer */}
+      {/* 10. Modal Cek Status Pesanan / Lisensi Saya */}
+      {isCheckStatusModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-150">
+          <div className="bg-surface border border-line rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between pb-2 border-b border-line">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🔍</span>
+                <h3 className="font-black text-sm text-fg">Cek Status Pesanan & Lisensi</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCheckStatusModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-card hover:bg-line text-muted text-xs flex items-center justify-center font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSearchOrder} className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-muted mb-1 uppercase">
+                  Masukkan No Pesanan atau No WhatsApp:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: SN-2026-001 atau 0812345..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-accent outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2.5 bg-accent hover:bg-accent-hover text-white text-xs font-black rounded-xl transition-all"
+                  >
+                    Cari
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            {/* Hasil Pencarian */}
+            {searchAttempted && searchResult && (
+              <div className="p-4 rounded-2xl bg-card border border-line space-y-3 text-xs animate-in fade-in duration-150">
+                <div className="flex justify-between items-center pb-2 border-b border-line">
+                  <div>
+                    <strong className="text-fg block">{searchResult.businessName}</strong>
+                    <span className="text-[10px] text-muted font-mono">{searchResult.orderId}</span>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                    searchResult.status === "lunas_lisensi_terbit"
+                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                      : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                  }`}>
+                    {searchResult.status === "lunas_lisensi_terbit" ? "Lunas & Aktif" : "Menunggu Verifikasi"}
+                  </span>
+                </div>
+
+                {searchResult.status === "lunas_lisensi_terbit" && searchResult.licenseKey ? (
+                  <div className="space-y-2 pt-1">
+                    <span className="text-[10px] text-muted font-bold block uppercase">KODE LISENSI RESMI ANDA:</span>
+                    <div className="p-3 rounded-xl bg-surface border border-emerald-500/40 text-center font-mono font-black text-sm text-emerald-600 dark:text-emerald-400 select-all">
+                      {searchResult.licenseKey}
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (searchResult.licenseKey) {
+                            navigator.clipboard.writeText(searchResult.licenseKey);
+                            setCopiedLicense(true);
+                            setTimeout(() => setCopiedLicense(false), 2000);
+                          }
+                        }}
+                        className="flex-1 py-2 rounded-xl bg-surface border border-line text-xs font-bold text-fg hover:border-accent transition-colors"
+                      >
+                        {copiedLicense ? "✓ Tersalin!" : "📋 Salin Lisensi"}
+                      </button>
+                      <Link
+                        href="/pos"
+                        className="flex-1 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-bold text-center shadow-sm"
+                      >
+                        Buka Kasir →
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-surface border border-line text-muted text-[11px] leading-relaxed space-y-1">
+                    <strong className="text-amber-600 dark:text-amber-400 block font-bold">Sedang Menunggu Verifikasi</strong>
+                    <p>
+                      Bukti pembayaran sedang dicek di mutasi rekening BCA. Setelah dana diverifikasi oleh Reza (Owner), nomor lisensi otomatis tampil di sini.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {searchAttempted && !searchResult && (
+              <div className="p-4 rounded-2xl bg-card border border-line text-center text-xs text-muted space-y-1 animate-in fade-in">
+                <span className="text-xl block">🔎</span>
+                <strong className="text-fg block">Pesanan Tidak Ditemukan</strong>
+                <p className="text-[11px]">
+                  Periksa kembali nomor pesanan (contoh: SN-2026-001) atau nomor WhatsApp yang Anda masukkan saat memesan.
+                </p>
+              </div>
+            )}
+
+            <div className="pt-1 text-right">
+              <button
+                type="button"
+                onClick={() => setIsCheckStatusModalOpen(false)}
+                className="px-4 py-2 bg-card hover:bg-line text-fg text-xs font-bold rounded-xl"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 11. Footer */}
       <footer className="mt-auto border-t border-line bg-surface px-4 sm:px-8 py-10 text-xs text-muted">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
@@ -914,7 +1210,7 @@ export default function SakuNotaLandingPage() {
             </a>
             <span className="text-line">•</span>
             <Link href="/owner" className="hover:text-fg transition-colors">
-              Portal Pemilik SakuNota
+              Portal Pemilik (Reza)
             </Link>
             <span className="text-line">•</span>
             <Link href="/pos" className="text-accent-text font-bold hover:underline">

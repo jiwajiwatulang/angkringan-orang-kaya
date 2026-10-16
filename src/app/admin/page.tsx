@@ -98,51 +98,84 @@ export default function AdminDashboardPage() {
   const totalAllCategoriesOmzet = categoryEntries.reduce((s, c) => s + c.total, 0) || 1;
 
   const [isWaModalOpen, setIsWaModalOpen] = useState(false);
+  const [waPeriod, setWaPeriod] = useState<"today" | "yesterday" | "7days" | "thisMonth">("today");
   const [copiedReport, setCopiedReport] = useState(false);
 
-  // WhatsApp Report Calculations
-  const todayCashSales = validOrders
+  // Helper dates
+  const now = new Date();
+  const todayDateStr = now.toISOString().split("T")[0];
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayDateStr = yesterday.toISOString().split("T")[0];
+  const d7Ago = new Date(now);
+  d7Ago.setDate(d7Ago.getDate() - 6);
+  const d7AgoStr = d7Ago.toISOString().split("T")[0];
+  const thisMonthPrefix = todayDateStr.substring(0, 7);
+
+  // Filter orders by selected period (only paid / non-void orders)
+  const filteredWaOrders = orders.filter((o) => {
+    if (o.status === "void") return false;
+    const oDate = (o.created_at || o.createdAt || "").split("T")[0];
+    if (waPeriod === "today") return oDate === todayDateStr;
+    if (waPeriod === "yesterday") return oDate === yesterdayDateStr;
+    if (waPeriod === "7days") return oDate >= d7AgoStr && oDate <= todayDateStr;
+    if (waPeriod === "thisMonth") return oDate.startsWith(thisMonthPrefix);
+    return true;
+  });
+
+  const periodOmzet = filteredWaOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  const periodCashSales = filteredWaOrders
     .filter((o) => {
       const pm = (o.paymentMethod || o.metodePembayaran || "").toLowerCase();
       return pm.includes("cash") || pm.includes("tunai");
     })
     .reduce((sum, o) => sum + (o.total || 0), 0);
-  const todayNonCashSales = Math.max(0, todayOmzet - todayCashSales);
+  const periodNonCashSales = Math.max(0, periodOmzet - periodCashSales);
 
-  const itemCounts: Record<string, number> = {};
-  validOrders.forEach((o) => {
+  const periodItemCounts: Record<string, number> = {};
+  filteredWaOrders.forEach((o) => {
     (o.items || []).forEach((item: any) => {
       const name = item.name || item.nama || item.menuName || "Menu";
-      itemCounts[name] = (itemCounts[name] || 0) + (item.qty || 1);
+      periodItemCounts[name] = (periodItemCounts[name] || 0) + (item.qty || 1);
     });
   });
-  const topSoldItems = Object.entries(itemCounts)
+  const periodTopItems = Object.entries(periodItemCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3);
 
   const generateWaReportMessage = () => {
     const store = storeSettings.storeName || "SakuNota";
-    const dateFormatted = new Date().toLocaleDateString("id-ID", {
+    const dateFormatted = now.toLocaleDateString("id-ID", {
       day: "numeric",
       month: "long",
       year: "numeric",
     });
 
+    const periodLabels: Record<string, string> = {
+      today: "HARI INI",
+      yesterday: "KEMARIN",
+      "7days": "7 HARI TERAKHIR",
+      thisMonth: "BULAN INI",
+    };
+    const periodLabel = periodLabels[waPeriod] || "HARI INI";
+
     let msg = `LAPORAN PENJUALAN — SAKUNOTA\n`;
-    msg += `${store} · ${dateFormatted}\n\n`;
-    msg += `Total Penjualan: Rp ${todayOmzet.toLocaleString("id-ID")}\n`;
-    msg += `Jumlah Transaksi: ${validOrders.length}\n\n`;
-    msg += `Rincian Pembayaran:\n`;
-    msg += `• Tunai: Rp ${todayCashSales.toLocaleString("id-ID")}\n`;
-    msg += `• QRIS / Non-Tunai: Rp ${todayNonCashSales.toLocaleString("id-ID")}\n\n`;
-    if (topSoldItems.length > 0) {
-      msg += `Menu Terlaris:\n`;
-      topSoldItems.forEach(([name, qty], idx) => {
+    msg += `${dateFormatted}\n`;
+    msg += `${store}\n\n`;
+    msg += `RINGKASAN ${periodLabel}\n`;
+    msg += `Rp${periodOmzet.toLocaleString("id-ID")}\n`;
+    msg += `${filteredWaOrders.length} transaksi berhasil\n`;
+    msg += `Tunai: Rp${periodCashSales.toLocaleString("id-ID")}\n`;
+    msg += `Non-Tunai: Rp${periodNonCashSales.toLocaleString("id-ID")}\n\n`;
+
+    if (periodTopItems.length > 0) {
+      msg += `MENU TERLARIS\n`;
+      periodTopItems.forEach(([name, qty], idx) => {
         msg += `${idx + 1}. ${name} — ${qty} porsi\n`;
       });
       msg += `\n`;
     }
-    msg += `Laporan dibuat oleh SakuNota.`;
+    msg += `Dibuat dengan SakuNota`;
     return msg;
   };
 
@@ -585,12 +618,45 @@ export default function AdminDashboardPage() {
               </button>
             </div>
 
-            {/* Pratinjau Teks Laporan */}
+            {/* Pilihan Periode Laporan */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-muted uppercase tracking-wider block">
-                Pratinjau Pesan:
+                Pilih Periode Laporan:
               </label>
-              <pre className="p-4 rounded-2xl bg-card border border-line font-mono text-[11px] text-fg whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto select-all">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs font-bold">
+                {[
+                  { id: "today", label: "Hari Ini" },
+                  { id: "yesterday", label: "Kemarin" },
+                  { id: "7days", label: "7 Hari Terakhir" },
+                  { id: "thisMonth", label: "Bulan Ini" },
+                ].map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setWaPeriod(p.id as any)}
+                    className={`py-2 px-2.5 rounded-xl border text-center transition-all ${
+                      waPeriod === p.id
+                        ? "bg-accent border-accent text-white shadow-sm"
+                        : "bg-card border-line text-slate-700 dark:text-slate-300 hover:text-fg hover:border-slate-400"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Pratinjau Teks Laporan */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-[11px]">
+                <span className="font-bold text-muted uppercase tracking-wider">
+                  Pratinjau Pesan ({filteredWaOrders.length} Transaksi):
+                </span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                  Rp {periodOmzet.toLocaleString("id-ID")}
+                </span>
+              </div>
+              <pre className="p-4 rounded-2xl bg-card border border-line font-mono text-[11px] text-fg whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto select-all">
                 {generateWaReportMessage()}
               </pre>
             </div>
