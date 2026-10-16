@@ -56,18 +56,42 @@ export type ServerBetaRegistration = DbBetaRegistration;
 
 export { getD1, initD1Tables, resetDatabaseCleanD1 };
 
-// Server Secrets
-const SERVER_SECRET = process.env.SAKUNOTA_SERVER_SECRET || "sakunota_secure_hmac_master_secret_2026_xyz";
-const OWNER_SALT = process.env.SAKUNOTA_OWNER_SALT || "sakunota_secure_owner_salt_reza_2026";
-const OWNER_USERNAME = "Reza";
-// Owner Password default or from ENV
-const OWNER_PASSWORD = process.env.SAKUNOTA_OWNER_PASSWORD || "Reza-SakuNota-2026!";
-
-function hashPassword(pass: string): string {
-  return crypto.createHmac("sha256", OWNER_SALT).update(pass).digest("hex");
+// Server Secrets (Strict: fail-closed with NO fallback defaults)
+export function getServerSecret(): string {
+  const secret = process.env.SAKUNOTA_SERVER_SECRET;
+  if (!secret) {
+    throw new Error("Configuration Error: SAKUNOTA_SERVER_SECRET is not configured on server.");
+  }
+  return secret;
 }
 
-const OWNER_PASSWORD_HASH = hashPassword(OWNER_PASSWORD);
+export function getOwnerSalt(): string {
+  const salt = process.env.SAKUNOTA_OWNER_SALT;
+  if (!salt) {
+    throw new Error("Configuration Error: SAKUNOTA_OWNER_SALT is not configured on server.");
+  }
+  return salt;
+}
+
+export function getOwnerUsername(): string {
+  const user = process.env.SAKUNOTA_OWNER_USERNAME;
+  if (!user) {
+    throw new Error("Configuration Error: SAKUNOTA_OWNER_USERNAME is not configured on server.");
+  }
+  return user;
+}
+
+export function getOwnerPassword(): string {
+  const pass = process.env.SAKUNOTA_OWNER_PASSWORD;
+  if (!pass) {
+    throw new Error("Configuration Error: SAKUNOTA_OWNER_PASSWORD is not configured on server.");
+  }
+  return pass;
+}
+
+export function hashPassword(pass: string): string {
+  return crypto.createHmac("sha256", getOwnerSalt()).update(pass).digest("hex");
+}
 
 // Ultra-robust Bearer token extraction that eliminates any regex spacing bugs
 export function extractBearerToken(authHeader?: string | null): string {
@@ -86,11 +110,11 @@ function isD1(arg: any): arg is D1Database {
 // --- Crypto Helpers ---
 
 export function signLicenseKey(licenseKey: string): string {
-  return crypto.createHmac("sha256", SERVER_SECRET).update(`license:${licenseKey}`).digest("hex").slice(0, 8);
+  return crypto.createHmac("sha256", getServerSecret()).update(`license:${licenseKey}`).digest("hex").slice(0, 8);
 }
 
 export function generateGenuineLicenseKey(orderId: string): string {
-  const hash = crypto.createHmac("sha256", SERVER_SECRET).update(`order:${orderId}:${Date.now()}`).digest("hex");
+  const hash = crypto.createHmac("sha256", getServerSecret()).update(`order:${orderId}:${Date.now()}`).digest("hex");
   const p1 = hash.slice(0, 4).toUpperCase();
   const p2 = hash.slice(4, 8).toUpperCase();
   const p3 = hash.slice(8, 12).toUpperCase();
@@ -100,7 +124,7 @@ export function generateGenuineLicenseKey(orderId: string): string {
 export function signOwnerSession(username: string, sessionId: string): string {
   const expiry = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
   const payload = `${username}:${sessionId}:${expiry}`;
-  const sig = crypto.createHmac("sha256", SERVER_SECRET).update(payload).digest("hex");
+  const sig = crypto.createHmac("sha256", getServerSecret()).update(payload).digest("hex");
   return Buffer.from(`${payload}:${sig}`).toString("base64url");
 }
 
@@ -125,7 +149,7 @@ export async function verifyOwnerSession(
     }
 
     const expectedSig = crypto
-      .createHmac("sha256", SERVER_SECRET)
+      .createHmac("sha256", getServerSecret())
       .update(`${username}:${sessionId}:${expiryStr}`)
       .digest("hex");
     if (sig !== expectedSig) {
@@ -178,7 +202,7 @@ export function signDeviceActivation(
 ): string {
   const exp = expiresAt || "0";
   const payload = `${licenseKey}:${deviceId}:${licenseType}:${exp}`;
-  const sig = crypto.createHmac("sha256", SERVER_SECRET).update(payload).digest("hex");
+  const sig = crypto.createHmac("sha256", getServerSecret()).update(payload).digest("hex");
   return `${payload}:${sig}`;
 }
 
@@ -197,14 +221,14 @@ export function verifyDeviceActivationToken(token: string): {
     // Legacy format (key:dev:sig)
     if (parts.length === 3) {
       const [key, devId, sig] = parts;
-      const expectedSig = crypto.createHmac("sha256", SERVER_SECRET).update(`${key}:${devId}`).digest("hex");
+      const expectedSig = crypto.createHmac("sha256", getServerSecret()).update(`${key}:${devId}`).digest("hex");
       if (sig !== expectedSig) return { valid: false, error: "Tanda tangan token tidak sah" };
       return { valid: true, licenseKey: key, deviceId: devId, licenseType: "berbayar", expiresAt: null, isExpired: false };
     }
     // New format (key:dev:type:exp:sig)
     if (parts.length === 5) {
       const [key, devId, type, exp, sig] = parts;
-      const expectedSig = crypto.createHmac("sha256", SERVER_SECRET).update(`${key}:${devId}:${type}:${exp}`).digest("hex");
+      const expectedSig = crypto.createHmac("sha256", getServerSecret()).update(`${key}:${devId}:${type}:${exp}`).digest("hex");
       if (sig !== expectedSig) return { valid: false, error: "Tanda tangan token tidak sah" };
       const expiresAt = exp === "0" ? null : exp;
       const isExpired = expiresAt ? new Date(expiresAt).getTime() < Date.now() : false;
@@ -239,13 +263,26 @@ export async function authenticateOwner(
     };
   }
 
-  const isUserValid = usernameInput.trim().toLowerCase() === OWNER_USERNAME.toLowerCase();
+  let ownerUser: string;
+  let ownerPass: string;
+  try {
+    ownerUser = getOwnerUsername();
+    ownerPass = getOwnerPassword();
+  } catch (err: any) {
+    return {
+      success: false,
+      error: "Konfigurasi autentikasi server belum disetel oleh Administrator.",
+    };
+  }
+
+  const isUserValid = usernameInput.trim().toLowerCase() === ownerUser.toLowerCase();
   const inputHash = hashPassword(passwordInput);
+  const targetHash = hashPassword(ownerPass);
 
   let isPassValid = false;
   try {
     const bufA = Buffer.from(inputHash, "hex");
-    const bufB = Buffer.from(OWNER_PASSWORD_HASH, "hex");
+    const bufB = Buffer.from(targetHash, "hex");
     if (bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB)) {
       isPassValid = true;
     }
@@ -264,7 +301,7 @@ export async function authenticateOwner(
     }
     return {
       success: false,
-      error: "Username atau Password salah! Akses khusus Owner Reza.",
+      error: "Username atau Password salah! Akses khusus Owner.",
     };
   }
 
@@ -274,9 +311,9 @@ export async function authenticateOwner(
   // Generate unique session in D1
   const sessionId = crypto.randomBytes(24).toString("hex");
   const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
-  await createSessionD1(db, sessionId, OWNER_USERNAME, expiresAt);
+  await createSessionD1(db, sessionId, ownerUser, expiresAt);
 
-  const token = signOwnerSession(OWNER_USERNAME, sessionId);
+  const token = signOwnerSession(ownerUser, sessionId);
   return { success: true, token };
 }
 
@@ -504,7 +541,7 @@ export async function verifyOrderAndIssueLicense(
     if (!auth.valid) {
       return {
         success: false,
-        error: auth.error || "Akses ditolak. Hanya Owner Reza yang dapat memverifikasi pembayaran.",
+        error: auth.error || "Akses ditolak. Hanya Owner yang dapat memverifikasi pembayaran.",
       };
     }
   }
@@ -1096,7 +1133,7 @@ export async function extendBetaTrial(
   const currentBase = reg.expiresAt ? new Date(reg.expiresAt).getTime() : Date.now();
   const baseTime = currentBase > Date.now() ? currentBase : Date.now();
   const newExpiresAt = new Date(baseTime + extraDays * 24 * 60 * 60 * 1000).toISOString();
-  const auditLog = `${reg.auditLog ? reg.auditLog + " | " : ""}[${new Date().toISOString()}] Perpanjang +${extraDays} hari (${reason}) oleh Owner Reza`;
+  const auditLog = `${reg.auditLog ? reg.auditLog + " | " : ""}[${new Date().toISOString()}] Perpanjang +${extraDays} hari (${reason}) oleh Owner`;
 
   await extendBetaRegistrationTrialD1(db, regId, extraDays, newExpiresAt, auditLog);
   return { success: true, newExpiresAt };
@@ -1171,7 +1208,7 @@ export async function convertBetaTrialToPaid(
     minute: "2-digit",
   });
 
-  const auditNote = `Dikonversi ke berbayar lisensi ${commercialKey} pada ${verifiedAt} oleh Owner Reza`;
+  const auditNote = `Dikonversi ke berbayar lisensi ${commercialKey} pada ${verifiedAt} oleh Owner`;
 
   // Atomic batch: Update BetaRegistration status + insert commercial License in Licenses table
   const stmtBeta = db.prepare(`

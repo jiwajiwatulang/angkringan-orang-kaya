@@ -27,6 +27,9 @@ export interface Env {
   MIDTRANS_MERCHANT_ID?: string;
   SAKUNOTA_OWNER_PASSWORD?: string;
   SAKUNOTA_OWNER_JWT_SECRET?: string;
+  SAKUNOTA_SERVER_SECRET?: string;
+  SAKUNOTA_OWNER_SALT?: string;
+  SAKUNOTA_OWNER_USERNAME?: string;
 }
 
 function corsHeaders() {
@@ -54,6 +57,14 @@ function withCors(response: Response): Response {
 
 export default {
   async fetch(request: Request, env: Env, ctx: any): Promise<Response> {
+    if (env) {
+      if (env.SAKUNOTA_SERVER_SECRET) process.env.SAKUNOTA_SERVER_SECRET = env.SAKUNOTA_SERVER_SECRET;
+      if (env.SAKUNOTA_OWNER_SALT) process.env.SAKUNOTA_OWNER_SALT = env.SAKUNOTA_OWNER_SALT;
+      if (env.SAKUNOTA_OWNER_PASSWORD) process.env.SAKUNOTA_OWNER_PASSWORD = env.SAKUNOTA_OWNER_PASSWORD;
+      if (env.SAKUNOTA_OWNER_USERNAME) process.env.SAKUNOTA_OWNER_USERNAME = env.SAKUNOTA_OWNER_USERNAME;
+      if (env.SAKUNOTA_OWNER_JWT_SECRET) process.env.SAKUNOTA_OWNER_JWT_SECRET = env.SAKUNOTA_OWNER_JWT_SECRET;
+    }
+
     const url = new URL(request.url);
     const pathname = url.pathname.replace(/\/$/, "");
     const method = request.method.toUpperCase();

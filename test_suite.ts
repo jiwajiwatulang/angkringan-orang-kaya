@@ -1,3 +1,9 @@
+// Test Environment Variables (Isolated for Test Suite)
+process.env.SAKUNOTA_SERVER_SECRET = process.env.SAKUNOTA_SERVER_SECRET || "test_sakunota_secure_hmac_master_secret_2026_xyz";
+process.env.SAKUNOTA_OWNER_SALT = process.env.SAKUNOTA_OWNER_SALT || "test_sakunota_secure_owner_salt_test_2026";
+process.env.SAKUNOTA_OWNER_USERNAME = process.env.SAKUNOTA_OWNER_USERNAME || "OwnerSakuNota";
+process.env.SAKUNOTA_OWNER_PASSWORD = process.env.SAKUNOTA_OWNER_PASSWORD || "Test-Owner-Password-2026!";
+
 import 'fake-indexeddb/auto';
 import { db } from './src/lib/dexie';
 import {
