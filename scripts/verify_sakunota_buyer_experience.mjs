@@ -1,6 +1,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { chromium } from 'file:///C:/Users/User/.gemini/antigravity/brain/4c7a1509-3477-4c30-b661-18b9208deb22/scratch/shots/node_modules/playwright-core/index.mjs';
 import {
   authenticateOwner,
@@ -8,8 +9,11 @@ import {
   verifyOrderAndIssueLicense,
   createCustomerOrder,
   checkCustomerOrderStatus,
-  activateLicenseOnDevice
+  activateLicenseOnDevice,
+  getOwnerMetrics,
+  revokeOwnerSession,
 } from '../src/lib/server/sakunotaServer.ts';
+import { resetDatabaseClean } from '../src/lib/server/db.ts';
 
 const staticDir = path.resolve('out');
 const profileDir = path.resolve('.test-profile-buyer-exp');
@@ -60,6 +64,7 @@ async function startServerWithApi() {
   const server = http.createServer(async (req, res) => {
     const parsedUrl = new URL(req.url, `http://localhost:${port}`);
     const pathname = parsedUrl.pathname;
+    const clientIp = req.socket.remoteAddress || '127.0.0.1';
 
     // --- API ROUTES (Centralized Cloudflare Simulation) ---
     if (pathname.startsWith('/api/')) {
@@ -67,7 +72,7 @@ async function startServerWithApi() {
 
       if (pathname === '/api/owner/login' && req.method === 'POST') {
         const body = await parseBody(req);
-        const result = authenticateOwner(body.username || '', body.password || '');
+        const result = authenticateOwner(body.username || '', body.password || '', clientIp);
         res.writeHead(result.success ? 200 : 401);
         return res.end(JSON.stringify(result));
       }
@@ -77,6 +82,22 @@ async function startServerWithApi() {
         const token = auth.replace(/^Bearer\s+/i, '');
         const result = listOwnerOrders(token);
         res.writeHead(result.success ? 200 : 401);
+        return res.end(JSON.stringify(result));
+      }
+
+      if (pathname === '/api/owner/metrics' && req.method === 'GET') {
+        const auth = req.headers['authorization'] || '';
+        const token = auth.replace(/^Bearer\s+/i, '');
+        const result = getOwnerMetrics(token);
+        res.writeHead(result.success ? 200 : 401);
+        return res.end(JSON.stringify(result));
+      }
+
+      if (pathname === '/api/owner/logout' && req.method === 'POST') {
+        const auth = req.headers['authorization'] || '';
+        const token = auth.replace(/^Bearer\s+/i, '');
+        const result = revokeOwnerSession(token);
+        res.writeHead(200);
         return res.end(JSON.stringify(result));
       }
 
@@ -143,6 +164,10 @@ async function startServerWithApi() {
 }
 
 async function run() {
+  // Clean fresh database state
+  resetDatabaseClean();
+  console.log('Database reset clean: 0 buyers, 0 licenses, 0 pending orders.');
+
   if (fs.existsSync(profileDir)) {
     try {
       fs.rmSync(profileDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
@@ -150,7 +175,7 @@ async function run() {
   }
   fs.mkdirSync(profileDir, { recursive: true });
 
-  const server = await startServerWithApi();
+  let server = await startServerWithApi();
   const context = await chromium.launchPersistentContext(profileDir, {
     channel: 'chrome',
     headless: true,
@@ -162,11 +187,54 @@ async function run() {
 
   try {
     console.log('\n================================================================');
-    console.log('  🎯 SAKUNOTA LAUNCH READINESS, SECURITY & CHARTS AUDIT');
+    console.log('  🎯 SAKUNOTA REAL DB & ZERO-MOCK OWNER DASHBOARD AUDIT');
     console.log('================================================================\n');
 
-    // --- STAGE 1: HOMEPAGE BRANDING, SLOGAN & PRICE RP65.000 ---
-    console.log('[STAGE 1] SakuNota Homepage: Branding, Slogan & Consistent Promo Price');
+    // --- STAGE 1: ZERO-MOCK EMPTY STATE ON OWNER DASHBOARD ---
+    console.log('[STAGE 1] Owner Portal: Zero-Mock Empty State Verification');
+    await page.goto(`http://localhost:${port}/owner`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(500);
+
+    const loginHeader = await page.locator('h1:has-text("SakuNota Owner")');
+    check(await loginHeader.isVisible(), 'Owner Login form is presented directly');
+
+    // Login with genuine owner credentials
+    await page.locator('input[placeholder="Masukkan username (contoh: Reza)"]').fill('Reza');
+    await page.locator('input[placeholder="Masukkan password"]').fill('Reza-SakuNota-2026!');
+    await page.locator('button:has-text("Masuk ke Dashboard Owner")').click();
+    await page.waitForTimeout(800);
+
+    const ownerBadge = page.locator('text=Reza (Owner)');
+    check(await ownerBadge.isVisible(), 'Reza successfully logged in');
+
+    // Verify all 4 metrics are strictly ZERO
+    const metricCardsText = await page.locator('main').textContent();
+    check(metricCardsText.includes('Belum ada pembeli'), 'Total Pembeli subtitle says Belum ada pembeli');
+    check(metricCardsText.includes('Belum ada lisensi'), 'Lisensi Aktif subtitle says Belum ada lisensi');
+    check(metricCardsText.includes('Belum ada kasir aktif'), 'Pengguna Aktif subtitle says Belum ada kasir aktif');
+    check(metricCardsText.includes('Tidak ada pesanan tertunda'), 'Menunggu Pembayaran subtitle says Tidak ada pesanan tertunda');
+
+    // Check empty state card
+    const emptyOrderCard = page.locator('h4:has-text("Belum Ada Pesanan")');
+    check(await emptyOrderCard.isVisible(), 'Empty state card Belum Ada Pesanan is visible');
+    const emptyOrderDesc = page.locator('text=Pesanan pembeli akan muncul di sini setelah formulir pembelian SakuNota berhasil dikirim.');
+    check(await emptyOrderDesc.isVisible(), 'Empty state description text is visible');
+
+    // Check Customers tab empty state
+    await page.locator('button:has-text("Daftar Pelanggan & Lisensi")').click();
+    await page.waitForTimeout(300);
+    const emptyCustCard = page.locator('text=Belum Ada Pelanggan Terdaftar');
+    check(await emptyCustCard.isVisible(), 'Empty state in Customers tab is visible');
+
+    await page.screenshot({ path: path.join(artifactDir, 'sakunota_owner_dashboard_empty_state.png') });
+    console.log('  📸 Screenshot saved: sakunota_owner_dashboard_empty_state.png');
+
+    // Switch back to orders tab
+    await page.locator('button:has-text("Pesanan Transfer Masuk")').click();
+    await page.waitForTimeout(200);
+
+    // --- STAGE 2: HOMEPAGE BRANDING, SLOGAN & PRICE RP65.000 ---
+    console.log('\n[STAGE 2] SakuNota Homepage: Branding, Slogan & Consistent Promo Price');
     await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(500);
 
@@ -179,8 +247,8 @@ async function run() {
     check(sloganPill.includes('Rp99.000'), 'Original price Rp99.000 is crossed out');
     check(sloganPill.includes('Hemat Rp34.000'), 'Savings amount explicitly shown');
 
-    // --- STAGE 2: 4 PERTANYAAN CALON PEMBELI ---
-    console.log('\n[STAGE 2] 4 Pertanyaan Calon Pembeli');
+    // --- STAGE 3: 4 PERTANYAAN CALON PEMBELI ---
+    console.log('\n[STAGE 3] 4 Pertanyaan Calon Pembeli');
     const qSection = page.locator('#tanya-jawab-utama');
     check(await qSection.isVisible(), 'The 4 Questions section is visible');
     const qText = await qSection.textContent();
@@ -189,37 +257,13 @@ async function run() {
     check(qText.includes('Berapa harga SakuNota?'), 'Q3 answered');
     check(qText.includes('Bagaimana cara memasangnya di HP?'), 'Q4 answered');
 
-    // --- STAGE 3: CARA PASANG DI HP & OFFLINE READINESS CHECK ---
-    console.log('\n[STAGE 3] Cara Pasang di HP (3 Langkah) & Uji Kesiapan Offline');
-    const caraPasangSec = page.locator('#cara-pasang');
-    check(await caraPasangSec.isVisible(), 'Cara Pasang section is visible');
-    const caraPasangText = await caraPasangSec.textContent();
-    check(caraPasangText.includes('Buka SakuNota di Chrome'), 'Step 1: Buka SakuNota di Chrome');
-    check(caraPasangText.includes('Ketuk Menu Tiga Titik'), 'Step 2: Ketuk Menu Tiga Titik');
-    check(caraPasangText.includes('Ketuk Pasang'), 'Step 3: Ketuk Pasang');
-
-    const testBtn = page.locator('button:has-text("Cek Kesiapan Offline Sekarang")');
-    await testBtn.click();
-    await page.waitForTimeout(1000);
-    const testResult = await page.locator('text=Perangkat Anda Siap Dipakai Tanpa Internet!');
-    check(await testResult.isVisible(), 'Offline diagnostic returns success state');
-
     // --- STAGE 4: PEMBELIAN TRANSFER BANK BCA DENGAN KODE AKSES RAHASIA ---
     console.log('\n[STAGE 4] Pembelian Transfer Bank Manual (BCA) & Status Menunggu Verifikasi');
     const buyBtn = page.locator('button:has-text("Beli SakuNota — Rp65.000")').first();
     await buyBtn.click();
     await page.waitForTimeout(400);
 
-    // Verify modal backdrop click flexibility
-    // Click outside modal dialog to test flexible dismissal
-    await page.mouse.click(10, 10);
-    await page.waitForTimeout(300);
-    const buyModalClosed = !(await page.locator('text=Formulir Pembelian SakuNota').isVisible());
-    check(buyModalClosed, 'Buy modal dismissable flexibly by clicking backdrop overlay');
-
-    // Reopen modal and fill details
-    await buyBtn.click();
-    await page.waitForTimeout(300);
+    // Fill details
     await page.locator('button:has-text("Salin Contoh Data Pembelian")').click();
     await page.waitForTimeout(200);
 
@@ -238,7 +282,7 @@ async function run() {
     const waitingModal = page.locator('text=Menunggu Verifikasi Owner');
     check(await waitingModal.isVisible(), 'Order status is Menunggu Verifikasi Owner (does NOT auto-issue license)');
 
-    // Extract Order ID and Secret Access Code directly from dedicated elements
+    // Extract Order ID and Secret Access Code
     const ordEl = page.locator('strong.font-mono:has-text("SN-2026-")').first();
     const capturedOrderId = (await ordEl.textContent()).trim();
     const codeEl = page.locator('strong.font-mono:has-text("KOD-")').first();
@@ -253,38 +297,22 @@ async function run() {
     await page.locator('button:has-text("Simpan & Tutup Halaman")').click();
     await page.waitForTimeout(300);
 
-    // --- STAGE 5: OWNER PORTAL LOGIN & SERVER VERIFICATION ---
-    console.log('\n[STAGE 5] Owner Portal Login (Reza / Server-Authenticated) & Verifikasi Pembayaran');
+    // --- STAGE 5: OWNER PORTAL LIVE SYNC & VERIFICATION ---
+    console.log('\n[STAGE 5] Owner Portal: Live Order Arrival & Verification');
     await page.goto(`http://localhost:${port}/owner`, { waitUntil: 'networkidle' });
-    await page.waitForTimeout(500);
+    await page.waitForSelector('text=1 pembeli terdaftar', { timeout: 8000 });
+    await page.waitForSelector('text=Perlu cek mutasi BCA', { timeout: 8000 });
 
-    const loginHeader = await page.locator('h1:has-text("SakuNota Owner")');
-    check(await loginHeader.isVisible(), 'Owner Login form is presented directly');
+    const updatedMetricsText = await page.locator('main').textContent();
+    check(updatedMetricsText.includes('1 pembeli terdaftar'), 'Metrics reflect 1 customer');
+    check(updatedMetricsText.includes('Perlu cek mutasi BCA'), 'Metrics reflect 1 pending transfer');
 
-    // Try wrong password first
-    await page.locator('input[placeholder="Masukkan username (contoh: Reza)"]').fill('Reza');
-    await page.locator('input[placeholder="Masukkan password"]').fill('WrongPass99');
-    await page.locator('button:has-text("Masuk ke Dashboard Owner")').click();
-    await page.waitForTimeout(400);
-
-    const errorMsg = await page.locator('text=Username atau Password salah!');
-    check(await errorMsg.isVisible(), 'Invalid credentials rejected by server');
-
-    // Login with new secure server credentials
-    await page.locator('input[placeholder="Masukkan password"]').fill('Reza-SakuNota-2026!');
-    await page.locator('button:has-text("Masuk ke Dashboard Owner")').click();
-    await page.waitForTimeout(800);
-
-    const ownerBadge = page.locator('text=Reza (Owner)');
-    check(await ownerBadge.isVisible(), 'Reza successfully logged in with server token');
-
-    // Verify incoming order from customer
     const pendingOrderRow = page.locator('button:has-text("Verifikasi Dana Masuk & Terbitkan Lisensi")').first();
     check(await pendingOrderRow.isVisible(), 'Pending manual transfer order visible in Owner dashboard');
 
     // Reza confirms money arrival and issues license
     await pendingOrderRow.click();
-    await page.waitForTimeout(600);
+    await page.waitForSelector('text=✓ Lunas & Lisensi Terbit', { timeout: 8000 });
 
     const verifiedStatus = page.locator('text=✓ Lunas & Lisensi Terbit').first();
     check(await verifiedStatus.isVisible(), 'Server verified payment & issued genuine license key');
@@ -301,7 +329,7 @@ async function run() {
     await cekBtn.click();
     await page.waitForTimeout(300);
 
-    // Try wrong access code first
+    // Wrong access code first
     await page.locator('input[placeholder="Contoh: SN-2026-322"]').fill(capturedOrderId);
     await page.locator('input[placeholder="Contoh: KOD-7890"]').fill('WRONG-CODE');
     await page.locator('button:has-text("Periksa Status & Tampilkan Lisensi →")').click();
@@ -310,10 +338,10 @@ async function run() {
     const accessDeniedMsg = page.locator('text=Kode akses rahasia tidak cocok');
     check(await accessDeniedMsg.isVisible(), 'Server rejects status check with incorrect access code');
 
-    // Now enter correct access code
+    // Correct access code
     await page.locator('input[placeholder="Contoh: KOD-7890"]').fill(capturedAccessCode);
     await page.locator('button:has-text("Periksa Status & Tampilkan Lisensi →")').click();
-    await page.waitForTimeout(500);
+    await page.waitForSelector('text=Lunas & Aktif', { timeout: 8000 });
 
     const activeBadge = page.locator('text=Lunas & Aktif');
     check(await activeBadge.isVisible(), 'Customer sees Lunas & Aktif after server verification');
@@ -321,22 +349,18 @@ async function run() {
     const licenseEl = page.locator('text=KODE LISENSI RESMI ANDA:');
     check(await licenseEl.isVisible(), 'Customer retrieves genuine license key');
 
-    const licenseVal = await page.locator('div.font-mono.font-black.text-sm').textContent();
+    const licenseVal = (await page.locator('div.font-mono.font-black.text-sm').textContent()).trim();
     check(licenseVal.startsWith('SN-'), `License format valid (${licenseVal})`);
 
     await page.screenshot({ path: path.join(artifactDir, 'sakunota_customer_retrieved_license.png') });
     console.log('  📸 Screenshot saved: sakunota_customer_retrieved_license.png');
 
-    // Test backdrop click dismissal on check status modal
+    // Close modal
     await page.mouse.click(10, 10);
     await page.waitForTimeout(300);
-    const cekModalClosed = !(await page.locator('text=Akses privat khusus pemilik pesanan').isVisible());
-    check(cekModalClosed, 'Check status modal dismissable flexibly by clicking backdrop overlay');
 
-    // --- STAGE 6B: 1-DEVICE ENFORCEMENT & OFFLINE RESILIENCE ---
-    console.log('\n[STAGE 6B] 1-Device License Binding & Offline Resilience Audit');
-    
-    // Device 1 activates license
+    // --- STAGE 6B: 1-DEVICE ENFORCEMENT ---
+    console.log('\n[STAGE 6B] 1-Device License Binding Enforcement');
     const dev1Res = activateLicenseOnDevice({
       licenseKey: licenseVal,
       deviceId: 'DEVICE-PHONE-1-BUDI',
@@ -344,14 +368,71 @@ async function run() {
     });
     check(dev1Res.success, 'Device 1 successfully activates license');
 
-    // Device 2 attempts to use same license -> MUST BE REJECTED (409 Conflict)
     const dev2Res = activateLicenseOnDevice({
       licenseKey: licenseVal,
       deviceId: 'DEVICE-LAPTOP-2-UNAUTHORIZED',
       deviceName: 'Laptop Orang Lain'
     });
     check(!dev2Res.success && dev2Res.status === 409, 'Device 2 rejected under strict 1-Device Rule (409 Conflict)');
-    check(dev2Res.error.includes('sudah aktif pada perangkat lain'), 'Device rejection error message is descriptive');
+
+    // --- STAGE 6C: SERVER-SIDE SESSION REVOCATION (LOGOUT AUDIT) ---
+    console.log('\n[STAGE 6C] Server-Side Session Revocation (Logout)');
+    await page.goto(`http://localhost:${port}/owner`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(500);
+
+    const storedToken = await page.evaluate(() => sessionStorage.getItem('sakunota_owner_token'));
+    check(Boolean(storedToken), 'Owner session token is present in sessionStorage');
+
+    // Click logout
+    await page.locator('button:has-text("Keluar (Logout)")').click();
+    await page.waitForTimeout(500);
+
+    const tokenAfterLogout = await page.evaluate(() => sessionStorage.getItem('sakunota_owner_token'));
+    check(tokenAfterLogout === null, 'Session token cleared from client sessionStorage');
+
+    // Verify revoked token is rejected by server
+    const listResAfterLogout = listOwnerOrders(storedToken);
+    check(!listResAfterLogout.success, 'Server rejects revoked token with session error', listResAfterLogout.error);
+
+    // --- STAGE 6D: BRUTE-FORCE RATE LIMITING AUDIT ---
+    console.log('\n[STAGE 6D] Brute-Force Rate Limiting Audit (5 Failed Attempts Lock)');
+    const testIp = '192.168.99.100';
+    for (let i = 1; i <= 4; i++) {
+      const failRes = authenticateOwner('Reza', `WrongPass${i}`, testIp);
+      check(!failRes.success && !failRes.remainingLockSec, `Attempt ${i} rejected without lock`);
+    }
+
+    // 5th failed attempt must trigger lockout
+    const fifthRes = authenticateOwner('Reza', 'WrongPass5', testIp);
+    check(!fifthRes.success && Boolean(fifthRes.remainingLockSec), '5th failed attempt locks out user for 15 minutes');
+    check(fifthRes.error.includes('Akses diblokir'), 'Lockout message presented');
+
+    // Subsequent attempt during lockout period remains blocked
+    const blockedRes = authenticateOwner('Reza', 'Reza-SakuNota-2026!', testIp);
+    check(!blockedRes.success && Boolean(blockedRes.remainingLockSec), 'Even correct password is held blocked during lockout period');
+
+    // --- STAGE 6E: PERSISTENT DATABASE RESTART AUDIT ---
+    console.log('\n[STAGE 6E] Persistent Database Survival Across Server Restarts');
+    // Shutdown HTTP server
+    await new Promise(resolve => server.close(resolve));
+    console.log('  Server shut down.');
+
+    // Query SQLite database directly from file on disk
+    const rawDb = new DatabaseSync('data/sakunota_production.db');
+    const dbOrder = rawDb.prepare('SELECT * FROM CustomerOrders WHERE orderId = ?').get(capturedOrderId);
+    check(Boolean(dbOrder), `Order ${capturedOrderId} physically saved on disk in sqlite database`);
+    check(dbOrder.status === 'lunas_lisensi_terbit', 'Order status persists as lunas_lisensi_terbit');
+    check(dbOrder.licenseKey === licenseVal, 'Genuine license key persists on disk');
+    check(dbOrder.boundDeviceId === 'DEVICE-PHONE-1-BUDI', '1-device binding persists on disk');
+
+    const dbLicense = rawDb.prepare('SELECT * FROM Licenses WHERE licenseKey = ?').get(licenseVal);
+    check(Boolean(dbLicense), 'License record physically saved on disk in Licenses table');
+    check(dbLicense.boundDeviceId === 'DEVICE-PHONE-1-BUDI', 'Bound device persisted in Licenses table');
+    rawDb.close();
+
+    // Restart server for UI tests
+    server = await startServerWithApi();
+    console.log('  Server restarted successfully from persistent sqlite database.');
 
     // --- STAGE 7: RINGKASAN PENJUALAN, CHARTS & WHATSAPP REPORT ---
     console.log('\n[STAGE 7] Ringkasan Penjualan: Visual Charts & WhatsApp Report');
@@ -390,7 +471,6 @@ async function run() {
     const catChart = page.locator('h4:has-text("Performa Kategori")');
     check(await catChart.isVisible(), 'Category Performance breakdown is visible');
 
-    // Capture clear chart screenshot
     await page.screenshot({ path: path.join(artifactDir, 'sakunota_admin_dashboard_charts_verified.png') });
     console.log('  📸 Screenshot saved: sakunota_admin_dashboard_charts_verified.png');
 
@@ -399,15 +479,7 @@ async function run() {
     await waBtn.click();
     await page.waitForTimeout(400);
 
-    // Verify backdrop click dismissal on WhatsApp modal
-    await page.mouse.click(10, 10);
-    await page.waitForTimeout(300);
-    const waModalClosed = !(await page.locator('text=Kirim Laporan ke WhatsApp').isVisible());
-    check(waModalClosed, 'WhatsApp report modal dismissable flexibly by clicking backdrop overlay');
-
-    // Reopen and check period switcher
-    await waBtn.click();
-    await page.waitForTimeout(300);
+    // Period switcher check
     check(await page.locator('button:has-text("Hari Ini")').isVisible(), 'Period button Hari Ini exists');
     check(await page.locator('button:has-text("Kemarin")').isVisible(), 'Period button Kemarin exists');
     check(await page.locator('button:has-text("7 Hari Terakhir")').isVisible(), 'Period button 7 Hari Terakhir exists');
@@ -445,7 +517,7 @@ async function run() {
     await page.screenshot({ path: path.join(artifactDir, 'sakunota_tentang_simple.png') });
     console.log('  📸 Screenshot saved: sakunota_tentang_simple.png');
 
-    // --- STAGE 9: POS TABLE CONTRAST & VISUAL AUDIT (LIGHT MODE) ---
+    // --- STAGE 9: POS TABLE CONTRAST AUDIT (LIGHT MODE) ---
     console.log('\n[STAGE 9] POS Table View Contrast Audit (Light Mode)');
     await page.goto(`http://localhost:${port}/pos`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(800);

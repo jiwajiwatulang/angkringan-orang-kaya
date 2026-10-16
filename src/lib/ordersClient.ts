@@ -131,6 +131,13 @@ export async function checkOrderStatusServer(
   }
 }
 
+export interface OwnerMetrics {
+  totalPembeli: number;
+  lisensiAktif: number;
+  penggunaAktif: number;
+  menungguVerifikasi: number;
+}
+
 export async function loginOwnerServer(
   usernameInput: string,
   passwordInput: string
@@ -157,10 +164,7 @@ export async function loginOwnerServer(
 
   // Fallback / Offline / Static Export Authentication
   const isUserValid = usernameInput.trim().toLowerCase() === "reza";
-  const isPassValid = 
-    passwordInput === "SakuNota45" || 
-    passwordInput === "Reza-SakuNota-2026!" ||
-    passwordInput === "Reza45";
+  const isPassValid = passwordInput === "Reza-SakuNota-2026!";
 
   if (isUserValid && isPassValid) {
     const localToken = "sakunota_reza_token_" + Date.now();
@@ -194,65 +198,57 @@ export async function fetchOwnerOrdersServer(
     // Fallback to local storage below
   }
 
-  // Local / Static Mode fallback
+  // Local / Static Mode fallback: Only return real locally cached orders if present
   if (typeof window !== "undefined") {
     try {
       const raw = localStorage.getItem("sakunota_customer_orders");
       if (raw) {
         const list = JSON.parse(raw);
-        if (Array.isArray(list) && list.length > 0) {
+        if (Array.isArray(list)) {
           return { success: true, orders: list };
         }
       }
     } catch (_) {}
   }
 
-  const defaultList: CustomerOrder[] = [
-    {
-      orderId: "SN-2026-001",
-      accessCode: "KOD-7890",
-      buyerName: "Ibu Sari",
-      businessName: "Warung Bu Sari",
-      whatsapp: "081234567890",
-      email: "sari.warung@gmail.com",
-      amount: 65000,
-      paymentMethod: "Transfer Bank BCA",
-      bankAccount: "8030 554 912 a.n. Reza",
-      transferProofName: "bukti_transfer_bca_sari.jpg",
-      status: "menunggu_verifikasi",
-      createdAt: "16 Okt 2026, 09:30 WIB",
-    },
-    {
-      orderId: "SN-2026-002",
-      accessCode: "KOD-5432",
-      buyerName: "Pak Budi",
-      businessName: "Kedai Pak Budi",
-      whatsapp: "081398765432",
-      amount: 65000,
-      paymentMethod: "Transfer Bank BCA",
-      bankAccount: "8030 554 912 a.n. Reza",
-      status: "lunas_lisensi_terbit",
-      licenseKey: "SN-PB02-8842-Y931",
-      createdAt: "15 Okt 2026, 14:15 WIB",
-      verifiedAt: "15 Okt 2026, 14:30 WIB",
-    },
-    {
-      orderId: "SN-2026-003",
-      accessCode: "KOD-6677",
-      buyerName: "Mas Jaya",
-      businessName: "Angkringan Jaya",
-      whatsapp: "081755566677",
-      amount: 65000,
-      paymentMethod: "Transfer Bank BCA",
-      bankAccount: "8030 554 912 a.n. Reza",
-      status: "lunas_lisensi_terbit",
-      licenseKey: "SN-AJ03-7712-K882",
-      createdAt: "14 Okt 2026, 19:45 WIB",
-      verifiedAt: "14 Okt 2026, 20:00 WIB",
-    },
-  ];
+  // ZERO Mock Data: If empty, return genuine empty array
+  return { success: true, orders: [] };
+}
 
-  return { success: true, orders: defaultList };
+export async function fetchOwnerMetricsServer(
+  token: string
+): Promise<{ success: boolean; metrics?: OwnerMetrics; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/metrics", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (res.status === 401) {
+      return { success: false, error: "Sesi tidak sah atau telah berakhir." };
+    }
+
+    if (res.ok) {
+      const json = await res.json();
+      if (json.metrics) {
+        return { success: true, metrics: json.metrics };
+      }
+    }
+  } catch (_) {}
+
+  return { success: false, error: "Gagal memuat metrik dari server." };
+}
+
+export async function logoutOwnerServer(token: string): Promise<void> {
+  try {
+    await fetch("/api/owner/logout", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  } catch (_) {}
 }
 
 export async function verifyOwnerOrderServer(
