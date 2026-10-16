@@ -1,7 +1,7 @@
 // SakuNota POS — Service Worker v2.6.0
 // Resilient Offline-First Precache, CSS Fallback, & Multi-Route Isolation
 
-const CACHE_NAME = 'sakunota-pos-v2.6.0-1792165840281';
+const CACHE_NAME = 'sakunota-pos-v2.6.0-1792180553350';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -36,6 +36,10 @@ self.addEventListener('install', (event) => {
               // Untuk rute tanpa ekstensi (misal /pos, /admin), simpan juga alias .html
               if (!url.includes('.') && url !== '/') {
                 await cache.put(`${url}.html`, res.clone());
+              }
+              if (url === '/' || url === '/index.html') {
+                await cache.put('/', res.clone());
+                await cache.put('/index.html', res.clone());
               }
               cachedCount++;
             } else {
@@ -208,8 +212,10 @@ self.addEventListener('fetch', (event) => {
             if (adminFallback) return adminFallback;
           }
 
-          // 6. Terakhir: kembalikan homepage /
-          return (await cache.match('/')) || new Response('Offline page not found', { status: 503 });
+          // 6. Terakhir: kembalikan homepage / atau /index.html
+          return (await cache.match('/')) ||
+                 (await cache.match('/index.html')) ||
+                 new Response('Offline page not found', { status: 503 });
         }
       })()
     );

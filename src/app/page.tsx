@@ -688,10 +688,10 @@ export default function SakuNotaLandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex md:grid md:grid-cols-2 gap-6 overflow-x-auto md:overflow-visible pb-3 md:pb-0 snap-x snap-mandatory no-scrollbar">
             
             {/* Feature 1: Transaksi Fleksibel */}
-            <div className="p-6 sm:p-7 rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all flex flex-col justify-between gap-6 group">
+            <div className="min-w-[85vw] sm:min-w-[340px] md:min-w-0 snap-start shrink-0 md:shrink p-6 sm:p-7 rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all flex flex-col justify-between gap-6 group">
               <div className="space-y-4">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
                   <span>Transaksi Fleksibel</span>
@@ -721,7 +721,7 @@ export default function SakuNotaLandingPage() {
             </div>
 
             {/* Feature 2: Cetak Struk */}
-            <div className="p-6 sm:p-7 rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all flex flex-col justify-between gap-6 group">
+            <div className="min-w-[85vw] sm:min-w-[340px] md:min-w-0 snap-start shrink-0 md:shrink p-6 sm:p-7 rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all flex flex-col justify-between gap-6 group">
               <div className="space-y-4">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
                   <span>Cetak Struk</span>
@@ -751,7 +751,7 @@ export default function SakuNotaLandingPage() {
             </div>
 
             {/* Feature 3: Audit & Laporan */}
-            <div className="p-6 sm:p-7 rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all flex flex-col justify-between gap-6 group">
+            <div className="min-w-[85vw] sm:min-w-[340px] md:min-w-0 snap-start shrink-0 md:shrink p-6 sm:p-7 rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all flex flex-col justify-between gap-6 group">
               <div className="space-y-4">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
                   <span>Audit &amp; Laporan</span>
@@ -781,7 +781,7 @@ export default function SakuNotaLandingPage() {
             </div>
 
             {/* Feature 4: Privasi & Perangkat */}
-            <div className="p-6 sm:p-7 rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all flex flex-col justify-between gap-6 group">
+            <div className="min-w-[85vw] sm:min-w-[340px] md:min-w-0 snap-start shrink-0 md:shrink p-6 sm:p-7 rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all flex flex-col justify-between gap-6 group">
               <div className="space-y-4">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
                   <span>Privasi &amp; Perangkat</span>
@@ -830,10 +830,10 @@ export default function SakuNotaLandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto sm:overflow-visible pb-3 sm:pb-0 snap-x snap-mandatory no-scrollbar">
             
             {/* 1. Warung Makan */}
-            <div className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all space-y-2.5">
+            <div className="min-w-[260px] sm:min-w-0 snap-start shrink-0 sm:shrink p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all space-y-2.5">
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-lg font-black">
                 🍛
               </div>
@@ -846,7 +846,7 @@ export default function SakuNotaLandingPage() {
             </div>
 
             {/* 2. Rumah Makan & Restoran */}
-            <div className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all space-y-2.5">
+            <div className="min-w-[260px] sm:min-w-0 snap-start shrink-0 sm:shrink p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all space-y-2.5">
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-lg font-black">
                 🍽️
               </div>
@@ -859,7 +859,7 @@ export default function SakuNotaLandingPage() {
             </div>
 
             {/* 3. Kafe & Kedai Minuman */}
-            <div className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all space-y-2.5">
+            <div className="min-w-[260px] sm:min-w-0 snap-start shrink-0 sm:shrink p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all space-y-2.5">
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-lg font-black">
                 ☕
               </div>
@@ -872,7 +872,7 @@ export default function SakuNotaLandingPage() {
             </div>
 
             {/* 4. Booth Jajanan */}
-            <div className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all space-y-2.5">
+            <div className="min-w-[260px] sm:min-w-0 snap-start shrink-0 sm:shrink p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all space-y-2.5">
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-lg font-black">
                 🥡
               </div>
@@ -980,6 +980,57 @@ export default function SakuNotaLandingPage() {
             </div>
 
           </div>
+
+          {/* Comparison Table: SakuNota vs Aplikasi Lain */}
+          <div className="rounded-3xl bg-white border border-slate-200 p-6 sm:p-8 shadow-sm space-y-4">
+            <div className="text-center sm:text-left space-y-1">
+              <h3 className="text-base sm:text-lg font-black text-slate-900">
+                Bandingkan SakuNota dengan Aplikasi Lain
+              </h3>
+              <p className="text-xs text-slate-500">
+                Pahami perbedaan model sekali bayar offline vs aplikasi kasir berlangganan pada umumnya.
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="py-3 px-3 font-bold text-slate-500">Fitur &amp; Model</th>
+                    <th className="py-3 px-3 font-black text-blue-600 bg-blue-50/50 rounded-t-xl">SakuNota POS</th>
+                    <th className="py-3 px-3 font-bold text-slate-500">Aplikasi Lain</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <tr>
+                    <td className="py-3 px-3 font-bold text-slate-700">Biaya Penggunaan</td>
+                    <td className="py-3 px-3 font-black text-blue-700 bg-blue-50/30">Rp65.000 (Sekali Bayar Selamanya)</td>
+                    <td className="py-3 px-3 text-slate-500">Langganan Rutin (Rp150rb – Rp350rb/bulan)</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-3 font-bold text-slate-700">Ketergantungan Internet</td>
+                    <td className="py-3 px-3 font-black text-blue-700 bg-blue-50/30">100% Offline (Tetap Jualan Tanpa Sinyal)</td>
+                    <td className="py-3 px-3 text-slate-500">Wajib Online Terus (Macet Saat Sinyal Hilang)</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-3 font-bold text-slate-700">Potongan Komisi</td>
+                    <td className="py-3 px-3 font-black text-blue-700 bg-blue-50/30">0% (100% Omzet Milik Anda)</td>
+                    <td className="py-3 px-3 text-slate-500">Ada Potongan per Transaksi</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-3 font-bold text-slate-700">Kepemilikan Data</td>
+                    <td className="py-3 px-3 font-black text-blue-700 bg-blue-50/30">100% Privat di Memori HP Sendiri</td>
+                    <td className="py-3 px-3 text-slate-500">Di Server Luar (Terkunci Jika Berhenti Langganan)</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-3 font-bold text-slate-700">Cetak Struk</td>
+                    <td className="py-3 px-3 font-black text-blue-700 bg-blue-50/30">Bluetooth Langsung Mini Thermal (58/80mm)</td>
+                    <td className="py-3 px-3 text-slate-500">Tergantung Koneksi Router / Tambahan Alat</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -999,9 +1050,9 @@ export default function SakuNotaLandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex md:grid md:grid-cols-3 gap-4 overflow-x-auto md:overflow-visible pb-3 md:pb-0 snap-x snap-mandatory no-scrollbar">
             
-            <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+            <div className="min-w-[240px] md:min-w-0 snap-start shrink-0 md:shrink p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
               <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-black text-sm flex items-center justify-center">
                 1
               </div>
@@ -1011,7 +1062,7 @@ export default function SakuNotaLandingPage() {
               </p>
             </div>
 
-            <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+            <div className="min-w-[240px] md:min-w-0 snap-start shrink-0 md:shrink p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
               <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-black text-sm flex items-center justify-center">
                 2
               </div>
@@ -1021,7 +1072,7 @@ export default function SakuNotaLandingPage() {
               </p>
             </div>
 
-            <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+            <div className="min-w-[240px] md:min-w-0 snap-start shrink-0 md:shrink p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
               <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-black text-sm flex items-center justify-center">
                 3
               </div>
@@ -1038,8 +1089,7 @@ export default function SakuNotaLandingPage() {
               href="/panduan"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white hover:bg-slate-50 text-blue-600 font-extrabold text-xs border border-slate-300 shadow-sm transition-all"
             >
-              <span>📖</span>
-              <span>Buka Buku Panduan Lengkap (11 Bab)</span>
+              <span>Selengkapnya</span>
               <span>→</span>
             </Link>
           </div>
@@ -1201,7 +1251,7 @@ export default function SakuNotaLandingPage() {
               <li><a href="#fitur" className="hover:text-blue-600 transition-colors">Fitur</a></li>
               <li><a href="#jenis-usaha" className="hover:text-blue-600 transition-colors">Jenis Usaha</a></li>
               <li><a href="#harga" className="hover:text-blue-600 transition-colors">Harga</a></li>
-              <li><Link href="/panduan" className="hover:text-blue-600 transition-colors">Panduan</Link></li>
+              <li><Link href="/pos?demo=true" className="hover:text-blue-600 transition-colors">Coba Sandbox Kasir</Link></li>
             </ul>
           </div>
 
@@ -1243,8 +1293,8 @@ export default function SakuNotaLandingPage() {
             © 2026 SakuNota. All rights reserved.
           </div>
           <div className="flex items-center gap-6">
-            <a href="#fitur" className="hover:text-slate-800 transition-colors">Privacy</a>
-            <a href="#fitur" className="hover:text-slate-800 transition-colors">Terms</a>
+            <Link href="/privacy" className="hover:text-slate-800 transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-slate-800 transition-colors">Terms</Link>
           </div>
         </div>
       </footer>
@@ -1528,7 +1578,6 @@ export default function SakuNotaLandingPage() {
                 </div>
                 <div>
                   <h3 className="font-black text-base text-slate-900">Formulir Pembelian SakuNota</h3>
-                  <span className="text-[10px] text-slate-500">Promo Rp65.000 (Lisensi 1 Perangkat Aktif)</span>
                 </div>
               </div>
               <button

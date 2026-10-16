@@ -55,6 +55,7 @@ for (const file of validFiles) {
     }
     
     routes.add(cleanRoute);
+    routes.add(file.path);
   } else {
     staticAssets.push(file.path);
   }
