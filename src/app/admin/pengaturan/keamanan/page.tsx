@@ -34,15 +34,17 @@ export default function PengaturanKeamananPage() {
     };
   }, [router]);
 
+  const hasExistingPin = Boolean(storeSettings.adminPin);
+
   const handleUpdatePin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
 
-    const actualCurrentPin = storeSettings.adminPin || "1234";
-
-    if (currentPin !== actualCurrentPin) {
-      setErrorMessage("PIN lama yang Anda masukkan tidak sesuai.");
-      return;
+    if (hasExistingPin) {
+      if (currentPin !== storeSettings.adminPin) {
+        setErrorMessage("PIN lama yang Anda masukkan tidak sesuai.");
+        return;
+      }
     }
 
     if (newPin.length < 4) {
@@ -65,7 +67,7 @@ export default function PengaturanKeamananPage() {
       setCurrentPin("");
       setNewPin("");
       setConfirmPin("");
-      showToast("PIN Admin berhasil diubah!", "success");
+      showToast(hasExistingPin ? "PIN Admin berhasil diubah!" : "PIN Admin berhasil dibuat!", "success");
     } catch (err: any) {
       alert("Gagal memperbarui PIN: " + err.message);
     }
@@ -93,27 +95,33 @@ export default function PengaturanKeamananPage() {
       {/* Change PIN Form */}
       <div className=" bg-surface p-6 rounded-3xl border border-line shadow-sm space-y-4">
         <h3 className="text-sm font-black text-fg">
-          Ubah PIN Otorisasi Admin
+          {hasExistingPin ? "Ubah PIN Otorisasi Admin" : "Buat PIN Otorisasi Admin"}
         </h3>
 
         <form onSubmit={handleUpdatePin} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1">
-              PIN Saat Ini:
-            </label>
-            <input
-              type="password"
-              inputMode="numeric"
-              placeholder="Default: 1234"
-              value={currentPin}
-              onChange={(e) => {
-                setCurrentPin(e.target.value);
-                setErrorMessage("");
-              }}
-              className="w-full bg-card border border-line rounded-xl p-3 text-sm font-black tracking-widest text-center text-fg outline-none focus:border-accent"
-              required
-            />
-          </div>
+          {hasExistingPin ? (
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1">
+                PIN Saat Ini:
+              </label>
+              <input
+                type="password"
+                inputMode="numeric"
+                placeholder="Masukkan PIN saat ini"
+                value={currentPin}
+                onChange={(e) => {
+                  setCurrentPin(e.target.value);
+                  setErrorMessage("");
+                }}
+                className="w-full bg-card border border-line rounded-xl p-3 text-sm font-black tracking-widest text-center text-fg outline-none focus:border-accent"
+                required
+              />
+            </div>
+          ) : (
+            <div className="p-3 bg-amber-950/40 border border-amber-800/50 rounded-xl text-xs text-amber-200">
+              ℹ️ Perangkat ini belum memiliki PIN Admin yang tersimpan. Silakan langsung tentukan PIN baru untuk mengamankan operasional toko.
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>

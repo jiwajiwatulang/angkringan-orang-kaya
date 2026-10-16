@@ -219,9 +219,12 @@ export default function PengaturanDataPage() {
       setResetPinError("Centang kotak persetujuan konfirmasi terlebih dahulu.");
       return;
     }
-    const correctPin = storeSettings.adminPin || "1234";
+    if (!storeSettings.adminPin) {
+      setResetPinError("PIN Admin belum dikonfigurasi. Harap buat PIN di menu Pengaturan Keamanan.");
+      return;
+    }
 
-    if (resetPinInput !== correctPin) {
+    if (resetPinInput !== storeSettings.adminPin) {
       setResetPinError("PIN Otorisasi salah. Silakan coba lagi.");
       return;
     }
@@ -773,7 +776,7 @@ export default function PengaturanDataPage() {
                   type="password"
                   inputMode="numeric"
                   autoFocus
-                  placeholder="PIN Admin (bawaan: 1234)"
+                  placeholder="Masukkan PIN Admin"
                   value={resetPinInput}
                   onChange={(e) => {
                     setResetPinInput(e.target.value);

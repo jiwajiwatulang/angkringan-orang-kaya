@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { App } from "@capacitor/app";
 import { AdminProvider, useAdmin } from "./AdminContext";
 import ThemeToggle from "@/components/ThemeToggle";
+import { saveStoreSettingsAsync } from "@/lib/settings";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: "📊" },
@@ -65,10 +66,16 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     };
   }, [isLainnyaOpen, pathname, router]);
 
+  const [newAdminPin, setNewAdminPin] = useState("");
+  const [confirmAdminPin, setConfirmAdminPin] = useState("");
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const correctPin = storeSettings.adminPin || "1234";
-    if (passwordInput === correctPin) {
+    if (!storeSettings.adminPin) {
+      setPinError("PIN Admin belum dikonfigurasi pada perangkat ini.");
+      return;
+    }
+    if (passwordInput === storeSettings.adminPin) {
       localStorage.setItem("adminLoginExpiry", (Date.now() + 2 * 60 * 60 * 1000).toString());
       setIsAuthenticated(true);
       setPasswordInput("");
@@ -79,49 +86,136 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Unauthenticated: PIN Login Screen
+  const handleSetupPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newAdminPin.length < 4) {
+      setPinError("PIN baru minimal harus 4 digit angka.");
+      return;
+    }
+    if (newAdminPin !== confirmAdminPin) {
+      setPinError("Konfirmasi PIN baru tidak cocok.");
+      return;
+    }
+    try {
+      const updated = {
+        ...storeSettings,
+        adminPin: newAdminPin
+      };
+      await saveStoreSettingsAsync(updated);
+      localStorage.setItem("adminLoginExpiry", (Date.now() + 2 * 60 * 60 * 1000).toString());
+      setIsAuthenticated(true);
+      setNewAdminPin("");
+      setConfirmAdminPin("");
+      setPinError("");
+      showToast("PIN Admin berhasil dikonfigurasi!", "success");
+    } catch (err: any) {
+      setPinError("Gagal menyimpan PIN: " + (err as any)?.message);
+    }
+  };
+
+  // Unauthenticated: PIN Login or PIN Configuration Screen
   if (!isAuthenticated) {
+    const hasConfiguredPin = Boolean(storeSettings.adminPin);
+
     return (
       <div className="min-h-screen bg-app flex flex-col items-center justify-center p-4">
         <div className=" bg-surface rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-line text-center animate-in zoom-in-95 duration-200">
           <div className="w-16 h-16 rounded-2xl bg-accent/60 text-accent-text flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-sm">
-            🔒
+            {hasConfiguredPin ? "🔒" : "🛡️"}
           </div>
-          <h2 className="text-2xl font-black text-fg">Login Admin</h2>
+          <h2 className="text-2xl font-black text-fg">
+            {hasConfiguredPin ? "Login Admin" : "Konfigurasi PIN Admin"}
+          </h2>
           <p className="text-xs text-muted mt-1 mb-6">
-            Masukkan PIN Otorisasi untuk membuka Backoffice SakuNota.
+            {hasConfiguredPin
+              ? "Masukkan PIN Otorisasi untuk membuka Backoffice SakuNota."
+              : "Perangkat ini belum memiliki PIN Admin yang tersimpan. Buat PIN baru (minimal 4 digit) untuk mengamankan Backoffice."}
           </p>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="relative">
-              <input
-                type="password"
-                inputMode="numeric"
-                autoFocus
-                value={passwordInput}
-                onChange={(e) => {
-                  setPasswordInput(e.target.value);
-                  setPinError("");
-                }}
-                placeholder="Masukkan PIN..."
-                className="w-full text-center text-2xl tracking-widest font-black border-2 border-line focus:border-accent rounded-2xl py-3 px-4 bg-card text-fg outline-none transition-all"
-                required
-              />
-            </div>
+          {hasConfiguredPin ? (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="relative">
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  autoFocus
+                  value={passwordInput}
+                  onChange={(e) => {
+                    setPasswordInput(e.target.value);
+                    setPinError("");
+                  }}
+                  placeholder="Masukkan PIN..."
+                  className="w-full text-center text-2xl tracking-widest font-black border-2 border-line focus:border-accent rounded-2xl py-3 px-4 bg-card text-fg outline-none transition-all"
+                  required
+                />
+              </div>
 
-            {pinError && (
-              <p className="text-xs font-bold text-rose-400 animate-in fade-in">
-                ⚠️ {pinError}
-              </p>
-            )}
+              {pinError && (
+                <p className="text-xs font-bold text-rose-400 animate-in fade-in">
+                  ⚠️ {pinError}
+                </p>
+              )}
 
-            <button
-              type="submit"
-              className="w-full py-3.5 bg-accent hover:bg-accent-hover active:scale-95 text-white font-black rounded-2xl text-sm shadow-lg shadow-accent/20 transition-all"
-            >
-              Masuk Backoffice
-            </button>
-          </form>
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-accent hover:bg-accent-hover active:scale-95 text-white font-black rounded-2xl text-sm shadow-lg shadow-accent/20 transition-all"
+              >
+                Masuk Backoffice
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleSetupPin} className="space-y-3 text-left">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                  Buat PIN Admin Baru:
+                </label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  autoFocus
+                  value={newAdminPin}
+                  onChange={(e) => {
+                    setNewAdminPin(e.target.value);
+                    setPinError("");
+                  }}
+                  placeholder="4-6 digit angka..."
+                  className="w-full text-center text-lg tracking-widest font-black border-2 border-line focus:border-accent rounded-xl py-2.5 px-4 bg-card text-fg outline-none transition-all"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                  Konfirmasi PIN Baru:
+                </label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  value={confirmAdminPin}
+                  onChange={(e) => {
+                    setConfirmAdminPin(e.target.value);
+                    setPinError("");
+                  }}
+                  placeholder="Ulangi PIN baru..."
+                  className="w-full text-center text-lg tracking-widest font-black border-2 border-line focus:border-accent rounded-xl py-2.5 px-4 bg-card text-fg outline-none transition-all"
+                  required
+                />
+              </div>
+
+              {pinError && (
+                <p className="text-xs font-bold text-rose-400 text-center animate-in fade-in">
+                  ⚠️ {pinError}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-accent hover:bg-accent-hover active:scale-95 text-white font-black rounded-xl text-xs shadow-lg shadow-accent/20 transition-all mt-2"
+              >
+                Simpan PIN & Buka Backoffice
+              </button>
+            </form>
+          )}
 
           <div className="mt-6 pt-4 border-t border-line">
             <Link
@@ -136,7 +230,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const isDefaultPin = (storeSettings.adminPin || "1234") === "1234";
+  const isDefaultPin = storeSettings.adminPin === "1234";
 
   const isActiveLink = (href: string) => {
     if (href === "/admin") return pathname === "/admin";

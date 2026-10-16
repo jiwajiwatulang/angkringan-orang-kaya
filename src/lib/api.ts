@@ -1863,12 +1863,18 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
 
       // Pengaturan toko disimpan DI DALAM transaksi yang sama demi konsistensi atomik 100%
       if (payload.settings) {
-        // Pertahankan PIN Admin yang ada jika file cadangan tidak menyertakan PIN (demi keamanan privasi)
+        // Ambil PIN lokal perangkat ini dari database lokal sebelum ditimpa
         const currentEntry = await db.table('settings').get('pos_store_settings');
-        const existingPin = currentEntry?.value?.adminPin || '1234';
+        const localPin = currentEntry?.value?.adminPin;
+
+        // PIN Admin TIDAK PERNAH diambil dari file cadangan (selalu diabaikan/dibersihkan).
+        // - Di perangkat lama: PIN lokal yang sudah ada (misal: 5678) tetap dipertahankan.
+        // - Di perangkat baru: jika perangkat baru sudah memiliki PIN lokal, gunakan PIN lokal tersebut.
+        // - Jika perangkat baru belum memiliki PIN lokal (atau PIN hilang/kosong), JANGAN otomatis diisi 1234!
+        //   Setel ke string kosong "" agar sistem mewajibkan konfigurasi PIN baru pada perangkat ini.
         const settingsToSave = {
           ...payload.settings,
-          adminPin: payload.settings.adminPin || existingPin
+          adminPin: localPin || ""
         };
 
         await db.table('settings').put({

@@ -1116,8 +1116,11 @@ export default function POSPage() {
     if (!refundTargetPayment) return;
 
     if (storeSettings.enablePin) {
-      const correctPin = storeSettings.adminPin || "1234";
-      if (refundPinInput !== correctPin) {
+      if (!storeSettings.adminPin) {
+        alert("PIN Otorisasi Admin belum dikonfigurasi. Harap konfigurasi PIN di Pengaturan.");
+        return;
+      }
+      if (refundPinInput !== storeSettings.adminPin) {
         alert("PIN Otorisasi Admin SALAH!");
         return;
       }

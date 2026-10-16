@@ -267,6 +267,10 @@ export default function AdminTransaksiPage() {
     if (!voidTargetOrder) return;
 
     if (storeSettings.enablePin) {
+      if (!storeSettings.adminPin) {
+        setVoidPinError("PIN Admin belum dikonfigurasi. Harap konfigurasi PIN di Pengaturan Keamanan.");
+        return;
+      }
       if (voidPinInput !== storeSettings.adminPin) {
         setVoidPinError("PIN Admin salah! Harap periksa kembali.");
         return;
