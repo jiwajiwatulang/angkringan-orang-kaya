@@ -720,13 +720,19 @@ export default function POSPage() {
   };
 
   const loadOrderIntoCart = (order: any) => {
-    const loadedCart = order.items.map((i: any) => ({
-      id: i.menuItemId,
-      nama: menuData.find(m => m.id === i.menuItemId)?.nama || 'Item Terhapus',
-      harga: i.hargaSatuan,
-      kategori: menuData.find(m => m.id === i.menuItemId)?.kategori || 'Lainnya',
-      qty: i.qty || i.quantity
-    }));
+    const loadedCart = order.items.map((i: any) => {
+      const mods = i.selectedModifiers || [];
+      const modSignature = mods.map((m: any) => `${m.groupName}:${m.optionName}`).sort().join('|');
+      return {
+        id: i.menuItemId,
+        nama: i.nama || i.namaMenu || menuData.find(m => m.id === i.menuItemId)?.nama || 'Item Terhapus',
+        harga: i.hargaSatuan,
+        kategori: i.kategori || i.kategoriMenu || menuData.find(m => m.id === i.menuItemId)?.kategori || 'Lainnya',
+        qty: i.qty || i.quantity,
+        selectedModifiers: mods,
+        itemKey: modSignature ? `${i.menuItemId}_${modSignature}` : `${i.menuItemId}`
+      };
+    });
     setCart(loadedCart);
     setOldCart(JSON.parse(JSON.stringify(loadedCart)));
     setCustomerName(order.customerName || "");
@@ -2162,8 +2168,19 @@ export default function POSPage() {
                           <tr><td colSpan={printMode === 'all' ? 2 : 1} className="font-bold pt-1 pb-1 border-b border-gray-200">Makanan & Snack</td></tr>
                           {receiptData.items.filter((i:any) => !isDrinkCategory(i.kategori)).map((item: any, idx: number) => (
                             <tr key={'m'+idx}>
-                              <td className="py-1 text-base font-medium">{item.qty}x {item.nama}</td>
-                              {printMode === 'all' && <td className="py-1 text-right">Rp {(item.qty * item.harga).toLocaleString('id-ID')}</td>}
+                              <td className="py-1 text-base font-medium">
+                                <div>{item.qty}x {item.nama}</div>
+                                {item.selectedModifiers && item.selectedModifiers.length > 0 && (
+                                  <div className="pl-3 mt-0.5 space-y-0.5 text-[11px] font-normal text-gray-700">
+                                    {item.selectedModifiers.map((m: any, mIdx: number) => (
+                                      <div key={mIdx}>
+                                        • {m.optionName || m.nama}{m.harga > 0 ? ` (+Rp ${Number(m.harga).toLocaleString('id-ID')})` : ''}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </td>
+                              {printMode === 'all' && <td className="py-1 text-right align-top">Rp {(item.qty * (item.harga || item.hargaSatuan || 0)).toLocaleString('id-ID')}</td>}
                             </tr>
                           ))}
                         </>
@@ -2173,8 +2190,19 @@ export default function POSPage() {
                           <tr><td colSpan={printMode === 'all' ? 2 : 1} className="font-bold pt-3 pb-1 border-b border-gray-200">Minuman</td></tr>
                           {receiptData.items.filter((i:any) => isDrinkCategory(i.kategori)).map((item: any, idx: number) => (
                             <tr key={'d'+idx}>
-                              <td className="py-1 text-base font-medium">{item.qty}x {item.nama}</td>
-                              {printMode === 'all' && <td className="py-1 text-right">Rp {(item.qty * item.harga).toLocaleString('id-ID')}</td>}
+                              <td className="py-1 text-base font-medium">
+                                <div>{item.qty}x {item.nama}</div>
+                                {item.selectedModifiers && item.selectedModifiers.length > 0 && (
+                                  <div className="pl-3 mt-0.5 space-y-0.5 text-[11px] font-normal text-gray-700">
+                                    {item.selectedModifiers.map((m: any, mIdx: number) => (
+                                      <div key={mIdx}>
+                                        • {m.optionName || m.nama}{m.harga > 0 ? ` (+Rp ${Number(m.harga).toLocaleString('id-ID')})` : ''}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </td>
+                              {printMode === 'all' && <td className="py-1 text-right align-top">Rp {(item.qty * (item.harga || item.hargaSatuan || 0)).toLocaleString('id-ID')}</td>}
                             </tr>
                           ))}
                         </>

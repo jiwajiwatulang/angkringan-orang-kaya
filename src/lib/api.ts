@@ -131,17 +131,6 @@ export async function getMenus() {
     menus = uniqueMenus;
   }
 
-  // Auto-enrich item menu jika belum memiliki modifier
-  for (const m of menus) {
-    if (!m.modifiers || m.modifiers.length === 0) {
-      const defaultMods = getDefaultModifiersForCategory(m.kategori, m.nama);
-      if (defaultMods.length > 0) {
-        m.modifiers = defaultMods;
-        await db.table('menuItems').update(m.id, { modifiers: defaultMods });
-      }
-    }
-  }
-
   return menus;
 }
 
@@ -159,18 +148,28 @@ export async function seedDemoMenus(type: string = 'angkringan') {
   return menusToInsert.length;
 }
 
-export async function createMenu(data: { sku?: string, nama: string, harga: number, kategori: string, modifiers?: any[] }) {
+export async function createMenu(data: { sku?: string, nama: string, harga: number, kategori: string, isSoldOut?: boolean, modifiers?: any[] }) {
+  const cleanName = data.nama.trim();
+  const cleanCategory = data.kategori.trim();
+  const cleanSku = data.sku ? data.sku.trim() : '';
+
+  // Validasi keunikan SKU jika diisi
+  if (cleanSku) {
+    const duplicate = await db.table('menuItems').filter((m: MenuItem) => (m.sku || '').toLowerCase() === cleanSku.toLowerCase()).first();
+    if (duplicate) {
+      throw new Error(`SKU / Kode Menu "${cleanSku}" sudah digunakan oleh menu "${duplicate.nama}". Mohon gunakan kode lain atau kosongkan.`);
+    }
+  }
+
   const count = await db.table('menuItems').count();
-  const defaultMods = data.modifiers || getDefaultModifiersForCategory(data.kategori, data.nama);
-  const sku = data.sku ? data.sku.trim() : `SKU-${(count + 1).toString().padStart(3, '0')}`;
   return await db.table('menuItems').add({
-    sku: sku,
-    nama: data.nama.trim(),
+    sku: cleanSku || undefined,
+    nama: cleanName,
     harga: Number(data.harga),
-    kategori: data.kategori.trim(),
-    isSoldOut: false,
+    kategori: cleanCategory,
+    isSoldOut: Boolean(data.isSoldOut),
     urutan: count,
-    modifiers: defaultMods
+    modifiers: data.modifiers || []
   });
 }
 
@@ -188,7 +187,18 @@ export async function reorderMenus(items: {id: number, urutan: number}[]) {
 
 export async function updateMenu(id: number, data: { sku?: string; nama?: string; harga?: number; kategori?: string; isSoldOut?: boolean; modifiers?: any[] }) {
   const updateData: any = {};
-  if (data.sku !== undefined) updateData.sku = data.sku.trim();
+  if (data.sku !== undefined) {
+    const cleanSku = data.sku.trim();
+    if (cleanSku) {
+      const duplicate = await db.table('menuItems').filter((m: MenuItem) => m.id !== id && (m.sku || '').toLowerCase() === cleanSku.toLowerCase()).first();
+      if (duplicate) {
+        throw new Error(`SKU / Kode Menu "${cleanSku}" sudah digunakan oleh menu "${duplicate.nama}". Mohon gunakan kode lain atau kosongkan.`);
+      }
+      updateData.sku = cleanSku;
+    } else {
+      updateData.sku = undefined;
+    }
+  }
   if (data.nama !== undefined) updateData.nama = data.nama.trim();
   if (data.harga !== undefined) updateData.harga = Number(data.harga);
   if (data.kategori !== undefined) updateData.kategori = data.kategori.trim();
@@ -1150,13 +1160,13 @@ export async function bulkImportMenus(items: {
         }
         maxUrutan++;
         const newMenu = {
-          sku: sku || `SKU-${maxUrutan.toString().padStart(3, '0')}`,
+          sku: sku || undefined,
           nama: cleanName,
           harga: harga,
           kategori: raw.kategori ? raw.kategori.trim() : 'Umum',
           isSoldOut: Boolean(raw.isSoldOut),
           urutan: maxUrutan,
-          modifiers: getDefaultModifiersForCategory(raw.kategori || 'Umum', cleanName)
+          modifiers: []
         };
         const newId = await db.table('menuItems').add(newMenu) as number;
         existing.push({ id: newId, ...newMenu });

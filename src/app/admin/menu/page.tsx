@@ -23,6 +23,7 @@ import {
   MenuImportValidationResult,
 } from "@/lib/excelUtils";
 import { App } from "@capacitor/app";
+import { ModifierGroup, ModifierOption } from "@/lib/dexie";
 
 type MenuItem = {
   id: number;
@@ -31,7 +32,7 @@ type MenuItem = {
   harga: number;
   kategori: string;
   isSoldOut?: boolean;
-  modifiers?: any[];
+  modifiers?: ModifierGroup[];
 };
 
 export default function AdminMenuPage() {
@@ -83,9 +84,14 @@ export default function AdminMenuPage() {
   const [formSku, setFormSku] = useState("");
   const [formNama, setFormNama] = useState("");
   const [formHarga, setFormHarga] = useState("");
-  const [formKategori, setFormKategori] = useState("Nasi");
+  const [formKategori, setFormKategori] = useState("Lauk");
   const [isCustomKategori, setIsCustomKategori] = useState(false);
   const [customKategori, setCustomKategori] = useState("");
+  const [formIsSoldOut, setFormIsSoldOut] = useState(false);
+  const [formEnableModifiers, setFormEnableModifiers] = useState(false);
+  const [formModifiers, setFormModifiers] = useState<ModifierGroup[]>([]);
+  const [isSavingMenu, setIsSavingMenu] = useState(false);
+  const [stockUpdatingId, setStockUpdatingId] = useState<number | null>(null);
 
   // Confirmation Modals Single Delete & Unsaved Guard
   const [menuToDelete, setMenuToDelete] = useState<MenuItem | null>(null);
@@ -218,44 +224,176 @@ export default function AdminMenuPage() {
   // --- SINGLE MENU ACTIONS ---
   const handleOpenAdd = () => {
     setEditingMenu(null);
-    setFormSku(`SKU-${String(menus.length + 1).padStart(3, "0")}`);
+    setFormSku(""); // SKU benar-benar opsional & kosong
     setFormNama("");
     setFormHarga("");
-    setFormKategori("Nasi");
+    const defaultCat = categories.find((c) => c !== "Semua") || "Lauk";
+    setFormKategori(defaultCat);
     setIsCustomKategori(false);
     setCustomKategori("");
+    setFormIsSoldOut(false); // Tersedia
+    setFormEnableModifiers(false);
+    setFormModifiers([]);
     setIsSheetOpen(true);
   };
 
   const handleOpenEdit = (menu: MenuItem) => {
     setEditingMenu(menu);
-    setFormSku(menu.sku || `SKU-${String(menu.id).padStart(3, "0")}`);
+    setFormSku(menu.sku || "");
     setFormNama(menu.nama);
     setFormHarga(menu.harga.toString());
-    const standardCategories = ["Nasi", "Lauk", "Minuman", "Camilan", "Sate", "Wedang"];
-    if (standardCategories.includes(menu.kategori)) {
-      setFormKategori(menu.kategori);
-      setIsCustomKategori(false);
-      setCustomKategori("");
-    } else {
-      setFormKategori("Lainnya");
-      setIsCustomKategori(true);
-      setCustomKategori(menu.kategori);
-    }
+    setFormKategori(menu.kategori || "Lauk");
+    setIsCustomKategori(false);
+    setCustomKategori("");
+    setFormIsSoldOut(Boolean(menu.isSoldOut));
+    const hasMods = Boolean(menu.modifiers && menu.modifiers.length > 0);
+    setFormEnableModifiers(hasMods);
+    setFormModifiers(menu.modifiers ? JSON.parse(JSON.stringify(menu.modifiers)) : []);
     setIsSheetOpen(true);
+  };
+
+  // Helper Template Pilihan Cepat (Tingkat Pedas, Lalapan, Manis, Suhu)
+  const toggleQuickTemplate = (type: "spicy" | "lalapan" | "sweetness" | "temp") => {
+    const templates = {
+      spicy: {
+        id: "mod_spicy",
+        nama: "Pilihan Tingkat Pedas",
+        required: true,
+        minSelect: 1,
+        maxSelect: 1,
+        options: [
+          { id: "sp_none", nama: "Tidak Pedas", harga: 0 },
+          { id: "sp_mild", nama: "Sedang", harga: 0 },
+          { id: "sp_hot", nama: "Pedas", harga: 0 },
+        ],
+      },
+      lalapan: {
+        id: "mod_lalapan",
+        nama: "Pilihan Tambah Lalapan",
+        required: false,
+        minSelect: 0,
+        maxSelect: 1,
+        options: [
+          { id: "opt_lalapan", nama: "Tambah Lalapan Segar", harga: 2000 },
+        ],
+      },
+      sweetness: {
+        id: "mod_sweetness",
+        nama: "Pilihan Tingkat Manis",
+        required: true,
+        minSelect: 1,
+        maxSelect: 1,
+        options: [
+          { id: "sw_normal", nama: "Gula Normal", harga: 0 },
+          { id: "sw_less", nama: "Sedikit Gula", harga: 0 },
+          { id: "sw_none", nama: "Tanpa Gula", harga: 0 },
+        ],
+      },
+      temp: {
+        id: "mod_temp",
+        nama: "Pilihan Suhu Minuman",
+        required: true,
+        minSelect: 1,
+        maxSelect: 1,
+        options: [
+          { id: "temp_ice", nama: "Dingin / Pakai Es", harga: 0 },
+          { id: "temp_hot", nama: "Hangat / Panas", harga: 0 },
+        ],
+      },
+    };
+
+    const target = templates[type];
+    const exists = formModifiers.some((g) => g.id === target.id || g.nama === target.nama);
+    if (exists) {
+      setFormModifiers((prev) => prev.filter((g) => g.id !== target.id && g.nama !== target.nama));
+    } else {
+      setFormModifiers((prev) => [...prev, JSON.parse(JSON.stringify(target))]);
+    }
+  };
+
+  const handleAddCustomGroup = () => {
+    const newId = "mod_" + Date.now();
+    const newGroup: ModifierGroup = {
+      id: newId,
+      nama: "",
+      required: false,
+      minSelect: 0,
+      maxSelect: 1,
+      options: [
+        { id: "opt_" + Date.now() + "_1", nama: "", harga: 0 },
+      ],
+    };
+    setFormModifiers((prev) => [...prev, newGroup]);
+  };
+
+  const handleRemoveGroup = (groupIndex: number) => {
+    setFormModifiers((prev) => prev.filter((_, idx) => idx !== groupIndex));
+  };
+
+  const handleUpdateGroup = (groupIndex: number, patch: Partial<ModifierGroup>) => {
+    setFormModifiers((prev) => prev.map((g, idx) => (idx === groupIndex ? { ...g, ...patch } : g)));
+  };
+
+  const handleAddOption = (groupIndex: number) => {
+    const newOpt: ModifierOption = {
+      id: "opt_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+      nama: "",
+      harga: 0,
+    };
+    setFormModifiers((prev) =>
+      prev.map((g, idx) => (idx === groupIndex ? { ...g, options: [...g.options, newOpt] } : g))
+    );
+  };
+
+  const handleUpdateOption = (
+    groupIndex: number,
+    optionIndex: number,
+    patch: Partial<ModifierOption>
+  ) => {
+    setFormModifiers((prev) =>
+      prev.map((g, gIdx) => {
+        if (gIdx !== groupIndex) return g;
+        const updatedOpts = g.options.map((opt, oIdx) =>
+          oIdx === optionIndex ? { ...opt, ...patch } : opt
+        );
+        return { ...g, options: updatedOpts };
+      })
+    );
+  };
+
+  const handleRemoveOption = (groupIndex: number, optionIndex: number) => {
+    setFormModifiers((prev) =>
+      prev.map((g, gIdx) => {
+        if (gIdx !== groupIndex) return g;
+        return { ...g, options: g.options.filter((_, oIdx) => oIdx !== optionIndex) };
+      })
+    );
   };
 
   const isFormDirty = () => {
     if (editingMenu) {
-      const finalKat = isCustomKategori ? customKategori : formKategori;
+      const finalKat = isCustomKategori ? customKategori.trim() : formKategori.trim();
+      const origKat = editingMenu.kategori.trim();
+      const origSku = (editingMenu.sku || "").trim();
+      const origMods = JSON.stringify(editingMenu.modifiers || []);
+      const curMods = JSON.stringify(formEnableModifiers ? formModifiers : []);
+
       return (
-        formNama.trim() !== editingMenu.nama ||
+        formNama.trim() !== editingMenu.nama.trim() ||
         Number(formHarga) !== editingMenu.harga ||
-        finalKat.trim() !== editingMenu.kategori ||
-        formSku.trim() !== (editingMenu.sku || "")
+        finalKat !== origKat ||
+        formSku.trim() !== origSku ||
+        formIsSoldOut !== Boolean(editingMenu.isSoldOut) ||
+        curMods !== origMods
       );
     } else {
-      return formNama.trim() !== "" || formHarga.trim() !== "" || customKategori.trim() !== "";
+      return (
+        formNama.trim() !== "" ||
+        formHarga.trim() !== "" ||
+        formSku.trim() !== "" ||
+        formEnableModifiers ||
+        formModifiers.length > 0
+      );
     }
   };
 
@@ -276,51 +414,95 @@ export default function AdminMenuPage() {
 
   const handleSaveMenu = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalKat = isCustomKategori ? customKategori.trim() || "Lainnya" : formKategori;
-    const finalHarga = Number(formHarga) || 0;
+    if (isSavingMenu) return;
 
-    if (!formNama.trim()) {
-      alert("Nama menu tidak boleh kosong");
+    const finalKat = isCustomKategori ? customKategori.trim() || "Lainnya" : formKategori.trim();
+    const finalHarga = Number(formHarga);
+    const cleanNama = formNama.trim();
+
+    if (!cleanNama) {
+      showToast("Nama menu tidak boleh kosong.", "error");
       return;
     }
 
+    if (isNaN(finalHarga) || finalHarga < 0) {
+      showToast("Harga jual harus berupa angka valid (minimal Rp 0).", "error");
+      return;
+    }
+
+    // Validasi Pilihan Menu & Tambahan jika aktif
+    let finalModifiers: ModifierGroup[] = [];
+    if (formEnableModifiers && formModifiers.length > 0) {
+      for (let i = 0; i < formModifiers.length; i++) {
+        const group = formModifiers[i];
+        if (!group.nama.trim()) {
+          showToast(`Grup pilihan ke-${i + 1} belum memiliki nama.`, "error");
+          return;
+        }
+        if (!group.options || group.options.length === 0) {
+          showToast(`Grup pilihan "${group.nama}" harus memiliki minimal 1 pilihan opsi.`, "error");
+          return;
+        }
+        for (let j = 0; j < group.options.length; j++) {
+          const opt = group.options[j];
+          if (!opt.nama.trim()) {
+            showToast(`Pilihan ke-${j + 1} pada grup "${group.nama}" belum memiliki nama.`, "error");
+            return;
+          }
+        }
+      }
+      finalModifiers = formModifiers;
+    }
+
+    setIsSavingMenu(true);
     try {
       if (editingMenu) {
         await updateMenu(editingMenu.id, {
-          sku: formSku.trim() || undefined,
-          nama: formNama,
+          sku: formSku.trim(),
+          nama: cleanNama,
           harga: finalHarga,
           kategori: finalKat,
+          isSoldOut: formIsSoldOut,
+          modifiers: finalModifiers,
         });
-        showToast(`Menu "${formNama}" berhasil diperbarui`, "success");
+        showToast(`Menu "${cleanNama}" berhasil diperbarui`, "success");
       } else {
         await createMenu({
           sku: formSku.trim() || undefined,
-          nama: formNama,
+          nama: cleanNama,
           harga: finalHarga,
           kategori: finalKat,
+          isSoldOut: formIsSoldOut,
+          modifiers: finalModifiers,
         });
-        showToast(`Menu "${formNama}" berhasil ditambahkan`, "success");
+        showToast(`Menu "${cleanNama}" berhasil ditambahkan`, "success");
       }
       setIsSheetOpen(false);
       setEditingMenu(null);
       await loadData();
     } catch (err: any) {
-      alert("Gagal menyimpan menu: " + err.message);
+      showToast(err.message || "Gagal menyimpan menu", "error");
+    } finally {
+      setIsSavingMenu(false);
     }
   };
 
-  const handleToggleStock = async (menu: MenuItem) => {
+  const handleSetStock = async (menu: MenuItem, isSoldOut: boolean) => {
+    // Idempotent: klik status yang sedang aktif tidak melakukan aksi ulang
+    if (Boolean(menu.isSoldOut) === isSoldOut) return;
+
+    setStockUpdatingId(menu.id);
     try {
-      const newStatus = !menu.isSoldOut;
-      await toggleMenuSoldOut(menu.id, newStatus);
+      await toggleMenuSoldOut(menu.id, isSoldOut);
       showToast(
-        `Stok "${menu.nama}" diubah jadi ${newStatus ? "HABIS" : "TERSEDIA"}`,
-        newStatus ? "error" : "success"
+        `Status "${menu.nama}" diubah menjadi ${isSoldOut ? "HABIS (Tidak Tersedia)" : "TERSEDIA"}`,
+        isSoldOut ? "error" : "success"
       );
       await loadData();
     } catch (err: any) {
-      alert("Gagal mengubah status stok: " + err.message);
+      alert("Gagal mengubah status ketersediaan: " + err.message);
+    } finally {
+      setStockUpdatingId(null);
     }
   };
 
@@ -733,7 +915,7 @@ export default function AdminMenuPage() {
                           </div>
                         </td>
                         <td className="py-3 px-3 font-mono text-[11px] text-muted">
-                          {menu.sku || "-"}
+                          {menu.sku || <span className="text-slate-500 italic">ID #{menu.id}</span>}
                         </td>
                         <td className="py-3 px-3">
                           <span className="px-2.5 py-1 rounded-lg bg-card border border-line text-[11px] font-bold text-slate-300">
@@ -745,26 +927,50 @@ export default function AdminMenuPage() {
                         </td>
                         <td className="py-3 px-3 text-muted">
                           {modCount > 0 ? (
-                            <span className="px-2 py-0.5 rounded-md bg-accent/15 text-accent-text text-[11px] font-bold">
-                              {modCount} grup pilihan
-                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {menu.modifiers?.map((g) => (
+                                <span
+                                  key={g.id}
+                                  className="px-2 py-0.5 rounded-md bg-accent/15 text-accent-text text-[10px] font-bold"
+                                  title={`${g.nama}: ${g.options.map((o) => o.nama).join(", ")}`}
+                                >
+                                  {g.nama}
+                                </span>
+                              ))}
+                            </div>
                           ) : (
                             <span className="text-[11px] text-muted">-</span>
                           )}
                         </td>
                         <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleStock(menu)}
-                            className={`px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all active:scale-95 ${
-                              menu.isSoldOut
-                                ? "bg-rose-950/60 text-rose-300 hover:bg-rose-500/25 border border-rose-900/40"
-                                : "bg-accent/20 text-accent-text hover:bg-accent/30 border border-accent/40"
-                            }`}
-                            title="Klik untuk ubah status stok"
-                          >
-                            <span>{menu.isSoldOut ? "🔴 Habis" : "🟢 Tersedia"}</span>
-                          </button>
+                          <div className="inline-flex rounded-xl p-0.5 bg-card border border-line shadow-inner">
+                            <button
+                              type="button"
+                              disabled={stockUpdatingId === menu.id}
+                              onClick={() => handleSetStock(menu, false)}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                !menu.isSoldOut
+                                  ? "bg-emerald-600 text-white shadow-sm font-black cursor-default"
+                                  : "text-muted hover:text-fg opacity-60 hover:opacity-100 cursor-pointer"
+                              }`}
+                              title={!menu.isSoldOut ? "Menu sedang tersedia (bisa dipesan)" : "Ubah status ke Tersedia"}
+                            >
+                              <span>🟢 Tersedia</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={stockUpdatingId === menu.id}
+                              onClick={() => handleSetStock(menu, true)}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                menu.isSoldOut
+                                  ? "bg-rose-600 text-white shadow-sm font-black cursor-default"
+                                  : "text-muted hover:text-fg opacity-60 hover:opacity-100 cursor-pointer"
+                              }`}
+                              title={menu.isSoldOut ? "Menu sedang tidak tersedia (habis)" : "Ubah status ke Tidak Tersedia"}
+                            >
+                              <span>🔴 Habis</span>
+                            </button>
+                          </div>
                         </td>
                         <td className="py-3 px-3 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1.5">
@@ -846,19 +1052,35 @@ export default function AdminMenuPage() {
                       className="mt-4 pt-3 border-t border-line flex items-center justify-between gap-2"
                       onClick={(e) => e.stopPropagation()} // don't toggle selection when clicking buttons
                     >
-                      {/* 1-Tap Stock Toggle Button */}
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStock(menu)}
-                        className={`px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all active:scale-95 ${
-                          menu.isSoldOut
-                            ? " bg-rose-950/60 text-rose-300 hover:bg-rose-500/25"
-                            : " bg-accent/60 text-accent-text hover:bg-accent/25"
-                        }`}
-                        title="Klik untuk ubah stok di kasir"
-                      >
-                        <span>{menu.isSoldOut ? "🔴 Habis" : "🟢 Tersedia"}</span>
-                      </button>
+                      {/* 2-Option Mutually Exclusive Stock Controls */}
+                      <div className="inline-flex rounded-xl p-0.5 bg-card border border-line shadow-inner">
+                        <button
+                          type="button"
+                          disabled={stockUpdatingId === menu.id}
+                          onClick={() => handleSetStock(menu, false)}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                            !menu.isSoldOut
+                              ? "bg-emerald-600 text-white shadow-sm font-black cursor-default"
+                              : "text-muted hover:text-fg opacity-60 hover:opacity-100 cursor-pointer"
+                          }`}
+                          title={!menu.isSoldOut ? "Menu sedang tersedia" : "Ubah status ke Tersedia"}
+                        >
+                          <span>🟢 Tersedia</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={stockUpdatingId === menu.id}
+                          onClick={() => handleSetStock(menu, true)}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                            menu.isSoldOut
+                              ? "bg-rose-600 text-white shadow-sm font-black cursor-default"
+                              : "text-muted hover:text-fg opacity-60 hover:opacity-100 cursor-pointer"
+                          }`}
+                          title={menu.isSoldOut ? "Menu sedang tidak tersedia (habis)" : "Ubah status ke Tidak Tersedia"}
+                        >
+                          <span>🔴 Habis</span>
+                        </button>
+                      </div>
 
                       <div className="flex items-center gap-1.5">
                         <button
@@ -1460,74 +1682,73 @@ export default function AdminMenuPage() {
       {/* --- BOTTOM SHEET FORM (TAMBAH / EDIT SINGLE MENU) --- */}
       {isSheetOpen && (
         <div
-          className="fixed inset-0 bg-black/65 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center animate-in fade-in duration-200 p-0 sm:p-4"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center animate-in fade-in duration-200 p-0 sm:p-4"
           onClick={handleCloseSheet}
         >
           <div
-            className=" bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 shadow-2xl border border-line flex flex-col max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-250"
+            className="bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-xl p-5 sm:p-6 shadow-2xl border border-line flex flex-col max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom duration-250"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Grab handle for touch */}
             <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
 
-            <div className="flex justify-between items-center pb-3 border-b border-line">
-              <h3 className="text-lg font-black text-fg">
-                {editingMenu ? "✏️ Edit Produk Menu" : "➕ Tambah Menu Baru"}
-              </h3>
+            <div className="flex justify-between items-start pb-3 border-b border-line">
+              <div>
+                <h3 className="text-lg font-black text-fg flex items-center gap-2">
+                  <span>{editingMenu ? "✏️ Edit Menu" : "➕ Tambah Menu Baru"}</span>
+                </h3>
+                <p className="text-xs text-muted mt-0.5">
+                  {editingMenu
+                    ? `Perbarui rincian untuk "${editingMenu.nama}"`
+                    : "Lengkapi data menu untuk ditambahkan ke kasir."}
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={handleCloseSheet}
-                className="w-8 h-8 rounded-full bg-card text-muted hover:text-fg flex items-center justify-center text-sm font-bold"
+                className="w-8 h-8 rounded-full bg-card hover:bg-line text-muted hover:text-fg flex items-center justify-center text-sm font-bold transition-colors"
               >
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleSaveMenu} className="space-y-4 pt-4">
+              {/* Nama Menu */}
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1">
-                  SKU / Kode Menu (Opsional):
+                  Nama Menu *
                 </label>
                 <input
                   type="text"
-                  placeholder="Contoh: AYM-001"
-                  value={formSku}
-                  onChange={(e) => setFormSku(e.target.value)}
-                  className="w-full bg-card border border-line rounded-xl p-3 text-sm font-mono text-fg outline-none focus:border-accent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Nama Menu:
-                </label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Nasi Goreng Spesial"
+                  placeholder="Contoh: Ayam Panggang, Nasi Goreng, Es Teh"
                   value={formNama}
                   onChange={(e) => setFormNama(e.target.value)}
                   className="w-full bg-card border border-line rounded-xl p-3 text-sm font-semibold text-fg outline-none focus:border-accent"
                   required
+                  autoFocus
                 />
               </div>
 
+              {/* Harga Jual */}
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Harga Jual (Rp):
+                  Harga Jual (Rp) *
                 </label>
                 <input
                   type="number"
                   placeholder="Contoh: 15000"
                   value={formHarga}
                   onChange={(e) => setFormHarga(e.target.value)}
-                  className="w-full bg-card border border-line rounded-xl p-3 text-lg font-black text-fg outline-none focus:border-accent"
+                  className="w-full bg-card border border-line rounded-xl p-3 text-lg font-black text-accent-text outline-none focus:border-accent"
                   required
+                  min="0"
                 />
               </div>
 
+              {/* Kategori Menu */}
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Kategori Menu:
+                  Kategori Menu *
                 </label>
                 <select
                   value={isCustomKategori ? "Lainnya" : formKategori}
@@ -1539,21 +1760,23 @@ export default function AdminMenuPage() {
                       setFormKategori(e.target.value);
                     }
                   }}
-                  className="w-full bg-card border border-line rounded-xl p-2.5 text-xs font-bold text-fg outline-none focus:border-accent"
+                  className="w-full bg-card border border-line rounded-xl p-3 text-xs font-bold text-fg outline-none focus:border-accent cursor-pointer"
                 >
-                  <option value="Nasi">Nasi & Makanan Pokok</option>
-                  <option value="Lauk">Lauk Pauk & Sambal</option>
-                  <option value="Minuman">Minuman Dingin / Panas</option>
-                  <option value="Camilan">Camilan & Gorengan</option>
-                  <option value="Sate">Aneka Sate Angkringan</option>
-                  <option value="Wedang">Wedangan Tradisional</option>
+                  {Array.from(new Set(["Nasi", "Lauk", "Minuman", "Camilan", "Sate", "Wedang", ...menus.map((m) => m.kategori).filter(Boolean)])).map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
                   <option value="Lainnya">+ Buat Kategori Baru...</option>
                 </select>
+                <p className="text-[10px] text-muted mt-1">
+                  Untuk mengelompokkan menu di halaman kasir.
+                </p>
 
                 {isCustomKategori && (
                   <input
                     type="text"
-                    placeholder="Ketik kategori baru (contoh: Coffee / Dessert)"
+                    placeholder="Ketik kategori baru (contoh: Kopi, Roti Bakar, Paket Hemat)"
                     value={customKategori}
                     onChange={(e) => setCustomKategori(e.target.value)}
                     className="mt-2 w-full bg-card border border-accent rounded-xl p-2.5 text-xs text-fg outline-none"
@@ -1562,19 +1785,356 @@ export default function AdminMenuPage() {
                 )}
               </div>
 
-              <div className="flex gap-2 pt-3 border-t border-line">
+              {/* SKU / Kode Menu */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Kode Menu / SKU (opsional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Kosongkan jika tidak ada kode khusus"
+                  value={formSku}
+                  onChange={(e) => setFormSku(e.target.value)}
+                  className="w-full bg-card border border-line rounded-xl p-3 text-xs font-mono text-fg outline-none focus:border-accent"
+                />
+                <p className="text-[10px] text-muted mt-1">
+                  Jika kosong, sistem menggunakan ID internal. Tidak perlu membuat SKU otomatis.
+                </p>
+              </div>
+
+              {/* Ketersediaan Menu (Stok) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  Ketersediaan Menu
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    disabled={isSavingMenu}
+                    onClick={() => setFormIsSoldOut(false)}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      !formIsSoldOut
+                        ? "bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/30 text-emerald-300 shadow-md font-black"
+                        : "bg-card border-line text-muted hover:text-fg hover:border-slate-600"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs flex items-center gap-1.5">
+                        <span>🟢</span>
+                        <span>Tersedia</span>
+                      </span>
+                      {!formIsSoldOut && (
+                        <span className="text-emerald-400 font-bold text-[10px] bg-emerald-900/60 px-1.5 py-0.5 rounded-md">
+                          ✓ Aktif
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-muted mt-0.5 font-normal">
+                      Bisa dipesan di kasir
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isSavingMenu}
+                    onClick={() => setFormIsSoldOut(true)}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      formIsSoldOut
+                        ? "bg-rose-950/40 border-rose-500 ring-2 ring-rose-500/30 text-rose-300 shadow-md font-black"
+                        : "bg-card border-line text-muted hover:text-fg hover:border-slate-600"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs flex items-center gap-1.5">
+                        <span>🔴</span>
+                        <span>Tidak Tersedia</span>
+                      </span>
+                      {formIsSoldOut && (
+                        <span className="text-rose-400 font-bold text-[10px] bg-rose-900/60 px-1.5 py-0.5 rounded-md">
+                          ✓ Aktif
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-muted mt-0.5 font-normal">
+                      Stok habis / ditutup
+                    </p>
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted mt-1.5">
+                  Status yang dipilih tidak perlu diklik ulang. Untuk mengganti status, pilih opsi satunya.
+                </p>
+              </div>
+
+              {/* Pilihan Menu & Tambahan (Modifier) */}
+              <div className="pt-3 border-t border-line space-y-3">
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={formEnableModifiers}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setFormEnableModifiers(checked);
+                      if (!checked) {
+                        setFormModifiers([]);
+                      }
+                    }}
+                    className="mt-0.5 w-4 h-4 rounded text-accent focus:ring-accent border-line"
+                  />
+                  <div>
+                    <span className="text-xs font-black text-fg">
+                      Aktifkan pilihan tambahan untuk menu ini
+                    </span>
+                    <p className="text-[10px] text-muted leading-relaxed">
+                      Tambahkan opsi tingkat pedas, ekstra lalapan, suhu minuman, atau topping tambahan.
+                    </p>
+                  </div>
+                </label>
+
+                {formEnableModifiers && (
+                  <div className="space-y-4 pt-1 animate-in fade-in duration-150">
+                    {/* Template Cepat */}
+                    <div className="p-3 bg-card/60 rounded-2xl border border-line space-y-2">
+                      <span className="text-[11px] font-bold text-muted block">
+                        Template Cepat (Klik untuk menambah / mencopot):
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => toggleQuickTemplate("spicy")}
+                          className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 ${
+                            formModifiers.some((g) => g.id === "mod_spicy" || g.nama.includes("Pedas"))
+                              ? "bg-accent text-white border-accent shadow-sm"
+                              : "bg-surface border-line text-muted hover:text-fg"
+                          }`}
+                        >
+                          <span>🌶️</span>
+                          <span>Tingkat Pedas</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleQuickTemplate("lalapan")}
+                          className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 ${
+                            formModifiers.some((g) => g.id === "mod_lalapan" || g.nama.includes("Lalapan"))
+                              ? "bg-accent text-white border-accent shadow-sm"
+                              : "bg-surface border-line text-muted hover:text-fg"
+                          }`}
+                        >
+                          <span>🥗</span>
+                          <span>Tambah Lalapan (+2k)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleQuickTemplate("sweetness")}
+                          className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 ${
+                            formModifiers.some((g) => g.id === "mod_sweetness" || g.nama.includes("Manis"))
+                              ? "bg-accent text-white border-accent shadow-sm"
+                              : "bg-surface border-line text-muted hover:text-fg"
+                          }`}
+                        >
+                          <span>🍯</span>
+                          <span>Tingkat Manis</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleQuickTemplate("temp")}
+                          className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 ${
+                            formModifiers.some((g) => g.id === "mod_temp" || g.nama.includes("Suhu"))
+                              ? "bg-accent text-white border-accent shadow-sm"
+                              : "bg-surface border-line text-muted hover:text-fg"
+                          }`}
+                        >
+                          <span>🧊</span>
+                          <span>Es / Hangat</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Daftar Grup Pilihan Aktif */}
+                    {formModifiers.length === 0 ? (
+                      <div className="p-4 bg-card/40 rounded-2xl border border-dashed border-line text-center text-xs text-muted">
+                        Belum ada grup pilihan aktif. Klik template di atas atau buat grup baru di bawah.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {formModifiers.map((group, gIdx) => (
+                          <div
+                            key={group.id || gIdx}
+                            className="p-3.5 bg-card/80 rounded-2xl border border-line space-y-3 shadow-sm"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <input
+                                type="text"
+                                placeholder="Nama Grup (misal: Tingkat Pedas, Tambahan Lauk)"
+                                value={group.nama}
+                                onChange={(e) =>
+                                  handleUpdateGroup(gIdx, { nama: e.target.value })
+                                }
+                                className="flex-1 bg-surface border border-line rounded-xl px-3 py-1.5 text-xs font-bold text-fg outline-none focus:border-accent"
+                                required
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveGroup(gIdx)}
+                                className="px-2.5 py-1.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/50 text-rose-400 text-xs font-bold transition-colors shrink-0"
+                                title="Hapus grup pilihan ini"
+                              >
+                                🗑️ Hapus
+                              </button>
+                            </div>
+
+                            {/* Pengaturan Aturan Pilihan */}
+                            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                              <span className="font-bold text-muted">Aturan:</span>
+                              <div className="inline-flex rounded-xl p-0.5 bg-surface border border-line">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleUpdateGroup(gIdx, {
+                                      required: true,
+                                      minSelect: 1,
+                                      maxSelect: 1,
+                                    })
+                                  }
+                                  className={`px-2 py-1 rounded-lg font-bold transition-all ${
+                                    group.required && group.maxSelect === 1
+                                      ? "bg-accent text-white shadow-xs"
+                                      : "text-muted hover:text-fg"
+                                  }`}
+                                >
+                                  Pilih 1 (Wajib)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleUpdateGroup(gIdx, {
+                                      required: false,
+                                      minSelect: 0,
+                                      maxSelect: 1,
+                                    })
+                                  }
+                                  className={`px-2 py-1 rounded-lg font-bold transition-all ${
+                                    !group.required && group.maxSelect === 1
+                                      ? "bg-accent text-white shadow-xs"
+                                      : "text-muted hover:text-fg"
+                                  }`}
+                                >
+                                  Pilih 1 (Opsional)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleUpdateGroup(gIdx, {
+                                      required: false,
+                                      minSelect: 0,
+                                      maxSelect: Math.max(3, group.options.length),
+                                    })
+                                  }
+                                  className={`px-2 py-1 rounded-lg font-bold transition-all ${
+                                    group.maxSelect > 1
+                                      ? "bg-accent text-white shadow-xs"
+                                      : "text-muted hover:text-fg"
+                                  }`}
+                                >
+                                  Boleh Pilih Banyak
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Daftar Opsi & Harga Tambahan */}
+                            <div className="space-y-1.5 pt-1">
+                              <span className="text-[11px] font-bold text-muted block">
+                                Pilihan & Harga Tambahan:
+                              </span>
+                              {group.options.map((opt, oIdx) => (
+                                <div key={opt.id || oIdx} className="flex items-center gap-2">
+                                  <input
+                                    type="text"
+                                    placeholder="Nama Opsi (misal: Sedang, Ekstra Telur)"
+                                    value={opt.nama}
+                                    onChange={(e) =>
+                                      handleUpdateOption(gIdx, oIdx, { nama: e.target.value })
+                                    }
+                                    className="flex-1 bg-surface border border-line rounded-xl px-3 py-1.5 text-xs text-fg outline-none focus:border-accent"
+                                    required
+                                  />
+                                  <div className="w-28 relative">
+                                    <span className="absolute left-2.5 top-1.5 text-[10px] text-muted font-bold">
+                                      +Rp
+                                    </span>
+                                    <input
+                                      type="number"
+                                      placeholder="0"
+                                      value={opt.harga === 0 ? "" : opt.harga}
+                                      onChange={(e) =>
+                                        handleUpdateOption(gIdx, oIdx, {
+                                          harga: Number(e.target.value) || 0,
+                                        })
+                                      }
+                                      className="w-full bg-surface border border-line rounded-xl pl-9 pr-2 py-1.5 text-xs font-mono font-bold text-accent-text outline-none focus:border-accent"
+                                      min="0"
+                                    />
+                                  </div>
+                                  <button
+                                    type="button"
+                                    disabled={group.options.length <= 1}
+                                    onClick={() => handleRemoveOption(gIdx, oIdx)}
+                                    className="w-7 h-7 rounded-lg bg-surface text-muted hover:text-rose-400 disabled:opacity-30 flex items-center justify-center text-xs font-bold"
+                                    title="Hapus opsi ini"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+
+                              <button
+                                type="button"
+                                onClick={() => handleAddOption(gIdx)}
+                                className="mt-1 px-3 py-1.5 bg-surface hover:bg-card border border-line text-xs font-bold text-accent-text rounded-xl transition-colors flex items-center gap-1"
+                              >
+                                <span>+</span>
+                                <span>Tambah Pilihan Opsi</span>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleAddCustomGroup}
+                      className="w-full py-2.5 bg-card hover:bg-line border border-dashed border-line text-xs font-bold text-fg rounded-2xl transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <span>➕</span>
+                      <span>Buat Grup Pilihan Baru (Kustom)</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Form Actions Footer */}
+              <div className="flex gap-2 pt-4 border-t border-line">
                 <button
                   type="button"
                   onClick={handleCloseSheet}
-                  className="flex-1 py-3 bg-card text-slate-300 rounded-xl text-xs font-bold transition-colors"
+                  disabled={isSavingMenu}
+                  className="flex-1 py-3 bg-card hover:bg-line text-slate-300 rounded-xl text-xs font-bold transition-colors disabled:opacity-50"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex-[2] py-3 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-black shadow-lg shadow-accent/20 active:scale-95 transition-all"
+                  disabled={isSavingMenu}
+                  className="flex-[2] py-3 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white rounded-xl text-xs font-black shadow-lg shadow-accent/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
                 >
-                  {editingMenu ? "Simpan Perubahan" : "+ Tambah Menu"}
+                  {isSavingMenu ? (
+                    <span>Sedang Menyimpan...</span>
+                  ) : (
+                    <span>{editingMenu ? "Simpan Perubahan" : "+ Tambah Menu"}</span>
+                  )}
                 </button>
               </div>
             </form>

@@ -812,6 +812,150 @@ async function runTestSuite() {
   }
 
   // --------------------------------------------------------------------------
+  console.log('\n[TEST GROUP 16] Menu Management: Optional SKU, Non-Enrichment & Stock Availability');
+  // --------------------------------------------------------------------------
+  try {
+    const { createMenu, getMenus, updateMenu } = await import('./src/lib/api');
+
+    // 1. Create menu without SKU and without modifiers
+    const menuId1 = await createMenu({
+      nama: 'Tahu Goreng Gurih',
+      harga: 5000,
+      kategori: 'Gorengan',
+      isSoldOut: false,
+      modifiers: []
+    });
+    assert(typeof menuId1 === 'number', 'Menu created without SKU');
+
+    const created1 = await db.table('menuItems').get(menuId1);
+    assert(created1 !== undefined, 'Menu 1 retrieved from Dexie');
+    assert(created1.sku === undefined, 'Menu 1 SKU is undefined (not auto-filled with SKU-XXX)', String(created1.sku));
+    assert(Array.isArray(created1.modifiers) && created1.modifiers.length === 0, 'Menu 1 modifiers is empty array []');
+
+    // 2. Call getMenus() multiple times to ensure ZERO auto-enrichment
+    const allMenus1 = await getMenus();
+    const fetched1_1 = allMenus1.find((m: any) => m.id === menuId1);
+    assert(fetched1_1 !== undefined && fetched1_1.modifiers.length === 0, 'getMenus() does not auto-enrich empty modifiers (Call 1)');
+
+    const allMenus2 = await getMenus();
+    const fetched1_2 = allMenus2.find((m: any) => m.id === menuId1);
+    assert(fetched1_2 !== undefined && fetched1_2.modifiers.length === 0, 'getMenus() does not auto-enrich empty modifiers (Call 2)');
+
+    // 3. Create menu with custom modifiers and specific SKU
+    const menuId2 = await createMenu({
+      sku: 'AYAM-001',
+      nama: 'Ayam Penyet Sambal Bawang',
+      harga: 22000,
+      kategori: 'Lauk',
+      isSoldOut: false,
+      modifiers: [
+        {
+          id: 'mod-pedas',
+          name: 'Tingkat Pedas',
+          required: true,
+          selectionType: 'single',
+          options: [
+            { id: 'p0', name: 'Tidak Pedas', extraPrice: 0 },
+            { id: 'p1', name: 'Sedang', extraPrice: 0 },
+            { id: 'p2', name: 'Pedas Gila', extraPrice: 2000 }
+          ]
+        },
+        {
+          id: 'mod-lalap',
+          name: 'Tambah Lalapan',
+          required: false,
+          selectionType: 'multiple',
+          options: [
+            { id: 'l1', name: 'Kemangi Extra', extraPrice: 2000 },
+            { id: 'l2', name: 'Kol Goreng', extraPrice: 3000 }
+          ]
+        }
+      ]
+    });
+    assert(typeof menuId2 === 'number', 'Menu with modifiers and SKU created');
+
+    const created2 = await db.table('menuItems').get(menuId2);
+    assert(created2.sku === 'AYAM-001', 'Menu 2 SKU correctly stored as AYAM-001');
+    assert(created2.modifiers.length === 2, 'Menu 2 has 2 modifier groups');
+    assert(created2.modifiers[0].options.length === 3, 'Tingkat Pedas has 3 options');
+    assert(created2.modifiers[1].options[1].extraPrice === 3000, 'Kol Goreng extra price is Rp 3.000');
+
+    // 4. Test duplicate SKU validation on createMenu
+    let duplicateErrorThrown = false;
+    try {
+      await createMenu({
+        sku: 'AYAM-001',
+        nama: 'Ayam Bakar Madu',
+        harga: 23000,
+        kategori: 'Lauk'
+      });
+    } catch (err: any) {
+      duplicateErrorThrown = true;
+      assert(err.message.includes('sudah digunakan'), 'Duplicate SKU error message is user-friendly', err.message);
+    }
+    assert(duplicateErrorThrown, 'createMenu rejected duplicate SKU');
+
+    // 5. Test duplicate SKU validation on updateMenu
+    let updateDuplicateThrown = false;
+    try {
+      await updateMenu(menuId1, { sku: 'AYAM-001' });
+    } catch (err: any) {
+      updateDuplicateThrown = true;
+      assert(err.message.includes('sudah digunakan'), 'updateMenu rejected duplicate SKU', err.message);
+    }
+    assert(updateDuplicateThrown, 'updateMenu rejected duplicate SKU against another item');
+
+    // 6. Test stock availability toggle & idempotency
+    await updateMenu(menuId1, { isSoldOut: true });
+    let updated1 = await db.table('menuItems').get(menuId1);
+    assert(updated1.isSoldOut === true, 'Menu 1 status updated to isSoldOut = true (Habis)');
+
+    // Setting same status again (idempotent)
+    await updateMenu(menuId1, { isSoldOut: true });
+    updated1 = await db.table('menuItems').get(menuId1);
+    assert(updated1.isSoldOut === true, 'Menu 1 remains isSoldOut = true on idempotent call');
+
+    // Restore to available
+    await updateMenu(menuId1, { isSoldOut: false });
+    updated1 = await db.table('menuItems').get(menuId1);
+    assert(updated1.isSoldOut === false, 'Menu 1 status updated to isSoldOut = false (Tersedia)');
+
+    // 7. Order creation with custom modifier and extra price
+    const orderRes = await createOrder({
+      customerName: 'Siti Aminah',
+      paymentMethod: 'Cash',
+      orderType: 'Dine-in',
+      tableId: 2,
+      total: 27000,
+      subtotal: 27000,
+      status: 'paid',
+      items: [
+        {
+          id: menuId2,
+          nama: 'Ayam Penyet Sambal Bawang',
+          kategori: 'Lauk',
+          harga: 22000,
+          qty: 1,
+          selectedModifiers: [
+            { groupName: 'Tingkat Pedas', optionName: 'Pedas Gila', harga: 2000 },
+            { groupName: 'Tambah Lalapan', optionName: 'Kol Goreng', harga: 3000 }
+          ]
+        }
+      ]
+    });
+    assert(orderRes !== undefined && typeof orderRes.id === 'number', 'Order with custom modifier created successfully');
+
+    const ordersAfterMod = await getOrders();
+    const orderWithMod = ordersAfterMod.find((o: any) => o.id === orderRes.id);
+    assert(orderWithMod !== undefined, 'Order retrieved from getOrders()');
+    assert(orderWithMod.items[0].selectedModifiers.length === 2, 'Order item recorded both modifiers');
+    const totalExtra = orderWithMod.items[0].selectedModifiers.reduce((acc: number, m: any) => acc + m.harga, 0);
+    assert(totalExtra === 5000, 'Total extra price calculated to Rp 5.000 (2.000 + 3.000)');
+  } catch (err: any) {
+    assert(false, 'Test Group 16 Error', err.message);
+  }
+
+  // --------------------------------------------------------------------------
   console.log('\n======================================================');
   const passCount = results.filter(r => r.passed).length;
   const failCount = results.filter(r => !r.passed).length;
