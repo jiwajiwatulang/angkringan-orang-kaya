@@ -97,20 +97,92 @@ export default function AdminDashboardPage() {
 
   const totalAllCategoriesOmzet = categoryEntries.reduce((s, c) => s + c.total, 0) || 1;
 
+  const [isWaModalOpen, setIsWaModalOpen] = useState(false);
+  const [copiedReport, setCopiedReport] = useState(false);
+
+  // WhatsApp Report Calculations
+  const todayCashSales = validOrders
+    .filter((o) => {
+      const pm = (o.paymentMethod || o.metodePembayaran || "").toLowerCase();
+      return pm.includes("cash") || pm.includes("tunai");
+    })
+    .reduce((sum, o) => sum + (o.total || 0), 0);
+  const todayNonCashSales = Math.max(0, todayOmzet - todayCashSales);
+
+  const itemCounts: Record<string, number> = {};
+  validOrders.forEach((o) => {
+    (o.items || []).forEach((item: any) => {
+      const name = item.name || item.nama || item.menuName || "Menu";
+      itemCounts[name] = (itemCounts[name] || 0) + (item.qty || 1);
+    });
+  });
+  const topSoldItems = Object.entries(itemCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+
+  const generateWaReportMessage = () => {
+    const store = storeSettings.storeName || "SakuNota";
+    const dateFormatted = new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    let msg = `LAPORAN PENJUALAN — SAKUNOTA\n`;
+    msg += `${store} · ${dateFormatted}\n\n`;
+    msg += `Total Penjualan: Rp ${todayOmzet.toLocaleString("id-ID")}\n`;
+    msg += `Jumlah Transaksi: ${validOrders.length}\n\n`;
+    msg += `Rincian Pembayaran:\n`;
+    msg += `• Tunai: Rp ${todayCashSales.toLocaleString("id-ID")}\n`;
+    msg += `• QRIS / Non-Tunai: Rp ${todayNonCashSales.toLocaleString("id-ID")}\n\n`;
+    if (topSoldItems.length > 0) {
+      msg += `Menu Terlaris:\n`;
+      topSoldItems.forEach(([name, qty], idx) => {
+        msg += `${idx + 1}. ${name} — ${qty} porsi\n`;
+      });
+      msg += `\n`;
+    }
+    msg += `Laporan dibuat oleh SakuNota.`;
+    return msg;
+  };
+
+  const handleCopyWaReport = async () => {
+    const text = generateWaReportMessage();
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+      setCopiedReport(true);
+      setTimeout(() => setCopiedReport(false), 2500);
+    }
+  };
+
+  const handleOpenWhatsAppUrl = () => {
+    const text = generateWaReportMessage();
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header Info */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-line">
         <div>
           <h2 className="text-2xl font-black text-fg tracking-tight">
-            Dashboard
+            Ringkasan Penjualan
           </h2>
           <p className="text-xs text-muted mt-0.5">
-            {storeSettings.storeName || "Angkringan Orang Kaya"} • Ringkasan usaha & akses cepat ke laporan.
+            {storeSettings.storeName || "SakuNota"} • Ringkasan usaha & akses cepat ke laporan.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsWaModalOpen(true)}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 transition-all flex items-center gap-1.5 active:scale-95"
+          >
+            <span>📲</span>
+            <span>Kirim ke WhatsApp</span>
+          </button>
           <Link
             href="/admin/menu"
             className="px-3.5 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-bold shadow-md shadow-accent/20 transition-all flex items-center gap-1.5 active:scale-95"
@@ -491,6 +563,58 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal Kirim Laporan ke WhatsApp */}
+      {isWaModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-surface border border-line rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-line">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl">📲</span>
+                <div>
+                  <h3 className="font-black text-base text-fg">Kirim Laporan ke WhatsApp</h3>
+                  <span className="text-[10px] text-muted">Pesan rapih siap kirim tanpa biaya sistem tambahan</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsWaModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-card hover:bg-line text-muted hover:text-fg text-sm flex items-center justify-center transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Pratinjau Teks Laporan */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-muted uppercase tracking-wider block">
+                Pratinjau Pesan:
+              </label>
+              <pre className="p-4 rounded-2xl bg-card border border-line font-mono text-[11px] text-fg whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto select-all">
+                {generateWaReportMessage()}
+              </pre>
+            </div>
+
+            {/* Action buttons */}
+            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={handleCopyWaReport}
+                className="flex-1 py-3 px-4 bg-card hover:bg-line text-fg text-xs font-bold rounded-xl border border-line transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                <span>{copiedReport ? "✅ Tersalin!" : "📋 Salin Teks"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenWhatsAppUrl}
+                className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                <span>Kirim ke WhatsApp Sekarang →</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

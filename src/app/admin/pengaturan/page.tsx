@@ -107,8 +107,8 @@ export default function AdminPengaturanHubPage() {
               🏪
             </span>
             <div>
-              <h3 className="font-black text-sm text-fg">SakuNota — Kasir Simpel, Usaha Lebih Tertata</h3>
-              <p className="text-xs text-muted">Aplikasi kasir praktis tanpa biaya bulanan. Cukup Rp25.000 sekali bayar.</p>
+              <h3 className="font-black text-sm text-fg">SakuNota — Kasir Tetap Jalan, Meski Tanpa Internet</h3>
+              <p className="text-xs text-muted">Aplikasi kasir praktis tanpa biaya bulanan. Cukup Rp65.000 promo lisensi.</p>
             </div>
           </div>
 

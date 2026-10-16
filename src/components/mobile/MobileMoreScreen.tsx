@@ -192,7 +192,7 @@ export default function MobileMoreScreen({
             <span className="text-xl">ℹ️</span>
             <div>
               <h4 className="text-xs font-bold text-fg">Tentang SakuNota</h4>
-              <p className="text-[10px] text-muted">Rp25.000 sekali bayar, panduan, bantuan WhatsApp</p>
+              <p className="text-[10px] text-muted">Rp65.000 promo lisensi, panduan, bantuan WhatsApp</p>
             </div>
           </div>
           <span className="text-muted text-xs">→</span>

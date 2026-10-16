@@ -135,12 +135,12 @@ export default function PengaturanTentangPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-black text-fg">SakuNota</h3>
-                <span className="px-2.5 py-0.5 rounded-full bg-accent/20 text-accent-text font-bold text-[11px] border border-accent/40">
-                  Rp25.000 Sekali Bayar
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] border border-emerald-500/40">
+                  Rp65.000 Promo Lisensi
                 </span>
               </div>
               <p className="text-xs text-muted mt-0.5">
-                Kasir simpel, usaha lebih tertata. Tanpa langganan bulanan.
+                Kasir tetap jalan, meski tanpa internet. Tanpa biaya bulanan.
               </p>
             </div>
           </div>
