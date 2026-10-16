@@ -264,6 +264,12 @@ export function generateEscPosReceipt(
     if (cfg.enableWatermark) {
       txt += "\n" + center("[ SakuNota POS - Solusi Kasir UMKM ]");
     }
+
+    const isDemoReceipt = receipt.isDemo || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sakunota_demo_mode') === 'true');
+    if (isDemoReceipt) {
+      txt += "\n" + center("*** STRUK SIMULASI DEMO SANDBOX ***");
+      txt += center("BUKAN BUKTI TRANSAKSI RIIL");
+    }
   }
 
   txt += "\n\n\n";
@@ -642,6 +648,13 @@ export function generateReceiptHtml(
         <div class="status-box">
           ${receipt.isDraft ? 'TAGIHAN SEMENTARA (OPEN BILL)' : 'LUNAS'}
         </div>
+
+        ${receipt.isDemo || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sakunota_demo_mode') === 'true') ? `
+          <div class="status-box" style="border: 1px dashed #b45309; background: #fffbeb; color: #92400e; font-size: 10px; margin: 4px 0;">
+            *** STRUK SIMULASI DEMO SANDBOX ***<br />
+            <span style="font-size: 9px; font-weight: normal;">BUKAN BUKTI TRANSAKSI RIIL</span>
+          </div>
+        ` : ''}
 
         ${cfg.receiptFooter ? `<div class="footer-text">${cfg.receiptFooter}</div>` : ''}
         ${cfg.enableWatermark ? `<div class="watermark">[ SakuNota POS - Solusi Kasir UMKM ]</div>` : ''}
