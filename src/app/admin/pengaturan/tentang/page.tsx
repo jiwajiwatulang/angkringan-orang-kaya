@@ -88,7 +88,7 @@ export default function PengaturanTentangPage() {
         <div className="space-y-1">
           <h2 className="text-2xl font-black text-fg tracking-tight">SakuNota</h2>
           <p className="text-sm font-semibold text-muted">
-            Kasir Tetap Jalan, Meski Tanpa Internet.
+            Kasir Jalan Tanpa Internet.
           </p>
         </div>
 

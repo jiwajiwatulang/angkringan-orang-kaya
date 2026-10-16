@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
+import InstallGuideSection from "@/components/InstallGuideSection";
 import { 
   CustomerOrder, 
   submitBuyerOrder, 
@@ -407,7 +408,7 @@ export default function SakuNotaLandingPage() {
               SakuNota
             </span>
             <span className="text-[10px] text-muted font-bold tracking-wider uppercase block mt-0.5">
-              Kasir Tetap Jalan, Meski Tanpa Internet
+              Kasir Jalan Tanpa Internet.
             </span>
           </div>
         </div>
@@ -422,6 +423,9 @@ export default function SakuNotaLandingPage() {
           </a>
           <a href="#harga" className="hover:text-fg transition-colors">
             Harga
+          </a>
+          <a href="#pasang-hp" className="hover:text-blue-600 dark:text-blue-400 font-extrabold text-blue-600 dark:text-blue-400 transition-colors">
+            Pasang di HP
           </a>
           <Link href="/panduan" className="hover:text-accent-text text-accent transition-colors">
             Panduan
@@ -468,7 +472,7 @@ export default function SakuNotaLandingPage() {
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/15 border border-accent/30 text-accent-text text-xs font-black">
           <span>Kasir Simpel, Tetap Offline</span>
           <span className="text-muted">•</span>
-          <span>SakuNota — Kasir Tetap Jalan, Meski Tanpa Internet</span>
+          <span>SakuNota — Kasir Jalan Tanpa Internet.</span>
         </div>
 
         <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-fg tracking-tight leading-[1.15] max-w-3xl mx-auto">
@@ -496,9 +500,9 @@ export default function SakuNotaLandingPage() {
           <span className="px-3 py-1 rounded-full bg-card border border-line text-xs font-bold text-fg">
             Cetak struk
           </span>
-          <span className="px-3 py-1 rounded-full bg-card border border-line text-xs font-bold text-fg">
-            Pasang di HP
-          </span>
+          <a href="#pasang-hp" className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-950/60 border border-blue-300 dark:border-blue-800 text-xs font-extrabold text-blue-700 dark:text-blue-300 hover:underline">
+            📱 Pasang di HP
+          </a>
         </div>
 
         {/* Price Highlight Badge */}
@@ -539,6 +543,14 @@ export default function SakuNotaLandingPage() {
             <span>Coba Kasir Sekarang</span>
             <span>→</span>
           </Link>
+
+          <a
+            href="#pasang-hp"
+            className="w-full sm:w-auto px-6 py-4 bg-surface hover:bg-card text-blue-600 dark:text-blue-400 font-bold text-xs rounded-2xl border border-blue-200 dark:border-blue-800 transition-all flex items-center justify-center gap-1.5"
+          >
+            <span>📱</span>
+            <span>Pasang di HP</span>
+          </a>
 
           <button
             type="button"
@@ -699,7 +711,7 @@ export default function SakuNotaLandingPage() {
                   <div className="p-4 rounded-2xl bg-white text-slate-900 font-mono text-[11px] space-y-1 shadow-inner border border-slate-300 animate-in fade-in duration-150">
                     <div className="text-center font-bold text-xs pb-1 border-b border-dashed border-slate-400">
                       SAKUNOTA POS OFFICIAL<br />
-                      <span className="text-[10px] font-normal">Kasir Tetap Jalan Tanpa Internet</span>
+                      <span className="text-[10px] font-normal">Kasir Jalan Tanpa Internet.</span>
                     </div>
                     <div className="py-1 border-b border-dashed border-slate-400 space-y-0.5">
                       {Object.entries(demoCart).map(([id, qty]) => {
@@ -1007,13 +1019,26 @@ export default function SakuNotaLandingPage() {
               Pelajari cara mengatur profil usaha, memasukkan menu, menghubungkan printer Bluetooth, mengelola kas & shift, hingga cadangkan data.
             </p>
           </div>
-          <Link
-            href="/panduan"
-            className="px-6 py-3.5 bg-accent hover:bg-accent-hover text-white text-xs font-black rounded-2xl shadow-md transition-all active:scale-95 shrink-0"
-          >
-            Buka Buku Panduan →
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
+            <a
+              href="#pasang-hp"
+              className="px-5 py-3.5 bg-surface hover:bg-card text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-800 text-xs font-black rounded-2xl shadow-sm transition-all active:scale-95"
+            >
+              📱 Pasang di HP
+            </a>
+            <Link
+              href="/panduan"
+              className="px-6 py-3.5 bg-accent hover:bg-accent-hover text-white text-xs font-black rounded-2xl shadow-md transition-all active:scale-95"
+            >
+              Buka Buku Panduan →
+            </Link>
+          </div>
         </div>
+      </section>
+
+      {/* 9.1 Section Pasang SakuNota di HP (Android & iPhone) */}
+      <section id="pasang-hp" className="px-4 sm:px-8 py-14 max-w-5xl mx-auto border-b border-line">
+        <InstallGuideSection />
       </section>
 
       {/* 10. Empat Pertanyaan Calon Pembeli */}
@@ -1627,12 +1652,16 @@ export default function SakuNotaLandingPage() {
             </div>
             <div>
               <span className="font-bold text-fg block">SakuNota</span>
-              <span className="text-[11px] text-muted">Kasir Tetap Jalan, Meski Tanpa Internet.</span>
+              <span className="text-[11px] text-muted">Kasir Jalan Tanpa Internet.</span>
             </div>
           </div>
 
           {/* Links */}
           <div className="flex flex-wrap items-center justify-center gap-4 text-[11px]">
+            <a href="#pasang-hp" className="hover:text-blue-600 dark:text-blue-400 font-extrabold text-blue-600 dark:text-blue-400 transition-colors">
+              📱 Pasang di HP
+            </a>
+            <span className="text-line">•</span>
             <a
               href="https://wa.me/6281234567890"
               target="_blank"

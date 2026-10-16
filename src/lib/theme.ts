@@ -5,12 +5,12 @@ import { useEffect, useState } from "react";
 export type Theme = "dark" | "light";
 
 export function getInitialTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   try {
     const saved = localStorage.getItem("sakunota_theme") || localStorage.getItem("theme");
     if (saved === "light" || saved === "dark") return saved;
   } catch (_) {}
-  return "dark"; // Default is dark (Dark Blue Pro)
+  return "light"; // Default is light (Clean Light Blue)
 }
 
 export function applyTheme(theme: Theme) {
@@ -33,7 +33,7 @@ export function applyTheme(theme: Theme) {
 }
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>("dark");
+  const [theme, setThemeState] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

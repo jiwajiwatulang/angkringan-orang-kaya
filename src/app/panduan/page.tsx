@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
+import InstallGuideSection from "@/components/InstallGuideSection";
 
 interface Chapter {
   id: number;
@@ -21,24 +22,18 @@ export default function SakuNotaPanduanPage() {
     {
       id: 1,
       slug: "mulai-menggunakan",
-      title: "1. Mulai Menggunakan SakuNota",
+      title: "1. Mulai Menggunakan & Pasang di HP",
       tag: "Awal & Aktivasi",
-      summary: "Cara pasang aplikasi di HP, aktivasi nomor lisensi resmi, dan memilih jenis usaha.",
+      summary: "Panduan resmi pemasangan SakuNota di Android & iPhone, aktivasi lisensi, dan pemilihan jenis usaha.",
       content: (
-        <div className="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
-          <p>
-            SakuNota dirancang agar dapat langsung digunakan di ponsel pintar (Android/iOS) atau tablet Anda tanpa memerlukan instalasi yang rumit.
+        <div className="space-y-6 text-xs sm:text-sm text-fg leading-relaxed">
+          <p className="text-muted">
+            SakuNota dirancang agar dapat langsung dipasang dan digunakan di ponsel pintar (Android &amp; iPhone) tanpa memerlukan instalasi aplikasi yang rumit dari toko aplikasi.
           </p>
 
-          <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
-            <h4 className="font-extrabold text-sm text-fg">Langkah 1: Pasang di Layar Utama HP (Install App)</h4>
-            <ol className="list-decimal list-inside space-y-1.5 pl-1">
-              <li>Buka peramban (Google Chrome di Android, atau Safari di iPhone).</li>
-              <li>Akses alamat website resmi SakuNota.</li>
-              <li>Ketuk menu opsi peramban (ikon titik tiga ⋮ di Chrome atau ikon Bagikan ⎋ di Safari).</li>
-              <li>Pilih opsi <strong className="text-fg">"Tambahkan ke Layar Utama"</strong> atau <strong className="text-fg">"Instal Aplikasi"</strong>.</li>
-              <li>Ikon SakuNota akan muncul di layar ponsel seperti aplikasi kasir biasa dan siap dibuka sewaktu-waktu.</li>
-            </ol>
+          {/* Unified Install Guide Section with Android & iPhone Tabs */}
+          <div className="bg-surface border border-line rounded-3xl p-3 sm:p-5">
+            <InstallGuideSection isEmbedded={true} />
           </div>
 
           <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">

@@ -15,22 +15,28 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   interactiveWidget: "resizes-content",
-  themeColor: "#0B0F17",
-  colorScheme: "dark",
+  themeColor: "#2563eb",
+  colorScheme: "light",
 };
 
 export const metadata: Metadata = {
-  title: "SakuNota POS - Kasir Pintar & Cetak Struk UMKM",
-  description: "Aplikasi kasir offline pintar untuk UMKM, kafe, warung makan, dan ritel.",
+  title: "SakuNota - Kasir Tanpa Internet",
+  description: "Kasir Jalan Tanpa Internet. Aplikasi kasir offline pintar untuk UMKM, kafe, warung makan, dan ritel.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
-    title: "SakuNota POS",
+    statusBarStyle: "default",
+    title: "SakuNota",
   },
   icons: {
-    icon: "/icon.png",
-    apple: "/icon.png",
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icon.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 
@@ -39,12 +45,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="id"
       suppressHydrationWarning
-      className={`dark ${inter.variable} h-full antialiased`}
+      className={`light ${inter.variable} h-full antialiased`}
     >
       <head>
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('sakunota_theme')||localStorage.getItem('theme');if(t==='light'){document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');document.documentElement.style.colorScheme='light';}else{document.documentElement.classList.add('dark');document.documentElement.classList.remove('light');document.documentElement.style.colorScheme='dark';}}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('sakunota_theme')||localStorage.getItem('theme');if(t==='dark'){document.documentElement.classList.add('dark');document.documentElement.classList.remove('light');document.documentElement.style.colorScheme='dark';}else{document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');document.documentElement.style.colorScheme='light';}}catch(e){}})()`,
           }}
         />
       </head>
