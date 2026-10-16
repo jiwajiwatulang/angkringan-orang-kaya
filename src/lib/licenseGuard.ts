@@ -41,8 +41,12 @@ export async function checkCashierAccess(forceOnlineCheck: boolean = false): Pro
     return { isValid: false, isDemo: false, status: "unregistered" };
   }
 
-  // Check Demo Mode query parameter (isolated sandbox)
-  if (window.location.search.includes("demo=true")) {
+  // Check Demo Mode (query param or sessionStorage)
+  const isDemo = 
+    (typeof window !== "undefined" && window.location.search.includes("demo=true")) ||
+    (typeof sessionStorage !== "undefined" && sessionStorage.getItem("sakunota_demo_mode") === "true");
+
+  if (isDemo) {
     return {
       isValid: true,
       isDemo: true,

@@ -143,6 +143,39 @@ export default function POSPage() {
     }
   };
 
+  const handleStartDemo = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('sakunota_demo_mode', 'true');
+        const url = new URL(window.location.href);
+        url.searchParams.set('demo', 'true');
+        window.history.replaceState({}, '', url.toString());
+      } catch (_) {}
+    }
+    setAccessStatus({
+      isValid: true,
+      isDemo: true,
+      status: 'trial_active',
+      businessName: 'Demo Warung SakuNota',
+      daysRemaining: 7,
+      hoursRemaining: 168,
+    });
+    setIsLoading(true);
+    loadData();
+  };
+
+  const handleExitDemo = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem('sakunota_demo_mode');
+        const url = new URL(window.location.href);
+        url.searchParams.delete('demo');
+        window.history.replaceState({}, '', url.toString());
+      } catch (_) {}
+      window.location.href = '/';
+    }
+  };
+
   // --- ATOMIC MODAL & HISTORY MANAGER ---
   const isProgrammaticPopRef = useRef<boolean>(false);
   const modDirtyRef = useRef<boolean>(false);
@@ -686,51 +719,57 @@ export default function POSPage() {
 
   const loadData = async () => {
     try {
-      const freshSettings = await loadStoreSettingsAsync();
-      setStoreSettings(freshSettings);
-    } catch (_) {
-      setStoreSettings(getStoreSettings());
-    }
-    await refreshShiftData();
-    const { getMenus, getOrders, getTables } = await import('@/lib/api');
-    const menus = await getMenus();
-    const tables = await getTables();
-    const orders = await getOrders();
-    
-    // Group variants
-    const groupedMenus: MenuItem[] = [];
-    const groups: Record<string, MenuItem[]> = {};
-    
-    menus.forEach((m: any) => {
-      if (m.nama.includes('(Hot)') || m.nama.includes('(Ice)')) {
-        const baseName = m.nama.replace(/\s*\(.*\)\s*/, '');
-        if (!groups[baseName]) groups[baseName] = [];
-        groups[baseName].push(m);
-      } else {
-        groupedMenus.push(m);
+      try {
+        const freshSettings = await loadStoreSettingsAsync();
+        setStoreSettings(freshSettings);
+      } catch (_) {
+        setStoreSettings(getStoreSettings());
       }
-    });
+      await refreshShiftData();
+      const { getMenus, getOrders, getTables } = await import('@/lib/api');
+      const menus = await getMenus();
+      const tables = await getTables();
+      const orders = await getOrders();
+      
+      // Group variants
+      const groupedMenus: MenuItem[] = [];
+      const groups: Record<string, MenuItem[]> = {};
+      
+      (menus || []).forEach((m: any) => {
+        if (!m) return;
+        if (m.nama && (m.nama.includes('(Hot)') || m.nama.includes('(Ice)'))) {
+          const baseName = m.nama.replace(/\s*\(.*\)\s*/, '');
+          if (!groups[baseName]) groups[baseName] = [];
+          groups[baseName].push(m);
+        } else {
+          groupedMenus.push(m);
+        }
+      });
 
-    for (const [baseName, variants] of Object.entries(groups)) {
-      if (variants.length > 1) {
-        groupedMenus.push({
-          id: variants[0].id * 1000, // pseudo id
-          nama: baseName,
-          harga: variants[0].harga,
-          kategori: variants[0].kategori,
-          isGroup: true,
-          variants: variants
-        });
-      } else {
-        groupedMenus.push(variants[0]);
+      for (const [baseName, variants] of Object.entries(groups)) {
+        if (variants.length > 1) {
+          groupedMenus.push({
+            id: (variants[0].id || 1) * 1000, // pseudo id
+            nama: baseName,
+            harga: variants[0].harga,
+            kategori: variants[0].kategori,
+            isGroup: true,
+            variants: variants
+          });
+        } else if (variants[0]) {
+          groupedMenus.push(variants[0]);
+        }
       }
-    }
 
-    setMenuData(groupedMenus);
-    setTableData(tables);
-    setAllOrders(orders);
-    setActiveOrders(orders.filter((o: any) => o.status === 'unpaid'));
-    setIsLoading(false);
+      setMenuData(groupedMenus);
+      setTableData(tables || []);
+      setAllOrders(orders || []);
+      setActiveOrders((orders || []).filter((o: any) => o.status === 'unpaid'));
+    } catch (err) {
+      console.error("Gagal memuat data kasir:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -750,7 +789,15 @@ export default function POSPage() {
     loadData();
     const interval = setInterval(loadData, 5000);
 
-    return () => clearInterval(interval);
+    const handlePop = () => {
+      initAccess();
+    };
+    window.addEventListener("popstate", handlePop);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("popstate", handlePop);
+    };
   }, []);
 
   const categories = ["Semua", ...Array.from(new Set(menuData.map(m => m.kategori)))];
@@ -2071,7 +2118,7 @@ export default function POSPage() {
     );
   };
 
-  if (isLoading || isAccessChecking) {
+  if (isAccessChecking) {
     return (
       <div className="flex flex-col h-screen bg-surface text-fg items-center justify-center p-6 text-center">
         <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mb-4" />
@@ -2114,6 +2161,26 @@ export default function POSPage() {
             <p className="mt-2 text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
               {accessStatus.error || 'Aplikasi kasir ini dikunci untuk pendaftar Closed Beta atau pemilik lisensi resmi SakuNota.'}
             </p>
+          </div>
+
+          {/* Quick Demo Access Box */}
+          <div className="bg-amber-500/10 border-2 border-amber-500/40 rounded-2xl p-4 sm:p-5 mb-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg backdrop-blur-sm">
+            <div className="flex items-center gap-3.5 text-left">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-2xl shrink-0">
+                🎮
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-amber-200">Ingin Langsung Mencoba Kasir Tanpa Registrasi?</h3>
+                <p className="text-xs text-amber-300/80 mt-0.5">Buka Demo Sandbox interaktif gratis untuk simulasi pesanan & cetak struk.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleStartDemo}
+              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 shrink-0"
+            >
+              Buka Demo Kasir Sekarang →
+            </button>
           </div>
 
           {/* Guarantee Box: Data Never Held Hostage */}
@@ -2190,12 +2257,13 @@ export default function POSPage() {
             >
               <span>💳</span> Beli Lisensi Resmi (Rp65.000)
             </Link>
-            <Link
-              href="/pos?demo=true"
+            <button
+              type="button"
+              onClick={handleStartDemo}
               className="bg-amber-900/40 hover:bg-amber-900/60 border border-amber-600/40 text-amber-200 font-bold p-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
             >
               <span>🎮</span> Coba Demo Sandbox Kasir
-            </Link>
+            </button>
             <Link
               href="/panduan"
               className="bg-slate-800/60 hover:bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 font-bold p-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
@@ -2208,6 +2276,16 @@ export default function POSPage() {
         <div className="text-center text-[11px] text-slate-500 py-3">
           SakuNota Kasir Jalan Tanpa Internet &copy; 2026. Data bisnis Anda sepenuhnya tersimpan secara lokal.
         </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-screen bg-surface text-fg items-center justify-center p-6 text-center">
+        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mb-4" />
+        <h2 className="text-base font-bold text-fg">Memuat Data Kasir...</h2>
+        <p className="text-xs text-muted mt-1">Menyiapkan menu, meja, dan database lokal</p>
       </div>
     );
   }
@@ -2225,6 +2303,7 @@ export default function POSPage() {
           <div className="flex items-center gap-3 mt-1 sm:mt-0 font-bold">
             <Link href="/?beta=register" className="underline hover:text-white">Daftar Beta 7 Hari</Link>
             <Link href="/?beli=true" className="bg-amber-500 text-slate-950 px-2.5 py-0.5 rounded text-[11px] hover:bg-amber-400">Beli Rp65.000</Link>
+            <button type="button" onClick={handleExitDemo} className="underline text-slate-400 hover:text-white text-[11px]">Keluar Demo</button>
           </div>
         </div>
       )}

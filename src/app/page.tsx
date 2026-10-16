@@ -554,10 +554,11 @@ export default function SakuNotaLandingPage() {
             <span className="px-1.5 py-0.5 rounded bg-emerald-800 text-[10px]">Rp65.000</span>
           </button>
           <Link
-            href="/pos"
+            href="/pos?demo=true"
+            onClick={() => { try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {} }}
             className="px-4 py-2 bg-accent hover:bg-accent-hover text-white text-xs font-black rounded-xl shadow-md shadow-accent/20 transition-all active:scale-95 flex items-center gap-1.5"
           >
-            <span>Buka Kasir</span>
+            <span>Coba Kasir</span>
             <span>→</span>
           </Link>
         </div>
@@ -642,6 +643,7 @@ export default function SakuNotaLandingPage() {
 
           <Link
             href="/pos?demo=true"
+            onClick={() => { try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {} }}
             className="w-full sm:w-auto px-6 py-4 bg-card hover:bg-line text-fg font-bold text-sm rounded-2xl border border-line transition-all flex items-center justify-center gap-2"
           >
             <span>🎮 Coba Sandbox Kasir</span>
@@ -791,10 +793,11 @@ export default function SakuNotaLandingPage() {
                     {showDemoReceipt ? "Sembunyikan Struk" : "Lihat Simulasi Struk"}
                   </button>
                   <Link
-                    href="/pos"
+                    href="/pos?demo=true"
+                    onClick={() => { try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {} }}
                     className="flex-1 py-2.5 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-black text-center shadow-md transition-all active:scale-95"
                   >
-                    Buka Kasir Lengkap →
+                    Buka Kasir Lengkap (Demo) →
                   </Link>
                 </div>
 
@@ -1296,7 +1299,10 @@ export default function SakuNotaLandingPage() {
                 <div className="flex flex-col sm:flex-row gap-2 pt-2">
                   <Link
                     href="/pos?demo=true"
-                    onClick={() => setIsBetaModalOpen(false)}
+                    onClick={() => {
+                      try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {}
+                      setIsBetaModalOpen(false);
+                    }}
                     className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-md text-center"
                   >
                     Coba Demo Sandbox Kasir Sekarang →
@@ -2203,8 +2209,12 @@ export default function SakuNotaLandingPage() {
               support@sakunota.my.id
             </a>
             <span className="text-line">•</span>
-            <Link href="/pos" className="text-accent-text font-bold hover:underline">
-              Buka Kasir POS
+            <Link
+              href="/pos?demo=true"
+              onClick={() => { try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {} }}
+              className="text-accent-text font-bold hover:underline"
+            >
+              Coba Kasir (Demo)
             </Link>
           </div>
         </div>
