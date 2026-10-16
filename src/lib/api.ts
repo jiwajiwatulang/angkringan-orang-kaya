@@ -1686,10 +1686,13 @@ export async function exportAllData() {
     } catch (e) {}
   }
 
-  // Sanitasi keamanan: Jangan pernah sertakan PIN Otorisasi Admin dalam file cadangan publik
+  // Sanitasi keamanan: Jangan pernah sertakan PIN Otorisasi Admin maupun Recovery Code dalam file cadangan publik
   if (settings) {
     const safeSettings = { ...settings };
     delete safeSettings.adminPin;
+    delete safeSettings.recoveryCodeHash;
+    delete safeSettings.failedRecoveryAttempts;
+    delete safeSettings.recoveryLockedUntil;
     settings = safeSettings;
   }
 
@@ -1863,18 +1866,21 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
 
       // Pengaturan toko disimpan DI DALAM transaksi yang sama demi konsistensi atomik 100%
       if (payload.settings) {
-        // Ambil PIN lokal perangkat ini dari database lokal sebelum ditimpa
+        // Ambil kredensial lokal perangkat ini dari database lokal sebelum ditimpa
         const currentEntry = await db.table('settings').get('pos_store_settings');
         const localPin = currentEntry?.value?.adminPin;
+        const localRecoveryHash = currentEntry?.value?.recoveryCodeHash;
 
-        // PIN Admin TIDAK PERNAH diambil dari file cadangan (selalu diabaikan/dibersihkan).
-        // - Di perangkat lama: PIN lokal yang sudah ada (misal: 5678) tetap dipertahankan.
-        // - Di perangkat baru: jika perangkat baru sudah memiliki PIN lokal, gunakan PIN lokal tersebut.
-        // - Jika perangkat baru belum memiliki PIN lokal (atau PIN hilang/kosong), JANGAN otomatis diisi 1234!
-        //   Setel ke string kosong "" agar sistem mewajibkan konfigurasi PIN baru pada perangkat ini.
+        // Kredensial keamanan (PIN & Recovery Code) TIDAK PERNAH diambil dari file cadangan (selalu diabaikan/dibersihkan).
+        // - Di perangkat lama: PIN lokal dan Recovery Code lokal yang sudah ada tetap dipertahankan.
+        // - Di perangkat baru: jika perangkat baru sudah memiliki kredensial lokal, gunakan milik perangkat baru.
+        // - Jika belum ada: biarkan kosong "" sehingga sistem meminta pembuatan PIN/Recovery mandiri.
         const settingsToSave = {
           ...payload.settings,
-          adminPin: localPin || ""
+          adminPin: localPin || "",
+          recoveryCodeHash: localRecoveryHash || "",
+          failedRecoveryAttempts: 0,
+          recoveryLockedUntil: ""
         };
 
         await db.table('settings').put({

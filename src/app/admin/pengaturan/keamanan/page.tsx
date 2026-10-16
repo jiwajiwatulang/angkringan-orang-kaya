@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "../../AdminContext";
 import { saveStoreSettingsAsync } from "@/lib/settings";
+import { generateRecoveryCode, hashRecoveryCode } from "@/lib/recovery";
 import { App } from "@capacitor/app";
 
 export default function PengaturanKeamananPage() {
@@ -15,6 +16,14 @@ export default function PengaturanKeamananPage() {
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Recovery Code state
+  const [revealedCode, setRevealedCode] = useState<string | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [acknowledgedCode, setAcknowledgedCode] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenPinInput, setRegenPinInput] = useState("");
+  const [regenError, setRegenError] = useState("");
 
   // Back button
   useEffect(() => {
@@ -58,18 +67,74 @@ export default function PengaturanKeamananPage() {
     }
 
     try {
+      let freshRecoveryCode: string | null = null;
+      let newHash = storeSettings.recoveryCodeHash;
+
+      // Jika belum memiliki Recovery Code, otomatis buat sekarang
+      if (!newHash) {
+        freshRecoveryCode = generateRecoveryCode();
+        newHash = await hashRecoveryCode(freshRecoveryCode);
+      }
+
       const updated = {
         ...storeSettings,
         adminPin: newPin,
+        recoveryCodeHash: newHash,
+        failedRecoveryAttempts: 0,
+        recoveryLockedUntil: ""
       };
       await saveStoreSettingsAsync(updated);
       await refreshSettings();
       setCurrentPin("");
       setNewPin("");
       setConfirmPin("");
-      showToast(hasExistingPin ? "PIN Admin berhasil diubah!" : "PIN Admin berhasil dibuat!", "success");
+
+      if (freshRecoveryCode) {
+        setRevealedCode(freshRecoveryCode);
+        setAcknowledgedCode(false);
+      } else {
+        showToast(hasExistingPin ? "PIN Admin berhasil diubah!" : "PIN Admin berhasil dibuat!", "success");
+      }
     } catch (err: any) {
       alert("Gagal memperbarui PIN: " + err.message);
+    }
+  };
+
+  const handleRegenerateRecoveryCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegenError("");
+
+    if (!storeSettings.adminPin) {
+      setRegenError("PIN Admin belum aktif.");
+      return;
+    }
+
+    if (regenPinInput !== storeSettings.adminPin) {
+      setRegenError("PIN Admin salah!");
+      return;
+    }
+
+    try {
+      const freshCode = generateRecoveryCode();
+      const freshHash = await hashRecoveryCode(freshCode);
+
+      const updated = {
+        ...storeSettings,
+        recoveryCodeHash: freshHash,
+        failedRecoveryAttempts: 0,
+        recoveryLockedUntil: ""
+      };
+      await saveStoreSettingsAsync(updated);
+      await refreshSettings();
+
+      setIsRegenerating(false);
+      setRegenPinInput("");
+      setRegenError("");
+      setRevealedCode(freshCode);
+      setAcknowledgedCode(false);
+      setCodeCopied(false);
+    } catch (err: any) {
+      setRegenError("Gagal membuat ulang kode: " + (err as any)?.message);
     }
   };
 
@@ -175,6 +240,143 @@ export default function PengaturanKeamananPage() {
           </button>
         </form>
       </div>
+
+      {/* Recovery Code Card */}
+      <div className="bg-surface p-6 rounded-3xl border border-line shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-black text-fg flex items-center gap-1.5">
+              <span>🛡️</span>
+              <span>Kode Pemulihan Pemilik (Offline Recovery Code)</span>
+            </h3>
+            <p className="text-xs text-muted mt-0.5">
+              Kunci darurat offline untuk mereset PIN Admin jika Anda lupa PIN atau data PIN terhapus.
+            </p>
+          </div>
+          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 shrink-0">
+            {storeSettings.recoveryCodeHash ? "✓ Aktif (SHA-256)" : "Belum Dibuat"}
+          </span>
+        </div>
+
+        <div className="p-4 bg-card/60 rounded-2xl border border-line text-xs space-y-2">
+          <p className="text-muted leading-relaxed">
+            Kode Pemulihan dibuat secara acak terenkripsi dan disimpan hanya dalam bentuk hash di penyimpanan perangkat Anda. Kode ini <strong>tidak pernah disertakan dalam file cadangan JSON</strong> demi privasi.
+          </p>
+          {!isRegenerating ? (
+            <button
+              type="button"
+              onClick={() => {
+                setIsRegenerating(true);
+                setRegenPinInput("");
+                setRegenError("");
+              }}
+              className="px-4 py-2 bg-card hover:bg-card/80 border border-line text-xs font-bold text-fg rounded-xl transition-all"
+            >
+              🔄 Buat Ulang Kode Pemulihan Baru
+            </button>
+          ) : (
+            <form onSubmit={handleRegenerateRecoveryCode} className="space-y-3 pt-2">
+              <label className="block text-[11px] font-bold text-slate-300">
+                Masukkan PIN Admin saat ini untuk otorisasi:
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  placeholder="PIN Admin saat ini..."
+                  value={regenPinInput}
+                  onChange={(e) => {
+                    setRegenPinInput(e.target.value);
+                    setRegenError("");
+                  }}
+                  className="flex-1 bg-card border border-line rounded-xl px-3 py-2 text-xs font-bold text-fg outline-none focus:border-accent"
+                  required
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-white text-xs font-bold rounded-xl transition-all"
+                >
+                  Buat Kode Baru
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRegenerating(false)}
+                  className="px-3 py-2 bg-line text-muted text-xs font-bold rounded-xl hover:text-fg"
+                >
+                  Batal
+                </button>
+              </div>
+              {regenError && (
+                <p className="text-xs font-bold text-rose-400">⚠️ {regenError}</p>
+              )}
+            </form>
+          )}
+        </div>
+      </div>
+
+      {/* MODAL TAMPILKAN RECOVERY CODE BARU */}
+      {revealedCode && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-surface rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border-2 border-accent text-center animate-in zoom-in-95">
+            <div className="w-16 h-16 rounded-2xl bg-accent text-white flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-lg shadow-accent/20">
+              🛡️
+            </div>
+            <h2 className="text-xl font-black text-fg">Simpan Kode Pemulihan Baru Anda!</h2>
+            <p className="text-xs text-muted mt-1 mb-5">
+              Kode pemulihan lama Anda telah dinonaktifkan. Catat kode baru ini di tempat yang aman.
+            </p>
+
+            <div className="bg-card p-4 rounded-2xl border-2 border-dashed border-accent mb-4 select-all">
+              <span className="text-[10px] text-muted uppercase font-bold tracking-wider block mb-1">
+                Kode Pemulihan Pemilik Baru:
+              </span>
+              <div className="text-2xl font-black font-mono text-accent-text tracking-widest py-1">
+                {revealedCode}
+              </div>
+            </div>
+
+            <div className="flex justify-center mb-5">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(revealedCode);
+                  setCodeCopied(true);
+                  setTimeout(() => setCodeCopied(false), 3000);
+                }}
+                className="px-4 py-2 rounded-xl bg-card border border-line text-xs font-bold text-fg hover:border-accent flex items-center gap-2 transition-all"
+              >
+                <span>{codeCopied ? "✓ Berhasil Disalin" : "📋 Salin Kode"}</span>
+              </button>
+            </div>
+
+            <label className="flex items-start gap-2.5 text-left text-xs text-slate-300 font-bold mb-5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acknowledgedCode}
+                onChange={(e) => setAcknowledgedCode(e.target.checked)}
+                className="mt-0.5 rounded border-line text-accent focus:ring-accent"
+              />
+              <span>Saya sudah mencatat kode ini di buku catatan / tempat aman.</span>
+            </label>
+
+            <button
+              type="button"
+              disabled={!acknowledgedCode}
+              onClick={() => {
+                setRevealedCode(null);
+                showToast("Kode Pemulihan berhasil diperbarui!", "success");
+              }}
+              className={`w-full py-3.5 font-black rounded-2xl text-xs transition-all shadow-lg ${
+                acknowledgedCode
+                  ? "bg-accent hover:bg-accent-hover text-white active:scale-95 shadow-accent/20 cursor-pointer"
+                  : "bg-line text-muted cursor-not-allowed"
+              }`}
+            >
+              Selesai & Tutup
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Sensitive Operations Info */}
       <div className=" bg-surface p-5 rounded-3xl border border-line shadow-sm space-y-2 text-xs">

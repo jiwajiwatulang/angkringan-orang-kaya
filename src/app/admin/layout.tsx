@@ -7,6 +7,7 @@ import { App } from "@capacitor/app";
 import { AdminProvider, useAdmin } from "./AdminContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import { saveStoreSettingsAsync } from "@/lib/settings";
+import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "@/lib/recovery";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: "📊" },
@@ -66,8 +67,28 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     };
   }, [isLainnyaOpen, pathname, router]);
 
+  const [authView, setAuthView] = useState<"login" | "verify_recovery" | "reset_pin" | "setup_initial">("login");
+  const [recoveryCodeInput, setRecoveryCodeInput] = useState("");
   const [newAdminPin, setNewAdminPin] = useState("");
   const [confirmAdminPin, setConfirmAdminPin] = useState("");
+  const [revealedCode, setRevealedCode] = useState<string | null>(null);
+  const [acknowledgedCode, setAcknowledgedCode] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
+
+  // Sinkronisasi tampilan autentikasi berdasarkan ketersediaan kredensial lokal
+  useEffect(() => {
+    if (!isAuthenticated) {
+      if (storeSettings.adminPin) {
+        setAuthView("login");
+      } else if (storeSettings.recoveryCodeHash) {
+        // Toko yang sudah memiliki data & recovery code tetapi kehilangan PIN -> WAJIB verifikasi Recovery Code
+        setAuthView("verify_recovery");
+      } else {
+        // Toko/perangkat baru bersih -> Setup awal mandiri
+        setAuthView("setup_initial");
+      }
+    }
+  }, [storeSettings.adminPin, storeSettings.recoveryCodeHash, isAuthenticated]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +107,60 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleSetupPin = async (e: React.FormEvent) => {
+  // Verifikasi Kode Pemulihan Pemilik Toko
+  const handleVerifyRecovery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPinError("");
+
+    // Cek cooldown brute-force lockout
+    if (storeSettings.recoveryLockedUntil) {
+      const lockTime = new Date(storeSettings.recoveryLockedUntil).getTime();
+      if (lockTime > Date.now()) {
+        const remainingMins = Math.ceil((lockTime - Date.now()) / 60000);
+        setPinError(`Pemulihan dikunci sementara. Silakan coba lagi dalam ${remainingMins} menit.`);
+        return;
+      }
+    }
+
+    if (!storeSettings.recoveryCodeHash) {
+      setAuthView("reset_pin");
+      return;
+    }
+
+    const isValid = await verifyRecoveryCode(recoveryCodeInput, storeSettings.recoveryCodeHash);
+    if (isValid) {
+      const updated = {
+        ...storeSettings,
+        failedRecoveryAttempts: 0,
+        recoveryLockedUntil: ""
+      };
+      await saveStoreSettingsAsync(updated);
+      setRecoveryCodeInput("");
+      setPinError("");
+      setAuthView("reset_pin");
+      showToast("Kode Pemulihan terverifikasi! Silakan buat PIN baru.", "info");
+    } else {
+      const attempts = (storeSettings.failedRecoveryAttempts || 0) + 1;
+      let lockedUntil = "";
+      let errorMsg = `Kode Pemulihan salah! Sisa percobaan: ${Math.max(0, 5 - attempts)} kali.`;
+
+      if (attempts >= 5) {
+        lockedUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        errorMsg = "Kode salah 5 kali berturut-turut! Pemulihan dikunci selama 15 menit.";
+      }
+
+      const updated = {
+        ...storeSettings,
+        failedRecoveryAttempts: attempts,
+        recoveryLockedUntil: lockedUntil
+      };
+      await saveStoreSettingsAsync(updated);
+      setPinError(errorMsg);
+    }
+  };
+
+  // Simpan PIN Baru & Generate Recovery Code Baru
+  const handleSaveNewPin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newAdminPin.length < 4) {
       setPinError("PIN baru minimal harus 4 digit angka.");
@@ -96,43 +170,138 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       setPinError("Konfirmasi PIN baru tidak cocok.");
       return;
     }
+
     try {
+      // Buat Kode Pemulihan Pemilik Baru (kode lama langsung hangus)
+      const freshRecoveryCode = generateRecoveryCode();
+      const freshHash = await hashRecoveryCode(freshRecoveryCode);
+
       const updated = {
         ...storeSettings,
-        adminPin: newAdminPin
+        adminPin: newAdminPin,
+        recoveryCodeHash: freshHash,
+        failedRecoveryAttempts: 0,
+        recoveryLockedUntil: ""
       };
       await saveStoreSettingsAsync(updated);
-      localStorage.setItem("adminLoginExpiry", (Date.now() + 2 * 60 * 60 * 1000).toString());
-      setIsAuthenticated(true);
+
       setNewAdminPin("");
       setConfirmAdminPin("");
       setPinError("");
-      showToast("PIN Admin berhasil dikonfigurasi!", "success");
+      setRevealedCode(freshRecoveryCode);
+      setAcknowledgedCode(false);
+      setCodeCopied(false);
     } catch (err: any) {
       setPinError("Gagal menyimpan PIN: " + (err as any)?.message);
     }
   };
 
-  // Unauthenticated: PIN Login or PIN Configuration Screen
-  if (!isAuthenticated) {
-    const hasConfiguredPin = Boolean(storeSettings.adminPin);
+  const handleFinishRecoverySetup = () => {
+    if (!acknowledgedCode) return;
+    localStorage.setItem("adminLoginExpiry", (Date.now() + 2 * 60 * 60 * 1000).toString());
+    setIsAuthenticated(true);
+    setRevealedCode(null);
+    showToast("Kredensial keamanan berhasil disimpan!", "success");
+  };
 
+  // Unauthenticated: PIN Login / Pemulihan Pemilik / Konfigurasi Awal
+  if (!isAuthenticated) {
+    // 1. MODAL TAMPILKAN RECOVERY CODE BARU KEPADA PEMILIK
+    if (revealedCode) {
+      return (
+        <div className="min-h-screen bg-app flex flex-col items-center justify-center p-4">
+          <div className=" bg-surface rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border-2 border-accent text-center animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-2xl bg-accent text-white flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-lg shadow-accent/20">
+              🛡️
+            </div>
+            <h2 className="text-xl font-black text-fg">Simpan Kode Pemulihan Anda!</h2>
+            <p className="text-xs text-muted mt-1 mb-5">
+              Kode ini adalah <strong>satu-satunya kunci</strong> untuk mereset PIN Admin Anda secara offline jika lupa PIN atau data PIN terhapus.
+            </p>
+
+            {/* Kotak Kode Pemulihan */}
+            <div className="bg-card p-4 rounded-2xl border-2 border-dashed border-accent mb-4 select-all">
+              <span className="text-[10px] text-muted uppercase font-bold tracking-wider block mb-1">
+                Kode Pemulihan Pemilik (Offline):
+              </span>
+              <div className="text-2xl font-black font-mono text-accent-text tracking-widest py-1">
+                {revealedCode}
+              </div>
+            </div>
+
+            <div className="flex justify-center mb-5">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(revealedCode);
+                  setCodeCopied(true);
+                  setTimeout(() => setCodeCopied(false), 3000);
+                }}
+                className="px-4 py-2 rounded-xl bg-card border border-line text-xs font-bold text-fg hover:border-accent flex items-center gap-2 transition-all"
+              >
+                <span>{codeCopied ? "✓ Berhasil Disalin" : "📋 Salin Kode"}</span>
+              </button>
+            </div>
+
+            <div className="p-3 bg-amber-950/40 border border-amber-900/60 rounded-xl text-left text-xs text-amber-200 mb-5 space-y-1">
+              <p className="font-bold">⚠️ Perhatian Penting:</p>
+              <p className="text-[11px] text-amber-300/90 leading-relaxed">
+                Catat kode ini di buku catatan atau simpan di chat WhatsApp pribadi Anda. Kode ini <strong>tidak disimpan dalam bentuk teks</strong> di aplikasi dan tidak disertakan dalam file cadangan demi privasi.
+              </p>
+            </div>
+
+            {/* Checkbox Konfirmasi */}
+            <label className="flex items-start gap-2.5 text-left text-xs text-slate-300 font-bold mb-5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acknowledgedCode}
+                onChange={(e) => setAcknowledgedCode(e.target.checked)}
+                className="mt-0.5 rounded border-line text-accent focus:ring-accent"
+              />
+              <span>Saya sudah mencatat dan menyimpan Kode Pemulihan ini di tempat yang aman.</span>
+            </label>
+
+            <button
+              type="button"
+              disabled={!acknowledgedCode}
+              onClick={handleFinishRecoverySetup}
+              className={`w-full py-3.5 font-black rounded-2xl text-xs transition-all shadow-lg ${
+                acknowledgedCode
+                  ? "bg-accent hover:bg-accent-hover text-white active:scale-95 shadow-accent/20 cursor-pointer"
+                  : "bg-line text-muted cursor-not-allowed"
+              }`}
+            >
+              Selesai & Buka Backoffice 🚀
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // 2. TAMPILAN LOGIN / VERIFIKASI / RESET PIN
     return (
       <div className="min-h-screen bg-app flex flex-col items-center justify-center p-4">
         <div className=" bg-surface rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-line text-center animate-in zoom-in-95 duration-200">
           <div className="w-16 h-16 rounded-2xl bg-accent/60 text-accent-text flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-sm">
-            {hasConfiguredPin ? "🔒" : "🛡️"}
+            {authView === "login" ? "🔒" : "🛡️"}
           </div>
+
           <h2 className="text-2xl font-black text-fg">
-            {hasConfiguredPin ? "Login Admin" : "Konfigurasi PIN Admin"}
+            {authView === "login" && "Login Admin"}
+            {authView === "verify_recovery" && "Verifikasi Pemilik Toko"}
+            {authView === "reset_pin" && "Buat PIN Admin Baru"}
+            {authView === "setup_initial" && "Konfigurasi PIN Admin"}
           </h2>
+
           <p className="text-xs text-muted mt-1 mb-6">
-            {hasConfiguredPin
-              ? "Masukkan PIN Otorisasi untuk membuka Backoffice SakuNota."
-              : "Perangkat ini belum memiliki PIN Admin yang tersimpan. Buat PIN baru (minimal 4 digit) untuk mengamankan Backoffice."}
+            {authView === "login" && "Masukkan PIN Otorisasi untuk membuka Backoffice SakuNota."}
+            {authView === "verify_recovery" && "PIN tidak ditemukan atau lupa. Masukkan Kode Pemulihan Pemilik untuk memverifikasi hak akses."}
+            {authView === "reset_pin" && "Pemilik terverifikasi. Silakan tentukan PIN Admin baru untuk perangkat ini."}
+            {authView === "setup_initial" && "Perangkat ini belum memiliki PIN Admin. Buat PIN baru (minimal 4 digit) untuk mengamankan Backoffice."}
           </p>
 
-          {hasConfiguredPin ? (
+          {/* FORM 1: NORMAL LOGIN */}
+          {authView === "login" && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="relative">
                 <input
@@ -162,9 +331,76 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               >
                 Masuk Backoffice
               </button>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPinError("");
+                    setAuthView("verify_recovery");
+                  }}
+                  className="text-xs font-bold text-accent-text hover:underline transition-colors"
+                >
+                  🔑 Lupa PIN Admin?
+                </button>
+              </div>
             </form>
-          ) : (
-            <form onSubmit={handleSetupPin} className="space-y-3 text-left">
+          )}
+
+          {/* FORM 2: VERIFIKASI RECOVERY CODE PEMILIK */}
+          {authView === "verify_recovery" && (
+            <form onSubmit={handleVerifyRecovery} className="space-y-4 text-left">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                  Masukkan Kode Pemulihan Pemilik:
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={recoveryCodeInput}
+                  onChange={(e) => {
+                    setRecoveryCodeInput(e.target.value.toUpperCase());
+                    setPinError("");
+                  }}
+                  placeholder="SAKU-XXXX-XXXX"
+                  className="w-full text-center text-lg font-mono tracking-widest font-black border-2 border-line focus:border-accent rounded-xl py-2.5 px-4 bg-card text-fg outline-none transition-all"
+                  required
+                />
+              </div>
+
+              {pinError && (
+                <p className="text-xs font-bold text-rose-400 text-center animate-in fade-in">
+                  ⚠️ {pinError}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-accent hover:bg-accent-hover active:scale-95 text-white font-black rounded-xl text-xs shadow-lg shadow-accent/20 transition-all"
+              >
+                Verifikasi Hak Pemilik 🛡️
+              </button>
+
+              {storeSettings.adminPin && (
+                <div className="pt-1 text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPinError("");
+                      setAuthView("login");
+                    }}
+                    className="text-xs font-bold text-muted hover:text-fg transition-colors"
+                  >
+                    ← Kembali ke Login PIN
+                  </button>
+                </div>
+              )}
+            </form>
+          )}
+
+          {/* FORM 3 & 4: SETUP PIN BARU / RESET PIN SETELAH RECOVERY */}
+          {(authView === "reset_pin" || authView === "setup_initial") && (
+            <form onSubmit={handleSaveNewPin} className="space-y-3 text-left">
               <div>
                 <label className="block text-[11px] font-bold text-slate-300 mb-1">
                   Buat PIN Admin Baru:
@@ -212,7 +448,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 type="submit"
                 className="w-full py-3 bg-accent hover:bg-accent-hover active:scale-95 text-white font-black rounded-xl text-xs shadow-lg shadow-accent/20 transition-all mt-2"
               >
-                Simpan PIN & Buka Backoffice
+                Simpan PIN & Buat Kode Pemulihan
               </button>
             </form>
           )}

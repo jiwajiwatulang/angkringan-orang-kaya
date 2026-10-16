@@ -10,6 +10,9 @@ export interface StoreSettings {
   serviceMode: 'resto' | 'quick'; // resto = with tables, quick = fast cashier without tables
   adminPin: string; // PIN pengaman akses Admin & Void
   enablePin: boolean;
+  recoveryCodeHash?: string; // SHA-256 hash Recovery Code pemilik toko (offline-first)
+  failedRecoveryAttempts?: number; // Jumlah percobaan salah berturut-turut
+  recoveryLockedUntil?: string; // Batas waktu ISO cooldown jika percobaan salah berkali-kali
   taxName: string; // Nama pajak: PBJT / PB1 / Pajak Resto
   taxPercent: number; // Persentase Pajak Daerah / PBJT (maks 10%)
   enableTax: boolean;
@@ -31,6 +34,9 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   serviceMode: "resto",
   adminPin: "1234",
   enablePin: false,
+  recoveryCodeHash: "",
+  failedRecoveryAttempts: 0,
+  recoveryLockedUntil: "",
   taxName: "PBJT Restoran (10%)",
   taxPercent: 10,
   enableTax: false,
