@@ -68,16 +68,25 @@ export default function SakuNotaLandingPage() {
   const [isSearchingOrder, setIsSearchingOrder] = useState(false);
   const [copiedLicense, setCopiedLicense] = useState(false);
 
-  // Load Midtrans Snap Script on demand
+  // Load Midtrans Snap Script on demand from dynamic server configuration
   useEffect(() => {
     const snapScriptId = "midtrans-snap-js";
-    if (!document.getElementById(snapScriptId)) {
-      const script = document.createElement("script");
-      script.id = snapScriptId;
-      script.src = "https://app.midtrans.com/snap/snap.js";
-      script.setAttribute("data-client-key", "Mid-client-hJifXYLd26Cw8t1j");
-      document.body.appendChild(script);
-    }
+    if (document.getElementById(snapScriptId)) return;
+
+    fetch("/api/payment/config")
+      .then((res) => res.json())
+      .then((data: any) => {
+        if (data?.clientKey && !document.getElementById(snapScriptId)) {
+          const script = document.createElement("script");
+          script.id = snapScriptId;
+          script.src = data.snapJsUrl || "https://app.midtrans.com/snap/snap.js";
+          script.setAttribute("data-client-key", data.clientKey);
+          document.body.appendChild(script);
+        }
+      })
+      .catch(() => {
+        // Handled silently when offline or unavailable
+      });
   }, []);
 
   // Escape key listener to close modals
