@@ -23,6 +23,7 @@ import MobileTableScreen from '@/components/mobile/MobileTableScreen';
 import MobileOrdersScreen from '@/components/mobile/MobileOrdersScreen';
 import MobileMoreScreen from '@/components/mobile/MobileMoreScreen';
 import MobileBottomNav, { MobileTab } from '@/components/mobile/MobileBottomNav';
+import MobileFloatingCartBar from '@/components/mobile/MobileFloatingCartBar';
 import ThemeToggle from '@/components/ThemeToggle';
 import { checkCashierAccess, CashierAccessStatus } from '@/lib/licenseGuard';
 import { activateLicenseServer } from '@/lib/ordersClient';

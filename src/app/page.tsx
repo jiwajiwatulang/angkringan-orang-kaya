@@ -45,12 +45,12 @@ export default function SakuNotaLandingPage() {
 
     setIsSubmittingBeta(true);
     try {
-      const res = await registerBetaServer(
-        betaOwnerName.trim(),
-        betaBusinessName.trim(),
-        cleanPhone,
-        betaHoneypot
-      );
+      const res = await registerBetaServer({
+        ownerName: betaOwnerName.trim(),
+        businessName: betaBusinessName.trim(),
+        whatsapp: cleanPhone,
+        honeypot: betaHoneypot,
+      });
       if (res.success && res.registration) {
         setBetaSuccessResult(res.registration);
       } else {

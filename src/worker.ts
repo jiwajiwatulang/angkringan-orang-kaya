@@ -99,7 +99,7 @@ export default {
         // Route: /api/payment/midtrans
         else if (pathname === "/api/payment/midtrans") {
           if (method === "POST") response = await paymentMidtrans.onRequestPost(context);
-          else if (method === "GET") response = await paymentMidtrans.onRequestGet(context);
+          else if (method === "GET") response = await paymentMidtrans.onRequestGet();
           else response = new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), { status: 405 });
         }
 

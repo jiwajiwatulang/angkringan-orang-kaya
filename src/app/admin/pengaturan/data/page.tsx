@@ -52,10 +52,10 @@ export default function PengaturanDataPage() {
   const loadBusinessStats = async () => {
     try {
       const [menu, transaksi, meja, shift] = await Promise.all([
-        db.menuItems.count(),
-        db.orders.count(),
-        db.tables.count(),
-        db.shifts.count()
+        db.table('menuItems').count(),
+        db.table('orders').count(),
+        db.table('tables').count(),
+        db.table('shifts').count()
       ]);
       setBusinessCounts({ menu, transaksi, meja, shift, isLoading: false });
     } catch {
