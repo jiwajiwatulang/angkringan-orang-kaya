@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import ThemeToggle from "@/components/ThemeToggle";
 import InstallGuideSection from "@/components/InstallGuideSection";
 
 interface Chapter {
@@ -495,7 +494,6 @@ export default function SakuNotaPanduanPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <ThemeToggle size="sm" />
           <Link
             href="/"
             className="hidden sm:inline-flex px-3.5 py-2 bg-card hover:bg-line text-xs font-bold text-fg rounded-xl border border-line transition-colors items-center gap-1.5"
@@ -519,11 +517,8 @@ export default function SakuNotaPanduanPage() {
           <div className="bg-surface border border-line rounded-3xl p-4 shadow-sm space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-line">
               <h3 className="text-xs font-black text-fg uppercase tracking-wider">
-                Daftar Bab Panduan
+                Topik Panduan
               </h3>
-              <span className="text-[10px] font-bold text-muted bg-card px-2 py-0.5 rounded-full border border-line">
-                11 Bab
-              </span>
             </div>
 
             {/* Search Input */}

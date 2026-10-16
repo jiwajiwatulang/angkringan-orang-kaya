@@ -42,46 +42,46 @@ export default function TermsOfServicePage() {
 
         <div className="prose prose-slate max-w-none text-xs sm:text-sm leading-relaxed space-y-6">
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h2 className="text-base font-black text-slate-900">1. Ketentuan Lisensi &amp; Sekali Bayar</h2>
+            <h2 className="text-base font-black text-slate-900">1. Lisensi Sekali Bayar Selamanya</h2>
             <p className="text-slate-600">
-              SakuNota menyediakan lisensi perangkat lunak Point-of-Sale (POS) dengan model <strong>sekali bayar seharga Rp65.000</strong> untuk satu perangkat kasir fisik aktif seumur hidup.
+              SakuNota menyediakan lisensi aplikasi kasir dengan model <strong>sekali bayar seharga Rp65.000</strong> untuk satu perangkat kasir aktif seumur hidup.
             </p>
             <p className="text-slate-600">
-              Pengguna <strong>tidak dikenakan biaya langganan bulanan, biaya tahunan, maupun potongan komisi penjualan apa pun</strong>. Seluruh omzet dari penjualan usaha Anda 100% menjadi milik Anda.
+              Pengguna <strong>tidak dikenakan biaya langganan bulanan, biaya tahunan, maupun potongan komisi penjualan apa pun</strong>. Seluruh omzet dari penjualan usaha Anda 100% bersih menjadi hak milik Anda.
             </p>
           </section>
 
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h2 className="text-base font-black text-slate-900">2. Aturan 1 Lisensi untuk 1 Perangkat</h2>
             <p className="text-slate-600">
-              Setiap nomor lisensi yang diterbitkan terikat secara eksklusif ke 1 perangkat kasir fisik (HP Android, iPhone, tablet, atau PC kasir). Satu nomor lisensi tidak dapat digunakan secara bersamaan pada beberapa perangkat berbeda.
+              Setiap nomor lisensi yang diterbitkan berlaku untuk 1 HP atau komputer kasir. Satu nomor lisensi tidak dapat digunakan secara bersamaan pada beberapa HP kasir yang berbeda.
             </p>
             <p className="text-slate-600">
-              Apabila Anda berganti perangkat (misalnya HP rusak atau membeli perangkat kasir baru), Anda dapat mengajukan pelepasan ikatan perangkat (unbind) melalui WhatsApp Dukungan Resmi dengan menyertakan Nomor Lisensi dan Kode Rahasia Anda.
-            </p>
-          </section>
-
-          <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h2 className="text-base font-black text-slate-900">3. Program Uji Coba Closed Beta (7 Hari)</h2>
-            <p className="text-slate-600">
-              Bagi calon pengguna yang ingin mencoba kesesuaian operasional kasir, SakuNota menyediakan Program Closed Beta gratis selama 7 hari. Masa trial 7 hari dihitung sejak aktivasi pertama kali dilakukan pada perangkat kasir fisik, bukan saat pendaftaran diajukan.
-            </p>
-            <p className="text-slate-600">
-              Setelah masa 7 hari berakhir, seluruh data menu dan riwayat penjualan Anda <strong>tetap tersimpan aman di memori perangkat dan dapat diekspor kapan saja</strong>. Untuk melanjutkan pencatatan transaksi baru, Anda dapat mengaktifkan lisensi komersial resmi.
+              Apabila Anda berganti HP (misalnya HP rusak atau membeli HP kasir baru), Anda dapat mengajukan pemindahan perangkat melalui WhatsApp Dukungan Resmi dengan menyertakan Nomor Lisensi dan Kode Rahasia Anda.
             </p>
           </section>
 
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h2 className="text-base font-black text-slate-900">4. Tanggung Jawab Pencadangan Data (Backup)</h2>
+            <h2 className="text-base font-black text-slate-900">3. Program Uji Coba Gratis (7 Hari)</h2>
             <p className="text-slate-600">
-              Karena SakuNota mengusung arsitektur 100% offline-first demi keamanan privasi dan kelancaran jualan tanpa internet, pengguna bertanggung jawab penuh untuk melakukan pencadangan data mandiri secara berkala melalui menu <strong>Pengaturan &gt; Data &gt; Cadangkan Data</strong>.
+              Bagi calon pengguna yang ingin mencoba kesesuaian kasir dengan usaha kulinernya, SakuNota menyediakan Program Uji Coba gratis selama 7 hari. Masa 7 hari dihitung sejak pertama kali diaktifkan di HP kasir Anda.
+            </p>
+            <p className="text-slate-600">
+              Setelah masa 7 hari berakhir, seluruh data menu dan riwayat penjualan Anda <strong>tetap tersimpan aman di memori HP Anda dan dapat diekspor kapan saja</strong>. Untuk melanjutkan pencatatan transaksi baru, Anda dapat mengaktifkan lisensi permanen resmi.
+            </p>
+          </section>
+
+          <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <h2 className="text-base font-black text-slate-900">4. Cadangan Data Mandiri (Backup)</h2>
+            <p className="text-slate-600">
+              Karena SakuNota bekerja mandiri tanpa tergantung internet demi keamanan privasi dan kelancaran jualan Anda, pengguna disarankan untuk rutin mencadangkan data kasir secara berkala melalui menu <strong>Pengaturan &gt; Cadangkan Data</strong> ke file penyimpanan HP.
             </p>
           </section>
 
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h2 className="text-base font-black text-slate-900">5. Pembaruan Fitur &amp; Dukungan Teknis</h2>
             <p className="text-slate-600">
-              Pemilik lisensi berhak mendapatkan pembaruan aplikasi dan perbaikan sistem secara gratis. Dukungan teknis disediakan melalui saluran resmi WhatsApp SakuNota.
+              Pemilik lisensi berhak mendapatkan pembaruan aplikasi dan perbaikan sistem secara gratis. Dukungan teknis dan panduan penggunaan disediakan langsung melalui saluran resmi WhatsApp SakuNota.
             </p>
           </section>
         </div>

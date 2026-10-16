@@ -8,59 +8,37 @@ export function getInitialTheme(): Theme {
   return "light"; // Enforce Clean Putih-Biru theme
 }
 
-export function applyTheme(theme: Theme) {
+export function applyTheme(_theme: Theme = "light") {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  if (theme === "light") {
-    root.classList.remove("dark");
-    root.classList.add("light");
-    root.style.colorScheme = "light";
-  } else {
-    root.classList.add("dark");
-    root.classList.remove("light");
-    root.style.colorScheme = "dark";
-  }
+  root.classList.remove("dark");
+  root.classList.add("light");
+  root.style.colorScheme = "light";
   try {
-    localStorage.setItem("sakunota_theme", theme);
-    localStorage.setItem("theme", theme);
+    localStorage.setItem("sakunota_theme", "light");
+    localStorage.setItem("theme", "light");
   } catch (_) {}
-  window.dispatchEvent(new CustomEvent("sakunota-theme-change", { detail: theme }));
 }
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>("light");
+  const [theme] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const initial = getInitialTheme();
-    setThemeState(initial);
-    applyTheme(initial);
-
-    const handleThemeChange = (e: Event) => {
-      const customEvent = e as CustomEvent<Theme>;
-      if (customEvent.detail) {
-        setThemeState(customEvent.detail);
-      }
-    };
-
-    window.addEventListener("sakunota-theme-change", handleThemeChange);
-    return () => window.removeEventListener("sakunota-theme-change", handleThemeChange);
+    applyTheme("light");
   }, []);
 
   const toggleTheme = () => {
-    const next = theme === "dark" ? "light" : "dark";
-    setThemeState(next);
-    applyTheme(next);
+    applyTheme("light");
   };
 
   return {
-    theme,
-    isDark: theme === "dark",
+    theme: "light" as Theme,
+    isDark: false,
     toggleTheme,
-    setTheme: (t: Theme) => {
-      setThemeState(t);
-      applyTheme(t);
+    setTheme: (_t: Theme) => {
+      applyTheme("light");
     },
     mounted,
   };

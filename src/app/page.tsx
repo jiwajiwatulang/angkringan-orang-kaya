@@ -426,60 +426,96 @@ export default function SakuNotaLandingPage() {
           </div>
         </div>
 
-        {/* Mobile Dropdown Menu */}
+        {/* Mobile Modal Menu (Matching Image 2) */}
         {mobileMenuOpen && (
-          <div className="sm:hidden pt-4 pb-2 border-t border-slate-200 mt-3 space-y-3 px-2 animate-in fade-in duration-150">
-            <div className="grid grid-cols-2 gap-2 text-xs font-medium">
-              <a 
-                href="#fitur" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2.5 rounded-lg bg-white border border-slate-200 text-slate-800 text-center"
-              >
-                Fitur
-              </a>
-              <a 
-                href="#jenis-usaha" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2.5 rounded-lg bg-white border border-slate-200 text-slate-800 text-center"
-              >
-                Jenis Usaha
-              </a>
-              <a 
-                href="#harga" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2.5 rounded-lg bg-white border border-slate-200 text-slate-800 text-center"
-              >
-                Harga
-              </a>
-              <Link 
-                href="/panduan" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2.5 rounded-lg bg-white border border-slate-200 text-slate-800 text-center"
-              >
-                Panduan
-              </Link>
-            </div>
-            <div className="flex flex-col gap-2 pt-1">
-              <Link
-                href="/pos?demo=true"
-                onClick={() => {
-                  try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {}
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full py-2.5 text-center rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-800"
-              >
-                Coba Kasir (Sandbox)
-              </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  handleOpenBuyModal();
-                }}
-                className="w-full py-2.5 text-center rounded-xl bg-blue-600 text-white text-xs font-black shadow-md shadow-blue-600/30"
-              >
-                Beli SakuNota — Rp65.000
-              </button>
+          <div 
+            onClick={() => setMobileMenuOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm sm:hidden cursor-pointer animate-in fade-in duration-150"
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white border border-slate-200 rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl cursor-default animate-in zoom-in-95 duration-150"
+            >
+              {/* Header inside popup */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-md shadow-blue-600/30">
+                    SN
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none">
+                      SakuNota
+                    </span>
+                    <span className="text-[9px] text-slate-500 font-bold tracking-wider uppercase mt-1">
+                      KASIR JALAN TANPA INTERNET
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-800 text-xs font-bold flex items-center justify-center transition-colors"
+                  aria-label="Tutup Menu"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* 2x2 Grid Nav Links */}
+              <div className="grid grid-cols-2 gap-2.5 text-xs font-bold">
+                <a 
+                  href="#fitur" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-3 px-3 rounded-2xl bg-white border border-slate-200 text-slate-800 text-center hover:border-blue-600 hover:text-blue-600 transition-all shadow-xs active:scale-95"
+                >
+                  Fitur
+                </a>
+                <a 
+                  href="#jenis-usaha" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-3 px-3 rounded-2xl bg-white border border-slate-200 text-slate-800 text-center hover:border-blue-600 hover:text-blue-600 transition-all shadow-xs active:scale-95"
+                >
+                  Jenis Usaha
+                </a>
+                <a 
+                  href="#harga" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-3 px-3 rounded-2xl bg-white border border-slate-200 text-slate-800 text-center hover:border-blue-600 hover:text-blue-600 transition-all shadow-xs active:scale-95"
+                >
+                  Harga
+                </a>
+                <Link 
+                  href="/panduan" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-3 px-3 rounded-2xl bg-white border border-slate-200 text-slate-800 text-center hover:border-blue-600 hover:text-blue-600 transition-all shadow-xs active:scale-95"
+                >
+                  Panduan
+                </Link>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-2.5 pt-1">
+                <Link
+                  href="/pos?demo=true"
+                  onClick={() => {
+                    try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {}
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full py-3 text-center rounded-2xl bg-white border border-slate-200 text-xs font-bold text-slate-800 hover:bg-slate-50 transition-all shadow-xs active:scale-95"
+                >
+                  Coba Kasir (Sandbox)
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleOpenBuyModal();
+                  }}
+                  className="w-full py-3.5 text-center rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-600/30 transition-all active:scale-95"
+                >
+                  Beli SakuNota — Rp65.000
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -566,7 +602,7 @@ export default function SakuNotaLandingPage() {
                 </div>
                 <div className="h-4 w-px bg-slate-200 mx-1" />
                 <span className="text-xs font-bold text-slate-700">
-                  SakuNota POS Dashboard
+                  SakuNota Dashboard
                 </span>
               </div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-blue-50 border border-blue-200 text-[11px] font-bold text-blue-700 w-fit">
@@ -890,7 +926,7 @@ export default function SakuNotaLandingPage() {
 
       {/* 6. Pricing Section */}
       <section id="harga" className="py-20 px-4 sm:px-8 border-t border-slate-200 bg-white">
-        <div className="max-w-3xl mx-auto space-y-10">
+        <div className="max-w-5xl mx-auto space-y-10">
           
           <div className="text-center space-y-2">
             <span className="text-xs font-extrabold text-blue-600 tracking-wider uppercase">
@@ -904,133 +940,169 @@ export default function SakuNotaLandingPage() {
             </p>
           </div>
 
-          {/* Pricing Card */}
-          <div className="rounded-3xl bg-white border-2 border-blue-600 p-6 sm:p-10 shadow-xl shadow-blue-600/10 relative overflow-hidden space-y-8">
+          {/* Pricing Cards: Side-by-Side (Bersebelahan) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 items-stretch">
             
-            {/* Top Launch Promo Badge */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-black border border-blue-200 w-fit">
-                <span>🔥</span>
-                <span>Promo Peluncuran (Hemat Rp34.000)</span>
-              </div>
-              <span className="text-xs font-bold text-slate-500">
-                Lisensi Permanen 1 Perangkat
-              </span>
-            </div>
+            {/* Card 1: SakuNota (Featured Hero Card) */}
+            <div className="rounded-3xl bg-white border-2 border-blue-600 p-6 sm:p-8 shadow-xl shadow-blue-600/10 flex flex-col justify-between relative space-y-6">
+              
+              <div className="space-y-6">
+                {/* Badge & Title */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-black border border-blue-200">
+                    <span>🔥</span>
+                    <span>Promo Peluncuran</span>
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-500">
+                    Lisensi 1 Perangkat
+                  </span>
+                </div>
 
-            {/* Price Numbers */}
-            <div className="space-y-1">
-              <div className="flex items-baseline gap-3">
-                <span className="text-sm sm:text-base text-slate-400 line-through font-bold">
-                  Rp99.000
-                </span>
-                <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
-                  Rp65.000
-                </span>
-              </div>
-              <p className="text-xs text-slate-500">
-                Sekali bayar untuk 1 perangkat kasir aktif selamanya.
-              </p>
-            </div>
+                <div className="space-y-1">
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight">SakuNota</h3>
+                  <p className="text-xs text-slate-500">
+                    Sekali bayar untuk 1 perangkat kasir aktif selamanya.
+                  </p>
+                </div>
 
-            {/* 5 Specific Checkmarks */}
-            <div className="pt-2 border-t border-slate-100 space-y-3 text-xs sm:text-sm text-slate-700">
-              <div className="flex items-center gap-3">
-                <span className="text-blue-600 font-bold">✓</span>
-                <span>Seluruh Fitur Kasir F&amp;B Lengkap</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-blue-600 font-bold">✓</span>
-                <span>100% Offline Tanpa Internet</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-blue-600 font-bold">✓</span>
-                <span>Cetak Struk Bluetooth (58mm &amp; 80mm)</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-blue-600 font-bold">✓</span>
-                <span>Rekap Kas &amp; Kirim Laporan ke WhatsApp</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-blue-600 font-bold">✓</span>
-                <span>Tanpa Biaya Bulanan / Komisi Penjualan</span>
-              </div>
-            </div>
+                {/* Price Numbers */}
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-3">
+                    <span className="text-sm text-slate-400 line-through font-bold">
+                      Rp99.000
+                    </span>
+                    <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
+                      Rp65.000
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-blue-600 font-bold block">
+                    Sekali bayar seumur hidup • 0% Komisi
+                  </span>
+                </div>
 
-            {/* Buy CTA Button */}
-            <div className="pt-4 space-y-3">
-              <button
-                type="button"
-                onClick={handleOpenBuyModal}
-                className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-sm shadow-xl shadow-blue-600/25 transition-all active:scale-95 flex items-center justify-center gap-2"
-              >
-                <span>Beli SakuNota Sekarang</span>
-                <span>→</span>
-              </button>
+                {/* Checkmarks */}
+                <div className="pt-2 border-t border-slate-100 space-y-2.5 text-xs text-slate-700">
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-blue-600 font-black text-sm leading-none">✓</span>
+                    <span className="font-semibold">Seluruh Fitur Kasir Lengkap (Menu, Varian &amp; Meja)</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-blue-600 font-black text-sm leading-none">✓</span>
+                    <span className="font-semibold">100% Offline (Tetap jualan lancar tanpa internet)</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-blue-600 font-black text-sm leading-none">✓</span>
+                    <span className="font-semibold">Cetak Struk Bluetooth Mini Thermal (58mm &amp; 80mm)</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-blue-600 font-black text-sm leading-none">✓</span>
+                    <span className="font-semibold">Rekap Kas &amp; Kirim Laporan Harian ke WhatsApp</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-blue-600 font-black text-sm leading-none">✓</span>
+                    <span className="font-semibold">Data Tersimpan Privat di Memori HP Sendiri</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-blue-600 font-black text-sm leading-none">✓</span>
+                    <span className="font-semibold">Tanpa Biaya Bulanan / Tanpa Potongan Penjualan</span>
+                  </div>
+                </div>
+              </div>
 
-              <div className="text-center">
+              {/* Buy CTA Button */}
+              <div className="pt-4 space-y-3">
                 <button
                   type="button"
-                  onClick={() => setIsBetaModalOpen(true)}
-                  className="text-xs text-slate-500 hover:text-blue-600 underline font-semibold transition-colors"
+                  onClick={handleOpenBuyModal}
+                  className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-lg shadow-blue-600/25 transition-all active:scale-95 flex items-center justify-center gap-2"
                 >
-                  Belum yakin? Coba gratis dulu lewat Program Closed Beta (7 Hari)
+                  <span>Beli SakuNota Sekarang</span>
+                  <span>→</span>
                 </button>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setIsBetaModalOpen(true)}
+                    className="text-[11px] text-slate-500 hover:text-blue-600 underline font-semibold transition-colors"
+                  >
+                    Coba gratis dulu lewat Program Closed Beta (7 Hari)
+                  </button>
+                </div>
               </div>
+
+            </div>
+
+            {/* Card 2: Aplikasi Lain (Comparison Card Side-by-Side) */}
+            <div className="rounded-3xl bg-slate-50/80 border border-slate-200 p-6 sm:p-8 flex flex-col justify-between relative space-y-6">
+              
+              <div className="space-y-6">
+                {/* Badge & Title */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-200/70 text-slate-700 text-xs font-bold">
+                    <span>Aplikasi Lain</span>
+                  </div>
+                  <span className="text-[11px] font-medium text-slate-500">
+                    Sistem Langganan
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <h3 className="text-xl font-bold text-slate-800 tracking-tight">Aplikasi Lain</h3>
+                  <p className="text-xs text-slate-500">
+                    Model sewa software berbasis server cloud pihak ketiga.
+                  </p>
+                </div>
+
+                {/* Price Numbers */}
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-3xl sm:text-4xl font-extrabold text-slate-700 tracking-tight">
+                      Rp150rb – Rp350rb
+                    </span>
+                    <span className="text-xs text-slate-500 font-semibold">/ bulan</span>
+                  </div>
+                  <span className="text-[11px] text-slate-500 block">
+                    Beban rutin ~Rp1.800.000 – Rp4.200.000 per tahun
+                  </span>
+                </div>
+
+                {/* Drawbacks Checklist */}
+                <div className="pt-2 border-t border-slate-200 space-y-2.5 text-xs text-slate-600">
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-rose-500 font-bold text-sm leading-none">✕</span>
+                    <span>Wajib terhubung internet terus (transaksi macet saat offline)</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-rose-500 font-bold text-sm leading-none">✕</span>
+                    <span>Ada potongan komisi atau biaya transaksi tambahan</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-rose-500 font-bold text-sm leading-none">✕</span>
+                    <span>Data tersimpan di server luar (terkunci jika berhenti langganan)</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-rose-500 font-bold text-sm leading-none">✕</span>
+                    <span>Tagihan bulanan tetap berjalan meski omzet warung sedang sepi</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-rose-500 font-bold text-sm leading-none">✕</span>
+                    <span>Tergantung router Wi-Fi atau instalasi jaringan rumit</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Info Note */}
+              <div className="pt-4">
+                <div className="p-3.5 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-600 leading-relaxed text-center font-medium">
+                  💡 Dengan beralih ke SakuNota sekali bayar, Anda menghemat jutaan rupiah setiap tahun dan memiliki kedaulatan data 100%.
+                </div>
+              </div>
+
             </div>
 
           </div>
 
-          {/* Comparison Table: SakuNota vs Aplikasi Lain */}
-          <div className="rounded-3xl bg-white border border-slate-200 p-6 sm:p-8 shadow-sm space-y-4">
-            <div className="text-center sm:text-left space-y-1">
-              <h3 className="text-base sm:text-lg font-black text-slate-900">
-                Bandingkan SakuNota dengan Aplikasi Lain
-              </h3>
-              <p className="text-xs text-slate-500">
-                Pahami perbedaan model sekali bayar offline vs aplikasi kasir berlangganan pada umumnya.
-              </p>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="py-3 px-3 font-bold text-slate-500">Fitur &amp; Model</th>
-                    <th className="py-3 px-3 font-black text-blue-600 bg-blue-50/50 rounded-t-xl">SakuNota POS</th>
-                    <th className="py-3 px-3 font-bold text-slate-500">Aplikasi Lain</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  <tr>
-                    <td className="py-3 px-3 font-bold text-slate-700">Biaya Penggunaan</td>
-                    <td className="py-3 px-3 font-black text-blue-700 bg-blue-50/30">Rp65.000 (Sekali Bayar Selamanya)</td>
-                    <td className="py-3 px-3 text-slate-500">Langganan Rutin (Rp150rb – Rp350rb/bulan)</td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 px-3 font-bold text-slate-700">Ketergantungan Internet</td>
-                    <td className="py-3 px-3 font-black text-blue-700 bg-blue-50/30">100% Offline (Tetap Jualan Tanpa Sinyal)</td>
-                    <td className="py-3 px-3 text-slate-500">Wajib Online Terus (Macet Saat Sinyal Hilang)</td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 px-3 font-bold text-slate-700">Potongan Komisi</td>
-                    <td className="py-3 px-3 font-black text-blue-700 bg-blue-50/30">0% (100% Omzet Milik Anda)</td>
-                    <td className="py-3 px-3 text-slate-500">Ada Potongan per Transaksi</td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 px-3 font-bold text-slate-700">Kepemilikan Data</td>
-                    <td className="py-3 px-3 font-black text-blue-700 bg-blue-50/30">100% Privat di Memori HP Sendiri</td>
-                    <td className="py-3 px-3 text-slate-500">Di Server Luar (Terkunci Jika Berhenti Langganan)</td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 px-3 font-bold text-slate-700">Cetak Struk</td>
-                    <td className="py-3 px-3 font-black text-blue-700 bg-blue-50/30">Bluetooth Langsung Mini Thermal (58/80mm)</td>
-                    <td className="py-3 px-3 text-slate-500">Tergantung Koneksi Router / Tambahan Alat</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -1238,7 +1310,7 @@ export default function SakuNotaLandingPage() {
               Kasir Jalan Tanpa Internet
             </p>
             <p className="text-slate-500 text-[11px] leading-relaxed max-w-sm">
-              Sistem POS offline-first yang dirancang khusus untuk usaha kuliner dan F&amp;B di Indonesia.
+              Aplikasi kasir offline yang dirancang khusus untuk usaha kuliner dan F&amp;B di Indonesia.
             </p>
           </div>
 
@@ -1262,7 +1334,7 @@ export default function SakuNotaLandingPage() {
             </span>
             <ul className="space-y-2 text-xs">
               <li><a href="#fitur" className="hover:text-blue-600 transition-colors">Tentang SakuNota</a></li>
-              <li><Link href="/panduan" className="hover:text-blue-600 transition-colors">Buku Panduan (11 Bab)</Link></li>
+              <li><Link href="/panduan" className="hover:text-blue-600 transition-colors">Buku Panduan</Link></li>
               <li>
                 <button
                   type="button"
@@ -1310,7 +1382,7 @@ export default function SakuNotaLandingPage() {
             className="bg-white text-slate-900 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 font-mono text-xs cursor-default border border-slate-200 animate-in zoom-in-95 duration-150"
           >
             <div className="text-center space-y-1 pb-3 border-b-2 border-dashed border-slate-300">
-              <h3 className="font-black text-sm tracking-widest uppercase">SAKUNOTA POS</h3>
+              <h3 className="font-black text-sm tracking-widest uppercase">SAKUNOTA</h3>
               <p className="text-[10px] text-slate-600">KASIR JALAN TANPA INTERNET</p>
               <p className="text-[9px] text-slate-400">Jl. Kuliner No. 1, Indonesia</p>
             </div>
@@ -2044,7 +2116,7 @@ export default function SakuNotaLandingPage() {
                       className="py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl text-center shadow-sm transition-all flex items-center justify-center gap-1.5"
                     >
                       <span>🏪</span>
-                      <span>Buka Kasir POS →</span>
+                      <span>Buka Kasir →</span>
                     </Link>
                   </div>
 
@@ -2225,7 +2297,7 @@ export default function SakuNotaLandingPage() {
                         href="/pos"
                         className="py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black text-center shadow-sm"
                       >
-                        Buka Kasir POS →
+                        Buka Kasir →
                       </Link>
                     </div>
                   </div>

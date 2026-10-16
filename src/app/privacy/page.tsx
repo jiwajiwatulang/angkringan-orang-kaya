@@ -42,45 +42,45 @@ export default function PrivacyPolicyPage() {
 
         <div className="prose prose-slate max-w-none text-xs sm:text-sm leading-relaxed space-y-6">
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h2 className="text-base font-black text-slate-900">1. Prinsip Utama: Arsitektur 100% Offline-First</h2>
+            <h2 className="text-base font-black text-slate-900">1. Data Usaha 100% Milik Anda Sendiri</h2>
             <p className="text-slate-600">
-              SakuNota dibangun dengan prinsip kedaulatan data penuh bagi pemilik usaha. Seluruh data operasional kasir—termasuk daftar menu, harga, pesanan pelanggan, riwayat transaksi, denah meja, dan catatan kas masuk/keluar—<strong>tersimpan 100% secara lokal di memori perangkat Anda (IndexedDB)</strong>.
+              SakuNota sangat menghormati privasi dan rahasia dapur usaha Anda. Seluruh catatan jualan—termasuk daftar menu, harga makanan, pesanan pembeli, meja, catatan shift, dan riwayat omzet kasir—<strong>tersimpan aman langsung di memori HP atau komputer kasir Anda sendiri</strong>.
             </p>
             <p className="text-slate-600">
-              Data transaksi harian Anda <strong>tidak pernah dikirimkan atau disimpan di server cloud SakuNota</strong>. Anda memiliki kendali penuh untuk mencadangkan (backup) dan memulihkan (restore) data Anda sendiri secara mandiri.
+              Data transaksi harian Anda <strong>tidak pernah kami intip, tidak disimpan di server luar, dan tidak dijual ke pihak mana pun</strong>. Anda memiliki kebebasan penuh untuk mencadangkan (backup) data ke file HP Anda kapan saja.
             </p>
           </section>
 
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h2 className="text-base font-black text-slate-900">2. Data yang Kami Kumpulkan Saat Pembelian Lisensi</h2>
+            <h2 className="text-base font-black text-slate-900">2. Data yang Kami Catat Saat Pembelian Lisensi</h2>
             <p className="text-slate-600">
-              Saat Anda mendaftar program Closed Beta atau membeli lisensi resmi SakuNota seharga Rp65.000, kami mengumpulkan informasi terbatas berikut:
+              Saat Anda mendaftar uji coba atau membeli lisensi resmi SakuNota seharga Rp65.000, kami hanya mencatat data penting berikut:
             </p>
             <ul className="list-disc list-inside space-y-1.5 text-slate-600 pl-2">
-              <li><strong>Nama Pemilik &amp; Nama Usaha:</strong> Digunakan untuk pencatatan kepemilikan lisensi dan tampilan nota struk Anda.</li>
-              <li><strong>Nomor WhatsApp:</strong> Digunakan untuk pengiriman nomor lisensi resmi, kode akses pemulihan, dan layanan bantuan teknis langsung.</li>
-              <li><strong>Email (Opsional):</strong> Digunakan untuk pengiriman salinan bukti pembayaran dan konfirmasi aktivasi.</li>
+              <li><strong>Nama Pemilik &amp; Nama Usaha:</strong> Untuk dicantumkan pada sertifikat lisensi resmi dan header nota kasir Anda.</li>
+              <li><strong>Nomor WhatsApp:</strong> Untuk mengirimkan nomor lisensi kasir, kode pemulihan jika Anda ganti HP, dan bantuan panduan penggunaan langsung.</li>
+              <li><strong>Email (Jika diisi):</strong> Untuk mengirimkan salinan bukti pembayaran resmi.</li>
             </ul>
           </section>
 
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h2 className="text-base font-black text-slate-900">3. Keamanan Transaksi Pembayaran</h2>
+            <h2 className="text-base font-black text-slate-900">3. Keamanan Pembayaran</h2>
             <p className="text-slate-600">
-              Pembayaran online diproses secara aman melalui gerbang pembayaran resmi <strong>Midtrans</strong> (berlisensi Bank Indonesia). SakuNota tidak pernah menyimpan informasi sensitif seperti nomor kartu debit/kredit, PIN, atau kata sandi perbankan Anda.
+              Pembayaran online diproses secara aman melalui gerbang pembayaran resmi berlisensi Bank Indonesia (Midtrans) atau transfer langsung ke rekening bank resmi kami. SakuNota tidak pernah mengetahui atau menyimpan PIN rekening, nomor kartu ATM, maupun kata sandi perbankan Anda.
             </p>
           </section>
 
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h2 className="text-base font-black text-slate-900">4. Kebijakan 1 Lisensi 1 Perangkat</h2>
+            <h2 className="text-base font-black text-slate-900">4. Perlindungan 1 Lisensi untuk 1 Perangkat</h2>
             <p className="text-slate-600">
-              Untuk mencegah penyalahgunaan dan duplikasi lisensi ilegal, sistem kami mencatat pengidentifikasi perangkat anonim (Device Fingerprint) saat pertama kali Anda melakukan aktivasi di HP kasir fisik. Informasi ini semata-mata digunakan untuk memverifikasi hak akses kasir pada perangkat tersebut.
+              Agar lisensi yang Anda beli tidak disalahgunakan orang lain, sistem kami hanya mengunci lisensi tersebut ke 1 perangkat kasir yang Anda gunakan. Jika di kemudian hari HP kasir Anda rusak atau Anda ingin ganti HP baru, Anda cukup menghubungi kami via WhatsApp untuk dibantu pemindahan perangkat secara gratis.
             </p>
           </section>
 
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h2 className="text-base font-black text-slate-900">5. Kontak Dukungan</h2>
+            <h2 className="text-base font-black text-slate-900">5. Bantuan &amp; Konsultasi</h2>
             <p className="text-slate-600">
-              Jika Anda memiliki pertanyaan seputar perlindungan privasi atau ingin memindahkan lisensi ke perangkat baru, Anda dapat menghubungi tim kami langsung melalui WhatsApp Resmi SakuNota:
+              Jika ada hal yang ingin ditanyakan seputar perlindungan privasi data atau penggunaan kasir, kami siap melayani Anda melalui WhatsApp Resmi SakuNota:
             </p>
             <div className="pt-2">
               <a

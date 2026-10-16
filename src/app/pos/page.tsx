@@ -24,7 +24,6 @@ import MobileOrdersScreen from '@/components/mobile/MobileOrdersScreen';
 import MobileMoreScreen from '@/components/mobile/MobileMoreScreen';
 import MobileBottomNav, { MobileTab } from '@/components/mobile/MobileBottomNav';
 import MobileFloatingCartBar from '@/components/mobile/MobileFloatingCartBar';
-import ThemeToggle from '@/components/ThemeToggle';
 import { checkCashierAccess, CashierAccessStatus } from '@/lib/licenseGuard';
 import { activateLicenseServer } from '@/lib/ordersClient';
 
@@ -2253,27 +2252,27 @@ export default function POSPage() {
     <div id="main-app-container" className="flex flex-col h-screen font-sans relative bg-surface text-fg transition-colors duration-200 overflow-hidden">
       {/* Demo Sandbox Alert Banner */}
       {accessStatus.isDemo && (
-        <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2 flex flex-wrap items-center justify-between text-xs text-amber-200 shrink-0 z-40">
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex flex-wrap items-center justify-between text-xs text-amber-950 font-medium shrink-0 z-40">
           <div className="flex items-center gap-2">
-            <span className="font-extrabold bg-amber-500/30 text-amber-300 px-2 py-0.5 rounded text-[10px] tracking-wider uppercase">DEMO SANDBOX</span>
+            <span className="font-black bg-amber-500 text-white px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase shadow-xs">DEMO SANDBOX</span>
             <span>Anda sedang mencoba demo interaktif. Transaksi ini simulasi di browser Anda.</span>
           </div>
           <div className="flex items-center gap-3 mt-1 sm:mt-0 font-bold">
-            <Link href="/?beta=register" className="underline hover:text-white">Daftar Beta 7 Hari</Link>
-            <Link href="/?beli=true" className="bg-amber-500 text-slate-950 px-2.5 py-0.5 rounded text-[11px] hover:bg-amber-400">Beli Rp65.000</Link>
-            <button type="button" onClick={handleExitDemo} className="underline text-slate-400 hover:text-white text-[11px]">Keluar Demo</button>
+            <Link href="/?beta=register" className="text-amber-900 underline font-bold hover:text-amber-950">Daftar Beta 7 Hari</Link>
+            <Link href="/?beli=true" className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded-lg text-[11px] shadow-sm">Beli Rp65.000</Link>
+            <button type="button" onClick={handleExitDemo} className="text-slate-600 hover:text-slate-900 underline text-[11px] font-semibold">Keluar Demo</button>
           </div>
         </div>
       )}
 
       {/* Trial Expiry Countdown Banner */}
       {!accessStatus.isDemo && accessStatus.licenseType === "trial" && (
-        <div className="bg-blue-950/80 border-b border-blue-500/30 px-4 py-1.5 flex flex-wrap items-center justify-between text-xs text-blue-200 shrink-0 z-40">
+        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 flex flex-wrap items-center justify-between text-xs text-blue-950 font-medium shrink-0 z-40">
           <div className="flex items-center gap-2">
-            <span className="font-extrabold bg-blue-500/30 text-blue-300 px-2 py-0.5 rounded text-[10px] tracking-wider uppercase">CLOSED BETA TRIAL</span>
+            <span className="font-black bg-blue-600 text-white px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase shadow-xs">CLOSED BETA TRIAL</span>
             <span>Sisa waktu: <strong>{accessStatus.daysRemaining ?? 7} hari</strong> ({accessStatus.hoursRemaining ?? 168} jam). Usaha: <strong>{accessStatus.businessName}</strong></span>
           </div>
-          <Link href="/?beli=true" className="mt-1 sm:mt-0 bg-blue-600 text-white font-bold px-2.5 py-0.5 rounded text-[11px] hover:bg-blue-500 shadow-sm">
+          <Link href="/?beli=true" className="mt-1 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded-lg text-[11px] shadow-sm">
             Upgrade Permanen Rp65.000 →
           </Link>
         </div>

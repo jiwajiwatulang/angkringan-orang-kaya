@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import ThemeToggle from "@/components/ThemeToggle";
 import { 
   CustomerOrder, 
   OwnerMetrics,
@@ -717,7 +716,6 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <ThemeToggle size="sm" />
           <button
             type="button"
             onClick={() => ownerToken && loadOrders(ownerToken)}
