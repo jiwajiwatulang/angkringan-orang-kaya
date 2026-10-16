@@ -149,7 +149,7 @@ export default function PengaturanTentangPage() {
               </p>
             </div>
             <Link
-              href="/checkout"
+              href="/?beli=true"
               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs shadow-sm transition-all shrink-0"
             >
               Beli Lisensi Rp65.000

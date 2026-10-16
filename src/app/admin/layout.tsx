@@ -573,7 +573,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 ← Kasir Demo
               </Link>
               <Link
-                href="/checkout"
+                href="/?beli=true"
                 className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] shadow-sm transition-all"
               >
                 Beli Lisensi Rp65.000
