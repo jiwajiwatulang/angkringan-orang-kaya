@@ -15,7 +15,14 @@ import {
   fetchTesterLicensesServer,
   createTesterLicenseServer,
   unbindTesterLicenseServer,
-  revokeTesterLicenseServer
+  revokeTesterLicenseServer,
+  CommercialLicense,
+  fetchOwnerLicensesServer,
+  unbindOwnerLicenseServer,
+  revokeOwnerLicenseServer,
+  cancelOwnerOrderServer,
+  archiveOwnerOrderServer,
+  deleteOwnerTestOrderServer
 } from "@/lib/ordersClient";
 
 export default function SakuNotaOwnerDashboardPage() {
@@ -28,14 +35,20 @@ export default function SakuNotaOwnerDashboardPage() {
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
 
   // Dashboard Tabs & Data State
-  const [activeTab, setActiveTab] = useState<"orders" | "customers" | "tester" | "developer_mode" | "cloudflare_d1">("orders");
+  const [activeTab, setActiveTab] = useState<
+    "orders" | "summary" | "customers" | "devices" | "tester" | "support" | "settings"
+  >("orders");
+  const [orderFilter, setOrderFilter] = useState<"semua" | "menunggu" | "berhasil" | "gagal" | "kedaluwarsa" | "dikembalikan" | "arsip">("semua");
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
+  const [licenses, setLicenses] = useState<CommercialLicense[]>([]);
   const [testerLicenses, setTesterLicenses] = useState<TesterLicense[]>([]);
   const [metrics, setMetrics] = useState<OwnerMetrics>({
     totalPembeli: 0,
+    pembayaranBerhasil: 0,
     lisensiAktif: 0,
     penggunaAktif: 0,
     menungguVerifikasi: 0,
+    menungguPembayaran: 0,
   });
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -47,6 +60,14 @@ export default function SakuNotaOwnerDashboardPage() {
   const [testerDuration, setTesterDuration] = useState<number>(7);
   const [testerNotes, setTesterNotes] = useState("");
   const [isCreatingTester, setIsCreatingTester] = useState(false);
+
+  // Data Cleanup Form State in Settings
+  const [deleteTargetOrderId, setDeleteTargetOrderId] = useState("");
+  const [deleteAuditNote, setDeleteAuditNote] = useState("");
+  const [deletePasswordConfirm, setDeletePasswordConfirm] = useState("");
+  const [deleteMessage, setDeleteMessage] = useState("");
+  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
+  const [showDevDrawer, setShowDevDrawer] = useState(false);
 
   // Load orders helper with silent polling support
   const loadOrders = async (token: string, silent = false) => {
@@ -64,11 +85,15 @@ export default function SakuNotaOwnerDashboardPage() {
           setMetrics(mRes.metrics);
         } else {
           // Fallback calculate directly from orders list with ZERO hardcoded values
+          const paidCount = res.orders.filter((o) => o.status === "lunas_lisensi_terbit").length;
+          const pendingCount = res.orders.filter((o) => o.status === "menunggu_verifikasi").length;
           setMetrics({
-            totalPembeli: res.orders.length,
-            lisensiAktif: res.orders.filter((o) => o.status === "lunas_lisensi_terbit").length,
+            totalPembeli: res.orders.filter((o) => o.status !== "batal" && (o.status as any) !== "arsip_uji").length,
+            pembayaranBerhasil: paidCount,
+            lisensiAktif: paidCount,
             penggunaAktif: res.orders.filter((o) => (o as any).boundDeviceId).length,
-            menungguVerifikasi: res.orders.filter((o) => o.status === "menunggu_verifikasi").length,
+            menungguVerifikasi: pendingCount,
+            menungguPembayaran: pendingCount,
           });
         }
       } else if (res.error?.includes("berakhir") || res.error?.includes("dicabut") || res.error?.includes("ditolak")) {
@@ -84,6 +109,26 @@ export default function SakuNotaOwnerDashboardPage() {
     }
   };
 
+  // Load commercial licenses
+  const loadLicenses = async (token: string) => {
+    try {
+      const res = await fetchOwnerLicensesServer(token);
+      if (res.success && res.licenses) {
+        setLicenses(res.licenses);
+      }
+    } catch (_) {}
+  };
+
+  // Load tester licenses
+  const loadTesterLicenses = async (token: string) => {
+    try {
+      const res = await fetchTesterLicensesServer(token);
+      if (res.success && res.testerLicenses) {
+        setTesterLicenses(res.testerLicenses);
+      }
+    } catch (_) {}
+  };
+
   // Check stored session token on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -92,6 +137,8 @@ export default function SakuNotaOwnerDashboardPage() {
         setOwnerToken(storedToken);
         setIsLoggedIn(true);
         loadOrders(storedToken);
+        loadLicenses(storedToken);
+        loadTesterLicenses(storedToken);
       }
     }
   }, []);
@@ -119,6 +166,8 @@ export default function SakuNotaOwnerDashboardPage() {
         setUsernameInput("");
         setPasswordInput("");
         await loadOrders(res.token);
+        await loadLicenses(res.token);
+        await loadTesterLicenses(res.token);
       } else {
         setLoginError(res.error || "Username atau Password salah! Akses khusus Owner Reza.");
       }
@@ -138,20 +187,12 @@ export default function SakuNotaOwnerDashboardPage() {
     setIsLoggedIn(false);
     setOwnerToken(null);
     setOrders([]);
-    setMetrics({ totalPembeli: 0, lisensiAktif: 0, penggunaAktif: 0, menungguVerifikasi: 0 });
+    setLicenses([]);
+    setTesterLicenses([]);
+    setMetrics({ totalPembeli: 0, pembayaranBerhasil: 0, lisensiAktif: 0, penggunaAktif: 0, menungguVerifikasi: 0, menungguPembayaran: 0 });
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("sakunota_owner_token");
     }
-  };
-
-  // Load tester licenses
-  const loadTesterLicenses = async (token: string) => {
-    try {
-      const res = await fetchTesterLicensesServer(token);
-      if (res.success && res.testerLicenses) {
-        setTesterLicenses(res.testerLicenses);
-      }
-    } catch (_) {}
   };
 
   const showToast = (msg: string) => {
@@ -169,7 +210,6 @@ export default function SakuNotaOwnerDashboardPage() {
     const res = await verifyOwnerOrderServer(ownerToken, orderId);
     if (res.success && res.licenseKey) {
       showToast(`✅ Pembayaran pesanan ${orderId} diverifikasi & Lisensi ${res.licenseKey} diterbitkan!`);
-      // Optimistically update orders in UI immediately
       setOrders((prev) =>
         prev.map((o) =>
           o.orderId === orderId
@@ -188,8 +228,72 @@ export default function SakuNotaOwnerDashboardPage() {
         )
       );
       await loadOrders(ownerToken, true);
+      await loadLicenses(ownerToken);
     } else {
       showToast(`❌ ${res.error || "Gagal menerbitkan lisensi."}`);
+    }
+  };
+
+  // Owner action: Cancel unpaid order
+  const handleCancelOrder = async (orderId: string) => {
+    if (!ownerToken) return;
+    if (!confirm(`Batalkan pesanan ${orderId}? Pelanggan tidak akan dapat mengaktifkan lisensi ini.`)) return;
+
+    const res = await cancelOwnerOrderServer(ownerToken, orderId);
+    if (res.success) {
+      showToast(`✅ Pesanan ${orderId} berhasil dibatalkan.`);
+      setOrders((prev) => prev.map((o) => (o.orderId === orderId ? { ...o, status: "batal" } : o)));
+      await loadOrders(ownerToken, true);
+    } else {
+      showToast(`❌ ${res.error || "Gagal membatalkan pesanan."}`);
+    }
+  };
+
+  // Owner action: Archive test order
+  const handleArchiveOrder = async (orderId: string) => {
+    if (!ownerToken) return;
+    const res = await archiveOwnerOrderServer(ownerToken, orderId);
+    if (res.success) {
+      showToast(`📁 Pesanan uji ${orderId} berhasil diarsipkan.`);
+      setOrders((prev) => prev.map((o) => (o.orderId === orderId ? { ...o, status: "arsip_uji" as any } : o)));
+      await loadOrders(ownerToken, true);
+    } else {
+      showToast(`❌ ${res.error || "Gagal mengarsipkan pesanan."}`);
+    }
+  };
+
+  // Owner action: Unbind commercial device
+  const handleUnbindCommercialDevice = async (licenseKey: string) => {
+    if (!ownerToken) return;
+    if (!confirm(`Lepas ikatan perangkat untuk lisensi ${licenseKey}? Pelanggan dapat mengaktifkannya di HP baru.`)) return;
+
+    const res = await unbindOwnerLicenseServer(ownerToken, licenseKey);
+    if (res.success) {
+      showToast(`✅ Perangkat pada lisensi ${licenseKey} berhasil dilepas.`);
+      setLicenses((prev) =>
+        prev.map((l) => (l.licenseKey === licenseKey ? { ...l, boundDeviceId: null, deviceName: null } : l))
+      );
+      await loadOrders(ownerToken, true);
+      await loadLicenses(ownerToken);
+    } else {
+      showToast(`❌ ${res.error || "Gagal melepas perangkat."}`);
+    }
+  };
+
+  // Owner action: Revoke commercial license
+  const handleRevokeCommercialLicense = async (licenseKey: string) => {
+    if (!ownerToken) return;
+    if (!confirm(`CABUT LISENSI ${licenseKey}? Kasir pengguna tidak akan dapat mengakses aplikasi setelah online.`)) return;
+
+    const res = await revokeOwnerLicenseServer(ownerToken, licenseKey);
+    if (res.success) {
+      showToast(`🚫 Lisensi ${licenseKey} berhasil dicabut.`);
+      setLicenses((prev) =>
+        prev.map((l) => (l.licenseKey === licenseKey ? { ...l, revoked: 1 } : l))
+      );
+      await loadLicenses(ownerToken);
+    } else {
+      showToast(`❌ ${res.error || "Gagal mencabut lisensi."}`);
     }
   };
 
@@ -254,64 +358,100 @@ export default function SakuNotaOwnerDashboardPage() {
     }
   };
 
+  // Owner action: Safe test order deletion in Settings
+  const handleDeleteTestOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ownerToken) return;
+    setDeleteMessage("");
+
+    if (!deleteTargetOrderId.trim() || !deleteAuditNote.trim()) {
+      setDeleteMessage("❌ Nomor pesanan dan catatan audit wajib diisi.");
+      return;
+    }
+
+    if (deletePasswordConfirm !== "Reza-SakuNota-2026!") {
+      setDeleteMessage("❌ Konfirmasi sandi Owner Reza salah.");
+      return;
+    }
+
+    setIsDeletingOrder(true);
+    const res = await deleteOwnerTestOrderServer(ownerToken, deleteTargetOrderId.trim(), deleteAuditNote.trim());
+    if (res.success) {
+      setDeleteMessage(`✅ Data uji coba ${deleteTargetOrderId} berhasil dibersihkan dengan aman.`);
+      setDeleteTargetOrderId("");
+      setDeleteAuditNote("");
+      setDeletePasswordConfirm("");
+      await loadOrders(ownerToken);
+    } else {
+      setDeleteMessage(`❌ ${res.error || "Gagal menghapus data pengujian."}`);
+    }
+    setIsDeletingOrder(false);
+  };
+
   // 1. TAMPILAN LOGIN OWNER
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-app text-fg flex flex-col justify-center items-center p-4 selection:bg-accent selection:text-white">
-        <div className="max-w-md w-full bg-surface border border-line rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
-          <div className="text-center space-y-2">
-            <div className="w-14 h-14 rounded-2xl bg-purple-600 text-white flex items-center justify-center text-2xl font-black mx-auto shadow-lg shadow-purple-600/30">
-              👑
+        <div className="w-full max-w-md p-6 sm:p-8 rounded-3xl bg-surface border border-line shadow-2xl space-y-6">
+          <div className="text-center space-y-1.5">
+            <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-black text-xl mx-auto shadow-lg shadow-purple-600/30">
+              SN
             </div>
-            <h1 className="text-2xl font-black text-fg tracking-tight">SakuNota Owner</h1>
+            <h1 className="text-xl sm:text-2xl font-black text-fg tracking-tight">
+              SakuNota Owner Portal
+            </h1>
             <p className="text-xs text-muted">
-              Masuk untuk mengelola pembeli, mutasi transfer, dan lisensi
+              Pusat Pengelolaan Pelanggan, Pembayaran, dan Lisensi Perangkat
             </p>
           </div>
 
           {loginError && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold animate-in fade-in">
-              ⚠️ {loginError}
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-600 dark:text-rose-400 text-xs font-bold leading-relaxed">
+              {loginError}
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-fg mb-1">Username Owner</label>
+              <label className="block text-xs font-bold text-fg mb-1">
+                Username Owner
+              </label>
               <input
                 type="text"
                 required
                 placeholder="Masukkan username (contoh: Reza)"
                 value={usernameInput}
                 onChange={(e) => setUsernameInput(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-purple-500 outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-purple-500 outline-none transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-fg mb-1">Password</label>
+              <label className="block text-xs font-bold text-fg mb-1">
+                Password Rahasia
+              </label>
               <input
                 type="password"
                 required
-                placeholder="Masukkan password"
+                placeholder="Masukkan password rahasia"
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-purple-500 outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-purple-500 outline-none transition-colors"
               />
             </div>
 
             <button
               type="submit"
               disabled={isSubmittingLogin}
-              className="w-full py-3 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-black rounded-xl text-xs shadow-md transition-all disabled:opacity-50"
+              className="w-full py-3 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-black rounded-xl text-xs shadow-lg shadow-purple-600/25 transition-all disabled:opacity-50"
             >
-              {isSubmittingLogin ? "Memeriksa Kredensial..." : "Masuk ke Dashboard Owner →"}
+              {isSubmittingLogin ? "Memverifikasi..." : "Masuk ke Dashboard Owner"}
             </button>
           </form>
 
-          <div className="pt-2 text-center border-t border-line/60">
-            <Link href="/" className="text-xs font-bold text-muted hover:text-fg transition-colors">
-              ← Kembali ke Website SakuNota
+          <div className="pt-2 border-t border-line text-center text-xs">
+            <Link href="/" className="text-muted hover:text-fg font-bold transition-colors">
+              ← Kembali ke Beranda SakuNota
             </Link>
           </div>
         </div>
@@ -319,63 +459,78 @@ export default function SakuNotaOwnerDashboardPage() {
     );
   }
 
-  // 2. DASHBOARD RESMI OWNER (SETELAH LOGIN)
+  // Filtered orders list
+  const filteredOrders = orders.filter((o) => {
+    if (orderFilter === "semua") return true;
+    if (orderFilter === "menunggu") return o.status === "menunggu_verifikasi";
+    if (orderFilter === "berhasil") return o.status === "lunas_lisensi_terbit";
+    if (orderFilter === "gagal") return o.status === "batal" || (o.status as any) === "gagal";
+    if (orderFilter === "kedaluwarsa") return (o.status as any) === "kedaluwarsa";
+    if (orderFilter === "dikembalikan") return (o.status as any) === "dikembalikan";
+    if (orderFilter === "arsip") return (o.status as any) === "arsip_uji";
+    return true;
+  });
+
+  // 2. DASHBOARD OWNER
   return (
-    <div className="min-h-screen bg-app text-fg flex flex-col selection:bg-accent selection:text-white">
-      {/* Header */}
+    <div className="min-h-screen bg-app text-fg flex flex-col selection:bg-purple-600 selection:text-white">
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="fixed top-4 right-4 z-50 px-4 py-3 rounded-2xl bg-surface border border-line shadow-2xl text-xs font-bold text-fg flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
+      {/* Top Navigation */}
       <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-md border-b border-line px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center font-black text-sm tracking-wider shadow-md shadow-purple-600/20">
-            👑
+          <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center font-black text-xs shadow-md">
+            SN
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-black text-base text-fg tracking-tight leading-none">
-                Admin SakuNota (Owner Portal)
+                SakuNota Owner
               </span>
               <span className="px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-400 text-[10px] font-black border border-purple-500/30">
-                Reza (Owner)
+                Pusat Kontrol Bisnis
               </span>
             </div>
-            <span className="text-[10px] text-muted font-bold tracking-wider uppercase block mt-0.5">
-              Kelola Pesanan Bank Transfer & Lisensi SakuNota
+            <span className="text-[10px] text-muted font-bold block mt-0.5">
+              Halo, Reza • Cloudflare Production Edge
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:gap-3">
           <ThemeToggle size="sm" />
-          <Link
-            href="/"
-            className="hidden sm:inline-flex px-3 py-1.5 rounded-xl bg-card hover:bg-line text-xs font-bold text-fg border border-line transition-colors"
+          <button
+            type="button"
+            onClick={() => ownerToken && loadOrders(ownerToken)}
+            disabled={isLoadingOrders}
+            className="p-2 bg-card hover:bg-line text-xs font-bold text-fg rounded-xl border border-line transition-colors"
+            title="Segarkan Data"
           >
-            Website
-          </Link>
+            🔄
+          </button>
           <button
             type="button"
             onClick={handleLogout}
-            className="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 text-xs font-black border border-rose-500/30 transition-colors"
+            className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold rounded-xl border border-rose-500/30 transition-colors"
           >
-            Keluar (Logout)
+            Keluar
           </button>
         </div>
       </header>
 
-      {/* Toast */}
-      {toastMsg && (
-        <div className="fixed top-16 right-4 z-50 p-4 rounded-2xl bg-emerald-600 text-white text-xs font-bold shadow-xl animate-in fade-in duration-150">
-          {toastMsg}
-        </div>
-      )}
-
       {/* Main Container */}
-      <main className="flex-1 p-4 sm:p-8 max-w-6xl mx-auto w-full space-y-6 animate-in fade-in duration-200">
-        {/* Error State Banner */}
+      <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full space-y-6">
+        {/* Connection Failure Error Banner */}
         {loadError && (
-          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between gap-4 text-xs">
-            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold">
+          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
               <span>⚠️</span>
-              <span>Gagal memuat data dari server: {loadError}</span>
+              <span>{loadError}</span>
             </div>
             <button
               type="button"
@@ -387,7 +542,7 @@ export default function SakuNotaOwnerDashboardPage() {
           </div>
         )}
 
-        {/* Metric Cards - Genuine Real Data Only */}
+        {/* Metric Cards - 4 Key Business Metrics */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-sm space-y-1">
             <span className="text-[11px] font-bold text-muted">Total Pembeli</span>
@@ -398,20 +553,20 @@ export default function SakuNotaOwnerDashboardPage() {
           </div>
 
           <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-sm space-y-1">
-            <span className="text-[11px] font-bold text-muted">Lisensi Aktif</span>
-            <div className="text-2xl sm:text-3xl font-black text-fg">{metrics.lisensiAktif}</div>
+            <span className="text-[11px] font-bold text-muted">Pembayaran Berhasil</span>
+            <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
+              {metrics.pembayaranBerhasil ?? orders.filter((o) => o.status === "lunas_lisensi_terbit").length}
+            </div>
             <span className="text-[10px] font-bold text-emerald-500">
-              {metrics.totalPembeli === 0 
-                ? "Belum ada lisensi" 
-                : `${Math.round((metrics.lisensiAktif / (metrics.totalPembeli || 1)) * 100)}% dari total pembeli`}
+              {(metrics.pembayaranBerhasil || 0) === 0 ? "Belum ada pembayaran" : "Lisensi resmi aktif"}
             </span>
           </div>
 
           <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-sm space-y-1">
-            <span className="text-[11px] font-bold text-muted">Pengguna Aktif (30 Hari)</span>
-            <div className="text-2xl sm:text-3xl font-black text-fg">{metrics.penggunaAktif}</div>
-            <span className="text-[10px] font-bold text-amber-500">
-              {metrics.penggunaAktif === 0 ? "Belum ada kasir aktif" : "Terhubung saat online"}
+            <span className="text-[11px] font-bold text-muted">Lisensi Aktif</span>
+            <div className="text-2xl sm:text-3xl font-black text-fg">{metrics.lisensiAktif}</div>
+            <span className="text-[10px] font-bold text-purple-500">
+              {metrics.lisensiAktif === 0 ? "Belum ada lisensi" : `${metrics.lisensiAktif} lisensi terikat`}
             </span>
           </div>
 
@@ -424,29 +579,43 @@ export default function SakuNotaOwnerDashboardPage() {
           </div>
         </div>
 
-        {/* Navigation Tabs */}
+        {/* Clean Operational Tabs */}
         <div className="flex border-b border-line gap-2 text-xs font-bold overflow-x-auto pb-1">
           <button
             type="button"
             onClick={() => setActiveTab("orders")}
-            className={`px-4 py-2 rounded-xl transition-all ${
+            className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
               activeTab === "orders"
                 ? "bg-purple-600 text-white shadow-sm"
                 : "bg-surface text-muted hover:text-fg border border-line"
             }`}
           >
-            📋 Pesanan Transfer Masuk ({orders.length})
+            📋 Pesanan & Pembayaran ({orders.length})
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("customers")}
-            className={`px-4 py-2 rounded-xl transition-all ${
+            className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
               activeTab === "customers"
                 ? "bg-purple-600 text-white shadow-sm"
                 : "bg-surface text-muted hover:text-fg border border-line"
             }`}
           >
-            👥 Daftar Pelanggan & Lisensi
+            👥 Pelanggan
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("devices");
+              if (ownerToken) loadLicenses(ownerToken);
+            }}
+            className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
+              activeTab === "devices"
+                ? "bg-purple-600 text-white shadow-sm"
+                : "bg-surface text-muted hover:text-fg border border-line"
+            }`}
+          >
+            📱 Lisensi & Perangkat
           </button>
           <button
             type="button"
@@ -454,7 +623,7 @@ export default function SakuNotaOwnerDashboardPage() {
               setActiveTab("tester");
               if (ownerToken) loadTesterLicenses(ownerToken);
             }}
-            className={`px-4 py-2 rounded-xl transition-all ${
+            className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
               activeTab === "tester"
                 ? "bg-purple-600 text-white shadow-sm"
                 : "bg-surface text-muted hover:text-fg border border-line"
@@ -464,94 +633,196 @@ export default function SakuNotaOwnerDashboardPage() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab("developer_mode")}
-            className={`px-4 py-2 rounded-xl transition-all ${
-              activeTab === "developer_mode"
+            onClick={() => setActiveTab("support")}
+            className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
+              activeTab === "support"
                 ? "bg-purple-600 text-white shadow-sm"
                 : "bg-surface text-muted hover:text-fg border border-line"
             }`}
           >
-            🔧 Developer Mode (Khusus Reza)
+            💬 Laporan Masalah
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab("cloudflare_d1")}
-            className={`px-4 py-2 rounded-xl transition-all ${
-              activeTab === "cloudflare_d1"
+            onClick={() => setActiveTab("settings")}
+            className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
+              activeTab === "settings"
                 ? "bg-purple-600 text-white shadow-sm"
                 : "bg-surface text-muted hover:text-fg border border-line"
             }`}
           >
-            ☁️ Cloudflare D1 Architecture
+            ⚙️ Pengaturan & Pemeliharaan
           </button>
         </div>
 
-        {/* TAB 1: PESANAN TRANSFER MASUK & TERBITKAN LISENSI */}
+        {/* TAB 1: PESANAN & PEMBAYARAN */}
         {activeTab === "orders" && (
-          <div className="bg-surface rounded-3xl border border-line shadow-sm p-5 sm:p-6 space-y-4">
-            <div>
-              <h3 className="font-black text-base text-fg">Verifikasi Transfer Bank Manual</h3>
-              <p className="text-xs text-muted">
-                Rekening Resmi: <strong>Bank BCA 8030 554 912 a.n. Reza / SakuNota Official</strong>. Periksa mutasi rekening sebelum menekan tombol terbitkan lisensi.
-              </p>
+          <div className="bg-surface rounded-3xl border border-line shadow-sm p-5 sm:p-6 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-black text-base text-fg">Pesanan & Pembayaran Masuk</h3>
+                <p className="text-xs text-muted">
+                  Pantau pembayaran transfer manual dan gerbang Midtrans. Verifikasi mutasi sebelum menerbitkan lisensi.
+                </p>
+              </div>
+
+              {/* Status Filter Pills */}
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+                {[
+                  { id: "semua", label: "Semua" },
+                  { id: "menunggu", label: "Menunggu" },
+                  { id: "berhasil", label: "Berhasil" },
+                  { id: "gagal", label: "Gagal / Batal" },
+                  { id: "arsip", label: "Arsip Uji" },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setOrderFilter(f.id as any)}
+                    className={`px-3 py-1 rounded-xl transition-colors ${
+                      orderFilter === f.id
+                        ? "bg-purple-600 text-white"
+                        : "bg-card text-muted hover:text-fg border border-line"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {orders.length === 0 ? (
-              <div className="py-14 px-4 text-center space-y-3 bg-card/40 rounded-2xl border border-line/60">
-                <div className="w-14 h-14 mx-auto rounded-2xl bg-surface border border-line flex items-center justify-center text-3xl shadow-sm">
-                  📋
-                </div>
-                <div className="space-y-1">
-                  <h4 className="text-sm font-black text-fg">Belum Ada Pesanan</h4>
-                  <p className="text-xs text-muted max-w-md mx-auto">
-                    Pesanan pembeli akan muncul di sini setelah formulir pembelian SakuNota berhasil dikirim.
-                  </p>
-                </div>
+            {/* Empty State */}
+            {filteredOrders.length === 0 ? (
+              <div className="py-16 px-4 text-center space-y-2.5 bg-card/40 rounded-2xl border border-line/60">
+                <div className="text-4xl">📋</div>
+                <h4 className="text-sm font-black text-fg">Belum ada pesanan</h4>
+                <p className="text-xs text-muted max-w-sm mx-auto leading-relaxed">
+                  Pesanan akan muncul setelah pelanggan benar-benar melakukan pembelian. Tidak ada data contoh fiktif.
+                </p>
               </div>
             ) : (
-              <div className="divide-y divide-line/60">
-                {orders.map((ord) => (
-                  <div key={ord.orderId} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-black text-xs px-2 py-0.5 rounded-md bg-card border border-line text-accent-text">
-                          {ord.orderId}
-                        </span>
-                        <strong className="text-sm font-black text-fg">{ord.businessName}</strong>
-                        <span className="text-xs text-muted">({ord.buyerName})</span>
-                      </div>
-
-                      <div className="text-xs text-muted flex flex-wrap gap-x-4 gap-y-1 pt-0.5">
-                        <span>Nominal: <strong className="text-fg font-black">Rp {ord.amount.toLocaleString("id-ID")}</strong></span>
-                        <span>Metode: <strong>{ord.paymentMethod}</strong></span>
-                        <span>Waktu: {ord.createdAt}</span>
-                        <span>WA: <a href={`https://wa.me/62${ord.whatsapp.replace(/^0/, "")}`} target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">💬 {ord.whatsapp}</a></span>
-                      </div>
-
-                      {ord.licenseKey && (
-                        <div className="pt-1 text-xs">
-                          <span className="text-muted">Lisensi Terbit: </span>
-                          <strong className="font-mono text-emerald-600 dark:text-emerald-400 font-black">{ord.licenseKey}</strong>
-                          {ord.verifiedAt && <span className="text-[10px] text-muted ml-2">({ord.verifiedAt})</span>}
+              <div className="space-y-3.5">
+                {filteredOrders.map((o) => (
+                  <div
+                    key={o.orderId}
+                    className="p-4 sm:p-5 rounded-2xl bg-card border border-line space-y-3 hover:border-purple-500/30 transition-all"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-line pb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <strong className="text-sm font-black text-fg font-mono">
+                            {o.orderId}
+                          </strong>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                              o.status === "lunas_lisensi_terbit"
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                                : o.status === "batal"
+                                ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30"
+                                : (o.status as any) === "arsip_uji"
+                                ? "bg-slate-500/15 text-slate-500 border border-slate-500/30"
+                                : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                            }`}
+                          >
+                            {o.status === "lunas_lisensi_terbit"
+                              ? "Lunas & Lisensi Terbit"
+                              : o.status === "batal"
+                              ? "Dibatalkan"
+                              : (o.status as any) === "arsip_uji"
+                              ? "Arsip Uji Coba"
+                              : "Menunggu Verifikasi"}
+                          </span>
                         </div>
-                      )}
+                        <span className="text-[11px] text-muted block mt-0.5">
+                          Dibuat: {o.createdAt} {o.verifiedAt ? `• Diverifikasi: ${o.verifiedAt}` : ""}
+                        </span>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-xs text-muted block">Total Tagihan:</span>
+                        <strong className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                          Rp {(o.amount || 65000).toLocaleString("id-ID")}
+                        </strong>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      {ord.status === "menunggu_verifikasi" ? (
-                        <button
-                          type="button"
-                          onClick={() => handleVerifyAndIssueLicense(ord.orderId)}
-                          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+                    {/* Customer & Business Details */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-muted font-bold block uppercase">Nama Usaha:</span>
+                        <strong className="text-fg">{o.businessName}</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted font-bold block uppercase">Nama Pemilik:</span>
+                        <span className="text-fg font-medium">{o.buyerName}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted font-bold block uppercase">WhatsApp:</span>
+                        <a
+                          href={`https://wa.me/62${o.whatsapp.replace(/^0/, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
                         >
-                          <span>✅</span>
-                          <span>Verifikasi Dana Masuk & Terbitkan Lisensi</span>
-                        </button>
-                      ) : (
+                          💬 {o.whatsapp}
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* License details if paid */}
+                    {o.licenseKey && (
+                      <div className="p-3 rounded-xl bg-surface border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <div>
+                          <span className="text-[10px] text-muted font-bold uppercase block">Kode Lisensi Resmi:</span>
+                          <strong className="font-mono text-sm text-purple-600 dark:text-purple-400 select-all">
+                            {o.licenseKey}
+                          </strong>
+                        </div>
+                        <div className="text-[11px] text-muted">
+                          Perangkat: {o.boundDeviceId ? (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">Terikat ({o.boundDeviceId})</span>
+                          ) : (
+                            <span>Belum Diaktifkan</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Actions Toolbar */}
+                    <div className="flex flex-wrap items-center justify-end gap-2 pt-1 border-t border-line/60">
+                      {o.status === "menunggu_verifikasi" && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleCancelOrder(o.orderId)}
+                            className="px-3 py-1.5 rounded-xl bg-card hover:bg-line text-xs font-bold text-muted hover:text-rose-500 border border-line transition-colors"
+                          >
+                            Batalkan Pesanan
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyAndIssueLicense(o.orderId)}
+                            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+                          >
+                            <span>✓</span>
+                            <span>Verifikasi Dana Masuk & Terbitkan Lisensi</span>
+                          </button>
+                        </>
+                      )}
+
+                      {o.status === "lunas_lisensi_terbit" && (
                         <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-black">
                           ✓ Lunas & Lisensi Terbit
                         </span>
                       )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleArchiveOrder(o.orderId)}
+                        className="px-2.5 py-1 rounded-xl bg-card hover:bg-line text-[11px] font-bold text-muted border border-line"
+                      >
+                        Arsipkan Uji
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -560,16 +831,19 @@ export default function SakuNotaOwnerDashboardPage() {
           </div>
         )}
 
-        {/* TAB 2: DAFTAR PELANGGAN & LISENSI */}
+        {/* TAB 2: PELANGGAN */}
         {activeTab === "customers" && (
           <div className="bg-surface rounded-3xl border border-line shadow-sm p-5 sm:p-6 space-y-4">
-            <h3 className="font-black text-base text-fg">Daftar Pelanggan Terdaftar</h3>
+            <div>
+              <h3 className="font-black text-base text-fg">Direktori Pelanggan Terdaftar</h3>
+              <p className="text-xs text-muted">Daftar pemilik usaha yang telah membeli lisensi SakuNota.</p>
+            </div>
 
-            {orders.length === 0 ? (
+            {orders.filter((o) => o.status === "lunas_lisensi_terbit").length === 0 ? (
               <div className="py-14 px-4 text-center space-y-2 bg-card/40 rounded-2xl border border-line/60">
                 <div className="text-3xl">👥</div>
                 <p className="text-xs font-bold text-fg">Belum Ada Pelanggan Terdaftar</p>
-                <p className="text-xs text-muted">Daftar pelanggan dan kode lisensi akan tercatat setelah pesanan berhasil diproses.</p>
+                <p className="text-xs text-muted">Daftar pelanggan akan tercatat otomatis saat ada pesanan yang lunas.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -579,33 +853,42 @@ export default function SakuNotaOwnerDashboardPage() {
                       <th className="py-2.5 px-3">Nama Usaha & Pemilik</th>
                       <th className="py-2.5 px-3">WhatsApp</th>
                       <th className="py-2.5 px-3">Kode Lisensi</th>
-                      <th className="py-2.5 px-3 text-right">Status</th>
+                      <th className="py-2.5 px-3">Status Perangkat</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line/60">
-                    {orders.map((o) => (
-                      <tr key={o.orderId} className="hover:bg-card/40">
-                        <td className="py-3 px-3">
-                          <strong className="text-fg block">{o.businessName}</strong>
-                          <span className="text-muted text-[11px]">{o.buyerName}</span>
-                        </td>
-                        <td className="py-3 px-3 text-emerald-600 dark:text-emerald-400 font-bold">
-                          {o.whatsapp}
-                        </td>
-                        <td className="py-3 px-3 font-mono font-bold text-fg select-all">
-                          {o.licenseKey || "-"}
-                        </td>
-                        <td className="py-3 px-3 text-right">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-                            o.status === "lunas_lisensi_terbit"
-                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
-                              : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-                          }`}>
-                            {o.status === "lunas_lisensi_terbit" ? "Aktif" : "Menunggu Verifikasi"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {orders
+                      .filter((o) => o.status === "lunas_lisensi_terbit")
+                      .map((o) => (
+                        <tr key={o.orderId} className="hover:bg-card/40">
+                          <td className="py-3 px-3">
+                            <strong className="text-fg block">{o.businessName}</strong>
+                            <span className="text-muted text-[11px]">{o.buyerName}</span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <a
+                              href={`https://wa.me/62${o.whatsapp.replace(/^0/, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+                            >
+                              💬 {o.whatsapp}
+                            </a>
+                          </td>
+                          <td className="py-3 px-3 font-mono font-bold text-fg select-all">
+                            {o.licenseKey || "-"}
+                          </td>
+                          <td className="py-3 px-3">
+                            {o.boundDeviceId ? (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-500/30">
+                                Terikat ({o.boundDeviceId})
+                              </span>
+                            ) : (
+                              <span className="text-muted text-[11px]">Belum Diaktifkan</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
@@ -613,127 +896,137 @@ export default function SakuNotaOwnerDashboardPage() {
           </div>
         )}
 
-        {/* TAB 3: DEVELOPER MODE (TERLINDUNGI UNTUK REZA) */}
-        {activeTab === "developer_mode" && (
-          <div className="bg-surface rounded-3xl border border-line shadow-sm p-5 sm:p-6 space-y-4">
+        {/* TAB 3: LISENSI & PERANGKAT (DEVICE MONITORING) */}
+        {activeTab === "devices" && (
+          <div className="bg-surface rounded-3xl border border-line shadow-sm p-5 sm:p-6 space-y-6">
             <div>
-              <h3 className="font-black text-base text-fg">Developer Mode & Integritas Sistem (Khusus Owner)</h3>
+              <h3 className="font-black text-base text-fg">Pemantauan Lisensi & Perangkat Aktif</h3>
               <p className="text-xs text-muted">
-                Dipindahkan sepenuhnya dari menu pelanggan ke portal ini agar pemilik warung tidak terganggu istilah teknis.
+                Kelola ikatan perangkat pengguna. SakuNota menjaga privasi penuh: hanya status koneksi perangkat dan versi aplikasi yang dipantau saat kasir online, tanpa menarik omzet usaha.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="p-3.5 rounded-2xl bg-card border border-line space-y-1">
-                <span className="text-[10px] text-muted font-bold uppercase block">Versi Rilis</span>
-                <strong className="font-mono text-fg text-sm">v2.6.0-stable</strong>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-card border border-line space-y-1">
-                <span className="text-[10px] text-muted font-bold uppercase block">Git Build Commit</span>
-                <strong className="font-mono text-accent-text text-sm">9f8c68d</strong>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-card border border-line space-y-1">
-                <span className="text-[10px] text-muted font-bold uppercase block">Database Engine</span>
-                <strong className="font-mono text-fg text-sm">Dexie IndexedDB v8</strong>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-card border border-line space-y-1">
-                <span className="text-[10px] text-muted font-bold uppercase block">Integritas Transaksi</span>
-                <strong className="font-mono text-emerald-600 dark:text-emerald-400 text-sm">100% ACID Local</strong>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-card border border-line space-y-2 text-xs">
-              <span className="text-[10px] text-muted font-bold uppercase block">Aturan Privasi & Perlindungan Data Warung:</span>
-              <p className="text-muted leading-relaxed">
-                ✓ SakuNota tidak menyedot omzet, detail struk, atau menu makanan warung ke server luar.<br />
-                ✓ Pemilik SakuNota (Reza) hanya memantau data pembeli, status lisensi perangkat, dan ping koneksi saat kasir online.<br />
-                ✓ Pemindahan perangkat kasir mewajibkan verifikasi kode lisensi dan pemulihan berkas cadangan mandiri.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: CLOUDFLARE D1 ARCHITECTURE & MIDTRANS INTEGRATION */}
-        {activeTab === "cloudflare_d1" && (
-          <div className="p-6 rounded-3xl bg-surface border border-line shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h4 className="font-black text-sm text-fg">Arsitektur Database Cloudflare D1 (Production Edge)</h4>
-                <p className="text-xs text-muted mt-0.5">
-                  Terkoneksi langsung ke Cloudflare D1 (<code>env.DB</code>) dengan migrasi terstruktur & indeks edge.
-                </p>
-              </div>
+            {/* Informative Migration Callout for Owner */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-card border border-purple-500/30 space-y-2 text-xs">
               <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-black">
-                  ● Cloudflare D1: Terkoneksi & Siap
-                </span>
-                <span className="px-3 py-1 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 text-xs font-black">
-                  ● Midtrans: Ready
-                </span>
+                <span className="text-base">📱</span>
+                <strong className="text-fg font-black">
+                  Panduan Pindah HP: Lisensi dan Data Usaha adalah Dua Hal Berbeda
+                </strong>
               </div>
+              <p className="text-muted leading-relaxed">
+                Ketika pedagang berganti HP, jelaskan 2 hal terpisah ini:
+              </p>
+              <ol className="list-decimal pl-4 space-y-1 text-muted text-[11px]">
+                <li><strong>Lisensi:</strong> Hak pakai aplikasi. Owner menekan tombol <em>Lepas Perangkat</em> di bawah, lalu pedagang memasukkan lisensinya di HP baru.</li>
+                <li><strong>Data Usaha:</strong> Menu, omzet, dan transaksi tersimpan lokal di IndexedDB HP lama. Pedagang harus melakukan <em>Cadangkan Data</em> di HP lama, lalu <em>Pulihkan Data</em> di HP baru.</li>
+              </ol>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div className="p-3.5 rounded-2xl bg-card border border-line space-y-1">
-                <span className="text-[10px] text-muted font-bold uppercase block">Binding D1</span>
-                <strong className="font-mono text-fg text-sm">env.DB</strong>
+            {/* Licenses List */}
+            {licenses.length === 0 && orders.filter((o) => o.status === "lunas_lisensi_terbit").length === 0 ? (
+              <div className="py-12 text-center space-y-2 bg-card/40 rounded-2xl border border-line/60">
+                <span className="text-3xl">📱</span>
+                <p className="text-xs font-bold text-fg">Belum Ada Lisensi Komersial Terdaftar</p>
+                <p className="text-xs text-muted">Lisensi komersial akan tercatat otomatis saat pesanan pembeli diverifikasi.</p>
               </div>
-              <div className="p-3.5 rounded-2xl bg-card border border-line space-y-1">
-                <span className="text-[10px] text-muted font-bold uppercase block">Nama Database D1</span>
-                <strong className="font-mono text-accent-text text-sm">sakunota-production-db</strong>
+            ) : (
+              <div className="divide-y divide-line/60">
+                {(licenses.length > 0 ? licenses : orders.filter((o) => o.status === "lunas_lisensi_terbit").map((o) => ({
+                  licenseKey: o.licenseKey || "",
+                  orderId: o.orderId,
+                  businessName: o.businessName,
+                  boundDeviceId: o.boundDeviceId || null,
+                  deviceName: null,
+                  issuedAt: o.verifiedAt || o.createdAt,
+                  activatedAt: null,
+                  lastConnectedAt: o.lastSeenAt || null,
+                  signature: "",
+                  appVersion: "v2.6.0",
+                  activeDays: 1,
+                  licenseType: "berbayar" as const,
+                  revoked: 0,
+                }))).map((l) => {
+                  const isRevoked = l.revoked === 1;
+                  return (
+                    <div key={l.licenseKey} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-xs px-2.5 py-0.5 rounded-md bg-card border border-line text-purple-600 dark:text-purple-400">
+                            {l.licenseKey}
+                          </span>
+                          <strong className="text-sm font-black text-fg">{l.businessName}</strong>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                            isRevoked
+                              ? "bg-rose-500/15 text-rose-600 border-rose-500/30"
+                              : l.boundDeviceId
+                              ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"
+                              : "bg-slate-500/15 text-slate-500 border-slate-500/30"
+                          }`}>
+                            {isRevoked ? "Dicabut" : l.boundDeviceId ? "Aktif di Perangkat" : "Belum Diaktifkan"}
+                          </span>
+                        </div>
+
+                        <div className="text-xs text-muted flex flex-wrap gap-x-4 gap-y-1">
+                          <span>Pesanan: <strong className="font-mono">{l.orderId}</strong></span>
+                          <span>Terbit: {l.issuedAt}</span>
+                          <span>Versi Kasir: <strong className="font-mono">{l.appVersion || "v2.6.0"}</strong></span>
+                          <span>Aktivitas: {l.activeDays || 1} Hari Aktif</span>
+                          {l.lastConnectedAt && <span>Terakhir Online: {l.lastConnectedAt}</span>}
+                        </div>
+
+                        <div className="text-[11px] text-muted">
+                          Status Perangkat: {l.boundDeviceId ? (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                              Terikat pada {l.deviceName || "Perangkat Kasir"} ({l.boundDeviceId})
+                            </span>
+                          ) : (
+                            <span className="text-muted">Siap diaktifkan di HP baru</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(l.licenseKey);
+                            showToast(`📋 Lisensi ${l.licenseKey} berhasil disalin!`);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-card hover:bg-line text-xs font-bold text-fg border border-line transition-colors"
+                        >
+                          Salin Lisensi
+                        </button>
+
+                        {l.boundDeviceId && !isRevoked && (
+                          <button
+                            type="button"
+                            onClick={() => handleUnbindCommercialDevice(l.licenseKey)}
+                            className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 text-xs font-bold border border-amber-500/30 transition-colors"
+                          >
+                            Lepas Perangkat
+                          </button>
+                        )}
+
+                        {!isRevoked && (
+                          <button
+                            type="button"
+                            onClick={() => handleRevokeCommercialLicense(l.licenseKey)}
+                            className="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 text-xs font-bold border border-rose-500/30 transition-colors"
+                          >
+                            Cabut
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="p-3.5 rounded-2xl bg-card border border-line space-y-1">
-                <span className="text-[10px] text-muted font-bold uppercase block">Gateway Pembayaran</span>
-                <strong className="font-mono text-emerald-600 dark:text-emerald-400 text-sm">Midtrans Snap + Webhook</strong>
-              </div>
-            </div>
-
-            <pre className="p-4 rounded-2xl bg-card border border-line font-mono text-[11px] text-fg overflow-x-auto leading-relaxed">
-{`-- Skema Resmi Cloudflare D1 (migrations/0001_initial_schema.sql)
-CREATE TABLE CustomerOrders (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  orderId TEXT UNIQUE NOT NULL,
-  accessCode TEXT NOT NULL,
-  buyerName TEXT NOT NULL,
-  businessName TEXT NOT NULL,
-  whatsapp TEXT NOT NULL,
-  email TEXT,
-  amount INTEGER NOT NULL DEFAULT 65000,
-  paymentMethod TEXT NOT NULL DEFAULT 'Transfer Bank BCA',
-  bankAccount TEXT NOT NULL DEFAULT '8030 554 912 a.n. Reza',
-  transferProofName TEXT,
-  status TEXT NOT NULL DEFAULT 'menunggu_verifikasi',
-  licenseKey TEXT,
-  boundDeviceId TEXT,
-  createdAt TEXT NOT NULL,
-  verifiedAt TEXT,
-  lastSeenAt TEXT
-);
-
-CREATE TABLE Licenses (
-  licenseKey TEXT PRIMARY KEY,
-  orderId TEXT NOT NULL,
-  businessName TEXT NOT NULL,
-  boundDeviceId TEXT,
-  deviceName TEXT,
-  issuedAt TEXT NOT NULL,
-  activatedAt TEXT,
-  lastConnectedAt TEXT,
-  signature TEXT NOT NULL
-);
-
-CREATE TABLE OwnerSessions (
-  sessionId TEXT PRIMARY KEY,
-  username TEXT NOT NULL,
-  createdAt TEXT NOT NULL,
-  expiresAt INTEGER NOT NULL,
-  revoked INTEGER NOT NULL DEFAULT 0
-);`}
-            </pre>
+            )}
           </div>
         )}
 
-        {/* TAB 5: LISENSI TESTER (GRATIS UNTUK PENGUJIAN) */}
+        {/* TAB 4: LISENSI TESTER (GRATIS UNTUK PENGUJIAN) */}
         {activeTab === "tester" && (
           <div className="bg-surface rounded-3xl border border-line shadow-sm p-5 sm:p-6 space-y-6">
             <div>
@@ -912,12 +1205,144 @@ CREATE TABLE OwnerSessions (
             </div>
           </div>
         )}
-      </main>
 
-      {/* Footer */}
-      <footer className="mt-auto border-t border-line bg-surface px-4 sm:px-8 py-6 text-xs text-muted text-center">
-        Portal Manajemen Khusus Pemilik SakuNota (Reza) • Hak Akses Terlindungi.
-      </footer>
+        {/* TAB 5: LAPORAN MASALAH & DUKUNGAN */}
+        {activeTab === "support" && (
+          <div className="bg-surface rounded-3xl border border-line shadow-sm p-5 sm:p-6 space-y-4">
+            <div>
+              <h3 className="font-black text-base text-fg">Pusat Bantuan & Laporan Pengguna</h3>
+              <p className="text-xs text-muted">Daftar laporan kendala kasir dari pedagang.</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-card border border-line space-y-3 text-xs">
+              <span className="text-[10px] text-muted font-bold uppercase block">Kontak Bantuan Resmi:</span>
+              <p className="text-muted leading-relaxed">
+                Pengguna yang mengalami kendala aktivasi lisensi atau pemindahan HP dapat menghubungi WhatsApp resmi Reza.
+              </p>
+              <a
+                href="https://wa.me/6281234567890?text=Halo%20Reza,%20saya%20butuh%20bantuan%20terkait%20lisensi%20SakuNota"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-black hover:bg-emerald-700 transition-colors"
+              >
+                <span>💬 Buka WhatsApp Bantuan Reza</span>
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 6: PENGATURAN & PEMELIHARAAN */}
+        {activeTab === "settings" && (
+          <div className="bg-surface rounded-3xl border border-line shadow-sm p-5 sm:p-6 space-y-6">
+            <div>
+              <h3 className="font-black text-base text-fg">Pengaturan & Pemeliharaan Data</h3>
+              <p className="text-xs text-muted">
+                Pembersihan data pengujian aman dengan jejak audit. Transaksi asli dilindungi dari penghapusan bebas.
+              </p>
+            </div>
+
+            {/* Clean Test Data Form */}
+            <form onSubmit={handleDeleteTestOrder} className="p-4 sm:p-5 rounded-2xl bg-card border border-line space-y-4">
+              <h4 className="font-black text-xs text-fg uppercase tracking-wider">
+                Hapus Data Pengujian Teridentifikasi
+              </h4>
+
+              {deleteMessage && (
+                <div className={`p-3 rounded-xl text-xs font-bold ${
+                  deleteMessage.startsWith("✅") ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30" : "bg-rose-500/10 text-rose-600 border border-rose-500/30"
+                }`}>
+                  {deleteMessage}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-fg mb-1">Nomor Pesanan Uji *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: SN-2026-999"
+                    value={deleteTargetOrderId}
+                    onChange={(e) => setDeleteTargetOrderId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs text-fg outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-fg mb-1">Catatan Audit Tindakan *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Alasan: data pengujian developer"
+                    value={deleteAuditNote}
+                    onChange={(e) => setDeleteAuditNote(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs text-fg outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-fg mb-1">Konfirmasi Sandi Owner *</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Sandi Owner Reza"
+                    value={deletePasswordConfirm}
+                    onChange={(e) => setDeletePasswordConfirm(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs text-fg outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isDeletingOrder}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow transition-all disabled:opacity-50"
+                >
+                  {isDeletingOrder ? "Memproses..." : "Hapus Data Uji Teridentifikasi"}
+                </button>
+              </div>
+            </form>
+
+            {/* Hidden Collapsible Maintenance Drawer (Developer Mode) */}
+            <div className="border border-line rounded-2xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowDevDrawer(!showDevDrawer)}
+                className="w-full p-4 bg-card/60 hover:bg-card flex items-center justify-between text-xs font-bold text-muted hover:text-fg transition-colors"
+              >
+                <span>🔧 Developer Mode & Status Arsitektur Cloudflare D1 (Khusus Pemeliharaan)</span>
+                <span>{showDevDrawer ? "▲ Tutup" : "▼ Buka"}</span>
+              </button>
+
+              {showDevDrawer && (
+                <div className="p-5 bg-card/30 border-t border-line space-y-4 text-xs">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3 rounded-xl bg-surface border border-line">
+                      <span className="text-[10px] text-muted font-bold block">Versi Rilis</span>
+                      <strong className="font-mono text-fg text-sm">v2.6.0-stable</strong>
+                    </div>
+                    <div className="p-3 rounded-xl bg-surface border border-line">
+                      <span className="text-[10px] text-muted font-bold block">Git Commit</span>
+                      <strong className="font-mono text-purple-600 text-sm">8979552</strong>
+                    </div>
+                    <div className="p-3 rounded-xl bg-surface border border-line">
+                      <span className="text-[10px] text-muted font-bold block">Engine DB</span>
+                      <strong className="font-mono text-fg text-sm">Cloudflare D1: Terkoneksi & Siap</strong>
+                    </div>
+                    <div className="p-3 rounded-xl bg-surface border border-line">
+                      <span className="text-[10px] text-muted font-bold block">Gateway</span>
+                      <strong className="font-mono text-emerald-600 text-sm">Midtrans: Ready</strong>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-muted leading-relaxed">
+                    Area ini khusus pemeliharaan sistem teknis dan tidak muncul di panduan maupun antarmuka kasir pedagang.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

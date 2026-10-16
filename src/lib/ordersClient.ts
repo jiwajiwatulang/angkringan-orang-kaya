@@ -133,9 +133,11 @@ export async function checkOrderStatusServer(
 
 export interface OwnerMetrics {
   totalPembeli: number;
+  pembayaranBerhasil?: number;
   lisensiAktif: number;
   penggunaAktif: number;
   menungguVerifikasi: number;
+  menungguPembayaran?: number;
 }
 
 export async function loginOwnerServer(
@@ -465,4 +467,148 @@ export async function revokeTesterLicenseServer(
     return { success: false, error: "Gagal menghubungi server." };
   }
 }
+
+export interface CommercialLicense {
+  licenseKey: string;
+  orderId: string;
+  businessName: string;
+  boundDeviceId?: string | null;
+  deviceName?: string | null;
+  issuedAt: string;
+  activatedAt?: string | null;
+  lastConnectedAt?: string | null;
+  signature: string;
+  appVersion?: string;
+  activeDays?: number;
+  licenseType?: "berbayar" | "tester" | "hadiah";
+  revoked?: number;
+}
+
+export async function fetchOwnerLicensesServer(token: string): Promise<{
+  success: boolean;
+  licenses?: CommercialLicense[];
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/owner/licenses", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { success: true, licenses: data.licenses || [] };
+    }
+    const err = await res.json().catch(() => ({}));
+    return { success: false, error: err.error || "Gagal memuat lisensi komersial." };
+  } catch {
+    return { success: false, error: "Gagal terhubung ke server." };
+  }
+}
+
+export async function unbindOwnerLicenseServer(
+  token: string,
+  licenseKey: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/licenses", {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "unbind", licenseKey }),
+    });
+    if (res.ok) return { success: true };
+    const err = await res.json().catch(() => ({}));
+    return { success: false, error: err.error || "Gagal melepas perangkat." };
+  } catch {
+    return { success: false, error: "Gagal menghubungi server." };
+  }
+}
+
+export async function revokeOwnerLicenseServer(
+  token: string,
+  licenseKey: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/licenses", {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "revoke", licenseKey }),
+    });
+    if (res.ok) return { success: true };
+    const err = await res.json().catch(() => ({}));
+    return { success: false, error: err.error || "Gagal mencabut lisensi." };
+  } catch {
+    return { success: false, error: "Gagal menghubungi server." };
+  }
+}
+
+export async function cancelOwnerOrderServer(
+  token: string,
+  orderId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/orders", {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "cancel", orderId }),
+    });
+    if (res.ok) return { success: true };
+    const err = await res.json().catch(() => ({}));
+    return { success: false, error: err.error || "Gagal membatalkan pesanan." };
+  } catch {
+    return { success: false, error: "Gagal menghubungi server." };
+  }
+}
+
+export async function archiveOwnerOrderServer(
+  token: string,
+  orderId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/orders", {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "archive", orderId }),
+    });
+    if (res.ok) return { success: true };
+    const err = await res.json().catch(() => ({}));
+    return { success: false, error: err.error || "Gagal mengarsipkan pesanan." };
+  } catch {
+    return { success: false, error: "Gagal menghubungi server." };
+  }
+}
+
+export async function deleteOwnerTestOrderServer(
+  token: string,
+  orderId: string,
+  auditNote?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/orders", {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ orderId, auditNote }),
+    });
+    if (res.ok) return { success: true };
+    const err = await res.json().catch(() => ({}));
+    return { success: false, error: err.error || "Gagal menghapus data uji coba." };
+  } catch {
+    return { success: false, error: "Gagal menghubungi server." };
+  }
+}
+
 

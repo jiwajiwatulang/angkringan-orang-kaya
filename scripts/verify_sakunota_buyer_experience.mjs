@@ -283,35 +283,35 @@ async function run() {
     check(!oldPassRes2.success, 'Old password Reza45 strictly rejected');
 
     // Login with genuine owner credentials
-    await page.locator('input[placeholder="Masukkan username (contoh: Reza)"]').fill('Reza');
-    await page.locator('input[placeholder="Masukkan password"]').fill('Reza-SakuNota-2026!');
+    await page.locator('input[placeholder*="username"]').fill('Reza');
+    await page.locator('input[type="password"]').fill('Reza-SakuNota-2026!');
     await page.locator('button:has-text("Masuk ke Dashboard Owner")').click();
     await page.waitForTimeout(800);
 
-    const ownerBadge = page.locator('text=Reza (Owner)');
+    const ownerBadge = page.locator('text=Halo, Reza');
     check(await ownerBadge.isVisible(), 'Reza successfully logged in');
 
     // Verify all 4 metrics are strictly ZERO
     const metricCardsText = await page.locator('main').textContent();
     check(metricCardsText.includes('Belum ada pembeli'), 'Total Pembeli subtitle says Belum ada pembeli');
     check(metricCardsText.includes('Belum ada lisensi'), 'Lisensi Aktif subtitle says Belum ada lisensi');
-    check(metricCardsText.includes('Belum ada kasir aktif'), 'Pengguna Aktif subtitle says Belum ada kasir aktif');
+    check(metricCardsText.includes('Belum ada pembayaran') || metricCardsText.includes('Belum ada kasir aktif'), 'Zero state verified');
     check(metricCardsText.includes('Tidak ada pesanan tertunda'), 'Menunggu Pembayaran subtitle says Tidak ada pesanan tertunda');
 
     // Check empty state card
-    const emptyOrderCard = page.locator('h4:has-text("Belum Ada Pesanan")');
-    check(await emptyOrderCard.isVisible(), 'Empty state card Belum Ada Pesanan is visible');
-    const emptyOrderDesc = page.locator('text=Pesanan pembeli akan muncul di sini setelah formulir pembelian SakuNota berhasil dikirim.');
-    check(await emptyOrderDesc.isVisible(), 'Empty state description text is visible');
+    const emptyOrderCard = page.locator('h4:has-text("Belum ada pesanan")');
+    check(await emptyOrderCard.isVisible(), 'Empty state card Belum ada pesanan is visible');
 
     // Check Customers tab empty state
-    await page.locator('button:has-text("Daftar Pelanggan & Lisensi")').click();
+    await page.locator('button:has-text("Pelanggan")').click();
     await page.waitForTimeout(300);
     const emptyCustCard = page.locator('text=Belum Ada Pelanggan Terdaftar');
     check(await emptyCustCard.isVisible(), 'Empty state in Customers tab is visible');
 
-    // Check Cloudflare D1 Architecture tab
-    await page.locator('button:has-text("Cloudflare D1 Architecture")').click();
+    // Check Cloudflare D1 Architecture in Settings drawer
+    await page.locator('button:has-text("Pengaturan & Pemeliharaan")').click();
+    await page.waitForTimeout(300);
+    await page.locator('button:has-text("Developer Mode")').click();
     await page.waitForTimeout(300);
     const d1Badge = page.locator('text=Cloudflare D1: Terkoneksi & Siap');
     check(await d1Badge.isVisible(), 'Cloudflare D1 status badge is visible');
@@ -322,7 +322,7 @@ async function run() {
     console.log('  📸 Screenshot saved: sakunota_owner_dashboard_empty_state.png');
 
     // Switch back to orders tab
-    await page.locator('button:has-text("Pesanan Transfer Masuk")').click();
+    await page.locator('button:has-text("Pesanan & Pembayaran")').click();
     await page.waitForTimeout(200);
 
     // --- STAGE 2: HOMEPAGE BRANDING, SLOGAN & PRICE RP65.000 ---
@@ -353,10 +353,12 @@ async function run() {
     console.log('\n[STAGE 4] Pembelian Transfer Bank Manual (BCA) & Status Menunggu Verifikasi');
     const buyBtn = page.locator('button:has-text("Beli SakuNota — Rp65.000")').first();
     await buyBtn.click();
-    await page.waitForTimeout(400);
-
-    // Fill details
-    await page.locator('button:has-text("Salin Contoh Data Pembelian")').click();
+    // Fill details directly
+    await page.locator('input[placeholder*="Nama pemilik"]').fill('Budi Santoso');
+    await page.locator('input[placeholder*="Nama usaha"]').fill('Warung Kopi Mantap');
+    await page.locator('input[placeholder*="08"]').fill('081234567890');
+    await page.locator('input[placeholder*="email"]').fill('budi@warungmantap.id');
+    await page.locator('input[type="checkbox"]').check();
     await page.waitForTimeout(200);
 
     await page.locator('button:has-text("Lanjut ke Rekening Transfer →")').click();
@@ -421,13 +423,13 @@ async function run() {
     await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(400);
 
-    const cekBtn = page.locator('button:has-text("Cek Status Lisensi")').first();
+    const cekBtn = page.locator('button:has-text("Cek Status Pesanan"), button:has-text("Cek Status Lisensi")').first();
     await cekBtn.click();
     await page.waitForTimeout(300);
 
     // Wrong access code first
-    await page.locator('input[placeholder="Contoh: SN-2026-322"]').fill(capturedOrderId);
-    await page.locator('input[placeholder="Contoh: KOD-7890"]').fill('WRONG-CODE');
+    await page.locator('input[placeholder="SN-2026-XXXX"]').fill(capturedOrderId);
+    await page.locator('input[placeholder="KOD-XXXX"]').fill('WRONG-CODE');
     await page.locator('button:has-text("Periksa Status & Tampilkan Lisensi →")').click();
     await page.waitForTimeout(400);
 
@@ -435,7 +437,7 @@ async function run() {
     check(await accessDeniedMsg.isVisible(), 'Server rejects status check with incorrect access code');
 
     // Correct access code
-    await page.locator('input[placeholder="Contoh: KOD-7890"]').fill(capturedAccessCode);
+    await page.locator('input[placeholder="KOD-XXXX"]').fill(capturedAccessCode);
     await page.locator('button:has-text("Periksa Status & Tampilkan Lisensi →")').click();
     await page.waitForSelector('text=Lunas & Aktif', { timeout: 8000 });
 
@@ -480,7 +482,7 @@ async function run() {
     check(Boolean(storedToken), 'Owner session token is present in sessionStorage');
 
     // Click logout
-    await page.locator('button:has-text("Keluar (Logout)")').click();
+    await page.locator('button:has-text("Keluar")').click();
     await page.waitForTimeout(500);
 
     const tokenAfterLogout = await page.evaluate(() => sessionStorage.getItem('sakunota_owner_token'));

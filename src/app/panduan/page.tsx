@@ -271,7 +271,7 @@ export default function SakuNotaPanduanPage() {
       content: (
         <div className="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
           <p>
-            SakuNota mendukung printer struk thermal mini standar (kertas 58mm atau 80mm) yang banyak dijual di pasaran.
+            SakuNota mendukung printer struk thermal mini standar (kertas 58mm atau 80mm) seperti merk Panda, VSC, Eppos, Zjiang, Kassen, MiniPOS, dan printer thermal portable lainnya.
           </p>
 
           <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
@@ -280,8 +280,21 @@ export default function SakuNotaPanduanPage() {
               <li>Nyalakan printer Bluetooth dan pastikan kertas thermal terpasang dengan benar (arah gulungan menghadap ke bawah/keluar).</li>
               <li>Buka pengaturan Bluetooth pada ponsel Anda dan pasangkan (pairing) dengan printer (biasanya bernama <em>RPP02N</em>, <em>MPT-II</em>, atau <em>Bluetooth Printer</em>, PIN bawaan umumnya 0000 atau 1234).</li>
               <li>Buka SakuNota, masuk ke menu <strong>Admin → Pengaturan Printer</strong>.</li>
-              <li>Tekan tombol <strong>Uji Cetak (Test Print)</strong> untuk memastikan koneksi berhasil.</li>
+              <li>Pilih ukuran kertas (58mm atau 80mm), lalu ketuk <strong>Sambungkan Printer Bluetooth</strong>.</li>
+              <li>Tekan tombol <strong>Uji Cetak (Test Print)</strong> untuk memastikan koneksi berhasil dan teks tercetak jelas.</li>
             </ol>
+          </div>
+
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 space-y-2">
+            <h4 className="font-extrabold text-xs sm:text-sm text-amber-500 flex items-center gap-2">
+              <span>⚠️</span>
+              <span>Jika Printer Tidak Merespons atau Kertas Keluar Polos:</span>
+            </h4>
+            <ul className="list-disc list-inside space-y-1 text-xs text-amber-600 dark:text-amber-400 pl-1">
+              <li><strong>Kertas keluar tapi tidak ada tulisan:</strong> Gulungan kertas terbalik. Balik posisi gulungan kertas thermal Anda.</li>
+              <li><strong>Bluetooth tidak mendeteksi printer:</strong> Matikan dan hidupkan kembali Bluetooth di HP, atau unpair lalu pasangkan kembali.</li>
+              <li><strong>Izin Bluetooth peramban:</strong> Pastikan Google Chrome diizinkan mengakses Bluetooth / Perangkat Sekitar di Pengaturan Aplikasi HP.</li>
+            </ul>
           </div>
         </div>
       ),
@@ -289,24 +302,42 @@ export default function SakuNotaPanduanPage() {
     {
       id: 10,
       slug: "keamanan-dan-backup",
-      title: "10. Keamanan Data & Pindah HP",
-      tag: "Cadangan & Privasi",
-      summary: "Mengatur PIN kasir, Recovery Code, mencadangkan data ke file, dan memulihkan di HP baru.",
+      title: "10. Keamanan Data & Pindah HP Kasir",
+      tag: "Cadangan & Pindah HP",
+      summary: "Memahami lisensi vs data jualan, mencadangkan data ke file, dan 7 langkah aman pindah ke HP baru.",
       content: (
         <div className="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
-          <p>
-            Karena SakuNota bekerja secara offline, seluruh data penjualan tersimpan langsung di ponsel Anda.
-          </p>
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 space-y-2">
+            <h4 className="font-extrabold text-xs sm:text-sm text-blue-500 flex items-center gap-2">
+              <span>💡</span>
+              <span>Penting: Lisensi vs Data Usaha adalah Dua Hal Berbeda!</span>
+            </h4>
+            <p className="text-xs text-blue-600 dark:text-blue-300 leading-relaxed">
+              <strong>1. Nomor Lisensi:</strong> Adalah hak izin penggunaan aplikasi untuk 1 perangkat kasir aktif.<br />
+              <strong>2. Data Usaha:</strong> Berisi katalog menu, harga, stok, dan riwayat transaksi harian yang tersimpan di memori HP Anda sendiri.<br />
+              Memindahkan lisensi ke HP baru tidak otomatis menyalin data menu Anda, dan mencadangkan file data tidak otomatis mengaktifkan lisensi di HP baru. Lakukan kedua langkah berikut saat berganti ponsel kasir.
+            </p>
+          </div>
 
           <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
-            <h4 className="font-extrabold text-sm text-fg">Cara Cadangkan & Pindah ke HP Baru:</h4>
-            <ol className="list-decimal list-inside space-y-1.5 pl-1">
-              <li>Buka menu <strong>Admin → Data & Cadangan</strong>.</li>
-              <li>Ketuk <strong className="text-fg">Cadangkan Seluruh Data (.json)</strong>. File cadangan akan terunduh ke HP Anda.</li>
-              <li>Kirim file tersebut ke nomor WhatsApp Anda sendiri atau simpan di Google Drive.</li>
-              <li>Di ponsel baru, pasang SakuNota, buka menu <strong>Data & Cadangan</strong>, lalu ketuk <strong className="text-fg">Pulihkan Data dari File</strong>.</li>
-              <li>Seluruh daftar menu, pengaturan, dan riwayat transaksi akan kembali persis seperti semula.</li>
+            <h4 className="font-extrabold text-sm text-fg">7 Langkah Aman Pindah Kasir ke HP Baru:</h4>
+            <ol className="list-decimal list-inside space-y-2 pl-1">
+              <li><strong>Di HP Lama:</strong> Buka menu <em>Admin → Data & Cadangan</em>.</li>
+              <li><strong>Unduh File Cadangan:</strong> Ketuk tombol <em>Cadangkan Seluruh Data (.json)</em>. File cadangan akan tersimpan di folder Download HP.</li>
+              <li><strong>Simpan File:</strong> Kirim file tersebut ke WhatsApp pribadi Anda atau simpan di Google Drive.</li>
+              <li><strong>Di HP Baru:</strong> Buka Google Chrome, akses SakuNota, lalu pilih <em>Tambahkan ke Layar Utama</em>.</li>
+              <li><strong>Pulihkan Data Usaha:</strong> Di HP Baru, buka menu <em>Admin → Data & Cadangan</em>, lalu ketuk <em>Pulihkan Data dari File</em> dan pilih file cadangan Anda. Seluruh katalog menu, stok, dan riwayat langsung muncul.</li>
+              <li><strong>Pelepasan Perangkat Lama (Unbind Device):</strong> Hubungi WhatsApp Admin SakuNota dengan menyebutkan nomor pesanan atau nomor lisensi Anda untuk melepas ikatan HP lama (atau reset otomatis bila masa garansi aktif).</li>
+              <li><strong>Aktivasi Lisensi di HP Baru:</strong> Masukkan nomor lisensi Anda pada menu <em>Pengaturan → Tentang SakuNota</em>. Kasir siap digunakan kembali!</li>
             </ol>
+          </div>
+
+          <div className="bg-surface border border-line rounded-2xl p-4 space-y-2">
+            <h4 className="font-extrabold text-sm text-fg">Keamanan Tambahan:</h4>
+            <ul className="list-disc list-inside space-y-1 pl-1">
+              <li><strong>PIN Kasir:</strong> Kunci menu Admin dengan 4-digit PIN agar staf kasir tidak dapat mengubah harga, menghapus barang, atau melihat laporan rahasia.</li>
+              <li><strong>Recovery Code:</strong> Catat kode pemulihan darurat saat pertama kali mengatur PIN agar tetap dapat masuk jika lupa sandi kasir.</li>
+            </ul>
           </div>
         </div>
       ),

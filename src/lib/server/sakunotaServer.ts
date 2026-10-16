@@ -27,6 +27,12 @@ import {
   revokeTesterLicenseD1,
   unbindTesterLicenseDeviceD1,
   bindTesterLicenseToDeviceD1,
+  cancelOrderD1,
+  archiveOrderD1,
+  deleteTestOrderD1,
+  getAllLicensesD1,
+  unbindLicenseDeviceD1,
+  revokeLicenseD1,
 } from "./d1";
 
 export type ServerCustomerOrder = DbCustomerOrder;
@@ -544,9 +550,11 @@ export async function getOwnerMetrics(
   success: boolean;
   metrics?: {
     totalPembeli: number;
+    pembayaranBerhasil: number;
     lisensiAktif: number;
     penggunaAktif: number;
     menungguVerifikasi: number;
+    menungguPembayaran: number;
   };
   error?: string;
 }> {
@@ -561,3 +569,98 @@ export async function getOwnerMetrics(
   const metrics = await getMetricsD1(db);
   return { success: true, metrics };
 }
+
+export async function cancelOwnerOrder(
+  dbOrToken: D1Database | string | null,
+  tokenOrId: string | null,
+  maybeId?: string
+): Promise<{ success: boolean; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrId as string) : (dbOrToken as string);
+  const orderId = (isD1(dbOrToken) ? maybeId : tokenOrId) || "";
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) return { success: false, error: auth.error || "Akses ditolak." };
+
+  await cancelOrderD1(db, orderId);
+  return { success: true };
+}
+
+export async function archiveOwnerOrder(
+  dbOrToken: D1Database | string | null,
+  tokenOrId: string | null,
+  maybeId?: string
+): Promise<{ success: boolean; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrId as string) : (dbOrToken as string);
+  const orderId = (isD1(dbOrToken) ? maybeId : tokenOrId) || "";
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) return { success: false, error: auth.error || "Akses ditolak." };
+
+  await archiveOrderD1(db, orderId);
+  return { success: true };
+}
+
+export async function deleteOwnerTestOrder(
+  dbOrToken: D1Database | string | null,
+  tokenOrId: string | null,
+  maybeId?: string,
+  maybeNote?: string
+): Promise<{ success: boolean; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrId as string) : (dbOrToken as string);
+  const orderId = (isD1(dbOrToken) ? maybeId : tokenOrId) || "";
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) return { success: false, error: auth.error || "Akses ditolak." };
+
+  return await deleteTestOrderD1(db, orderId);
+}
+
+export async function listOwnerLicenses(
+  dbOrToken?: D1Database | string | null,
+  maybeToken?: string | null
+): Promise<{ success: boolean; licenses?: DbLicense[]; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? maybeToken : (dbOrToken as string);
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) return { success: false, error: auth.error || "Akses ditolak." };
+
+  const licenses = await getAllLicensesD1(db);
+  return { success: true, licenses };
+}
+
+export async function unbindOwnerLicense(
+  dbOrToken: D1Database | string | null,
+  tokenOrKey: string | null,
+  maybeKey?: string
+): Promise<{ success: boolean; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrKey as string) : (dbOrToken as string);
+  const licenseKey = (isD1(dbOrToken) ? maybeKey : tokenOrKey) || "";
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) return { success: false, error: auth.error || "Akses ditolak." };
+
+  await unbindLicenseDeviceD1(db, licenseKey);
+  return { success: true };
+}
+
+export async function revokeOwnerLicense(
+  dbOrToken: D1Database | string | null,
+  tokenOrKey: string | null,
+  maybeKey?: string
+): Promise<{ success: boolean; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrKey as string) : (dbOrToken as string);
+  const licenseKey = (isD1(dbOrToken) ? maybeKey : tokenOrKey) || "";
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) return { success: false, error: auth.error || "Akses ditolak." };
+
+  await revokeLicenseD1(db, licenseKey);
+  return { success: true };
+}
+

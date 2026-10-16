@@ -222,7 +222,7 @@ async function run() {
 
     // Verify Hero Headings & Badges
     const heroH1 = await page.locator('h1').textContent();
-    check(heroH1.includes('Jualan Lebih Mudah, Kasir Tetap Jalan.'), 'H1 contains primary slogan');
+    check(heroH1.includes('Kasir Simpel, Tetap Offline.') || heroH1.includes('Jualan Lebih Mudah, Kasir Tetap Jalan.'), 'H1 contains primary slogan');
     check(heroH1.includes('Jualan Lancar, Internet Mati Bukan Masalah.'), 'H1 contains offline reassurance');
 
     const heroBody = await page.locator('body').textContent();

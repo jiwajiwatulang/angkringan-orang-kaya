@@ -89,15 +89,6 @@ export default function SakuNotaLandingPage() {
     setTransferProofSimulated(false);
   };
 
-  const handleFillSampleData = () => {
-    setBuyerName("Budi Santoso");
-    setBusinessName("Kedai Kopi & Bakso Mas Budi");
-    setWhatsappNumber("081234567890");
-    setBuyerEmail("budi.santoso@example.com");
-    setConsentChecked(true);
-    setFormError("");
-  };
-
   const handleProceedToPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!buyerName.trim() || !businessName.trim() || !whatsappNumber.trim()) {
@@ -364,26 +355,32 @@ export default function SakuNotaLandingPage() {
       {/* 2. Hero Section */}
       <section className="relative px-4 sm:px-8 pt-12 pb-14 md:pt-16 md:pb-20 max-w-5xl mx-auto text-center space-y-6">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/15 border border-accent/30 text-accent-text text-xs font-black">
-          <span>Bisa digunakan tanpa internet</span>
+          <span>Kasir Simpel, Tetap Offline</span>
           <span className="text-muted">•</span>
           <span>SakuNota — Kasir Tetap Jalan, Meski Tanpa Internet</span>
         </div>
 
         <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-fg tracking-tight leading-[1.15] max-w-3xl mx-auto">
-          Jualan Lancar, Internet Mati Bukan Masalah.
+          Kasir Simpel, Tetap Offline.
           <span className="block text-2xl sm:text-4xl text-accent-text mt-2 font-bold">
-            Jualan Lebih Mudah, Kasir Tetap Jalan.
+            Jualan Lancar, Internet Mati Bukan Masalah.
           </span>
         </h1>
 
         <p className="text-sm sm:text-base md:text-lg text-muted max-w-2xl mx-auto leading-relaxed">
-          SakuNota membantu mencatat penjualan, menghitung pembayaran, mengelola barang, dan melihat hasil usaha. Cocok untuk warung, toko, kafe, hingga usaha kecil lainnya.
+          Catat penjualan, kelola barang, cetak struk, dan pantau usaha dari satu aplikasi. Tanpa biaya bulanan.
         </p>
 
         {/* Feature Badges */}
         <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
           <span className="px-3 py-1 rounded-full bg-card border border-line text-xs font-bold text-fg">
+            Bisa offline
+          </span>
+          <span className="px-3 py-1 rounded-full bg-card border border-line text-xs font-bold text-fg">
             Kasir offline
+          </span>
+          <span className="px-3 py-1 rounded-full bg-card border border-line text-xs font-bold text-fg">
+            HP & tablet
           </span>
           <span className="px-3 py-1 rounded-full bg-card border border-line text-xs font-bold text-fg">
             Cetak struk
@@ -408,7 +405,7 @@ export default function SakuNotaLandingPage() {
                 Hemat Rp34.000 (34%)
               </span>
               <span className="text-[11px] text-muted font-semibold block mt-1">
-                Transfer Bank BCA Manual • 1 Lisensi Perangkat
+                Tanpa Langganan Bulanan • 1 Lisensi Perangkat
               </span>
             </div>
           </div>
@@ -428,7 +425,7 @@ export default function SakuNotaLandingPage() {
             href="/pos"
             className="w-full sm:w-auto px-7 py-4 bg-card hover:bg-line text-fg font-bold text-sm rounded-2xl border border-line transition-all flex items-center justify-center gap-2"
           >
-            <span>Coba Kasir Gratis Sekarang</span>
+            <span>Coba Kasir Sekarang</span>
             <span>→</span>
           </Link>
 
@@ -448,10 +445,10 @@ export default function SakuNotaLandingPage() {
         {/* Trust Badges */}
         <div className="pt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-bold text-muted">
           <span className="flex items-center gap-1.5">
-            <span className="text-emerald-500 font-black">✓</span> Kasir tetap bisa dipakai tanpa internet
+            <span className="text-emerald-500 font-black">✓</span> Kasir tetap jalan tanpa internet
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="text-emerald-500 font-black">✓</span> Rekening resmi BCA a.n. Reza
+            <span className="text-emerald-500 font-black">✓</span> Tanpa langganan bulanan
           </span>
           <span className="flex items-center gap-1.5">
             <span className="text-emerald-500 font-black">✓</span> Tanpa potongan komisi penjualan
@@ -459,12 +456,12 @@ export default function SakuNotaLandingPage() {
         </div>
       </section>
 
-      {/* 3. Coba Kasir Interactive Simulation (Mini POS Preview) */}
+      {/* 3. Coba Kasir Interactive Demo (Mini POS Preview) */}
       <section className="px-4 sm:px-8 py-12 bg-surface/60 border-t border-b border-line">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="text-center space-y-1">
             <span className="text-xs font-bold text-accent-text uppercase tracking-wider block">
-              SIMULASI INTERAKTIF
+              Coba Kasir
             </span>
             <h2 className="text-2xl sm:text-3xl font-black text-fg tracking-tight">
               Coba Kasir SakuNota Langsung di Sini
@@ -1043,13 +1040,6 @@ export default function SakuNotaLandingPage() {
               <form onSubmit={handleProceedToPayment} className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-fg">Langkah 1 dari 2: Data Pemilik Usaha</span>
-                  <button
-                    type="button"
-                    onClick={handleFillSampleData}
-                    className="text-[11px] font-bold text-accent-text hover:underline"
-                  >
-                    Salin Contoh Data Pembelian
-                  </button>
                 </div>
 
                 {formError && (
@@ -1066,7 +1056,7 @@ export default function SakuNotaLandingPage() {
                     <input
                       type="text"
                       required
-                      placeholder="Contoh: Nama Anda"
+                      placeholder="Nama pemilik"
                       value={buyerName}
                       onChange={(e) => setBuyerName(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-accent"
@@ -1080,7 +1070,7 @@ export default function SakuNotaLandingPage() {
                     <input
                       type="text"
                       required
-                      placeholder="Contoh: Nama Warung / Usaha Anda"
+                      placeholder="Nama usaha / warung / toko"
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-accent"
@@ -1094,7 +1084,7 @@ export default function SakuNotaLandingPage() {
                     <input
                       type="tel"
                       required
-                      placeholder="Contoh: 081234567890"
+                      placeholder="08123456789"
                       value={whatsappNumber}
                       onChange={(e) => setWhatsappNumber(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-accent"
@@ -1107,7 +1097,7 @@ export default function SakuNotaLandingPage() {
                     </label>
                     <input
                       type="email"
-                      placeholder="Contoh: nama@email.com"
+                      placeholder="nama@email.com"
                       value={buyerEmail}
                       onChange={(e) => setBuyerEmail(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-accent"
@@ -1373,7 +1363,7 @@ export default function SakuNotaLandingPage() {
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: SN-2026-322"
+                  placeholder="SN-2026-XXXX"
                   value={searchOrderId}
                   onChange={(e) => setSearchOrderId(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-accent outline-none font-mono"
@@ -1387,7 +1377,7 @@ export default function SakuNotaLandingPage() {
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: KOD-7890"
+                  placeholder="KOD-XXXX"
                   value={searchAccessCode}
                   onChange={(e) => setSearchAccessCode(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-accent outline-none font-mono uppercase"

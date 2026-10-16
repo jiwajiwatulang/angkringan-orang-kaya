@@ -13,7 +13,7 @@ export interface DbCustomerOrder {
   paymentMethod: string;
   bankAccount: string;
   transferProofName?: string;
-  status: "menunggu_verifikasi" | "lunas_lisensi_terbit" | "batal";
+  status: "menunggu_verifikasi" | "lunas_lisensi_terbit" | "batal" | "arsip_uji" | "gagal" | "kedaluwarsa" | "dikembalikan";
   licenseKey?: string;
   boundDeviceId?: string;
   createdAt: string;
@@ -31,6 +31,10 @@ export interface DbLicense {
   activatedAt?: string;
   lastConnectedAt?: string;
   signature: string;
+  appVersion?: string;
+  activeDays?: number;
+  licenseType?: "berbayar" | "tester" | "hadiah";
+  revoked?: number;
 }
 
 // Official Cloudflare D1 TypeScript Interfaces
@@ -179,7 +183,11 @@ export async function initD1Tables(db: D1Database): Promise<void> {
       issuedAt TEXT NOT NULL,
       activatedAt TEXT,
       lastConnectedAt TEXT,
-      signature TEXT NOT NULL
+      signature TEXT NOT NULL,
+      appVersion TEXT DEFAULT 'v2.6.0',
+      activeDays INTEGER DEFAULT 1,
+      licenseType TEXT DEFAULT 'berbayar',
+      revoked INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS OwnerSessions (
@@ -211,6 +219,24 @@ export async function initD1Tables(db: D1Database): Promise<void> {
       revoked INTEGER NOT NULL DEFAULT 0
     );
   `);
+
+  // Safe migration for columns added to existing tables
+  const columnMigrations = [
+    "ALTER TABLE Licenses ADD COLUMN appVersion TEXT DEFAULT 'v2.6.0'",
+    "ALTER TABLE Licenses ADD COLUMN activeDays INTEGER DEFAULT 1",
+    "ALTER TABLE Licenses ADD COLUMN licenseType TEXT DEFAULT 'berbayar'",
+    "ALTER TABLE Licenses ADD COLUMN revoked INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE Licenses ADD COLUMN lastConnectedAt TEXT",
+    "ALTER TABLE CustomerOrders ADD COLUMN lastSeenAt TEXT",
+  ];
+
+  for (const query of columnMigrations) {
+    try {
+      await db.exec(query);
+    } catch {
+      // Column already exists, safe to ignore
+    }
+  }
 }
 
 // D1 Order Operations
@@ -268,13 +294,40 @@ export async function updateOrderStatusAndLicenseD1(
   return await getOrderByIdD1(db, orderId);
 }
 
+export async function cancelOrderD1(db: D1Database, orderId: string): Promise<boolean> {
+  await db.prepare(`UPDATE CustomerOrders SET status = 'batal' WHERE orderId = ?`).bind(orderId).run();
+  return true;
+}
+
+export async function archiveOrderD1(db: D1Database, orderId: string): Promise<boolean> {
+  await db.prepare(`UPDATE CustomerOrders SET status = 'arsip_uji' WHERE orderId = ?`).bind(orderId).run();
+  return true;
+}
+
+export async function deleteTestOrderD1(
+  db: D1Database,
+  orderId: string
+): Promise<{ success: boolean; error?: string }> {
+  const order = await getOrderByIdD1(db, orderId);
+  if (!order) return { success: false, error: "Pesanan tidak ditemukan." };
+  if (order.status === "lunas_lisensi_terbit") {
+    return {
+      success: false,
+      error: "Perlindungan Audit Finansial: Transaksi berbayar yang sah (Lunas) tidak dapat dihapus. Anda hanya dapat mencabut lisensi atau melakukan pengembalian dana (refund).",
+    };
+  }
+  await db.prepare(`DELETE FROM CustomerOrders WHERE orderId = ?`).bind(orderId).run();
+  return { success: true };
+}
+
 // D1 License Operations
 export async function insertLicenseD1(db: D1Database, license: DbLicense): Promise<DbLicense> {
   await db.prepare(`
     INSERT OR REPLACE INTO Licenses (
       licenseKey, orderId, businessName, boundDeviceId, deviceName,
-      issuedAt, activatedAt, lastConnectedAt, signature
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      issuedAt, activatedAt, lastConnectedAt, signature,
+      appVersion, activeDays, licenseType, revoked
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     license.licenseKey,
     license.orderId,
@@ -284,14 +337,44 @@ export async function insertLicenseD1(db: D1Database, license: DbLicense): Promi
     license.issuedAt,
     license.activatedAt || null,
     license.lastConnectedAt || null,
-    license.signature
+    license.signature,
+    license.appVersion || "v2.6.0",
+    license.activeDays || 1,
+    license.licenseType || "berbayar",
+    license.revoked || 0
   ).run();
 
   return license;
 }
 
+export async function getAllLicensesD1(db: D1Database): Promise<DbLicense[]> {
+  const res = await db.prepare(`SELECT * FROM Licenses ORDER BY rowid DESC`).all<DbLicense>();
+  return res.results || [];
+}
+
 export async function getLicenseD1(db: D1Database, licenseKey: string): Promise<DbLicense | null> {
   return await db.prepare(`SELECT * FROM Licenses WHERE licenseKey = ?`).bind(licenseKey).first<DbLicense>();
+}
+
+export async function unbindLicenseDeviceD1(db: D1Database, licenseKey: string): Promise<boolean> {
+  await db.prepare(`
+    UPDATE Licenses 
+    SET boundDeviceId = NULL, deviceName = NULL 
+    WHERE licenseKey = ?
+  `).bind(licenseKey).run();
+
+  await db.prepare(`
+    UPDATE CustomerOrders
+    SET boundDeviceId = NULL
+    WHERE licenseKey = ?
+  `).bind(licenseKey).run();
+
+  return true;
+}
+
+export async function revokeLicenseD1(db: D1Database, licenseKey: string): Promise<boolean> {
+  await db.prepare(`UPDATE Licenses SET revoked = 1 WHERE licenseKey = ?`).bind(licenseKey).run();
+  return true;
 }
 
 export async function bindLicenseToDeviceD1(
@@ -378,20 +461,25 @@ export async function resetAuthAttemptsD1(db: D1Database, ip: string): Promise<v
 // D1 Genuine Real Metrics
 export async function getMetricsD1(db: D1Database): Promise<{
   totalPembeli: number;
+  pembayaranBerhasil: number;
   lisensiAktif: number;
   penggunaAktif: number;
   menungguVerifikasi: number;
+  menungguPembayaran: number;
 }> {
-  const qBuyers = await db.prepare(`SELECT COUNT(*) as count FROM CustomerOrders`).first<any>();
-  const qLicenses = await db.prepare(`SELECT COUNT(*) as count FROM Licenses WHERE boundDeviceId IS NOT NULL OR licenseKey IS NOT NULL`).first<any>();
+  const qBuyers = await db.prepare(`SELECT COUNT(*) as count FROM CustomerOrders WHERE status != 'batal' AND status != 'arsip_uji'`).first<any>();
+  const qPaid = await db.prepare(`SELECT COUNT(*) as count FROM CustomerOrders WHERE status = 'lunas_lisensi_terbit'`).first<any>();
+  const qLicenses = await db.prepare(`SELECT COUNT(*) as count FROM Licenses WHERE revoked = 0 OR revoked IS NULL`).first<any>();
   const qActiveDevices = await db.prepare(`SELECT COUNT(DISTINCT boundDeviceId) as count FROM Licenses WHERE boundDeviceId IS NOT NULL`).first<any>();
   const qPending = await db.prepare(`SELECT COUNT(*) as count FROM CustomerOrders WHERE status = 'menunggu_verifikasi'`).first<any>();
 
   return {
     totalPembeli: qBuyers?.count || 0,
+    pembayaranBerhasil: qPaid?.count || 0,
     lisensiAktif: qLicenses?.count || 0,
     penggunaAktif: qActiveDevices?.count || 0,
     menungguVerifikasi: qPending?.count || 0,
+    menungguPembayaran: qPending?.count || 0,
   };
 }
 
