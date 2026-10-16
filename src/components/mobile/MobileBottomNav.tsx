@@ -8,14 +8,16 @@ interface MobileBottomNavProps {
   currentTab: MobileTab;
   onTabChange: (tab: MobileTab) => void;
   occupiedTablesCount?: number;
+  enableTables?: boolean;
 }
 
 export default function MobileBottomNav({
   currentTab,
   onTabChange,
   occupiedTablesCount = 0,
+  enableTables = true,
 }: MobileBottomNavProps) {
-  const tabs = [
+  const allTabs = [
     { id: "home" as MobileTab, label: "Home", icon: "🏠" },
     { id: "menu" as MobileTab, label: "Menu", icon: "🍽️" },
     { id: "meja" as MobileTab, label: "Meja", icon: "🪑", badge: occupiedTablesCount > 0 ? occupiedTablesCount : undefined },
@@ -23,8 +25,10 @@ export default function MobileBottomNav({
     { id: "lainnya" as MobileTab, label: "Lainnya", icon: "⚙️" },
   ];
 
+  const tabs = enableTables ? allTabs : allTabs.filter(t => t.id !== "meja");
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-md border-t border-line z-30 px-2 py-1.5 grid grid-cols-5 items-center select-none">
+    <nav className={`fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-md border-t border-line z-30 px-2 py-1.5 grid ${enableTables ? 'grid-cols-5' : 'grid-cols-4'} items-center select-none`}>
       {tabs.map((tab) => {
         const isActive = currentTab === tab.id;
         return (

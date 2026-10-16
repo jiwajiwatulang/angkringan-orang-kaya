@@ -1,7 +1,7 @@
 // SakuNota POS — Service Worker v2.6.0
 // Resilient Offline-First Precache, CSS Fallback, & Multi-Route Isolation
 
-const CACHE_NAME = 'sakunota-pos-v2.6.0-1792132325510';
+const CACHE_NAME = 'sakunota-pos-v2.6.0-1792134799102';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -86,6 +86,9 @@ self.addEventListener('fetch', (event) => {
 
   // Abaikan scheme selain http/https
   if (!url.protocol.startsWith('http')) return;
+
+  // Abaikan endpoint API (selalu ambil dari server/network, jangan dicache oleh Service Worker)
+  if (url.pathname.startsWith('/api/')) return;
 
   // 1. Static Assets (CSS, JS Chunks, Fonts, Images)
   if (

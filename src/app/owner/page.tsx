@@ -10,7 +10,12 @@ import {
   fetchOwnerOrdersServer, 
   verifyOwnerOrderServer,
   fetchOwnerMetricsServer,
-  logoutOwnerServer
+  logoutOwnerServer,
+  TesterLicense,
+  fetchTesterLicensesServer,
+  createTesterLicenseServer,
+  unbindTesterLicenseServer,
+  revokeTesterLicenseServer
 } from "@/lib/ordersClient";
 
 export default function SakuNotaOwnerDashboardPage() {
@@ -23,8 +28,9 @@ export default function SakuNotaOwnerDashboardPage() {
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
 
   // Dashboard Tabs & Data State
-  const [activeTab, setActiveTab] = useState<"orders" | "customers" | "developer_mode" | "cloudflare_d1">("orders");
+  const [activeTab, setActiveTab] = useState<"orders" | "customers" | "tester" | "developer_mode" | "cloudflare_d1">("orders");
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
+  const [testerLicenses, setTesterLicenses] = useState<TesterLicense[]>([]);
   const [metrics, setMetrics] = useState<OwnerMetrics>({
     totalPembeli: 0,
     lisensiAktif: 0,
@@ -34,6 +40,13 @@ export default function SakuNotaOwnerDashboardPage() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [toastMsg, setToastMsg] = useState("");
+
+  // Tester License Form State
+  const [testerRecipient, setTesterRecipient] = useState("");
+  const [testerWhatsapp, setTesterWhatsapp] = useState("");
+  const [testerDuration, setTesterDuration] = useState<number>(7);
+  const [testerNotes, setTesterNotes] = useState("");
+  const [isCreatingTester, setIsCreatingTester] = useState(false);
 
   // Load orders helper with silent polling support
   const loadOrders = async (token: string, silent = false) => {
@@ -131,6 +144,16 @@ export default function SakuNotaOwnerDashboardPage() {
     }
   };
 
+  // Load tester licenses
+  const loadTesterLicenses = async (token: string) => {
+    try {
+      const res = await fetchTesterLicensesServer(token);
+      if (res.success && res.testerLicenses) {
+        setTesterLicenses(res.testerLicenses);
+      }
+    } catch (_) {}
+  };
+
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(""), 3500);
@@ -146,9 +169,88 @@ export default function SakuNotaOwnerDashboardPage() {
     const res = await verifyOwnerOrderServer(ownerToken, orderId);
     if (res.success && res.licenseKey) {
       showToast(`✅ Pembayaran pesanan ${orderId} diverifikasi & Lisensi ${res.licenseKey} diterbitkan!`);
-      await loadOrders(ownerToken);
+      // Optimistically update orders in UI immediately
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.orderId === orderId
+            ? {
+                ...o,
+                status: "lunas_lisensi_terbit",
+                licenseKey: res.licenseKey,
+                verifiedAt: new Date().toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+              }
+            : o
+        )
+      );
+      await loadOrders(ownerToken, true);
     } else {
       showToast(`❌ ${res.error || "Gagal menerbitkan lisensi."}`);
+    }
+  };
+
+  // Owner action: Create Tester License
+  const handleCreateTesterLicense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ownerToken) return;
+    if (!testerRecipient.trim() || !testerWhatsapp.trim()) {
+      showToast("❌ Nama penerima dan nomor WhatsApp wajib diisi.");
+      return;
+    }
+
+    setIsCreatingTester(true);
+    const res = await createTesterLicenseServer(ownerToken, {
+      recipientName: testerRecipient,
+      whatsapp: testerWhatsapp,
+      durationDays: testerDuration,
+      notes: testerNotes,
+    });
+
+    if (res.success && res.testerLicense) {
+      showToast(`✅ Lisensi tester ${res.testerLicense.licenseKey} berhasil diterbitkan!`);
+      const newLic = res.testerLicense;
+      setTesterLicenses((prev) => [newLic, ...prev.filter((t) => t.licenseKey !== newLic.licenseKey)]);
+      setTesterRecipient("");
+      setTesterWhatsapp("");
+      setTesterNotes("");
+      await loadTesterLicenses(ownerToken);
+    } else {
+      showToast(`❌ ${res.error || "Gagal menerbitkan lisensi tester."}`);
+    }
+    setIsCreatingTester(false);
+  };
+
+  // Owner action: Unbind tester device
+  const handleUnbindTester = async (licenseKey: string) => {
+    if (!ownerToken) return;
+    const res = await unbindTesterLicenseServer(ownerToken, licenseKey);
+    if (res.success) {
+      showToast(`✅ Perangkat pada lisensi ${licenseKey} berhasil dilepas.`);
+      setTesterLicenses((prev) =>
+        prev.map((t) => (t.licenseKey === licenseKey ? { ...t, boundDeviceId: null, deviceName: null } : t))
+      );
+      await loadTesterLicenses(ownerToken);
+    } else {
+      showToast(`❌ ${res.error || "Gagal melepas perangkat."}`);
+    }
+  };
+
+  // Owner action: Revoke tester license
+  const handleRevokeTester = async (licenseKey: string) => {
+    if (!ownerToken) return;
+    const res = await revokeTesterLicenseServer(ownerToken, licenseKey);
+    if (res.success) {
+      showToast(`✅ Lisensi ${licenseKey} berhasil dicabut.`);
+      setTesterLicenses((prev) =>
+        prev.map((t) => (t.licenseKey === licenseKey ? { ...t, revoked: 1 } : t))
+      );
+      await loadTesterLicenses(ownerToken);
+    } else {
+      showToast(`❌ ${res.error || "Gagal mencabut lisensi."}`);
     }
   };
 
@@ -345,6 +447,20 @@ export default function SakuNotaOwnerDashboardPage() {
             }`}
           >
             👥 Daftar Pelanggan & Lisensi
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("tester");
+              if (ownerToken) loadTesterLicenses(ownerToken);
+            }}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeTab === "tester"
+                ? "bg-purple-600 text-white shadow-sm"
+                : "bg-surface text-muted hover:text-fg border border-line"
+            }`}
+          >
+            🧪 Lisensi Tester ({testerLicenses.filter((t) => t.revoked === 0).length})
           </button>
           <button
             type="button"
@@ -614,6 +730,186 @@ CREATE TABLE OwnerSessions (
   revoked INTEGER NOT NULL DEFAULT 0
 );`}
             </pre>
+          </div>
+        )}
+
+        {/* TAB 5: LISENSI TESTER (GRATIS UNTUK PENGUJIAN) */}
+        {activeTab === "tester" && (
+          <div className="bg-surface rounded-3xl border border-line shadow-sm p-5 sm:p-6 space-y-6">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-base text-fg">Penerbitan Lisensi Tester Gratis</h3>
+                <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px] font-black border border-blue-500/30">
+                  Uji Coba & Review
+                </span>
+              </div>
+              <p className="text-xs text-muted mt-1">
+                Terbitkan lisensi uji coba untuk rekan warung atau penguji tanpa mencatat omzet penjualan fiktif. Lisensi tester dapat dibatasi masa berlaku dan dicabut kapan saja.
+              </p>
+            </div>
+
+            {/* Form Buat Lisensi Tester */}
+            <form onSubmit={handleCreateTesterLicense} className="p-4 sm:p-5 rounded-2xl bg-card border border-line space-y-4">
+              <h4 className="font-black text-xs text-fg uppercase tracking-wider">Form Terbitkan Lisensi Baru</h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-fg mb-1">Nama Penerima / Warung *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Mas Joko (Warung Kopi Sleman)"
+                    value={testerRecipient}
+                    onChange={(e) => setTesterRecipient(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs text-fg focus:border-purple-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-fg mb-1">Nomor WhatsApp *</label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="Contoh: 081234567891"
+                    value={testerWhatsapp}
+                    onChange={(e) => setTesterWhatsapp(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs text-fg focus:border-purple-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-fg mb-1">Masa Berlaku *</label>
+                  <select
+                    value={testerDuration}
+                    onChange={(e) => setTesterDuration(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs text-fg focus:border-purple-500 outline-none"
+                  >
+                    <option value={7}>7 Hari (Uji Coba Cepat)</option>
+                    <option value={14}>14 Hari (Dua Minggu)</option>
+                    <option value={30}>30 Hari (Satu Bulan Penuh)</option>
+                    <option value={0}>Tanpa Batas Kedaluwarsa (Permanen Tester)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-fg mb-1">Catatan Penggunaan</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Pengujian printer Bluetooth Panda 58mm"
+                    value={testerNotes}
+                    onChange={(e) => setTesterNotes(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs text-fg focus:border-purple-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-1 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isCreatingTester}
+                  className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-black rounded-xl text-xs shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <span>{isCreatingTester ? "Menerbitkan..." : "Terbitkan Lisensi Tester (Gratis) →"}</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Tabel Daftar Lisensi Tester */}
+            <div className="space-y-3">
+              <h4 className="font-black text-xs text-fg uppercase tracking-wider">
+                Daftar Lisensi Tester Terbit ({testerLicenses.length})
+              </h4>
+
+              {testerLicenses.length === 0 ? (
+                <div className="py-10 text-center space-y-2 bg-card/40 rounded-2xl border border-line/60">
+                  <span className="text-2xl">🧪</span>
+                  <p className="text-xs text-muted">Belum ada lisensi tester yang diterbitkan.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-line/60">
+                  {testerLicenses.map((t) => {
+                    const isExpired = t.expiresAt && new Date(t.expiresAt).getTime() < Date.now();
+                    const isRevoked = t.revoked === 1;
+
+                    return (
+                      <div key={t.licenseKey} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-black text-xs px-2 py-0.5 rounded-md bg-card border border-line text-purple-600 dark:text-purple-400">
+                              {t.licenseKey}
+                            </span>
+                            <strong className="text-sm font-black text-fg">{t.recipientName}</strong>
+                            {isRevoked ? (
+                              <span className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 text-[10px] font-black border border-rose-500/30">
+                                Dicabut
+                              </span>
+                            ) : isExpired ? (
+                              <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-black border border-amber-500/30">
+                                Kedaluwarsa
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-black border border-emerald-500/30">
+                                Aktif ({t.durationDays === 0 ? "Permanen" : `${t.durationDays} Hari`})
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="text-xs text-muted flex flex-wrap gap-x-4 gap-y-1 pt-0.5">
+                            <span>WA: <a href={`https://wa.me/62${t.whatsapp.replace(/^0/, "")}`} target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">💬 {t.whatsapp}</a></span>
+                            {t.expiresAt && <span>Kedaluwarsa: {new Date(t.expiresAt).toLocaleDateString("id-ID")}</span>}
+                            <span>Terbit: {new Date(t.createdAt).toLocaleDateString("id-ID")}</span>
+                            {t.notes && <span>Catatan: <em>{t.notes}</em></span>}
+                          </div>
+
+                          <div className="text-[11px] text-muted pt-0.5">
+                            Status Perangkat: {t.boundDeviceId ? (
+                              <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                Terikat pada {t.deviceName || "Perangkat Tester"} ({t.boundDeviceId})
+                              </span>
+                            ) : (
+                              <span className="text-muted font-medium">Belum digunakan pada perangkat</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(t.licenseKey);
+                              showToast(`📋 Lisensi ${t.licenseKey} berhasil disalin!`);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-card hover:bg-line text-xs font-bold text-fg border border-line transition-colors"
+                          >
+                            Salin Lisensi
+                          </button>
+
+                          {t.boundDeviceId && !isRevoked && (
+                            <button
+                              type="button"
+                              onClick={() => handleUnbindTester(t.licenseKey)}
+                              className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 text-xs font-bold border border-amber-500/30 transition-colors"
+                            >
+                              Lepas Perangkat
+                            </button>
+                          )}
+
+                          {!isRevoked && (
+                            <button
+                              type="button"
+                              onClick={() => handleRevokeTester(t.licenseKey)}
+                              className="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 text-xs font-bold border border-rose-500/30 transition-colors"
+                            >
+                              Cabut
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </main>

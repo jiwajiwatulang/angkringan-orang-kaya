@@ -353,3 +353,116 @@ export async function activateLicenseServer(
     return { success: false, error: "Aktivasi awal membutuhkan koneksi internet untuk memeriksa keaslian lisensi." };
   }
 }
+
+// Tester Licenses API Client
+export interface TesterLicense {
+  id?: number;
+  licenseKey: string;
+  recipientName: string;
+  whatsapp: string;
+  durationDays: number;
+  expiresAt: string | null;
+  notes: string | null;
+  boundDeviceId: string | null;
+  deviceName: string | null;
+  createdAt: string;
+  activatedAt: string | null;
+  revoked: number;
+}
+
+export async function fetchTesterLicensesServer(token: string): Promise<{
+  success: boolean;
+  testerLicenses?: TesterLicense[];
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/owner/tester-license", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { success: true, testerLicenses: data.testerLicenses || [] };
+    }
+    const err = await res.json().catch(() => ({}));
+    return { success: false, error: err.error || "Gagal memuat lisensi tester." };
+  } catch {
+    return { success: false, error: "Gagal terhubung ke server untuk memuat lisensi tester." };
+  }
+}
+
+export async function createTesterLicenseServer(
+  token: string,
+  data: {
+    recipientName: string;
+    whatsapp: string;
+    durationDays: number;
+    notes?: string;
+  }
+): Promise<{ success: boolean; testerLicense?: TesterLicense; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/tester-license", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return { success: true, testerLicense: json.testerLicense };
+    }
+    const err = await res.json().catch(() => ({}));
+    return { success: false, error: err.error || "Gagal membuat lisensi tester." };
+  } catch {
+    return { success: false, error: "Gagal terhubung ke server." };
+  }
+}
+
+export async function unbindTesterLicenseServer(
+  token: string,
+  licenseKey: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/tester-license", {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "unbind", licenseKey }),
+    });
+    if (res.ok) {
+      return { success: true };
+    }
+    const err = await res.json().catch(() => ({}));
+    return { success: false, error: err.error || "Gagal melepas perangkat." };
+  } catch {
+    return { success: false, error: "Gagal menghubungi server." };
+  }
+}
+
+export async function revokeTesterLicenseServer(
+  token: string,
+  licenseKey: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/tester-license", {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "revoke", licenseKey }),
+    });
+    if (res.ok) {
+      return { success: true };
+    }
+    const err = await res.json().catch(() => ({}));
+    return { success: false, error: err.error || "Gagal mencabut lisensi." };
+  } catch {
+    return { success: false, error: "Gagal menghubungi server." };
+  }
+}
+

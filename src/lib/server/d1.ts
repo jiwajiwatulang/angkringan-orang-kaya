@@ -195,6 +195,21 @@ export async function initD1Tables(db: D1Database): Promise<void> {
       failedAttempts INTEGER NOT NULL DEFAULT 0,
       lockedUntil INTEGER NOT NULL DEFAULT 0
     );
+
+    CREATE TABLE IF NOT EXISTS TesterLicenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      licenseKey TEXT UNIQUE NOT NULL,
+      recipientName TEXT NOT NULL,
+      whatsapp TEXT NOT NULL,
+      durationDays INTEGER NOT NULL,
+      expiresAt TEXT,
+      notes TEXT,
+      boundDeviceId TEXT,
+      deviceName TEXT,
+      createdAt TEXT NOT NULL,
+      activatedAt TEXT,
+      revoked INTEGER NOT NULL DEFAULT 0
+    );
   `);
 }
 
@@ -387,5 +402,114 @@ export async function resetDatabaseCleanD1(db: D1Database): Promise<void> {
     DELETE FROM Licenses;
     DELETE FROM OwnerSessions;
     DELETE FROM OwnerAuthAttempts;
+    DELETE FROM TesterLicenses;
   `);
 }
+
+// Tester License Operations in D1
+export interface DbTesterLicense {
+  id?: number;
+  licenseKey: string;
+  recipientName: string;
+  whatsapp: string;
+  durationDays: number;
+  expiresAt: string | null;
+  notes: string | null;
+  boundDeviceId: string | null;
+  deviceName: string | null;
+  createdAt: string;
+  activatedAt: string | null;
+  revoked: number;
+}
+
+export async function insertTesterLicenseD1(
+  db: D1Database,
+  data: {
+    recipientName: string;
+    whatsapp: string;
+    durationDays: number;
+    notes?: string;
+  }
+): Promise<DbTesterLicense> {
+  const randHex1 = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const randHex2 = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const licenseKey = `SN-TEST-${randHex1}-${randHex2}`;
+  const now = new Date();
+  const createdAt = now.toISOString();
+
+  let expiresAt: string | null = null;
+  if (data.durationDays > 0) {
+    const expDate = new Date(now.getTime() + data.durationDays * 24 * 60 * 60 * 1000);
+    expiresAt = expDate.toISOString();
+  }
+
+  const record: DbTesterLicense = {
+    licenseKey,
+    recipientName: data.recipientName.trim(),
+    whatsapp: data.whatsapp.trim(),
+    durationDays: data.durationDays,
+    expiresAt,
+    notes: data.notes?.trim() || null,
+    boundDeviceId: null,
+    deviceName: null,
+    createdAt,
+    activatedAt: null,
+    revoked: 0,
+  };
+
+  await db.prepare(`
+    INSERT INTO TesterLicenses (
+      licenseKey, recipientName, whatsapp, durationDays, expiresAt,
+      notes, boundDeviceId, deviceName, createdAt, activatedAt, revoked
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    record.licenseKey,
+    record.recipientName,
+    record.whatsapp,
+    record.durationDays,
+    record.expiresAt,
+    record.notes,
+    record.boundDeviceId,
+    record.deviceName,
+    record.createdAt,
+    record.activatedAt,
+    record.revoked
+  ).run();
+
+  return record;
+}
+
+export async function getAllTesterLicensesD1(db: D1Database): Promise<DbTesterLicense[]> {
+  const res = await db.prepare(`SELECT * FROM TesterLicenses ORDER BY id DESC`).all<DbTesterLicense>();
+  return res.results || [];
+}
+
+export async function getTesterLicenseD1(db: D1Database, licenseKey: string): Promise<DbTesterLicense | null> {
+  return await db.prepare(`SELECT * FROM TesterLicenses WHERE licenseKey = ?`).bind(licenseKey).first<DbTesterLicense>();
+}
+
+export async function revokeTesterLicenseD1(db: D1Database, licenseKey: string): Promise<boolean> {
+  await db.prepare(`UPDATE TesterLicenses SET revoked = 1 WHERE licenseKey = ?`).bind(licenseKey).run();
+  return true;
+}
+
+export async function unbindTesterLicenseDeviceD1(db: D1Database, licenseKey: string): Promise<boolean> {
+  await db.prepare(`UPDATE TesterLicenses SET boundDeviceId = NULL, deviceName = NULL WHERE licenseKey = ?`).bind(licenseKey).run();
+  return true;
+}
+
+export async function bindTesterLicenseToDeviceD1(
+  db: D1Database,
+  licenseKey: string,
+  deviceId: string,
+  deviceName: string,
+  activatedAt: string
+): Promise<boolean> {
+  await db.prepare(`
+    UPDATE TesterLicenses 
+    SET boundDeviceId = ?, deviceName = ?, activatedAt = ?
+    WHERE licenseKey = ?
+  `).bind(deviceId, deviceName, activatedAt, licenseKey).run();
+  return true;
+}
+

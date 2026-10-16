@@ -20,10 +20,18 @@ import {
   resetDatabaseCleanD1,
   DbCustomerOrder,
   DbLicense,
+  DbTesterLicense,
+  insertTesterLicenseD1,
+  getAllTesterLicensesD1,
+  getTesterLicenseD1,
+  revokeTesterLicenseD1,
+  unbindTesterLicenseDeviceD1,
+  bindTesterLicenseToDeviceD1,
 } from "./d1";
 
 export type ServerCustomerOrder = DbCustomerOrder;
 export type LicenseRecord = DbLicense;
+export type ServerTesterLicense = DbTesterLicense;
 
 export { getD1, initD1Tables, resetDatabaseCleanD1 };
 
@@ -360,41 +368,173 @@ export async function activateLicenseOnDevice(
   const key = (data.licenseKey || "").trim().toUpperCase();
   const devId = (data.deviceId || "").trim();
 
+  // 1. Check Commercial License
   const lic = await getLicenseD1(db, key);
-  if (!lic) {
+  if (lic) {
+    // 1-Device Rule Enforcement
+    if (lic.boundDeviceId && lic.boundDeviceId !== devId) {
+      return {
+        success: false,
+        error: `Lisensi ini sudah aktif pada perangkat lain (${
+          lic.deviceName || "Perangkat Kasir Utama"
+        }). SakuNota memberlakukan aturan ketat 1 lisensi untuk 1 perangkat. Hubungi dukungan jika ingin memindahkan perangkat.`,
+        status: 409, // Conflict / Device binding rejection
+      };
+    }
+
+    // Bind device in D1
+    const now = new Date().toISOString();
+    const deviceName = data.deviceName || "Perangkat Kasir";
+    const activatedAt = lic.activatedAt || now;
+
+    await bindLicenseToDeviceD1(db, key, devId, deviceName, activatedAt);
+    const token = signDeviceActivation(key, devId);
+
     return {
-      success: false,
-      error: "Kode lisensi tidak valid atau belum terdaftar di sistem SakuNota.",
-      status: 404,
+      success: true,
+      activationToken: token,
+      activatedAt,
+      status: 200,
     };
   }
 
-  // 1-Device Rule Enforcement
-  if (lic.boundDeviceId && lic.boundDeviceId !== devId) {
+  // 2. Check Tester License
+  const testerLic = await getTesterLicenseD1(db, key);
+  if (testerLic) {
+    if (testerLic.revoked === 1) {
+      return {
+        success: false,
+        error: "Lisensi tester ini telah dicabut oleh Owner SakuNota.",
+        status: 403,
+      };
+    }
+
+    if (testerLic.expiresAt && new Date(testerLic.expiresAt).getTime() < Date.now()) {
+      return {
+        success: false,
+        error: "Masa berlaku lisensi tester ini telah berakhir.",
+        status: 403,
+      };
+    }
+
+    if (testerLic.boundDeviceId && testerLic.boundDeviceId !== devId) {
+      return {
+        success: false,
+        error: `Lisensi tester ini sudah aktif pada perangkat lain (${
+          testerLic.deviceName || "Perangkat Tester"
+        }). Hubungi Owner untuk melepas perangkat.`,
+        status: 409,
+      };
+    }
+
+    const now = new Date().toISOString();
+    const deviceName = data.deviceName || "Perangkat Kasir Tester";
+    const activatedAt = testerLic.activatedAt || now;
+
+    await bindTesterLicenseToDeviceD1(db, key, devId, deviceName, activatedAt);
+    const token = signDeviceActivation(key, devId);
+
     return {
-      success: false,
-      error: `Lisensi ini sudah aktif pada perangkat lain (${
-        lic.deviceName || "Perangkat Kasir Utama"
-      }). SakuNota memberlakukan aturan ketat 1 lisensi untuk 1 perangkat. Hubungi dukungan jika ingin memindahkan perangkat.`,
-      status: 409, // Conflict / Device binding rejection
+      success: true,
+      activationToken: token,
+      activatedAt,
+      status: 200,
     };
   }
-
-  // Bind device in D1
-  const now = new Date().toISOString();
-  const deviceName = data.deviceName || "Perangkat Kasir";
-  const activatedAt = lic.activatedAt || now;
-
-  await bindLicenseToDeviceD1(db, key, devId, deviceName, activatedAt);
-
-  const token = signDeviceActivation(key, devId);
 
   return {
-    success: true,
-    activationToken: token,
-    activatedAt,
-    status: 200,
+    success: false,
+    error: "Kode lisensi tidak valid atau belum terdaftar di sistem SakuNota.",
+    status: 404,
   };
+}
+
+export async function createTesterLicense(
+  dbOrToken: D1Database | string | null,
+  tokenOrData: string | { recipientName: string; whatsapp: string; durationDays: number; notes?: string },
+  maybeData?: { recipientName: string; whatsapp: string; durationDays: number; notes?: string }
+): Promise<{
+  success: boolean;
+  testerLicense?: ServerTesterLicense;
+  error?: string;
+}> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrData as string) : (dbOrToken as string);
+  const data = (isD1(dbOrToken) ? maybeData : (tokenOrData as any)) || {};
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) {
+    return { success: false, error: auth.error || "Akses ditolak. Sesi Owner tidak sah." };
+  }
+
+  if (!data.recipientName || !data.whatsapp) {
+    return { success: false, error: "Nama penerima dan nomor WhatsApp wajib diisi." };
+  }
+
+  const created = await insertTesterLicenseD1(db, {
+    recipientName: data.recipientName,
+    whatsapp: data.whatsapp,
+    durationDays: Number(data.durationDays) || 0,
+    notes: data.notes,
+  });
+
+  return { success: true, testerLicense: created };
+}
+
+export async function listTesterLicenses(
+  dbOrToken?: D1Database | string | null,
+  maybeToken?: string | null
+): Promise<{
+  success: boolean;
+  testerLicenses?: ServerTesterLicense[];
+  error?: string;
+}> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? maybeToken : (dbOrToken as string);
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) {
+    return { success: false, error: auth.error || "Akses ditolak. Sesi Owner tidak sah." };
+  }
+
+  const list = await getAllTesterLicensesD1(db);
+  return { success: true, testerLicenses: list };
+}
+
+export async function revokeTesterLicense(
+  dbOrToken: D1Database | string | null,
+  tokenOrKey: string | null,
+  maybeKey?: string
+): Promise<{ success: boolean; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrKey as string) : (dbOrToken as string);
+  const licenseKey = (isD1(dbOrToken) ? maybeKey : tokenOrKey) || "";
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) {
+    return { success: false, error: auth.error || "Akses ditolak. Sesi Owner tidak sah." };
+  }
+
+  await revokeTesterLicenseD1(db, licenseKey);
+  return { success: true };
+}
+
+export async function unbindTesterLicense(
+  dbOrToken: D1Database | string | null,
+  tokenOrKey: string | null,
+  maybeKey?: string
+): Promise<{ success: boolean; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrKey as string) : (dbOrToken as string);
+  const licenseKey = (isD1(dbOrToken) ? maybeKey : tokenOrKey) || "";
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) {
+    return { success: false, error: auth.error || "Akses ditolak. Sesi Owner tidak sah." };
+  }
+
+  await unbindTesterLicenseDeviceD1(db, licenseKey);
+  return { success: true };
 }
 
 export async function getOwnerMetrics(

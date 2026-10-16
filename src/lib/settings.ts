@@ -20,8 +20,41 @@ export interface StoreSettings {
   servicePercent: number; // Persentase Biaya Layanan
   enableService: boolean;
   onboardingCompleted?: boolean; // Status penyelesaian onboarding toko baru
-  businessType?: string; // Jenis usaha: 'angkringan' | 'kafe' | 'warung' | 'restoran' | 'retail'
+  businessType?: string; // Jenis usaha: 'warung' | 'restoran' | 'kafe' | 'retail' | 'angkringan'
   storeLogo?: string; // Base64 data URL untuk logo usaha / struk
+}
+
+export const BUSINESS_TYPES = [
+  {
+    id: "warung",
+    title: "Warung & UMKM",
+    description: "Jualan langsung cepat tanpa harus mengatur meja.",
+    defaultServiceMode: "quick" as const,
+  },
+  {
+    id: "restoran",
+    title: "Rumah Makan & Restoran",
+    description: "Pesanan makan di tempat dan pengaturan meja.",
+    defaultServiceMode: "resto" as const,
+  },
+  {
+    id: "kafe",
+    title: "Kafe & Kedai Minuman",
+    description: "Ukuran minuman, pilihan tambahan, dan take-away.",
+    defaultServiceMode: "resto" as const,
+  },
+  {
+    id: "retail",
+    title: "Toko & Retail",
+    description: "Barang, harga, dan stok penjualan tanpa meja.",
+    defaultServiceMode: "quick" as const,
+  },
+] as const;
+
+export function isTableManagementEnabled(settings: StoreSettings): boolean {
+  if (settings.serviceMode === "quick") return false;
+  if (settings.businessType === "warung" || settings.businessType === "retail") return false;
+  return true;
 }
 
 export const DEFAULT_SETTINGS: StoreSettings = {
@@ -44,7 +77,7 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   servicePercent: 5,
   enableService: false,
   onboardingCompleted: true, // Default true agar existing instalasi tidak terganggu
-  businessType: "angkringan",
+  businessType: "restoran",
   storeLogo: "",
 };
 

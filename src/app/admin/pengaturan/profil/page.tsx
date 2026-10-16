@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "../../AdminContext";
-import { saveStoreSettingsAsync } from "@/lib/settings";
+import { saveStoreSettingsAsync, BUSINESS_TYPES } from "@/lib/settings";
 import { App } from "@capacitor/app";
 
 export default function PengaturanProfilPage() {
@@ -17,6 +17,7 @@ export default function PengaturanProfilPage() {
   const [receiptFooter, setReceiptFooter] = useState(storeSettings.receiptFooter || "Terima Kasih atas Kunjungan Anda\nSilakan Datang Kembali");
   const [paperWidth, setPaperWidth] = useState<'58mm' | '80mm'>(storeSettings.paperWidth || "58mm");
   const [storeLogo, setStoreLogo] = useState(storeSettings.storeLogo || "");
+  const [businessType, setBusinessType] = useState(storeSettings.businessType || "warung");
 
   const [unsavedConfirm, setUnsavedConfirm] = useState<{
     isOpen: boolean;
@@ -30,6 +31,7 @@ export default function PengaturanProfilPage() {
     setReceiptFooter(storeSettings.receiptFooter || "Terima Kasih atas Kunjungan Anda\nSilakan Datang Kembali");
     setPaperWidth(storeSettings.paperWidth || "58mm");
     setStoreLogo(storeSettings.storeLogo || "");
+    setBusinessType(storeSettings.businessType || "warung");
   }, [storeSettings]);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,7 +84,8 @@ export default function PengaturanProfilPage() {
       storePhone !== (storeSettings.storePhone || "") ||
       receiptFooter !== (storeSettings.receiptFooter || "Terima Kasih atas Kunjungan Anda\nSilakan Datang Kembali") ||
       paperWidth !== (storeSettings.paperWidth || "58mm") ||
-      storeLogo !== (storeSettings.storeLogo || "")
+      storeLogo !== (storeSettings.storeLogo || "") ||
+      businessType !== (storeSettings.businessType || "warung")
     );
   };
 
@@ -123,7 +126,7 @@ export default function PengaturanProfilPage() {
         removeListener.remove();
       }
     };
-  }, [storeName, storeAddress, storePhone, receiptFooter, paperWidth, storeLogo, unsavedConfirm, storeSettings, router]);
+  }, [storeName, storeAddress, storePhone, receiptFooter, paperWidth, storeLogo, businessType, unsavedConfirm, storeSettings, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,10 +139,12 @@ export default function PengaturanProfilPage() {
         receiptFooter: receiptFooter.trim(),
         paperWidth: paperWidth,
         storeLogo: storeLogo,
+        businessType: businessType,
+        serviceMode: (businessType === "restoran" || businessType === "kafe") ? ("resto" as const) : ("quick" as const),
       };
       await saveStoreSettingsAsync(updated);
       await refreshSettings();
-      showToast("Profil usaha & logo berhasil disimpan!", "success");
+      showToast("Profil usaha & alur kasir berhasil disimpan!", "success");
     } catch (err: any) {
       alert("Gagal menyimpan profil: " + err.message);
     }
@@ -211,6 +216,39 @@ export default function PengaturanProfilPage() {
                   </div>
                   <p className="text-[11px] text-muted">Format JPG, PNG, WebP. Maks 256x256 px.</p>
                 </div>
+              </div>
+            </div>
+
+            {/* Jenis Usaha & Alur Kasir */}
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                Jenis Usaha & Alur Kasir:
+              </label>
+              <p className="text-[11px] text-muted mb-2.5">
+                Pilih jenis usaha Anda. Toko & Warung langsung mencatat transaksi cepat tanpa mewajibkan pengaturan meja.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {BUSINESS_TYPES.map((bt) => {
+                  const isSelected = businessType === bt.id;
+                  return (
+                    <button
+                      key={bt.id}
+                      type="button"
+                      onClick={() => setBusinessType(bt.id)}
+                      className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between ${
+                        isSelected
+                          ? "bg-accent/15 border-accent text-fg shadow-sm"
+                          : "bg-card border-line text-muted hover:border-slate-500 hover:text-fg"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-extrabold text-xs text-fg">{bt.title}</span>
+                        {isSelected && <span className="text-xs text-accent-text font-black">✓ Dipilih</span>}
+                      </div>
+                      <span className="text-[11px] text-muted leading-tight">{bt.description}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

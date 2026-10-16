@@ -185,6 +185,20 @@ export default function MobileMoreScreen({
         </div>
 
         <Link
+          href="/panduan"
+          className="p-3.5 flex items-center justify-between hover:bg-surface/50 active:bg-surface transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-xl">📖</span>
+            <div>
+              <h4 className="text-xs font-bold text-fg">Buku Panduan SakuNota</h4>
+              <p className="text-[10px] text-muted">11 bab panduan lengkap cara pakai kasir, printer, dan laporan</p>
+            </div>
+          </div>
+          <span className="text-muted text-xs">→</span>
+        </Link>
+
+        <Link
           href="/admin/pengaturan/tentang"
           className="p-3.5 flex items-center justify-between hover:bg-surface/50 active:bg-surface transition-colors"
         >
@@ -192,7 +206,7 @@ export default function MobileMoreScreen({
             <span className="text-xl">ℹ️</span>
             <div>
               <h4 className="text-xs font-bold text-fg">Tentang SakuNota</h4>
-              <p className="text-[10px] text-muted">Rp65.000 promo lisensi, panduan, bantuan WhatsApp</p>
+              <p className="text-[10px] text-muted">Status lisensi, informasi aplikasi, dan bantuan WhatsApp</p>
             </div>
           </div>
           <span className="text-muted text-xs">→</span>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Printer } from '@capgo/capacitor-printer';
 import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
 import { App } from '@capacitor/app';
-import { getStoreSettings, loadStoreSettingsAsync, subscribeStoreSettings, StoreSettings } from '@/lib/settings';
+import { getStoreSettings, loadStoreSettingsAsync, subscribeStoreSettings, StoreSettings, isTableManagementEnabled } from '@/lib/settings';
 import { getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement, recordPayment, refundPartialPayment, getOrderPayments, exportAllData, clearTable } from '@/lib/api';
 import { 
   generateEscPosReceipt, 
@@ -2547,17 +2547,19 @@ export default function POSPage() {
 
         {/* Center: Switcher Meja / Menu */}
         <div className="flex bg-surface rounded-xl p-1 border border-line shadow-inner">
-          <button 
-            type="button"
-            onClick={() => setView('meja')} 
-            className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
-              view === 'meja' 
-                ? 'bg-accent text-white shadow-sm' 
-                : 'text-muted hover:text-fg'
-            }`}
-          >
-            🍽️ Meja
-          </button>
+          {isTableManagementEnabled(storeSettings) && (
+            <button 
+              type="button"
+              onClick={() => setView('meja')} 
+              className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
+                view === 'meja' 
+                  ? 'bg-accent text-white shadow-sm' 
+                  : 'text-muted hover:text-fg'
+              }`}
+            >
+              🍽️ Meja
+            </button>
+          )}
           <button 
             type="button"
             onClick={() => setView('menu')} 
@@ -2567,7 +2569,7 @@ export default function POSPage() {
                 : 'text-muted hover:text-fg'
             }`}
           >
-            ☕ Menu
+            ☕ {isTableManagementEnabled(storeSettings) ? 'Menu' : 'Kasir / Katalog'}
           </button>
         </div>
 
@@ -2639,18 +2641,20 @@ export default function POSPage() {
               <span className="text-sm">☕</span>
               <span>Kasir & Menu</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setView('meja')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
-                view === 'meja'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-muted hover:text-fg hover:bg-surface'
-              }`}
-            >
-              <span className="text-sm">🍽️</span>
-              <span>Kelola Meja</span>
-            </button>
+            {isTableManagementEnabled(storeSettings) && (
+              <button
+                type="button"
+                onClick={() => setView('meja')}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
+                  view === 'meja'
+                    ? 'bg-accent text-white shadow-sm'
+                    : 'text-muted hover:text-fg hover:bg-surface'
+                }`}
+              >
+                <span className="text-sm">🍽️</span>
+                <span>Kelola Meja</span>
+              </button>
+            )}
             <Link
               href="/admin/transaksi"
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
@@ -3107,6 +3111,7 @@ export default function POSPage() {
           currentTab={mobileTab}
           onTabChange={setMobileTab}
           occupiedTablesCount={tableData.filter((t) => t.status === 'terisi').length}
+          enableTables={isTableManagementEnabled(storeSettings)}
         />
 
         {/* Mobile Bottom Sheet Cart */}

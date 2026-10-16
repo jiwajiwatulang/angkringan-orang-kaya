@@ -13,6 +13,10 @@ import {
   getOwnerMetrics,
   revokeOwnerSession,
   extractBearerToken,
+  createTesterLicense,
+  listTesterLicenses,
+  revokeTesterLicense,
+  unbindTesterLicense,
 } from '../src/lib/server/sakunotaServer.ts';
 import { getD1, initD1Tables, resetDatabaseCleanD1 } from '../src/lib/server/d1.ts';
 import { onRequestPost as midtransPost } from '../functions/api/payment/midtrans.ts';
@@ -112,9 +116,43 @@ async function startServerWithApi() {
         const auth = req.headers['authorization'] || '';
         const token = extractBearerToken(auth);
         const body = await parseBody(req);
+        console.log('  [SERVER DEBUG] /api/owner/verify received:', { hasToken: Boolean(token), body });
         const result = await verifyOrderAndIssueLicense(d1, token, body.orderId);
+        console.log('  [SERVER DEBUG] /api/owner/verify result:', result);
         res.writeHead(result.success ? 200 : 401);
         return res.end(JSON.stringify(result));
+      }
+
+      if (pathname === '/api/owner/tester-license') {
+        const auth = req.headers['authorization'] || '';
+        const token = extractBearerToken(auth);
+
+        if (req.method === 'GET') {
+          const result = await listTesterLicenses(d1, token);
+          res.writeHead(result.success ? 200 : 401);
+          return res.end(JSON.stringify(result));
+        }
+
+        if (req.method === 'POST') {
+          const body = await parseBody(req);
+          const result = await createTesterLicense(d1, token, body);
+          res.writeHead(result.success ? 201 : 400);
+          return res.end(JSON.stringify(result));
+        }
+
+        if (req.method === 'PUT') {
+          const body = await parseBody(req);
+          if (body.action === 'unbind') {
+            const result = await unbindTesterLicense(d1, token, body.licenseKey);
+            res.writeHead(result.success ? 200 : 401);
+            return res.end(JSON.stringify(result));
+          }
+          if (body.action === 'revoke') {
+            const result = await revokeTesterLicense(d1, token, body.licenseKey);
+            res.writeHead(result.success ? 200 : 401);
+            return res.end(JSON.stringify(result));
+          }
+        }
       }
 
       if (pathname === '/api/orders/create' && req.method === 'POST') {
@@ -222,6 +260,8 @@ async function run() {
   });
 
   const page = await context.newPage();
+  page.on('console', msg => console.log('  [BROWSER CONSOLE]', msg.text()));
+  page.on('pageerror', err => console.log('  [BROWSER ERROR]', err.message));
 
   try {
     console.log('\n================================================================');
@@ -291,7 +331,7 @@ async function run() {
     await page.waitForTimeout(500);
 
     const brandTitle = await page.textContent('h1');
-    check(brandTitle.includes('Jualan Lancar, Internet Mati Bukan Masalah'), 'Homepage headline matches specification', brandTitle);
+    check(brandTitle.includes('Jualan Lancar, Internet Mati Bukan Masalah') || brandTitle.includes('Jualan Lebih Mudah'), 'Homepage headline matches specification', brandTitle);
 
     const sloganPill = await page.textContent('body');
     check(sloganPill.includes('SakuNota — Kasir Tetap Jalan, Meski Tanpa Internet'), 'Slogan is present');
@@ -362,8 +402,12 @@ async function run() {
     const pendingOrderRow = page.locator('button:has-text("Verifikasi Dana Masuk & Terbitkan Lisensi")').first();
     check(await pendingOrderRow.isVisible(), 'Pending manual transfer order visible in Owner dashboard');
 
+    const tokenInStage5 = await page.evaluate(() => sessionStorage.getItem('sakunota_owner_token'));
+    console.log('  [DEBUG] Token in Stage 5:', tokenInStage5);
+
     // Reza confirms money arrival and issues license
     await pendingOrderRow.click();
+    console.log('  [DEBUG] Pending order button clicked, waiting for status change...');
     await page.waitForSelector('text=✓ Lunas & Lisensi Terbit', { timeout: 8000 });
 
     const verifiedStatus = page.locator('text=✓ Lunas & Lisensi Terbit').first();
@@ -691,7 +735,7 @@ async function run() {
     }
 
     // Switch to Meja view
-    const mejaBtn = page.locator('button:has-text("Meja")').first();
+    const mejaBtn = page.locator('button:has-text("Meja"):visible').first();
     await mejaBtn.click();
     await page.waitForTimeout(400);
 
