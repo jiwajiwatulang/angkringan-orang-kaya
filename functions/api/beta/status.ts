@@ -1,5 +1,6 @@
 // Cloudflare Pages Function: GET/POST /api/beta/status
-import { getD1, initD1Tables, getBetaRegistrationByIdD1, getBetaRegistrationByWhatsappD1, getBetaRegistrationByLicenseKeyD1 } from "../../../src/lib/server/sakunotaServer";
+import { getD1, initD1Tables } from "../../../src/lib/server/sakunotaServer";
+import { getBetaRegistrationByIdD1, getBetaRegistrationByWhatsappD1, getBetaRegistrationByLicenseKeyD1 } from "../../../src/lib/server/d1";
 
 export async function onRequest(context: any) {
   try {
@@ -70,3 +71,6 @@ export async function onRequest(context: any) {
     });
   }
 }
+
+export const onRequestGet = onRequest;
+export const onRequestPost = onRequest;

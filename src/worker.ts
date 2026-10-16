@@ -1,5 +1,6 @@
 // Cloudflare Worker Entrypoint with Static Assets & API Routing for SakuNota Production
 import * as licenseActivate from "../functions/api/license/activate";
+import * as licenseVerify from "../functions/api/license/verify";
 import * as ordersCheck from "../functions/api/orders/check";
 import * as ordersCreate from "../functions/api/orders/create";
 import * as ownerLicenses from "../functions/api/owner/licenses";
@@ -9,6 +10,9 @@ import * as ownerMetrics from "../functions/api/owner/metrics";
 import * as ownerOrders from "../functions/api/owner/orders";
 import * as ownerTesterLicense from "../functions/api/owner/tester-license";
 import * as ownerVerify from "../functions/api/owner/verify";
+import * as ownerBeta from "../functions/api/owner/beta";
+import * as betaRegister from "../functions/api/beta/register";
+import * as betaStatus from "../functions/api/beta/status";
 import * as paymentConfig from "../functions/api/payment/config";
 import * as paymentMidtrans from "../functions/api/payment/midtrans";
 import * as paymentSnap from "../functions/api/payment/snap";
@@ -161,6 +165,32 @@ export default {
           if (method === "GET") response = await ownerTesterLicense.onRequestGet(context);
           else if (method === "POST") response = await ownerTesterLicense.onRequestPost(context);
           else if (method === "PUT") response = await ownerTesterLicense.onRequestPut(context);
+          else response = new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), { status: 405 });
+        }
+
+        // Route: /api/owner/beta
+        else if (pathname === "/api/owner/beta") {
+          if (method === "GET") response = await ownerBeta.onRequestGet(context);
+          else if (method === "POST") response = await ownerBeta.onRequestPost(context);
+          else response = new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), { status: 405 });
+        }
+
+        // Route: /api/beta/register
+        else if (pathname === "/api/beta/register") {
+          if (method === "POST") response = await betaRegister.onRequestPost(context);
+          else response = new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), { status: 405 });
+        }
+
+        // Route: /api/beta/status
+        else if (pathname === "/api/beta/status") {
+          if (method === "GET") response = await betaStatus.onRequestGet(context);
+          else if (method === "POST") response = await betaStatus.onRequestPost(context);
+          else response = new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), { status: 405 });
+        }
+
+        // Route: /api/license/verify
+        else if (pathname === "/api/license/verify") {
+          if (method === "POST") response = await licenseVerify.onRequestPost(context);
           else response = new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), { status: 405 });
         }
 
