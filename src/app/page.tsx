@@ -92,6 +92,31 @@ export default function SakuNotaLandingPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Handle return from Midtrans finish callback
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const paymentStatus = params.get("payment");
+      const ordId = params.get("orderId");
+      const code = params.get("accessCode");
+      if (paymentStatus === "finish" && ordId && code) {
+        setSearchOrderId(ordId);
+        setSearchAccessCode(code);
+        setIsCheckStatusModalOpen(true);
+        setIsSearchingOrder(true);
+        checkOrderStatusServer(ordId, code).then((res) => {
+          setIsSearchingOrder(false);
+          setSearchAttempted(true);
+          if (res.success && res.order) {
+            setSearchResult(res.order);
+          }
+        }).catch(() => {
+          setIsSearchingOrder(false);
+        });
+      }
+    }
+  }, []);
+
   const toggleFaq = (idx: number) => {
     setActiveFaq(activeFaq === idx ? null : idx);
   };

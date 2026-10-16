@@ -51,7 +51,11 @@ export async function onRequestPost(context: any) {
 
     const authHeader = "Basic " + Buffer.from(serverKey + ":").toString("base64");
 
-    const snapPayload = {
+    const requestUrl = new URL(context.request.url);
+    const hostOrigin = requestUrl.origin;
+    const notificationWebhook = `${hostOrigin}/api/payment/midtrans`;
+
+    const snapPayload: any = {
       transaction_details: {
         order_id: order.orderId,
         gross_amount: order.amount,
@@ -69,7 +73,15 @@ export async function onRequestPost(context: any) {
           name: "SakuNota POS Kasir Lifetime (Promo)",
         },
       ],
+      callbacks: {
+        finish: `${hostOrigin}/?payment=finish&orderId=${encodeURIComponent(order.orderId)}&accessCode=${encodeURIComponent(order.accessCode)}`,
+      },
     };
+
+    // If request comes from public HTTPS domain, dynamically override notification URL
+    if (hostOrigin.startsWith("https://")) {
+      snapPayload.override_notification_urls = [notificationWebhook];
+    }
 
     const snapRes = await fetch(snapUrl, {
       method: "POST",
