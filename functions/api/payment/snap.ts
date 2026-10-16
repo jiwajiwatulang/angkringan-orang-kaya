@@ -33,6 +33,12 @@ export async function onRequestPost(context: any) {
       );
     }
 
+    // Explicitly record that buyer chose Midtrans Otomatis
+    await db
+      .prepare(`UPDATE CustomerOrders SET paymentMethod = 'Midtrans Otomatis (QRIS / E-Wallet / VA)' WHERE orderId = ?`)
+      .bind(order.orderId)
+      .run();
+
     const serverKey = context.env?.MIDTRANS_SERVER_KEY || process.env.MIDTRANS_SERVER_KEY;
     if (!serverKey) {
       return new Response(

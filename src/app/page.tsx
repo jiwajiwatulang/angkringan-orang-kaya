@@ -7,7 +7,8 @@ import InstallGuideSection from "@/components/InstallGuideSection";
 import { 
   CustomerOrder, 
   submitBuyerOrder, 
-  checkOrderStatusServer 
+  checkOrderStatusServer,
+  activateLicenseServer
 } from "@/lib/ordersClient";
 
 export default function SakuNotaLandingPage() {
@@ -45,7 +46,8 @@ export default function SakuNotaLandingPage() {
 
   // Purchase Modal State
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
-  const [checkoutStep, setCheckoutStep] = useState<"form" | "payment" | "waiting">("form");
+  const [checkoutStep, setCheckoutStep] = useState<"form" | "payment" | "waiting" | "success">("form");
+  const [createdOrder, setCreatedOrder] = useState<CustomerOrder | null>(null);
   const [buyerName, setBuyerName] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
@@ -58,6 +60,9 @@ export default function SakuNotaLandingPage() {
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [isInitiatingSnap, setIsInitiatingSnap] = useState(false);
   const [snapError, setSnapError] = useState("");
+  const [isActivatingHere, setIsActivatingHere] = useState(false);
+  const [activateMsg, setActivateMsg] = useState("");
+  const [isActivatedHere, setIsActivatedHere] = useState(false);
 
   // Check Order / License Status State
   const [isCheckStatusModalOpen, setIsCheckStatusModalOpen] = useState(false);
@@ -208,8 +213,17 @@ export default function SakuNotaLandingPage() {
       if (data.success && data.token) {
         if (typeof (window as any).snap !== "undefined" && (window as any).snap.pay) {
           (window as any).snap.pay(data.token, {
-            onSuccess: function () {
-              setCheckoutStep("waiting");
+            onSuccess: async function () {
+              setIsInitiatingSnap(true);
+              setSnapError("");
+              try {
+                const chk = await checkOrderStatusServer(currentOrderId, currentAccessCode);
+                if (chk.success && chk.order) {
+                  setCreatedOrder(chk.order);
+                }
+              } catch (_) {}
+              setIsInitiatingSnap(false);
+              setCheckoutStep("success");
             },
             onPending: function () {
               setCheckoutStep("waiting");
@@ -233,6 +247,25 @@ export default function SakuNotaLandingPage() {
       setSnapError("Koneksi gagal: " + err.message);
     } finally {
       setIsInitiatingSnap(false);
+    }
+  };
+
+  const handleActivateOnThisDevice = async (licenseKey: string) => {
+    if (!licenseKey) return;
+    setIsActivatingHere(true);
+    setActivateMsg("");
+    try {
+      const res = await activateLicenseServer(licenseKey, "Perangkat Kasir Utama");
+      if (res.success) {
+        setIsActivatedHere(true);
+        setActivateMsg("✅ Lisensi resmi berhasil diaktifkan di perangkat ini! Kasir Anda siap digunakan tanpa internet.");
+      } else {
+        setActivateMsg("❌ " + (res.error || "Gagal mengaktifkan lisensi di perangkat ini."));
+      }
+    } catch (err: any) {
+      setActivateMsg("❌ " + err.message);
+    } finally {
+      setIsActivatingHere(false);
     }
   };
 
@@ -1496,6 +1529,163 @@ export default function SakuNotaLandingPage() {
                 </div>
               </div>
             )}
+
+            {/* Step 4: Status Pembayaran Berhasil & Lisensi Resmi Terbit */}
+            {checkoutStep === "success" && (
+              <div className="space-y-5 text-center">
+                <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-3xl mx-auto flex items-center justify-center">
+                  ✅
+                </div>
+
+                <div className="space-y-1">
+                  <h4 className="text-xl font-black text-fg">Pembayaran Berhasil!</h4>
+                  <p className="text-xs text-muted">
+                    Lisensi SakuNota Anda sudah tersedia dan siap diaktifkan di HP kasir.
+                  </p>
+                </div>
+
+                {/* License Card */}
+                <div className="p-4 rounded-2xl bg-card border-2 border-emerald-500/30 text-left space-y-3 text-xs">
+                  <div className="flex justify-between items-center pb-2 border-b border-line">
+                    <span className="text-muted">Nomor Pesanan:</span>
+                    <strong className="font-mono font-black text-fg">{currentOrderId || createdOrder?.orderId}</strong>
+                  </div>
+
+                  {/* Secret Access Code */}
+                  <div className="flex justify-between items-center pb-2 border-b border-line bg-accent/5 -mx-4 px-4 py-2">
+                    <div>
+                      <span className="text-[10px] text-muted block uppercase font-bold">Kode Akses Rahasia Pembeli:</span>
+                      <strong className="font-mono font-black text-accent-text text-sm select-all">
+                        {currentAccessCode || createdOrder?.accessCode}
+                      </strong>
+                    </div>
+                    <span className="text-[9px] text-muted max-w-[170px] text-right font-medium">
+                      Simpan nomor pesanan & kode akses ini untuk membuka lisensi kapan saja
+                    </span>
+                  </div>
+
+                  {/* License Key Display */}
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] text-muted block uppercase font-bold">Nomor Lisensi SakuNota:</span>
+                    {createdOrder?.licenseKey ? (
+                      <div className="p-3 rounded-xl bg-surface border border-emerald-500/50 text-center font-mono font-black text-base text-emerald-600 dark:text-emerald-400 select-all tracking-wider">
+                        {createdOrder.licenseKey}
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-xl bg-surface border border-line text-center text-xs text-muted">
+                        Sedang menyinkronkan nomor lisensi...
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const chk = await checkOrderStatusServer(currentOrderId, currentAccessCode);
+                            if (chk.success && chk.order) setCreatedOrder(chk.order);
+                          }}
+                          className="block mx-auto mt-2 text-xs font-bold text-accent-text underline"
+                        >
+                          🔄 Muat Ulang Lisensi
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const key = createdOrder?.licenseKey;
+                          if (key) {
+                            navigator.clipboard.writeText(key);
+                            setCopiedLicense(true);
+                            setTimeout(() => setCopiedLicense(false), 2000);
+                          }
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-surface border border-line text-xs font-bold text-fg hover:border-accent transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <span>{copiedLicense ? "✓ Berhasil Disalin!" : "📋 Salin Nomor Lisensi"}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Device Binding Status */}
+                  <div className="pt-2 border-t border-line">
+                    <span className="text-[10px] text-muted block uppercase font-bold mb-1">Status Perangkat Kasir:</span>
+                    {createdOrder?.boundDeviceId ? (
+                      <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20">
+                        <span>🟢</span>
+                        <span>Terikat di: {createdOrder.deviceName || createdOrder.boundDeviceId}</span>
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-muted bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20 leading-relaxed">
+                        <span className="text-amber-700 dark:text-amber-300 font-bold block">🟡 Belum Terikat ke HP Kasir</span>
+                        <span>Lisensi baru diikat saat Anda pertama kali mengaktifkannya di HP yang akan dipakai berjualan.</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Activation on This Device Feedback */}
+                {activateMsg && (
+                  <div className={`p-3 rounded-xl text-xs font-bold leading-relaxed ${
+                    activateMsg.startsWith("✅")
+                      ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+                      : "bg-rose-500/15 border border-rose-500/30 text-rose-700 dark:text-rose-300"
+                  }`}>
+                    {activateMsg}
+                  </div>
+                )}
+
+                {/* Quick Next Step Actions */}
+                <div className="space-y-2 pt-1">
+                  <span className="text-[11px] font-bold text-muted block">Langkah Selanjutnya:</span>
+
+                  {/* If user is buying directly on the cashier phone */}
+                  {createdOrder?.licenseKey && !isActivatedHere && !createdOrder.boundDeviceId && (
+                    <button
+                      type="button"
+                      disabled={isActivatingHere}
+                      onClick={() => handleActivateOnThisDevice(createdOrder.licenseKey!)}
+                      className="w-full py-3 bg-accent hover:bg-accent-hover text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <span>🚀</span>
+                      <span>{isActivatingHere ? "Mengaktifkan Lisensi..." : "Aktifkan di Perangkat Ini"}</span>
+                    </button>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <a
+                      href="#pasang-hp"
+                      onClick={() => setIsBuyModalOpen(false)}
+                      className="py-2.5 px-3 bg-card hover:bg-line border border-line text-fg text-xs font-bold rounded-xl text-center transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <span>📱</span>
+                      <span>Pasang di HP</span>
+                    </a>
+                    <Link
+                      href="/pos"
+                      className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl text-center shadow-sm transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <span>🏪</span>
+                      <span>Buka Kasir POS →</span>
+                    </Link>
+                  </div>
+
+                  <Link
+                    href="/panduan"
+                    target="_blank"
+                    className="block text-center text-[11px] text-muted hover:text-fg font-semibold pt-1 underline"
+                  >
+                    📖 Baca Panduan Aktivasi & Pemasangan di HP
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsBuyModalOpen(false)}
+                    className="w-full py-2 text-xs font-bold text-muted hover:text-fg transition-colors pt-2"
+                  >
+                    Selesai & Tutup Jendela
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1555,7 +1745,7 @@ export default function SakuNotaLandingPage() {
                   className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-accent outline-none font-mono uppercase"
                 />
                 <span className="text-[10px] text-muted block mt-1">
-                  Kode rahasia diberikan saat Anda mengirim bukti transfer.
+                  Kode rahasia diberikan saat Anda melakukan checkout atau transfer.
                 </span>
               </div>
 
@@ -1592,12 +1782,13 @@ export default function SakuNotaLandingPage() {
                 </div>
 
                 {searchResult.status === "lunas_lisensi_terbit" && searchResult.licenseKey ? (
-                  <div className="space-y-2 pt-1">
+                  <div className="space-y-3 pt-1">
                     <span className="text-[10px] text-muted font-bold block uppercase">KODE LISENSI RESMI ANDA:</span>
-                    <div className="p-3 rounded-xl bg-surface border border-emerald-500/40 text-center font-mono font-black text-sm text-emerald-600 dark:text-emerald-400 select-all">
+                    <div className="p-3 rounded-xl bg-surface border border-emerald-500/40 text-center font-mono font-black text-sm text-emerald-600 dark:text-emerald-400 select-all tracking-wider">
                       {searchResult.licenseKey}
                     </div>
-                    <div className="flex gap-2 pt-1">
+
+                    <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => {
@@ -1607,24 +1798,114 @@ export default function SakuNotaLandingPage() {
                             setTimeout(() => setCopiedLicense(false), 2000);
                           }
                         }}
-                        className="flex-1 py-2 rounded-xl bg-surface border border-line text-xs font-bold text-fg hover:border-accent transition-colors"
+                        className="flex-1 py-2.5 rounded-xl bg-surface border border-line text-xs font-bold text-fg hover:border-accent transition-colors flex items-center justify-center gap-1.5"
                       >
-                        {copiedLicense ? "✓ Tersalin!" : "📋 Salin Lisensi"}
+                        <span>{copiedLicense ? "✓ Tersalin!" : "📋 Salin Lisensi"}</span>
                       </button>
+                    </div>
+
+                    {/* Device Binding Status */}
+                    <div className="p-2.5 rounded-xl bg-surface border border-line">
+                      <span className="text-[10px] text-muted block uppercase font-bold mb-1">Status Perangkat Kasir:</span>
+                      {searchResult.boundDeviceId ? (
+                        <div className="text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center gap-1.5">
+                          <span>🟢</span>
+                          <span>Terikat di: {searchResult.deviceName || searchResult.boundDeviceId}</span>
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-muted">
+                          <span className="text-amber-600 dark:text-amber-400 font-bold block">🟡 Belum Terikat ke Perangkat</span>
+                          <span>Lisensi ini belum digunakan di HP mana pun. Aktifkan di HP kasir yang Anda inginkan.</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Activation Feedback */}
+                    {activateMsg && (
+                      <div className={`p-2.5 rounded-xl text-xs font-bold leading-relaxed ${
+                        activateMsg.startsWith("✅")
+                          ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+                          : "bg-rose-500/15 border border-rose-500/30 text-rose-700 dark:text-rose-300"
+                      }`}>
+                        {activateMsg}
+                      </div>
+                    )}
+
+                    {/* Activate on this device if not bound */}
+                    {!searchResult.boundDeviceId && !isActivatedHere && (
+                      <button
+                        type="button"
+                        disabled={isActivatingHere}
+                        onClick={() => handleActivateOnThisDevice(searchResult.licenseKey!)}
+                        className="w-full py-2.5 bg-accent hover:bg-accent-hover text-white text-xs font-black rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                      >
+                        <span>🚀</span>
+                        <span>{isActivatingHere ? "Mengaktifkan..." : "Aktifkan di Perangkat Ini"}</span>
+                      </button>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <a
+                        href="#pasang-hp"
+                        onClick={() => setIsCheckStatusModalOpen(false)}
+                        className="py-2 px-3 rounded-xl bg-card border border-line text-xs font-bold text-fg hover:bg-line text-center transition-colors"
+                      >
+                        📱 Pasang di HP
+                      </a>
                       <Link
                         href="/pos"
-                        className="flex-1 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-bold text-center shadow-sm"
+                        className="py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black text-center shadow-sm"
                       >
-                        Buka Kasir →
+                        Buka Kasir POS →
                       </Link>
                     </div>
                   </div>
                 ) : (
-                  <div className="p-3 rounded-xl bg-surface border border-line text-muted text-[11px] leading-relaxed space-y-1">
-                    <strong className="text-amber-600 dark:text-amber-400 block font-bold">Sedang Menunggu Verifikasi Reza (Owner)</strong>
-                    <p>
-                      Bukti transfer sedang diverifikasi di mutasi bank. Setelah Reza menekan konfirmasi, lisensi resmi akan langsung terbit di sini.
-                    </p>
+                  <div className="space-y-3">
+                    <div className="p-3 rounded-xl bg-surface border border-line text-muted text-[11px] leading-relaxed space-y-1">
+                      <strong className="text-amber-600 dark:text-amber-400 block font-bold">Sedang Menunggu Verifikasi Pembayaran</strong>
+                      <p>
+                        Jika Anda membayar otomatis via Midtrans (QRIS/E-Wallet/VA), tekan tombol sinkronisasi di bawah untuk memeriksa status secara langsung.
+                      </p>
+                      <p>
+                        Jika Anda membayar transfer BCA manual, Reza (Owner) akan mencocokkan mutasi rekening sebelum lisensi terbit.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isSearchingOrder}
+                      onClick={async () => {
+                        setIsSearchingOrder(true);
+                        setSearchError("");
+                        try {
+                          const res = await checkOrderStatusServer(searchResult.orderId, searchResult.accessCode);
+                          if (res.success && res.order) {
+                            setSearchResult(res.order);
+                          } else {
+                            setSearchError(res.error || "Gagal menyinkronkan status pesanan.");
+                          }
+                        } catch (e: any) {
+                          setSearchError("Koneksi gagal: " + e.message);
+                        } finally {
+                          setIsSearchingOrder(false);
+                        }
+                      }}
+                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    >
+                      <span>🔄</span>
+                      <span>{isSearchingOrder ? "Menyinkronkan..." : "Sinkronkan Status Pembayaran Sekarang"}</span>
+                    </button>
+
+                    <a
+                      href={`https://wa.me/6281234567890?text=Halo%20Mas%20Reza%20(Owner%20SakuNota),%20saya%20sudah%20transfer%20untuk%20pesanan%20${searchResult.orderId}%20(${searchResult.businessName}).%20Kode%20akses:%20${searchResult.accessCode}.%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold rounded-xl border border-emerald-500/20 transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <span>💬</span>
+                      <span>Konfirmasi via WhatsApp Owner Reza</span>
+                    </a>
                   </div>
                 )}
               </div>

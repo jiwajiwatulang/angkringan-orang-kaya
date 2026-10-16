@@ -33,6 +33,7 @@ import {
   getAllLicensesD1,
   unbindLicenseDeviceD1,
   revokeLicenseD1,
+  updateOrderPaymentMethodD1,
 } from "./d1";
 
 export type ServerCustomerOrder = DbCustomerOrder;
@@ -261,16 +262,106 @@ export async function createCustomerOrder(
   return { success: true, order: newOrder };
 }
 
+export async function syncMidtransOrderStatus(
+  db: D1Database,
+  orderId: string,
+  serverKey?: string
+): Promise<{ success: boolean; order?: ServerCustomerOrder; updated?: boolean; error?: string }> {
+  const order = await getOrderByIdD1(db, orderId);
+  if (!order) {
+    return { success: false, error: "Pesanan tidak ditemukan." };
+  }
+
+  // If already paid and license issued, return current order
+  if (order.status === "lunas_lisensi_terbit" && order.licenseKey) {
+    return { success: true, order, updated: false };
+  }
+
+  const key = serverKey || process.env.MIDTRANS_SERVER_KEY || "";
+  if (!key) {
+    return { success: true, order, updated: false, error: "MIDTRANS_SERVER_KEY belum dikonfigurasi." };
+  }
+
+  try {
+    const isSandbox = key.startsWith("SB-");
+    const midtransUrl = isSandbox
+      ? `https://api.sandbox.midtrans.com/v2/${orderId}/status`
+      : `https://api.midtrans.com/v2/${orderId}/status`;
+
+    const authHeader =
+      "Basic " + (typeof btoa !== "undefined" ? btoa(key + ":") : Buffer.from(key + ":").toString("base64"));
+
+    const resp = await fetch(midtransUrl, {
+      method: "GET",
+      headers: {
+        Authorization: authHeader,
+        Accept: "application/json",
+      },
+    });
+
+    if (!resp.ok) {
+      return { success: true, order, updated: false };
+    }
+
+    const midtransData: any = await resp.json();
+    const { status_code, transaction_status, fraud_status } = midtransData || {};
+
+    const isSuccess =
+      status_code === "200" &&
+      (transaction_status === "settlement" ||
+        (transaction_status === "capture" && fraud_status === "accept"));
+
+    if (isSuccess) {
+      const licenseKey = generateGenuineLicenseKey(orderId);
+      const verifiedAt = new Date().toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      // Update in D1 atomically
+      const stmtOrder = db.prepare(`
+        UPDATE CustomerOrders 
+        SET status = 'lunas_lisensi_terbit', licenseKey = ?, verifiedAt = ?
+        WHERE orderId = ?
+      `).bind(licenseKey, verifiedAt, orderId);
+
+      const stmtLicense = db.prepare(`
+        INSERT OR REPLACE INTO Licenses (
+          licenseKey, orderId, businessName, issuedAt, signature
+        ) VALUES (?, ?, ?, ?, ?)
+      `).bind(licenseKey, orderId, order.businessName, verifiedAt, signLicenseKey(licenseKey));
+
+      await db.batch([stmtOrder, stmtLicense]);
+
+      const refreshed = await getOrderByIdD1(db, orderId);
+      return { success: true, order: refreshed || order, updated: true };
+    }
+
+    if (["cancel", "deny", "expire"].includes(transaction_status)) {
+      await cancelOrderD1(db, orderId);
+      const refreshed = await getOrderByIdD1(db, orderId);
+      return { success: true, order: refreshed || order, updated: true };
+    }
+
+    return { success: true, order, updated: false };
+  } catch (err: any) {
+    return { success: true, order, updated: false, error: err.message };
+  }
+}
+
 export async function checkCustomerOrderStatus(
   dbOrOrderId: D1Database | string,
   orderIdOrCode: string,
-  maybeAccessCode?: string
+  maybeAccessCode?: string,
+  serverKey?: string
 ): Promise<{ success: boolean; order?: ServerCustomerOrder; error?: string }> {
   const db = isD1(dbOrOrderId) ? dbOrOrderId : getD1();
   const orderId = (isD1(dbOrOrderId) ? orderIdOrCode : (dbOrOrderId as string)) || "";
   const accessCode = (isD1(dbOrOrderId) ? maybeAccessCode : orderIdOrCode) || "";
 
-  const order = await getOrderByIdD1(db, orderId.trim());
+  let order = await getOrderByIdD1(db, orderId.trim());
   if (!order) {
     return { success: false, error: "Pesanan dengan nomor tersebut tidak ditemukan." };
   }
@@ -281,6 +372,14 @@ export async function checkCustomerOrderStatus(
       success: false,
       error: "Kode akses rahasia tidak cocok dengan pesanan ini. Periksa kembali tautan atau kode bukti pembelian Anda.",
     };
+  }
+
+  // Auto-sync with Midtrans live if still waiting and serverKey provided
+  if (order.status === "menunggu_verifikasi" && serverKey) {
+    const syncRes = await syncMidtransOrderStatus(db, orderId.trim(), serverKey);
+    if (syncRes.updated && syncRes.order) {
+      order = syncRes.order;
+    }
   }
 
   return { success: true, order };

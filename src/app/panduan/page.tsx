@@ -53,10 +53,35 @@ export default function SakuNotaPanduanPage() {
           </div>
 
           <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
-            <h4 className="font-extrabold text-sm text-fg">Langkah 3: Aktivasi Lisensi Resmi</h4>
+            <h4 className="font-extrabold text-sm text-fg">Langkah 3: Alur Aktivasi Lisensi Resmi di HP Kasir</h4>
             <p>
-              Setelah melakukan pembelian lisensi (Rp65.000 satu kali bayar untuk 1 perangkat), Anda akan menerima Nomor Lisensi (format: <code className="text-accent-text font-mono">SN-XXXX-XXXX-XXXX</code>). Masukkan kode lisensi pada menu <em>Pengaturan → Tentang SakuNota</em> untuk mengaktifkan seluruh fitur secara permanen.
+              Setelah melakukan pembelian lisensi (Rp65.000 satu kali bayar untuk 1 perangkat), Anda menerima Nomor Lisensi (format: <code className="text-accent-text font-mono font-bold">SN-XXXX-XXXX-XXXX</code>).
             </p>
+            <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed space-y-1">
+              <strong>Aturan 1 Lisensi = 1 Perangkat Kasir Aktif:</strong>
+              <p>
+                Saat diterbitkan, lisensi belum terikat ke perangkat mana pun. Anda bisa membeli lisensi lewat laptop atau HP pribadi, lalu mengaktifkannya di HP khusus kasir. Begitu diaktifkan di HP kasir pertama kali, lisensi otomatis terkunci pada perangkat tersebut untuk mencegah penyalahgunaan.
+              </p>
+            </div>
+            <ol className="list-decimal list-inside space-y-1.5 pl-1">
+              <li>Buka SakuNota di HP yang akan dipakai berjualan.</li>
+              <li>Masuk ke menu <strong>Pengaturan → Tentang SakuNota</strong> atau klik tombol <em>Aktifkan di Perangkat Ini</em> di halaman konfirmasi.</li>
+              <li>Masukkan kode lisensi resmi Anda, lalu ketuk <strong>Aktifkan Lisensi</strong>.</li>
+              <li>Perangkat Anda kini resmi terdaftar dan seluruh fitur kasir dapat berjalan 100% tanpa internet.</li>
+            </ol>
+          </div>
+
+          <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
+            <h4 className="font-extrabold text-sm text-fg">Langkah 4: Cara Mengambil Kembali Lisensi jika Halaman Tertutup</h4>
+            <p>
+              Jika Anda tidak sengaja menutup browser sebelum menyalin nomor lisensi:
+            </p>
+            <ol className="list-decimal list-inside space-y-1.5 pl-1">
+              <li>Buka halaman depan SakuNota di <code className="text-accent-text font-mono">sakunota.my.id</code>.</li>
+              <li>Ketuk tombol <strong>Cek Status Pesanan Saya</strong> di bagian atas atau bawah halaman.</li>
+              <li>Masukkan <strong>Nomor Pesanan</strong> (contoh: <code className="font-mono">SN-2026-XXXX</code>) dan <strong>Kode Akses Rahasia</strong> (contoh: <code className="font-mono">KOD-XXXX</code>) yang Anda dapatkan saat memesan.</li>
+              <li>Nomor lisensi Anda akan langsung tampil kembali dan siap disalin atau diaktifkan.</li>
+            </ol>
           </div>
         </div>
       ),
@@ -316,14 +341,20 @@ export default function SakuNotaPanduanPage() {
 
           <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
             <h4 className="font-extrabold text-sm text-fg">7 Langkah Aman Pindah Kasir ke HP Baru:</h4>
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed space-y-1">
+              <strong>Aturan Ketat 1 Lisensi = 1 Perangkat Aktif:</strong>
+              <p>
+                Satu lisensi hanya boleh aktif di satu HP kasir. Jika kode lisensi dimasukkan ke HP kedua tanpa melepas HP pertama, sistem keamanan SakuNota otomatis menolak aktivasi untuk melindungi lisensi Anda.
+              </p>
+            </div>
             <ol className="list-decimal list-inside space-y-2 pl-1">
-              <li><strong>Di HP Lama:</strong> Buka menu <em>Admin → Data & Cadangan</em>.</li>
+              <li><strong>Di HP Lama:</strong> Buka menu <em>Admin → Data &amp; Cadangan</em>.</li>
               <li><strong>Unduh File Cadangan:</strong> Ketuk tombol <em>Cadangkan Seluruh Data (.json)</em>. File cadangan akan tersimpan di folder Download HP.</li>
               <li><strong>Simpan File:</strong> Kirim file tersebut ke WhatsApp pribadi Anda atau simpan di Google Drive.</li>
               <li><strong>Di HP Baru:</strong> Buka Google Chrome, akses SakuNota, lalu pilih <em>Tambahkan ke Layar Utama</em>.</li>
-              <li><strong>Pulihkan Data Usaha:</strong> Di HP Baru, buka menu <em>Admin → Data & Cadangan</em>, lalu ketuk <em>Pulihkan Data dari File</em> dan pilih file cadangan Anda. Seluruh katalog menu, stok, dan riwayat langsung muncul.</li>
-              <li><strong>Pelepasan Perangkat Lama (Unbind Device):</strong> Hubungi WhatsApp Admin SakuNota dengan menyebutkan nomor pesanan atau nomor lisensi Anda untuk melepas ikatan HP lama (atau reset otomatis bila masa garansi aktif).</li>
-              <li><strong>Aktivasi Lisensi di HP Baru:</strong> Masukkan nomor lisensi Anda pada menu <em>Pengaturan → Tentang SakuNota</em>. Kasir siap digunakan kembali!</li>
+              <li><strong>Pulihkan Data Usaha:</strong> Di HP Baru, buka menu <em>Admin → Data &amp; Cadangan</em>, lalu ketuk <em>Pulihkan Data dari File</em> dan pilih file cadangan Anda. Seluruh katalog menu, stok, dan riwayat langsung muncul.</li>
+              <li><strong>Pelepasan Perangkat Lama (Reset / Unbind Device):</strong> Hubungi WhatsApp Admin SakuNota dengan menyebutkan nomor pesanan atau kode akses Anda untuk mereset ikatan perangkat lama di portal lisensi.</li>
+              <li><strong>Aktivasi Lisensi di HP Baru:</strong> Masukkan nomor lisensi Anda pada menu <em>Pengaturan → Tentang SakuNota</em> atau tekan <em>Aktifkan di Perangkat Ini</em>. Lisensi kini berpindah resmi ke HP kasir baru!</li>
             </ol>
           </div>
 

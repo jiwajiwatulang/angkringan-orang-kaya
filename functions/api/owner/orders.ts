@@ -63,6 +63,16 @@ export async function onRequestPut(context: any) {
       });
     }
 
+    if (action === "sync_midtrans") {
+      const { syncMidtransOrderStatus } = await import("../../../src/lib/server/sakunotaServer");
+      const serverKey = context.env?.MIDTRANS_SERVER_KEY || process.env.MIDTRANS_SERVER_KEY;
+      const res = await syncMidtransOrderStatus(db, orderId, serverKey);
+      return new Response(JSON.stringify(res), {
+        status: res.success ? 200 : 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ success: false, error: "Aksi tidak dikenal." }), {
       status: 400,
       headers: { "Content-Type": "application/json" },

@@ -14,6 +14,21 @@ import {
   importAllData,
   refreshTableStatus
 } from './src/lib/api';
+import {
+  generateGenuineLicenseKey,
+  signLicenseKey,
+  activateLicenseOnDevice,
+  checkCustomerOrderStatus
+} from './src/lib/server/sakunotaServer';
+import {
+  getD1,
+  initD1Tables,
+  insertOrderD1,
+  insertLicenseD1,
+  getLicenseD1,
+  unbindLicenseDeviceD1,
+  updateOrderStatusAndLicenseD1
+} from './src/lib/server/d1';
 
 interface TestResult {
   name: string;
@@ -953,6 +968,143 @@ async function runTestSuite() {
     assert(totalExtra === 5000, 'Total extra price calculated to Rp 5.000 (2.000 + 3.000)');
   } catch (err: any) {
     assert(false, 'Test Group 16 Error', err.message);
+  }
+
+  // --------------------------------------------------------------------------
+  console.log('\n[TEST GROUP 17] Midtrans Auto-Settlement, 1-Device Policy, Access Code Security & WhatsApp Message');
+  // --------------------------------------------------------------------------
+  try {
+    const d1 = getD1();
+    await initD1Tables(d1);
+
+    // 1. Customer creates Midtrans order (status: menunggu_verifikasi)
+    const testOrderId = `SN-TEST-MIDTRANS-${Date.now()}`;
+    const testAccessCode = `KOD-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const testOrder = {
+      orderId: testOrderId,
+      accessCode: testAccessCode,
+      buyerName: 'Iwan Fals',
+      businessName: 'Warung Kopi Seniman',
+      whatsapp: '081234567890',
+      email: 'iwan@sakunota.my.id',
+      amount: 65000,
+      paymentMethod: 'Midtrans Otomatis (QRIS / E-Wallet / VA)',
+      bankAccount: 'Midtrans Official Gateway',
+      status: 'menunggu_verifikasi' as const,
+      createdAt: '16 Okt 2026, 10:00',
+    };
+    await insertOrderD1(d1, testOrder);
+
+    const savedOrder = await checkCustomerOrderStatus(d1, testOrderId, testAccessCode);
+    assert(savedOrder.success === true, 'Order created and retrievable via D1');
+    assert(savedOrder.order?.status === 'menunggu_verifikasi', 'Initial order status is menunggu_verifikasi');
+    assert(!savedOrder.order?.licenseKey, 'Initial order has no license key before settlement');
+
+    // 2. Midtrans payment confirmed -> Atomic license generation
+    const genuineKey = generateGenuineLicenseKey(testOrderId);
+    assert(genuineKey.startsWith('SN-'), 'Genuine license starts with SN-');
+    assert(genuineKey.split('-').length === 4, 'Genuine license has 4 segments (SN-XXXX-XXXX-XXXX)');
+
+    const verifiedAt = '16 Okt 2026, 10:05';
+    await updateOrderStatusAndLicenseD1(d1, testOrderId, genuineKey, verifiedAt);
+    await insertLicenseD1(d1, {
+      licenseKey: genuineKey,
+      orderId: testOrderId,
+      businessName: testOrder.businessName,
+      issuedAt: verifiedAt,
+      signature: signLicenseKey(genuineKey),
+    });
+
+    const settledOrder = await checkCustomerOrderStatus(d1, testOrderId, testAccessCode);
+    assert(settledOrder.order?.status === 'lunas_lisensi_terbit', 'Order status updated to lunas_lisensi_terbit upon settlement');
+    assert(settledOrder.order?.licenseKey === genuineKey, 'Order records genuine license key');
+
+    // 3. 1-Device Rule: License is unattached upon initial issuance
+    const newlyIssuedLic = await getLicenseD1(d1, genuineKey);
+    assert(newlyIssuedLic !== null, 'License retrieved from database');
+    assert(!newlyIssuedLic?.boundDeviceId, 'Newly issued license is unbound (boundDeviceId is empty/null)');
+
+    // 4. First device activation: HP-KASIR-01
+    const actDevice1 = await activateLicenseOnDevice(d1, {
+      licenseKey: genuineKey,
+      deviceId: 'HP-KASIR-01',
+      deviceName: 'Samsung Galaxy A54 (Kasir Utama)',
+    });
+    assert(actDevice1.success === true, 'Device 1 activation succeeds');
+    assert(actDevice1.status === 200, 'Device 1 activation returns HTTP 200');
+
+    const licBound1 = await getLicenseD1(d1, genuineKey);
+    assert(licBound1?.boundDeviceId === 'HP-KASIR-01', 'License is bound to Device 1 (HP-KASIR-01)');
+    assert(licBound1?.deviceName === 'Samsung Galaxy A54 (Kasir Utama)', 'Device 1 name is recorded');
+
+    // 5. Same device re-activation is idempotent
+    const actDevice1Again = await activateLicenseOnDevice(d1, {
+      licenseKey: genuineKey,
+      deviceId: 'HP-KASIR-01',
+      deviceName: 'Samsung Galaxy A54 (Kasir Utama)',
+    });
+    assert(actDevice1Again.success === true, 'Re-activation on the same device is idempotent and permitted');
+
+    // 6. Second device activation attempt: HP-KASIR-02 (Must be REJECTED)
+    const actDevice2 = await activateLicenseOnDevice(d1, {
+      licenseKey: genuineKey,
+      deviceId: 'HP-KASIR-02',
+      deviceName: 'Xiaomi Redmi 12 (HP Kasir Cadangan)',
+    });
+    assert(actDevice2.success === false, 'Second device activation is strictly REJECTED (1-device policy)');
+    assert(actDevice2.status === 409, 'Second device activation returns HTTP 409 Conflict');
+    assert(
+      typeof actDevice2.error === 'string' && actDevice2.error.includes('sudah aktif pada perangkat lain'),
+      'Rejection error message clearly informs customer of 1-device policy',
+      actDevice2.error
+    );
+
+    // 7. Device Transfer Workflow: Owner unbinds device
+    await unbindLicenseDeviceD1(d1, genuineKey);
+    const licAfterUnbind = await getLicenseD1(d1, genuineKey);
+    assert(!licAfterUnbind?.boundDeviceId, 'Owner unbind action successfully releases device binding');
+
+    // 8. Device 2 can now activate after unbind
+    const actDevice2AfterUnbind = await activateLicenseOnDevice(d1, {
+      licenseKey: genuineKey,
+      deviceId: 'HP-KASIR-02',
+      deviceName: 'Xiaomi Redmi 12 (HP Kasir Baru)',
+    });
+    assert(actDevice2AfterUnbind.success === true, 'Device 2 activation succeeds after owner releases device');
+    assert(actDevice2AfterUnbind.status === 200, 'Device 2 activation returns HTTP 200');
+
+    const licBound2 = await getLicenseD1(d1, genuineKey);
+    assert(licBound2?.boundDeviceId === 'HP-KASIR-02', 'License is now bound to Device 2 (HP-KASIR-02)');
+
+    // 9. Customer Order Retrieval Security (Cek Status Pesanan)
+    // Valid orderId + valid accessCode
+    const authCheckPass = await checkCustomerOrderStatus(d1, testOrderId, testAccessCode);
+    assert(authCheckPass.success === true, 'Order retrieval with correct access code succeeds');
+    assert(authCheckPass.order?.licenseKey === genuineKey, 'Retrieved order contains genuine license');
+
+    // Valid orderId + invalid accessCode
+    const authCheckFail = await checkCustomerOrderStatus(d1, testOrderId, 'KOD-SALAH-1234');
+    assert(authCheckFail.success === false, 'Order retrieval with invalid access code is blocked');
+    assert(
+      typeof authCheckFail.error === 'string' && authCheckFail.error.includes('Kode akses rahasia tidak cocok'),
+      'Access rejection clarifies secret code mismatch'
+    );
+
+    // 10. WhatsApp Ready Message Formatting Integrity
+    const waMessage = `Halo Kak ${testOrder.buyerName}, terima kasih telah membeli SakuNota!
+
+Berikut rincian lisensi resmi untuk usaha *${testOrder.businessName}*:
+• Nomor Lisensi: *${genuineKey}*
+• Nomor Pesanan: ${testOrder.orderId}
+• Kode Akses Rahasia: ${testOrder.accessCode}`;
+
+    assert(waMessage.includes(testOrder.buyerName), 'WhatsApp message contains buyer name');
+    assert(waMessage.includes(testOrder.businessName), 'WhatsApp message contains business name');
+    assert(waMessage.includes(genuineKey), 'WhatsApp message contains license key');
+    assert(waMessage.includes(testOrder.accessCode), 'WhatsApp message contains secret access code');
+    assert(waMessage.includes(testOrder.orderId), 'WhatsApp message contains order ID');
+  } catch (err: any) {
+    assert(false, 'Test Group 17 Error', err.message);
   }
 
   // --------------------------------------------------------------------------

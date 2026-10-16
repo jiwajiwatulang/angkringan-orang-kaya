@@ -22,7 +22,8 @@ import {
   revokeOwnerLicenseServer,
   cancelOwnerOrderServer,
   archiveOwnerOrderServer,
-  deleteOwnerTestOrderServer
+  deleteOwnerTestOrderServer,
+  syncOwnerMidtransServer
 } from "@/lib/ordersClient";
 
 export default function SakuNotaOwnerDashboardPage() {
@@ -232,6 +233,63 @@ export default function SakuNotaOwnerDashboardPage() {
     } else {
       showToast(`❌ ${res.error || "Gagal menerbitkan lisensi."}`);
     }
+  };
+
+  // Owner action: Sync status live with Midtrans API
+  const handleSyncMidtrans = async (orderId: string) => {
+    if (!ownerToken) return;
+    showToast(`🔄 Memeriksa status pesanan ${orderId} di Midtrans...`);
+    const res = await syncOwnerMidtransServer(ownerToken, orderId);
+    if (res.success) {
+      if (res.updated) {
+        showToast(`🎉 Pembayaran ${orderId} terverifikasi di Midtrans! Lisensi telah terbit.`);
+      } else {
+        showToast(`ℹ️ Status Midtrans untuk ${orderId}: ${res.order?.status || "Belum ada pembayaran settlement"}.`);
+      }
+      await loadOrders(ownerToken, true);
+      await loadLicenses(ownerToken);
+    } else {
+      showToast(`❌ ${res.error || "Gagal sinkronisasi dengan Midtrans."}`);
+    }
+  };
+
+  // Owner action: Copy ready-to-send license message for WhatsApp
+  const handleCopyLicenseMessage = (o: CustomerOrder) => {
+    const msg = `Halo Kak ${o.buyerName}, terima kasih telah membeli SakuNota!
+
+Berikut rincian lisensi resmi untuk usaha *${o.businessName}*:
+• Nomor Lisensi: *${o.licenseKey}*
+• Nomor Pesanan: ${o.orderId}
+• Kode Akses Rahasia: ${o.accessCode}
+
+Langkah Pasang & Aktivasi di HP:
+1. Buka https://angkringan-orang-kaya.ranutarde.workers.dev di Google Chrome HP Anda
+2. Ketuk menu titik tiga (⋮) lalu pilih "Instal aplikasi" atau "Tambahkan ke Layar Utama"
+3. Buka SakuNota di HP kasir, buka menu Pengaturan → Tentang SakuNota, lalu masukkan Nomor Lisensi di atas dan tekan Aktifkan.
+
+Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
+
+    navigator.clipboard.writeText(msg);
+    showToast("📋 Pesan lisensi WhatsApp berhasil disalin!");
+  };
+
+  const getWhatsAppLicenseUrl = (o: CustomerOrder) => {
+    const cleanPhone = o.whatsapp.replace(/^0/, "62").replace(/[^0-9]/g, "");
+    const msg = `Halo Kak ${o.buyerName}, terima kasih telah membeli SakuNota!
+
+Berikut rincian lisensi resmi untuk usaha *${o.businessName}*:
+• Nomor Lisensi: *${o.licenseKey}*
+• Nomor Pesanan: ${o.orderId}
+• Kode Akses Rahasia: ${o.accessCode}
+
+Langkah Pasang & Aktivasi di HP:
+1. Buka https://angkringan-orang-kaya.ranutarde.workers.dev di Google Chrome HP Anda
+2. Ketuk menu titik tiga (⋮) lalu pilih "Instal aplikasi" atau "Tambahkan ke Layar Utama"
+3. Buka SakuNota di HP kasir, buka menu Pengaturan → Tentang SakuNota, lalu masukkan Nomor Lisensi di atas dan tekan Aktifkan.
+
+Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
+
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
   };
 
   // Owner action: Cancel unpaid order
@@ -709,10 +767,13 @@ export default function SakuNotaOwnerDashboardPage() {
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-line pb-3">
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <strong className="text-sm font-black text-fg font-mono">
                             {o.orderId}
                           </strong>
+                          <span className="text-[10px] font-bold text-muted px-2 py-0.5 rounded-md bg-surface border border-line">
+                            {o.paymentMethod?.includes("BCA") ? "🏦 Transfer BCA" : "⚡ Midtrans Otomatis"}
+                          </span>
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
                               o.status === "lunas_lisensi_terbit"
@@ -769,20 +830,44 @@ export default function SakuNotaOwnerDashboardPage() {
                       </div>
                     </div>
 
-                    {/* License details if paid */}
+                    {/* License details & device binding status if paid */}
                     {o.licenseKey && (
-                      <div className="p-3 rounded-xl bg-surface border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                        <div>
+                      <div className="p-3.5 rounded-2xl bg-surface border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div className="space-y-0.5">
                           <span className="text-[10px] text-muted font-bold uppercase block">Kode Lisensi Resmi:</span>
-                          <strong className="font-mono text-sm text-purple-600 dark:text-purple-400 select-all">
-                            {o.licenseKey}
-                          </strong>
+                          <div className="flex items-center gap-2">
+                            <strong className="font-mono text-sm text-purple-600 dark:text-purple-400 select-all">
+                              {o.licenseKey}
+                            </strong>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(o.licenseKey || "");
+                                showToast("📋 Nomor lisensi berhasil disalin!");
+                              }}
+                              className="text-[11px] font-bold text-muted hover:text-fg px-1.5 py-0.5 rounded border border-line bg-card"
+                            >
+                              Salin
+                            </button>
+                          </div>
                         </div>
-                        <div className="text-[11px] text-muted">
-                          Perangkat: {o.boundDeviceId ? (
-                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">Terikat ({o.boundDeviceId})</span>
-                          ) : (
-                            <span>Belum Diaktifkan</span>
+                        <div className="text-[11px] text-muted space-y-0.5 sm:text-right">
+                          <div>
+                            Status Perangkat:{" "}
+                            {o.boundDeviceId ? (
+                              <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                🟢 Terikat di {o.deviceName || "Perangkat Kasir"} ({o.boundDeviceId})
+                              </span>
+                            ) : (
+                              <span className="text-amber-600 dark:text-amber-400 font-bold">
+                                🟡 Belum Diaktifkan di HP Kasir
+                              </span>
+                            )}
+                          </div>
+                          {o.lastConnectedAt && (
+                            <div className="text-[10px] text-muted">
+                              Terakhir Terhubung: {o.lastConnectedAt}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -799,21 +884,57 @@ export default function SakuNotaOwnerDashboardPage() {
                           >
                             Batalkan Pesanan
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleVerifyAndIssueLicense(o.orderId)}
-                            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md transition-all active:scale-95 flex items-center gap-1.5"
-                          >
-                            <span>✓</span>
-                            <span>Verifikasi Dana Masuk & Terbitkan Lisensi</span>
-                          </button>
+
+                          {o.paymentMethod?.includes("BCA") ? (
+                            <button
+                              type="button"
+                              onClick={() => handleVerifyAndIssueLicense(o.orderId)}
+                              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+                            >
+                              <span>✓</span>
+                              <span>Verifikasi Mutasi BCA & Terbitkan Lisensi</span>
+                            </button>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800">
+                                ⚡ Verifikasi Otomatis Midtrans
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleSyncMidtrans(o.orderId)}
+                                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
+                              >
+                                <span>🔄</span>
+                                <span>Cek Status Midtrans Live</span>
+                              </button>
+                            </div>
+                          )}
                         </>
                       )}
 
                       {o.status === "lunas_lisensi_terbit" && (
-                        <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-black">
-                          ✓ Lunas & Lisensi Terbit
-                        </span>
+                        <>
+                          <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-black">
+                            ✓ {o.paymentMethod?.includes("BCA") ? "Lunas (Transfer BCA)" : "Lunas (Midtrans Otomatis)"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyLicenseMessage(o)}
+                            className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 text-purple-700 dark:text-purple-300 text-xs font-bold border border-purple-300 dark:border-purple-800 transition-colors flex items-center gap-1.5"
+                          >
+                            <span>📋</span>
+                            <span>Salin Pesan Lisensi</span>
+                          </button>
+                          <a
+                            href={getWhatsAppLicenseUrl(o)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
+                          >
+                            <span>💬</span>
+                            <span>Kirim via WhatsApp</span>
+                          </a>
+                        </>
                       )}
 
                       <button

@@ -16,6 +16,9 @@ export interface DbCustomerOrder {
   status: "menunggu_verifikasi" | "lunas_lisensi_terbit" | "batal" | "arsip_uji" | "gagal" | "kedaluwarsa" | "dikembalikan";
   licenseKey?: string;
   boundDeviceId?: string;
+  deviceName?: string;
+  activatedAt?: string;
+  lastConnectedAt?: string;
   createdAt: string;
   verifiedAt?: string;
   lastSeenAt?: string;
@@ -291,12 +294,73 @@ export async function insertOrderD1(db: D1Database, order: DbCustomerOrder): Pro
 }
 
 export async function getAllOrdersD1(db: D1Database): Promise<DbCustomerOrder[]> {
-  const res = await db.prepare(`SELECT * FROM CustomerOrders ORDER BY id DESC`).all<DbCustomerOrder>();
+  const res = await db.prepare(`
+    SELECT 
+      o.id,
+      o.orderId,
+      o.accessCode,
+      o.buyerName,
+      o.businessName,
+      o.whatsapp,
+      o.email,
+      o.amount,
+      o.paymentMethod,
+      o.bankAccount,
+      o.transferProofName,
+      o.status,
+      o.licenseKey,
+      COALESCE(l.boundDeviceId, o.boundDeviceId) AS boundDeviceId,
+      l.deviceName AS deviceName,
+      l.activatedAt AS activatedAt,
+      l.lastConnectedAt AS lastConnectedAt,
+      o.createdAt,
+      o.verifiedAt,
+      o.lastSeenAt
+    FROM CustomerOrders o
+    LEFT JOIN Licenses l ON o.licenseKey = l.licenseKey
+    ORDER BY o.id DESC
+  `).all<DbCustomerOrder>();
   return res.results || [];
 }
 
 export async function getOrderByIdD1(db: D1Database, orderId: string): Promise<DbCustomerOrder | null> {
-  return await db.prepare(`SELECT * FROM CustomerOrders WHERE orderId = ?`).bind(orderId).first<DbCustomerOrder>();
+  return await db.prepare(`
+    SELECT 
+      o.id,
+      o.orderId,
+      o.accessCode,
+      o.buyerName,
+      o.businessName,
+      o.whatsapp,
+      o.email,
+      o.amount,
+      o.paymentMethod,
+      o.bankAccount,
+      o.transferProofName,
+      o.status,
+      o.licenseKey,
+      COALESCE(l.boundDeviceId, o.boundDeviceId) AS boundDeviceId,
+      l.deviceName AS deviceName,
+      l.activatedAt AS activatedAt,
+      l.lastConnectedAt AS lastConnectedAt,
+      o.createdAt,
+      o.verifiedAt,
+      o.lastSeenAt
+    FROM CustomerOrders o
+    LEFT JOIN Licenses l ON o.licenseKey = l.licenseKey
+    WHERE o.orderId = ?
+  `).bind(orderId).first<DbCustomerOrder>();
+}
+
+export async function updateOrderPaymentMethodD1(
+  db: D1Database,
+  orderId: string,
+  paymentMethod: string
+): Promise<void> {
+  await db
+    .prepare(`UPDATE CustomerOrders SET paymentMethod = ? WHERE orderId = ?`)
+    .bind(paymentMethod, orderId)
+    .run();
 }
 
 export async function updateOrderStatusAndLicenseD1(

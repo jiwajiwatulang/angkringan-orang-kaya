@@ -19,7 +19,8 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    const res = await checkCustomerOrderStatus(db, orderId, accessCode);
+    const serverKey = context.env?.MIDTRANS_SERVER_KEY || process.env.MIDTRANS_SERVER_KEY;
+    const res = await checkCustomerOrderStatus(db, orderId, accessCode, serverKey);
     if (!res.success) {
       return new Response(JSON.stringify({ success: false, error: res.error }), {
         status: res.error?.includes("tidak cocok") ? 403 : 404,

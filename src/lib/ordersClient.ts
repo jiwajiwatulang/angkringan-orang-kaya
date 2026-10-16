@@ -13,6 +13,10 @@ export interface CustomerOrder {
   licenseKey?: string;
   createdAt: string;
   verifiedAt?: string;
+  boundDeviceId?: string | null;
+  deviceName?: string | null;
+  activatedAt?: string | null;
+  lastConnectedAt?: string | null;
 }
 
 export function getLocalDeviceId(): string {
@@ -584,6 +588,25 @@ export async function archiveOwnerOrderServer(
     if (res.ok) return { success: true };
     const err = await res.json().catch(() => ({}));
     return { success: false, error: err.error || "Gagal mengarsipkan pesanan." };
+  } catch {
+    return { success: false, error: "Gagal menghubungi server." };
+  }
+}
+
+export async function syncOwnerMidtransServer(
+  token: string,
+  orderId: string
+): Promise<{ success: boolean; order?: any; updated?: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/orders", {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "sync_midtrans", orderId }),
+    });
+    return await res.json();
   } catch {
     return { success: false, error: "Gagal menghubungi server." };
   }
