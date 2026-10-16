@@ -1,24 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
-
-export interface CustomerOrder {
-  orderId: string;
-  buyerName: string;
-  businessName: string;
-  whatsapp: string;
-  email?: string;
-  amount: number;
-  paymentMethod: string;
-  bankAccount: string;
-  transferProofName?: string;
-  status: "menunggu_verifikasi" | "lunas_lisensi_terbit" | "batal";
-  licenseKey?: string;
-  createdAt: string;
-  verifiedAt?: string;
-}
+import { 
+  CustomerOrder, 
+  submitBuyerOrder, 
+  checkOrderStatusServer 
+} from "@/lib/ordersClient";
 
 export default function SakuNotaLandingPage() {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -33,13 +22,18 @@ export default function SakuNotaLandingPage() {
   const [consentChecked, setConsentChecked] = useState(false);
   const [formError, setFormError] = useState("");
   const [currentOrderId, setCurrentOrderId] = useState("");
+  const [currentAccessCode, setCurrentAccessCode] = useState("");
   const [transferProofSimulated, setTransferProofSimulated] = useState(false);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   // Check Order / License Status State
   const [isCheckStatusModalOpen, setIsCheckStatusModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOrderId, setSearchOrderId] = useState("");
+  const [searchAccessCode, setSearchAccessCode] = useState("");
   const [searchResult, setSearchResult] = useState<CustomerOrder | null>(null);
   const [searchAttempted, setSearchAttempted] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [isSearchingOrder, setIsSearchingOrder] = useState(false);
   const [copiedLicense, setCopiedLicense] = useState(false);
 
   // Offline Readiness Check Tool State
@@ -50,6 +44,18 @@ export default function SakuNotaLandingPage() {
     storageReady: boolean;
     cacheReady: boolean;
   } | null>(null);
+
+  // Escape key listener to close modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsBuyModalOpen(false);
+        setIsCheckStatusModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const toggleFaq = (idx: number) => {
     setActiveFaq(activeFaq === idx ? null : idx);
@@ -71,7 +77,7 @@ export default function SakuNotaLandingPage() {
     setFormError("");
   };
 
-  const handleProceedToPayment = (e: React.FormEvent) => {
+  const handleProceedToPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!buyerName.trim() || !businessName.trim() || !whatsappNumber.trim()) {
       setFormError("Mohon lengkapi Nama Pemilik, Nama Usaha, dan Nomor WhatsApp.");
@@ -82,71 +88,60 @@ export default function SakuNotaLandingPage() {
       return;
     }
     setFormError("");
+    setIsSubmittingOrder(true);
 
-    // Generate unique order ID
-    const randomNum = Math.floor(100 + Math.random() * 900);
-    const ordId = `SN-2026-${randomNum}`;
-    setCurrentOrderId(ordId);
-    setCheckoutStep("payment");
+    try {
+      const res = await submitBuyerOrder({
+        buyerName,
+        businessName,
+        whatsapp: whatsappNumber,
+        email: buyerEmail,
+      });
+
+      if (res.success && res.order) {
+        setCurrentOrderId(res.order.orderId);
+        setCurrentAccessCode(res.order.accessCode);
+        setCheckoutStep("payment");
+      } else {
+        setFormError(res.error || "Gagal membuat pesanan.");
+      }
+    } catch (err: any) {
+      setFormError("Koneksi gagal: " + err.message);
+    } finally {
+      setIsSubmittingOrder(false);
+    }
   };
 
   const handleSubmitTransferProof = () => {
-    // Save to customer orders (shared with /owner)
-    const newOrder: CustomerOrder = {
-      orderId: currentOrderId,
-      buyerName: buyerName.trim(),
-      businessName: businessName.trim(),
-      whatsapp: whatsappNumber.trim(),
-      email: buyerEmail.trim() || undefined,
-      amount: 65000,
-      paymentMethod: "Transfer Bank BCA",
-      bankAccount: "8030 554 912 a.n. Reza",
-      transferProofName: "bukti_transfer_pembeli.jpg",
-      status: "menunggu_verifikasi",
-      createdAt: new Date().toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-
-    if (typeof window !== "undefined") {
-      let existing: CustomerOrder[] = [];
-      const stored = localStorage.getItem("sakunota_customer_orders");
-      if (stored) {
-        try {
-          existing = JSON.parse(stored);
-        } catch (_) {}
-      }
-      existing.unshift(newOrder);
-      localStorage.setItem("sakunota_customer_orders", JSON.stringify(existing));
-    }
-
     setCheckoutStep("waiting");
   };
 
-  const handleSearchOrder = (e: React.FormEvent) => {
+  const handleSearchOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setSearchAttempted(true);
     setSearchResult(null);
+    setSearchError("");
 
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return;
+    const ordId = searchOrderId.trim();
+    const code = searchAccessCode.trim();
 
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("sakunota_customer_orders");
-      if (stored) {
-        try {
-          const list: CustomerOrder[] = JSON.parse(stored);
-          const found = list.find((o) => 
-            o.orderId.toLowerCase() === query || 
-            o.whatsapp.toLowerCase().includes(query) ||
-            o.businessName.toLowerCase().includes(query)
-          );
-          setSearchResult(found || null);
-        } catch (_) {}
+    if (!ordId) {
+      setSearchError("Mohon masukkan Nomor Pesanan.");
+      return;
+    }
+
+    setIsSearchingOrder(true);
+    try {
+      const res = await checkOrderStatusServer(ordId, code);
+      if (res.success && res.order) {
+        setSearchResult(res.order);
+      } else {
+        setSearchError(res.error || "Pesanan tidak ditemukan atau kode akses salah.");
       }
+    } catch (err: any) {
+      setSearchError("Gagal memeriksa pesanan: " + err.message);
+    } finally {
+      setIsSearchingOrder(false);
     }
   };
 
@@ -747,8 +742,14 @@ export default function SakuNotaLandingPage() {
 
       {/* 9. Interactive Buy Modal (Alur Transfer Bank Manual & Verifikasi Owner) */}
       {isBuyModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-150">
-          <div className="bg-surface border border-line rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl my-8">
+        <div 
+          onClick={() => setIsBuyModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-surface border border-line rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl my-8 cursor-default"
+          >
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <div className="flex items-center gap-2.5">
@@ -1005,11 +1006,20 @@ export default function SakuNotaLandingPage() {
                   </p>
                 </div>
 
-                {/* Status Box */}
+                {/* Status Box with Secret Access Code */}
                 <div className="p-4 rounded-2xl bg-card border border-line text-left space-y-2.5 text-xs">
                   <div className="flex justify-between items-center pb-2 border-b border-line">
                     <span className="text-muted">Nomor Pesanan:</span>
                     <strong className="font-mono font-black text-fg text-sm">{currentOrderId}</strong>
+                  </div>
+                  <div className="flex justify-between items-center pb-2 border-b border-line bg-accent/5 -mx-4 px-4 py-2">
+                    <div>
+                      <span className="text-[10px] text-muted block uppercase font-bold">Kode Akses Rahasia Anda:</span>
+                      <strong className="font-mono font-black text-accent-text text-sm select-all">{currentAccessCode}</strong>
+                    </div>
+                    <span className="text-[9px] text-muted max-w-[170px] text-right font-medium">
+                      Simpan kode ini untuk mengecek status pesanan secara privat
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted">Status:</span>
@@ -1032,13 +1042,13 @@ export default function SakuNotaLandingPage() {
                   <p>
                     1. Reza (Owner SakuNota) memeriksa dana masuk di mutasi BCA.<br />
                     2. Setelah dana cocok, lisensi resmi akan langsung diterbitkan.<br />
-                    3. Anda dapat mengecek nomor lisensi kapan saja lewat tombol <strong>Cek Status Lisensi</strong> di halaman depan.
+                    3. Buka tombol <strong>Cek Status Lisensi</strong> dengan nomor pesanan <strong>{currentOrderId}</strong> dan kode akses <strong>{currentAccessCode}</strong> untuk mengambil nomor lisensi Anda.
                   </p>
                 </div>
 
                 <div className="pt-2 flex flex-col gap-2">
                   <a
-                    href={`https://wa.me/6281234567890?text=Halo%20Mas%20Reza%20(Owner%20SakuNota),%20saya%20sudah%20transfer%20Rp65.000%20untuk%20pesanan%20${currentOrderId}%20(${businessName}).%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
+                    href={`https://wa.me/6281234567890?text=Halo%20Mas%20Reza%20(Owner%20SakuNota),%20saya%20sudah%20transfer%20Rp65.000%20untuk%20pesanan%20${currentOrderId}%20(${businessName}).%20Kode%20akses:%20${currentAccessCode}.%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
@@ -1060,14 +1070,23 @@ export default function SakuNotaLandingPage() {
         </div>
       )}
 
-      {/* 10. Modal Cek Status Pesanan / Lisensi Saya */}
+      {/* 10. Modal Cek Status Pesanan / Lisensi Saya (Dilindungi Kode Akses Rahasia) */}
       {isCheckStatusModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-150">
-          <div className="bg-surface border border-line rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+        <div 
+          onClick={() => setIsCheckStatusModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-surface border border-line rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl cursor-default"
+          >
             <div className="flex items-center justify-between pb-2 border-b border-line">
               <div className="flex items-center gap-2">
                 <span className="text-xl">🔍</span>
-                <h3 className="font-black text-sm text-fg">Cek Status Pesanan & Lisensi</h3>
+                <div>
+                  <h3 className="font-black text-sm text-fg">Cek Status Pesanan & Lisensi</h3>
+                  <span className="text-[10px] text-muted block">Akses privat khusus pemilik pesanan</span>
+                </div>
               </div>
               <button
                 type="button"
@@ -1080,29 +1099,52 @@ export default function SakuNotaLandingPage() {
 
             <form onSubmit={handleSearchOrder} className="space-y-3">
               <div>
-                <label className="block text-[11px] font-bold text-muted mb-1 uppercase">
-                  Masukkan No Pesanan atau No WhatsApp:
+                <label className="block text-[11px] font-bold text-fg mb-1">
+                  Nomor Pesanan *
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: SN-2026-001 atau 0812345..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-accent outline-none"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2.5 bg-accent hover:bg-accent-hover text-white text-xs font-black rounded-xl transition-all"
-                  >
-                    Cari
-                  </button>
-                </div>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: SN-2026-322"
+                  value={searchOrderId}
+                  onChange={(e) => setSearchOrderId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-accent outline-none font-mono"
+                />
               </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-fg mb-1">
+                  Kode Akses Rahasia Pembeli *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: KOD-7890"
+                  value={searchAccessCode}
+                  onChange={(e) => setSearchAccessCode(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-accent outline-none font-mono uppercase"
+                />
+                <span className="text-[10px] text-muted block mt-1">
+                  Kode rahasia diberikan saat Anda mengirim bukti transfer.
+                </span>
+              </div>
+
+              {searchError && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-semibold">
+                  ⚠️ {searchError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isSearchingOrder}
+                className="w-full py-3 bg-accent hover:bg-accent-hover text-white text-xs font-black rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50"
+              >
+                {isSearchingOrder ? "Memeriksa Status..." : "Periksa Status & Tampilkan Lisensi →"}
+              </button>
             </form>
 
-            {/* Hasil Pencarian */}
+            {/* Hasil Pencarian Terverifikasi */}
             {searchAttempted && searchResult && (
               <div className="p-4 rounded-2xl bg-card border border-line space-y-3 text-xs animate-in fade-in duration-150">
                 <div className="flex justify-between items-center pb-2 border-b border-line">
@@ -1149,22 +1191,12 @@ export default function SakuNotaLandingPage() {
                   </div>
                 ) : (
                   <div className="p-3 rounded-xl bg-surface border border-line text-muted text-[11px] leading-relaxed space-y-1">
-                    <strong className="text-amber-600 dark:text-amber-400 block font-bold">Sedang Menunggu Verifikasi</strong>
+                    <strong className="text-amber-600 dark:text-amber-400 block font-bold">Sedang Menunggu Verifikasi Reza (Owner)</strong>
                     <p>
-                      Bukti pembayaran sedang dicek di mutasi rekening BCA. Setelah dana diverifikasi oleh Reza (Owner), nomor lisensi otomatis tampil di sini.
+                      Bukti transfer sedang diverifikasi di mutasi bank. Setelah Reza menekan konfirmasi, lisensi resmi akan langsung terbit di sini.
                     </p>
                   </div>
                 )}
-              </div>
-            )}
-
-            {searchAttempted && !searchResult && (
-              <div className="p-4 rounded-2xl bg-card border border-line text-center text-xs text-muted space-y-1 animate-in fade-in">
-                <span className="text-xl block">🔎</span>
-                <strong className="text-fg block">Pesanan Tidak Ditemukan</strong>
-                <p className="text-[11px]">
-                  Periksa kembali nomor pesanan (contoh: SN-2026-001) atau nomor WhatsApp yang Anda masukkan saat memesan.
-                </p>
               </div>
             )}
 

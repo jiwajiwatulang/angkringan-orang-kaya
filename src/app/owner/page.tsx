@@ -3,154 +3,109 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
-
-export interface CustomerOrder {
-  orderId: string;
-  buyerName: string;
-  businessName: string;
-  whatsapp: string;
-  email?: string;
-  amount: number;
-  paymentMethod: string;
-  bankAccount: string;
-  transferProofName?: string;
-  status: "menunggu_verifikasi" | "lunas_lisensi_terbit" | "batal";
-  licenseKey?: string;
-  createdAt: string;
-  verifiedAt?: string;
-}
-
-const DEFAULT_ORDERS: CustomerOrder[] = [
-  {
-    orderId: "SN-2026-001",
-    buyerName: "Ibu Sari",
-    businessName: "Warung Bu Sari",
-    whatsapp: "081234567890",
-    email: "sari.warung@gmail.com",
-    amount: 65000,
-    paymentMethod: "Transfer Bank BCA",
-    bankAccount: "8030 554 912 a.n. Reza",
-    transferProofName: "bukti_transfer_bca_sari.jpg",
-    status: "menunggu_verifikasi",
-    createdAt: "16 Okt 2026, 09:30 WIB",
-  },
-  {
-    orderId: "SN-2026-002",
-    buyerName: "Pak Budi",
-    businessName: "Kedai Pak Budi",
-    whatsapp: "081398765432",
-    amount: 65000,
-    paymentMethod: "Transfer Bank BCA",
-    bankAccount: "8030 554 912 a.n. Reza",
-    status: "lunas_lisensi_terbit",
-    licenseKey: "SN-PB02-8842-Y931",
-    createdAt: "15 Okt 2026, 14:15 WIB",
-    verifiedAt: "15 Okt 2026, 14:30 WIB",
-  },
-  {
-    orderId: "SN-2026-003",
-    buyerName: "Mas Jaya",
-    businessName: "Angkringan Jaya",
-    whatsapp: "081755566677",
-    amount: 65000,
-    paymentMethod: "Transfer Bank BCA",
-    bankAccount: "8030 554 912 a.n. Reza",
-    status: "lunas_lisensi_terbit",
-    licenseKey: "SN-AJ03-7712-K882",
-    createdAt: "14 Okt 2026, 19:45 WIB",
-    verifiedAt: "14 Okt 2026, 20:00 WIB",
-  },
-];
+import { 
+  CustomerOrder, 
+  loginOwnerServer, 
+  fetchOwnerOrdersServer, 
+  verifyOwnerOrderServer 
+} from "@/lib/ordersClient";
 
 export default function SakuNotaOwnerDashboardPage() {
   // Authentication State
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [ownerToken, setOwnerToken] = useState<string | null>(null);
   const [usernameInput, setUsernameInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
 
   // Dashboard Tabs
   const [activeTab, setActiveTab] = useState<"orders" | "customers" | "developer_mode" | "cloudflare_d1">("orders");
-  const [orders, setOrders] = useState<CustomerOrder[]>(DEFAULT_ORDERS);
+  const [orders, setOrders] = useState<CustomerOrder[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
 
-  // Check stored session
+  // Load orders helper
+  const loadOrders = async (token: string) => {
+    setIsLoadingOrders(true);
+    const res = await fetchOwnerOrdersServer(token);
+    if (res.success && res.orders) {
+      setOrders(res.orders);
+    } else if (res.error?.includes("berakhir") || res.error?.includes("ditolak")) {
+      handleLogout();
+      setLoginError(res.error);
+    }
+    setIsLoadingOrders(false);
+  };
+
+  // Check stored session token on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const sess = sessionStorage.getItem("sakunota_owner_session");
-      if (sess === "reza_authenticated") {
+      const storedToken = sessionStorage.getItem("sakunota_owner_token");
+      if (storedToken) {
+        setOwnerToken(storedToken);
         setIsLoggedIn(true);
-      }
-
-      const storedOrders = localStorage.getItem("sakunota_customer_orders");
-      if (storedOrders) {
-        try {
-          const parsed = JSON.parse(storedOrders);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setOrders(parsed);
-          }
-        } catch (_) {}
-      } else {
-        localStorage.setItem("sakunota_customer_orders", JSON.stringify(DEFAULT_ORDERS));
+        loadOrders(storedToken);
       }
     }
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
+    setIsSubmittingLogin(true);
 
-    if (usernameInput.trim() === "Reza" && passwordInput === "SakuNota45") {
-      setIsLoggedIn(true);
-      sessionStorage.setItem("sakunota_owner_session", "reza_authenticated");
-      setUsernameInput("");
-      setPasswordInput("");
-    } else {
-      setLoginError("Username atau Password salah! Hanya akun owner Reza yang memiliki hak akses.");
+    try {
+      const res = await loginOwnerServer(usernameInput, passwordInput);
+      if (res.success && res.token) {
+        setOwnerToken(res.token);
+        setIsLoggedIn(true);
+        sessionStorage.setItem("sakunota_owner_token", res.token);
+        setUsernameInput("");
+        setPasswordInput("");
+        await loadOrders(res.token);
+      } else {
+        setLoginError(res.error || "Username atau Password salah! Akses khusus Owner Reza.");
+      }
+    } catch (err: any) {
+      setLoginError("Koneksi gagal: " + err.message);
+    } finally {
+      setIsSubmittingLogin(false);
     }
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    sessionStorage.removeItem("sakunota_owner_session");
+    setOwnerToken(null);
+    setOrders([]);
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("sakunota_owner_token");
+    }
   };
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(""), 3000);
+    setTimeout(() => setToastMsg(""), 3500);
   };
 
-  // Owner action: Verify money arrival & issue license key
-  const handleVerifyAndIssueLicense = (orderId: string) => {
-    const randomHex = () => Math.random().toString(36).substring(2, 6).toUpperCase();
-    const newLicenseKey = `SN-${randomHex()}-${randomHex()}-${randomHex()}`;
-
-    const updated = orders.map((o) => {
-      if (o.orderId === orderId) {
-        return {
-          ...o,
-          status: "lunas_lisensi_terbit" as const,
-          licenseKey: newLicenseKey,
-          verifiedAt: new Date().toLocaleDateString("id-ID", {
-            day: "numeric",
-            month: "short",
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        };
-      }
-      return o;
-    });
-
-    setOrders(updated);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("sakunota_customer_orders", JSON.stringify(updated));
+  // Owner action: Verify money arrival & issue genuine license via Server API
+  const handleVerifyAndIssueLicense = async (orderId: string) => {
+    if (!ownerToken) {
+      showToast("❌ Sesi Anda tidak valid. Silakan login kembali.");
+      return;
     }
-    showToast(`✅ Pembayaran pesanan ${orderId} diverifikasi & Lisensi ${newLicenseKey} diterbitkan!`);
+
+    const res = await verifyOwnerOrderServer(ownerToken, orderId);
+    if (res.success && res.licenseKey) {
+      showToast(`✅ Pembayaran pesanan ${orderId} diverifikasi & Lisensi ${res.licenseKey} diterbitkan!`);
+      await loadOrders(ownerToken);
+    } else {
+      showToast(`❌ ${res.error || "Gagal menerbitkan lisensi."}`);
+    }
   };
 
-  const totalPembeli = 120;
-  const lisensiAktif = 97;
+  const totalPembeli = 120 + orders.length;
+  const lisensiAktif = 97 + orders.filter((o) => o.status === "lunas_lisensi_terbit").length;
   const penggunaAktif = 76;
   const menungguVerifikasiCount = orders.filter((o) => o.status === "menunggu_verifikasi").length;
 

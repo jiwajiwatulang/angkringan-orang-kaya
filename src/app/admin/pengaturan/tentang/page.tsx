@@ -55,6 +55,18 @@ export default function PengaturanTentangPage() {
     };
   }, [isPrivacyModalOpen, isTermsModalOpen, router]);
 
+  // Escape key listener to close modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsPrivacyModalOpen(false);
+        setIsTermsModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200 max-w-2xl mx-auto pb-12">
       {/* Back button */}

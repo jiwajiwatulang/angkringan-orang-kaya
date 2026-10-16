@@ -71,7 +71,8 @@ export default function AdminDashboardPage() {
     };
   });
 
-  const max7DayOmzet = Math.max(...last7Days.map((d) => d.omzet), 100000);
+  const highest7DayOmzet = Math.max(...last7Days.map((d) => d.omzet), 0);
+  const max7DayOmzet = highest7DayOmzet > 0 ? Math.ceil(highest7DayOmzet * 1.15) : 100000;
 
   // Category sales breakdown
   const categoryMap: Record<string, { total: number; qty: number }> = {};
@@ -79,12 +80,14 @@ export default function AdminDashboardPage() {
     .filter((o) => o.status !== "void")
     .forEach((order) => {
       (order.items || []).forEach((item: any) => {
-        const cat = item.kategori || "Lainnya";
+        const cat = item.kategori || item.category || "Lainnya";
         if (!categoryMap[cat]) {
           categoryMap[cat] = { total: 0, qty: 0 };
         }
-        categoryMap[cat].total += (item.harga || 0) * (item.qty || 1);
-        categoryMap[cat].qty += item.qty || 1;
+        const itemPrice = item.harga ?? item.price ?? item.hargaSatuan ?? 0;
+        const itemQty = item.qty || 1;
+        categoryMap[cat].total += itemPrice * itemQty;
+        categoryMap[cat].qty += itemQty;
       });
     });
 
@@ -100,6 +103,17 @@ export default function AdminDashboardPage() {
   const [isWaModalOpen, setIsWaModalOpen] = useState(false);
   const [waPeriod, setWaPeriod] = useState<"today" | "yesterday" | "7days" | "thisMonth">("today");
   const [copiedReport, setCopiedReport] = useState(false);
+
+  // Close modal on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsWaModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Helper dates
   const now = new Date();
@@ -317,30 +331,55 @@ export default function AdminDashboardPage() {
               </span>
             </div>
 
-            {/* Bar Chart Visualization */}
-            <div className="pt-6 pb-2">
-              <div className="h-44 sm:h-52 flex items-end justify-between gap-2 sm:gap-4 px-2">
+            {/* Bar Chart Visualization with Explicit Height and Scale Lines */}
+            <div className="pt-6 pb-2 relative">
+              {/* Subtle Horizontal Reference Grid Lines */}
+              <div className="absolute inset-x-2 top-8 bottom-14 flex flex-col justify-between pointer-events-none opacity-25">
+                <div className="border-b border-dashed border-line w-full flex justify-end">
+                  <span className="text-[9px] text-muted font-mono -mt-3.5 bg-surface px-1">
+                    Rp {max7DayOmzet >= 1000 ? `${Math.round(max7DayOmzet / 1000)}k` : max7DayOmzet}
+                  </span>
+                </div>
+                <div className="border-b border-dashed border-line w-full flex justify-end">
+                  <span className="text-[9px] text-muted font-mono -mt-3.5 bg-surface px-1">
+                    Rp {Math.round(max7DayOmzet / 2000)}k
+                  </span>
+                </div>
+                <div className="border-b border-line w-full flex justify-end">
+                  <span className="text-[9px] text-muted font-mono -mt-3 bg-surface px-1">
+                    Rp 0
+                  </span>
+                </div>
+              </div>
+
+              <div className="h-48 sm:h-56 flex items-end justify-between gap-2 sm:gap-4 px-2 relative z-10">
                 {last7Days.map((d, idx) => {
-                  const heightPercent = Math.max(8, Math.round((d.omzet / max7DayOmzet) * 100));
+                  const heightPercent = d.omzet > 0 
+                    ? Math.max(16, Math.min(100, Math.round((d.omzet / max7DayOmzet) * 100))) 
+                    : 6;
                   const isToday = idx === 6;
 
                   return (
                     <div key={d.dateStr} className="flex-1 flex flex-col items-center h-full justify-end group">
-                      {/* Amount on hover / top */}
-                      <span className="text-[10px] font-bold text-muted group-hover:text-accent-text transition-colors truncate max-w-full mb-1 opacity-80 group-hover:opacity-100">
-                        {d.omzet > 0 ? (d.omzet >= 1000 ? `${Math.round(d.omzet / 1000)}k` : d.omzet) : '-'}
+                      {/* Amount on Top of Bar */}
+                      <span className={`text-[10px] font-black transition-all truncate max-w-full mb-1.5 ${
+                        d.omzet > 0 
+                          ? (isToday ? "text-accent-text" : "text-fg") 
+                          : "text-muted/60"
+                      }`}>
+                        {d.omzet > 0 ? (d.omzet >= 1000 ? `${(d.omzet / 1000).toLocaleString("id-ID")}k` : d.omzet) : 'Rp 0'}
                       </span>
 
-                      {/* Bar Pillar */}
-                      <div className="w-full max-w-[48px] bg-card rounded-t-xl overflow-hidden flex flex-col justify-end border border-line/60 p-0.5 transition-all group-hover:border-accent">
+                      {/* Bar Track with Explicit Height */}
+                      <div className="w-full max-w-[48px] h-32 sm:h-36 bg-card/70 rounded-2xl overflow-hidden flex flex-col justify-end border border-line/70 p-1 relative transition-all group-hover:border-accent group-hover:bg-accent/10 shadow-inner">
                         <div
                           style={{ height: `${heightPercent}%` }}
-                          className={`w-full rounded-t-lg transition-all duration-500 shadow-sm ${
+                          className={`w-full rounded-xl transition-all duration-500 shadow-md ${
                             isToday
-                              ? 'bg-accent shadow-accent/30'
+                              ? 'bg-gradient-to-t from-accent to-accent-hover shadow-accent/40'
                               : d.omzet > 0
-                              ? 'bg-accent/60 group-hover:bg-accent'
-                              : 'bg-line/40'
+                              ? 'bg-gradient-to-t from-accent/70 to-accent group-hover:from-accent group-hover:to-accent-hover'
+                              : 'bg-line/50'
                           }`}
                         />
                       </div>
@@ -375,7 +414,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            <div className="mt-4 space-y-3.5 max-h-56 overflow-y-auto pr-1">
+            <div className="mt-4 space-y-3 max-h-60 overflow-y-auto pr-1">
               {categoryEntries.length === 0 ? (
                 <div className="py-8 text-center text-muted text-xs">
                   Belum ada transaksi menu tercatat.
@@ -393,25 +432,26 @@ export default function AdminDashboardPage() {
                   const barColor = colors[idx % colors.length];
 
                   return (
-                    <div key={cat.kategori} className="space-y-1">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="font-bold text-fg flex items-center gap-1.5 truncate">
-                          <span>•</span>
-                          <span>{cat.kategori}</span>
-                          <span className="text-[10px] text-muted font-normal">({cat.qty} terjual)</span>
-                        </span>
-                        <span className="font-black text-fg shrink-0">
+                    <div key={cat.kategori} className="space-y-1.5 p-2 rounded-xl hover:bg-card/40 transition-colors">
+                      <div className="flex justify-between items-center text-xs gap-2">
+                        <div className="font-bold text-fg flex items-center gap-1.5 min-w-0 flex-1">
+                          <span className={`w-2 h-2 rounded-full ${barColor} shrink-0`} />
+                          <span className="truncate">{cat.kategori}</span>
+                          <span className="text-[10px] text-muted font-normal shrink-0">({cat.qty} terjual)</span>
+                        </div>
+                        <span className="font-black text-fg shrink-0 text-right">
                           Rp {cat.total.toLocaleString("id-ID")}
                         </span>
                       </div>
-                      <div className="h-2 w-full bg-card rounded-full overflow-hidden flex border border-line/40">
+                      <div className="h-2.5 w-full bg-card rounded-full overflow-hidden flex border border-line/40">
                         <div
-                          style={{ width: `${percent}%` }}
+                          style={{ width: `${Math.max(4, percent)}%` }}
                           className={`h-full ${barColor} rounded-full transition-all duration-500`}
                         />
                       </div>
-                      <div className="text-right text-[10px] font-semibold text-muted">
-                        {percent}% dari omzet
+                      <div className="flex justify-between items-center text-[10px] text-muted font-semibold">
+                        <span>Kontribusi</span>
+                        <span>{percent}% dari omzet</span>
                       </div>
                     </div>
                   );
@@ -599,8 +639,14 @@ export default function AdminDashboardPage() {
 
       {/* Modal Kirim Laporan ke WhatsApp */}
       {isWaModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="bg-surface border border-line rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+        <div 
+          onClick={() => setIsWaModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-surface border border-line rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl cursor-default"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <div className="flex items-center gap-2.5">
                 <span className="text-2xl">📲</span>
