@@ -84,13 +84,23 @@ export default function TermsOfServicePage() {
               Pemilik lisensi berhak mendapatkan pembaruan aplikasi dan perbaikan sistem secara gratis. Dukungan teknis dan panduan penggunaan disediakan langsung melalui saluran resmi WhatsApp SakuNota.
             </p>
           </section>
+
+          <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <h2 className="text-base font-black text-slate-900">6. Kebijakan Pengembalian Dana (Refund Policy)</h2>
+            <p className="text-slate-600">
+              Lisensi aplikasi kasir SakuNota merupakan produk digital sekali bayar. Lisensi yang telah diterbitkan dan diaktifkan pada perangkat kasir tidak dapat dibatalkan atau dikembalikan (non-refundable), kecuali terjadi kendala teknis fatal pada sistem yang tidak dapat diselesaikan oleh tim teknis kami dalam 7 hari kerja.
+            </p>
+            <p className="text-slate-600">
+              Untuk memastikan kesesuaian fitur kasir dengan kebutuhan operasional usaha kuliner Anda, kami sangat menyarankan calon pembeli untuk mencoba <strong>Sandbox Kasir</strong> di halaman depan atau mendaftar <strong>Program Uji Coba Gratis 7 Hari</strong> sebelum melakukan pembelian lisensi permanen.
+            </p>
+          </section>
         </div>
       </main>
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
         <div className="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>© 2026 SakuNota. All rights reserved.</span>
+          <span>© 2026 SakuNota. Hak cipta dilindungi.</span>
           <div className="flex gap-4">
             <Link href="/privacy" className="hover:text-blue-600">Kebijakan Privasi</Link>
             <Link href="/panduan" className="hover:text-blue-600">Buku Panduan</Link>
