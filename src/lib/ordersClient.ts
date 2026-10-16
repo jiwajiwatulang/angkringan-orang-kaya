@@ -43,46 +43,15 @@ export async function submitBuyerOrder(data: {
       body: JSON.stringify(data),
     });
 
-    if (res.ok) {
-      const json = await res.json();
-      if (json.order) {
-        // Cache to local
-        cacheOrderLocally(json.order);
-        return { success: true, order: json.order };
-      }
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && json.success && json.order) {
+      cacheOrderLocally(json.order);
+      return { success: true, order: json.order };
     }
+    return { success: false, error: json.error || "Gagal membuat pesanan di server." };
   } catch (_) {
-    // Offline / fallback mode
+    return { success: false, error: "Tidak dapat terhubung ke server. Periksa koneksi internet Anda lalu coba lagi." };
   }
-
-  // Local fallback simulation if server is unreachable
-  const year = new Date().getFullYear();
-  const timePart = Date.now().toString(36).toUpperCase().slice(-4);
-  const randPart = Math.random().toString(36).substring(2, 6).toUpperCase();
-  const orderId = `SN-${year}-${timePart}${randPart}`;
-  const accessCode = `KOD-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-  const fallbackOrder: CustomerOrder = {
-    orderId,
-    accessCode,
-    buyerName: data.buyerName.trim(),
-    businessName: data.businessName.trim(),
-    whatsapp: data.whatsapp.trim(),
-    email: data.email?.trim() || undefined,
-    amount: 65000,
-    paymentMethod: "Transfer Bank BCA",
-    bankAccount: "8030 554 912 a.n. Reza",
-    transferProofName: "bukti_transfer_pembeli.jpg",
-    status: "menunggu_verifikasi",
-    createdAt: new Date().toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-  };
-
-  cacheOrderLocally(fallbackOrder);
-  return { success: true, order: fallbackOrder };
 }
 
 function cacheOrderLocally(order: CustomerOrder) {
@@ -182,31 +151,14 @@ export async function fetchOwnerOrdersServer(
       return { success: false, error: "Sesi Owner telah berakhir atau tidak sah. Silakan login kembali." };
     }
 
-    if (res.ok) {
-      const json = await res.json();
-      if (json.orders) {
-        return { success: true, orders: json.orders };
-      }
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && json.orders) {
+      return { success: true, orders: json.orders };
     }
+    return { success: false, error: json.error || "Gagal memuat pesanan dari server." };
   } catch (_) {
-    // Fallback to local storage below
+    return { success: false, error: "Tidak dapat terhubung ke server. Periksa koneksi internet Anda." };
   }
-
-  // Local / Static Mode fallback: Only return real locally cached orders if present
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem("sakunota_customer_orders");
-      if (raw) {
-        const list = JSON.parse(raw);
-        if (Array.isArray(list)) {
-          return { success: true, orders: list };
-        }
-      }
-    } catch (_) {}
-  }
-
-  // ZERO Mock Data: If empty, return genuine empty array
-  return { success: true, orders: [] };
 }
 
 export async function fetchOwnerMetricsServer(
@@ -223,15 +175,14 @@ export async function fetchOwnerMetricsServer(
       return { success: false, error: "Sesi tidak sah atau telah berakhir." };
     }
 
-    if (res.ok) {
-      const json = await res.json();
-      if (json.metrics) {
-        return { success: true, metrics: json.metrics };
-      }
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && json.metrics) {
+      return { success: true, metrics: json.metrics };
     }
-  } catch (_) {}
-
-  return { success: false, error: "Gagal memuat metrik dari server." };
+    return { success: false, error: json.error || "Gagal memuat metrik dari server." };
+  } catch (_) {
+    return { success: false, error: "Tidak dapat terhubung ke server untuk memuat metrik." };
+  }
 }
 
 export async function logoutOwnerServer(token: string): Promise<void> {
@@ -263,43 +214,15 @@ export async function verifyOwnerOrderServer(
       return { success: false, error: "Akses ditolak: Hanya Owner yang terautentikasi dapat memverifikasi pembayaran." };
     }
 
-    if (res.ok) {
-      const json = await res.json();
-      if (json.success) {
-        if (json.order) cacheOrderLocally(json.order);
-        return { success: true, order: json.order, licenseKey: json.licenseKey };
-      }
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && json.success) {
+      if (json.order) cacheOrderLocally(json.order);
+      return { success: true, order: json.order, licenseKey: json.licenseKey };
     }
+    return { success: false, error: json.error || "Gagal memverifikasi pesanan di server." };
   } catch (_) {
-    // Fallback to local storage update below
+    return { success: false, error: "Tidak dapat terhubung ke server. Periksa koneksi internet Anda." };
   }
-
-  // Local / Static Mode fallback
-  const randomHex = () => Math.random().toString(36).substring(2, 6).toUpperCase();
-  const generatedKey = `SN-${randomHex()}-${randomHex()}-${randomHex()}`;
-  let updatedOrder: CustomerOrder | undefined;
-
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem("sakunota_customer_orders");
-      const list: CustomerOrder[] = raw ? JSON.parse(raw) : [];
-      const item = list.find((o) => o.orderId === orderId);
-      if (item) {
-        item.status = "lunas_lisensi_terbit";
-        item.licenseKey = generatedKey;
-        item.verifiedAt = new Date().toLocaleDateString("id-ID", {
-          day: "numeric",
-          month: "short",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        updatedOrder = item;
-        localStorage.setItem("sakunota_customer_orders", JSON.stringify(list));
-      }
-    } catch (_) {}
-  }
-
-  return { success: true, order: updatedOrder, licenseKey: generatedKey };
 }
 
 export async function activateLicenseServer(

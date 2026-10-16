@@ -159,17 +159,32 @@ export default function SakuNotaOwnerDashboardPage() {
     }
   };
 
-  // Check stored session token on mount
+  // Check and validate stored session token on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedToken = sessionStorage.getItem("sakunota_owner_token");
       if (storedToken) {
-        setOwnerToken(storedToken);
-        setIsLoggedIn(true);
-        loadOrders(storedToken);
-        loadLicenses(storedToken);
-        loadTesterLicenses(storedToken);
-        loadBetaRegistrations(storedToken);
+        fetchOwnerMetricsServer(storedToken)
+          .then((res) => {
+            if (!res.success) {
+              sessionStorage.removeItem("sakunota_owner_token");
+              setOwnerToken(null);
+              setIsLoggedIn(false);
+              setLoginError("Sesi Owner telah berakhir atau tidak sah. Silakan login kembali.");
+            } else {
+              setOwnerToken(storedToken);
+              setIsLoggedIn(true);
+              loadOrders(storedToken);
+              loadLicenses(storedToken);
+              loadTesterLicenses(storedToken);
+              loadBetaRegistrations(storedToken);
+            }
+          })
+          .catch(() => {
+            sessionStorage.removeItem("sakunota_owner_token");
+            setOwnerToken(null);
+            setIsLoggedIn(false);
+          });
       }
     }
   }, []);
