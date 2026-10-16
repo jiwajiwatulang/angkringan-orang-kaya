@@ -49,7 +49,7 @@ export async function onRequestPost(context: any) {
       ? "https://app.sandbox.midtrans.com/snap/v1/transactions"
       : "https://app.midtrans.com/snap/v1/transactions";
 
-    const authHeader = "Basic " + Buffer.from(serverKey + ":").toString("base64");
+    const authHeader = "Basic " + (typeof btoa !== "undefined" ? btoa(serverKey + ":") : Buffer.from(serverKey + ":").toString("base64"));
 
     const requestUrl = new URL(context.request.url);
     const hostOrigin = requestUrl.origin;
@@ -93,13 +93,22 @@ export async function onRequestPost(context: any) {
       body: JSON.stringify(snapPayload),
     });
 
-    const snapJson = await snapRes.json() as any;
+    const snapText = await snapRes.text();
+    let snapJson: any = null;
+    try {
+      snapJson = snapText ? JSON.parse(snapText) : null;
+    } catch (_) {
+      snapJson = null;
+    }
 
-    if (!snapRes.ok || !snapJson.token) {
+    if (!snapRes.ok || !snapJson || !snapJson.token) {
+      const errMsg = snapJson?.error_messages
+        ? snapJson.error_messages.join(", ")
+        : snapJson?.message || snapText || "Gagal menghubungi gateway Midtrans.";
       return new Response(
         JSON.stringify({
           success: false,
-          error: snapJson.error_messages ? snapJson.error_messages.join(", ") : "Gagal menghubungi gateway Midtrans.",
+          error: errMsg,
         }),
         { status: 502, headers: { "Content-Type": "application/json" } }
       );

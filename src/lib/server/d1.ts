@@ -73,20 +73,25 @@ export interface D1ExecResult {
 let fallbackD1: D1Database | null = null;
 
 export function createD1NodeAdapter(dbFilePath?: string): D1Database {
-  // Dynamically load node:sqlite when in Node.js environment
-  const { DatabaseSync } = require("node:sqlite");
-  const fs = require("node:fs");
-  const path = require("node:path");
+  let sqlite: any;
+  try {
+    // Dynamically load node:sqlite when in Node.js environment
+    const { DatabaseSync } = require("node:sqlite");
+    const fs = require("node:fs");
+    const path = require("node:path");
 
-  const dataDir = path.resolve("data");
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+    const dataDir = path.resolve("data");
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+
+    const file = dbFilePath || path.join(dataDir, "sakunota_production.db");
+    sqlite = new DatabaseSync(file);
+    sqlite.exec("PRAGMA journal_mode = WAL;");
+    sqlite.exec("PRAGMA foreign_keys = ON;");
+  } catch (_) {
+    throw new Error("Cloudflare D1 database binding 'DB' belum dihubungkan pada Settings -> Functions -> D1 Database bindings di Cloudflare Dashboard.");
   }
-
-  const file = dbFilePath || path.join(dataDir, "sakunota_production.db");
-  const sqlite = new DatabaseSync(file);
-  sqlite.exec("PRAGMA journal_mode = WAL;");
-  sqlite.exec("PRAGMA foreign_keys = ON;");
 
   class NodeD1Statement implements D1PreparedStatement {
     private query: string;

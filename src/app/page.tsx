@@ -185,7 +185,25 @@ export default function SakuNotaLandingPage() {
           accessCode: currentAccessCode,
         }),
       });
-      const data = await res.json() as any;
+
+      const resText = await res.text();
+      let data: any = null;
+      try {
+        data = resText ? JSON.parse(resText) : null;
+      } catch (_) {
+        data = null;
+      }
+
+      if (!res.ok) {
+        setSnapError(data?.error || `Gagal menghubungi gerbang pembayaran (HTTP ${res.status}). Silakan gunakan transfer manual BCA.`);
+        return;
+      }
+
+      if (!data) {
+        setSnapError("Respon server pembayaran kosong. Pastikan MIDTRANS_SERVER_KEY sudah disimpan di Cloudflare Secrets.");
+        return;
+      }
+
       if (data.success && data.token) {
         if (typeof (window as any).snap !== "undefined" && (window as any).snap.pay) {
           (window as any).snap.pay(data.token, {
