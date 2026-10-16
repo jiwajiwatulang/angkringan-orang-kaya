@@ -158,8 +158,19 @@ export function getD1(envDb?: D1Database): D1Database {
 
 // Table Initialization in Cloudflare D1
 export async function initD1Tables(db: D1Database): Promise<void> {
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS CustomerOrders (
+  try {
+    const existing = await db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='CustomerOrders'")
+      .first();
+    if (existing) {
+      return;
+    }
+  } catch {
+    // If check fails, proceed with safe creation
+  }
+
+  const tableStatements = [
+    `CREATE TABLE IF NOT EXISTS CustomerOrders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       orderId TEXT UNIQUE NOT NULL,
       accessCode TEXT NOT NULL,
@@ -177,9 +188,8 @@ export async function initD1Tables(db: D1Database): Promise<void> {
       createdAt TEXT NOT NULL,
       verifiedAt TEXT,
       lastSeenAt TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS Licenses (
+    )`,
+    `CREATE TABLE IF NOT EXISTS Licenses (
       licenseKey TEXT PRIMARY KEY,
       orderId TEXT NOT NULL,
       businessName TEXT NOT NULL,
@@ -193,23 +203,20 @@ export async function initD1Tables(db: D1Database): Promise<void> {
       activeDays INTEGER DEFAULT 1,
       licenseType TEXT DEFAULT 'berbayar',
       revoked INTEGER NOT NULL DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS OwnerSessions (
+    )`,
+    `CREATE TABLE IF NOT EXISTS OwnerSessions (
       sessionId TEXT PRIMARY KEY,
       username TEXT NOT NULL,
       createdAt TEXT NOT NULL,
       expiresAt INTEGER NOT NULL,
       revoked INTEGER NOT NULL DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS OwnerAuthAttempts (
+    )`,
+    `CREATE TABLE IF NOT EXISTS OwnerAuthAttempts (
       ip TEXT PRIMARY KEY,
       failedAttempts INTEGER NOT NULL DEFAULT 0,
       lockedUntil INTEGER NOT NULL DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS TesterLicenses (
+    )`,
+    `CREATE TABLE IF NOT EXISTS TesterLicenses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       licenseKey TEXT UNIQUE NOT NULL,
       recipientName TEXT NOT NULL,
@@ -222,8 +229,16 @@ export async function initD1Tables(db: D1Database): Promise<void> {
       createdAt TEXT NOT NULL,
       activatedAt TEXT,
       revoked INTEGER NOT NULL DEFAULT 0
-    );
-  `);
+    )`,
+  ];
+
+  for (const stmt of tableStatements) {
+    try {
+      await db.prepare(stmt).run();
+    } catch {
+      // safe fallback
+    }
+  }
 
   // Safe migration for columns added to existing tables
   const columnMigrations = [
@@ -237,7 +252,7 @@ export async function initD1Tables(db: D1Database): Promise<void> {
 
   for (const query of columnMigrations) {
     try {
-      await db.exec(query);
+      await db.prepare(query).run();
     } catch {
       // Column already exists, safe to ignore
     }
