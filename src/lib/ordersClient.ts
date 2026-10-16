@@ -17,6 +17,7 @@ export interface CustomerOrder {
   deviceName?: string | null;
   activatedAt?: string | null;
   lastConnectedAt?: string | null;
+  lastSeenAt?: string | null;
 }
 
 export function getLocalDeviceId(): string {
@@ -642,15 +643,17 @@ export interface BetaRegistration {
   id?: number;
   registrationId: string;
   trialLicenseKey: string;
+  licenseKey?: string;
   ownerName: string;
   businessName: string;
   whatsapp: string;
   email?: string;
-  status: "pending" | "disetujui" | "ditolak" | "dicabut" | "dikonversi_berbayar";
+  status: "pending" | "disetujui" | "ditolak" | "dicabut" | "dikonversi_berbayar" | "trial_active" | "trial_expired";
   notes?: string;
   boundDeviceId?: string | null;
   deviceName?: string | null;
   registeredAt: string;
+  createdAt?: string;
   approvedAt?: string | null;
   activatedAt?: string | null;
   expiresAt?: string | null;
@@ -719,7 +722,11 @@ export async function approveBetaRegistrationServer(token: string, registrationI
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ action: "approve", registrationId }),
     });
-    return await res.json();
+    const json = await res.json();
+    if (json.registration && json.registration.trialLicenseKey && !json.registration.licenseKey) {
+      json.registration.licenseKey = json.registration.trialLicenseKey;
+    }
+    return json;
   } catch (e: any) {
     return { success: false, error: e.message || "Gagal menyetujui pendaftaran beta." };
   }
@@ -758,7 +765,7 @@ export async function extendBetaTrialServer(token: string, registrationId: strin
   }
 }
 
-export async function revokeBetaTrialServer(token: string, trialLicenseKey: string): Promise<{
+export async function revokeBetaTrialServer(token: string, trialLicenseKey: string, reason?: string): Promise<{
   success: boolean;
   error?: string;
 }> {
@@ -766,7 +773,7 @@ export async function revokeBetaTrialServer(token: string, trialLicenseKey: stri
     const res = await fetch("/api/owner/beta", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ action: "revoke", trialLicenseKey }),
+      body: JSON.stringify({ action: "revoke", trialLicenseKey, reason }),
     });
     return await res.json();
   } catch (e: any) {
@@ -774,7 +781,7 @@ export async function revokeBetaTrialServer(token: string, trialLicenseKey: stri
   }
 }
 
-export async function unbindBetaTrialServer(token: string, trialLicenseKey: string): Promise<{
+export async function unbindBetaTrialServer(token: string, trialLicenseKey: string, reason?: string): Promise<{
   success: boolean;
   error?: string;
 }> {
@@ -782,7 +789,7 @@ export async function unbindBetaTrialServer(token: string, trialLicenseKey: stri
     const res = await fetch("/api/owner/beta", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ action: "unbind", trialLicenseKey }),
+      body: JSON.stringify({ action: "unbind", trialLicenseKey, reason }),
     });
     return await res.json();
   } catch (e: any) {
@@ -793,6 +800,7 @@ export async function unbindBetaTrialServer(token: string, trialLicenseKey: stri
 export async function convertBetaTrialToPaidServer(token: string, registrationId: string): Promise<{
   success: boolean;
   commercialLicenseKey?: string;
+  licenseKey?: string;
   error?: string;
 }> {
   try {
@@ -801,7 +809,11 @@ export async function convertBetaTrialToPaidServer(token: string, registrationId
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ action: "convert", registrationId }),
     });
-    return await res.json();
+    const json = await res.json();
+    if (json.success && json.commercialLicenseKey && !json.licenseKey) {
+      json.licenseKey = json.commercialLicenseKey;
+    }
+    return json;
   } catch (e: any) {
     return { success: false, error: e.message || "Gagal mengonversi ke lisensi berbayar." };
   }

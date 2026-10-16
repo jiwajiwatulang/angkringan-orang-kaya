@@ -291,7 +291,8 @@ export default function SakuNotaOwnerDashboardPage() {
     if (!ownerToken || !extendTarget) return;
     setIsExtending(true);
     try {
-      const res = await extendBetaTrialServer(ownerToken, extendTarget.id, extendDays, extendReason);
+      const regId = extendTarget.registrationId || String(extendTarget.id);
+      const res = await extendBetaTrialServer(ownerToken, regId, extendDays, extendReason);
       if (res.success) {
         setToastMsg(`Trial diperpanjang +${extendDays} hari!`);
         setExtendTarget(null);
@@ -1283,7 +1284,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                                   {b.whatsapp}
                                 </a>
                               </span>
-                              <span>Daftar: {new Date(b.createdAt).toLocaleDateString("id-ID")}</span>
+                              <span>Daftar: {new Date(b.registeredAt || (b as any).createdAt || Date.now()).toLocaleDateString("id-ID")}</span>
                             </div>
                           </div>
 
@@ -1334,14 +1335,14 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                             <>
                               <button
                                 type="button"
-                                onClick={() => handleApproveBeta(b.id)}
+                                onClick={() => handleApproveBeta(b.registrationId || String(b.id))}
                                 className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors shadow-sm"
                               >
                                 ✅ Setujui & Terbitkan Trial
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleRejectBeta(b.id)}
+                                onClick={() => handleRejectBeta(b.registrationId || String(b.id))}
                                 className="px-3 py-1.5 rounded-xl bg-surface hover:bg-rose-500/15 text-rose-400 border border-line hover:border-rose-500/30 text-xs font-bold transition-colors"
                               >
                                 ❌ Tolak
@@ -1375,7 +1376,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                               {b.boundDeviceId && (
                                 <button
                                   type="button"
-                                  onClick={() => handleUnbindBeta(b.id)}
+                                  onClick={() => handleUnbindBeta(b.registrationId || String(b.id))}
                                   className="px-3 py-1.5 rounded-xl bg-surface hover:bg-amber-500/15 text-amber-500 border border-line hover:border-amber-500/30 text-xs font-bold transition-colors"
                                 >
                                   📱 Lepas Perangkat
@@ -1385,7 +1386,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                               {!isConverted && (
                                 <button
                                   type="button"
-                                  onClick={() => handleConvertBetaToPaid(b.id)}
+                                  onClick={() => handleConvertBetaToPaid(b.registrationId || String(b.id))}
                                   className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
                                 >
                                   <span>💎</span> Konversi Berbayar (Rp65rb)
@@ -1394,7 +1395,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
                               <button
                                 type="button"
-                                onClick={() => handleRevokeBeta(b.id)}
+                                onClick={() => handleRevokeBeta(b.registrationId || String(b.id))}
                                 className="px-3 py-1.5 rounded-xl bg-surface hover:bg-rose-500/15 text-rose-500 border border-line hover:border-rose-500/30 text-xs font-bold transition-colors"
                               >
                                 🚫 Cabut Akses
