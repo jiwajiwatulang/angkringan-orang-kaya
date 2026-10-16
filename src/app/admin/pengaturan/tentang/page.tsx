@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { App } from "@capacitor/app";
 import { downloadAllOfflineAssets } from "@/lib/offlineManager";
+import { checkCashierAccess, CashierAccessStatus } from "@/lib/licenseGuard";
 
 export default function PengaturanTentangPage() {
   const router = useRouter();
@@ -13,6 +14,11 @@ export default function PengaturanTentangPage() {
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [isPreparingOffline, setIsPreparingOffline] = useState(false);
   const [offlineStatusMsg, setOfflineStatusMsg] = useState("");
+  const [accessStatus, setAccessStatus] = useState<CashierAccessStatus | null>(null);
+
+  useEffect(() => {
+    checkCashierAccess().then((res) => setAccessStatus(res));
+  }, []);
 
   const handlePrepareOffline = async () => {
     setIsPreparingOffline(true);
@@ -105,25 +111,55 @@ export default function PengaturanTentangPage() {
             <span className="text-[11px] font-bold text-muted uppercase tracking-wider block">
               Status Lisensi
             </span>
-            <span className="inline-flex items-center gap-1.5 text-base font-black text-emerald-600 dark:text-emerald-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Aktif
-            </span>
+            {accessStatus?.isDemo ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-300">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                Mode Demo Sandbox
+              </span>
+            ) : accessStatus?.isValid ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
+                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                {accessStatus.licenseType === "trial" ? "Trial Closed Beta" : "Lisensi Aktif"}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-300">
+                Belum Terdaftar
+              </span>
+            )}
           </div>
 
           <div className="p-4 rounded-2xl bg-card border border-line space-y-1">
             <span className="text-[11px] font-bold text-muted uppercase tracking-wider block">
               Nomor Lisensi
             </span>
-            <strong className="text-xs font-mono font-black text-accent-text select-all block truncate">
-              SN-2026-X891-B721
+            <strong className="text-xs font-mono font-black text-blue-600 select-all block truncate">
+              {accessStatus?.isDemo
+                ? "DEMO-SANDBOX-TRIAL"
+                : accessStatus?.licenseKey || "BELUM ADA LISENSI"}
             </strong>
           </div>
         </div>
 
-        <p className="text-[11px] text-muted italic">
-          Contoh tampilan. Nomor asli terpasang saat aktivasi lisensi perangkat.
-        </p>
+        {accessStatus?.isDemo ? (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-left text-xs text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div>
+              <p className="font-bold">⚠️ Perangkat Berada dalam Mode Demo Sandbox</p>
+              <p className="text-[11px] text-amber-800">
+                Semua data & transaksi adalah simulasi lokal di browser Anda.
+              </p>
+            </div>
+            <Link
+              href="/checkout"
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs shadow-sm transition-all shrink-0"
+            >
+              Beli Lisensi Rp65.000
+            </Link>
+          </div>
+        ) : (
+          <p className="text-[11px] text-muted italic">
+            Lisensi resmi terikat pada perangkat fisik kasir ini.
+          </p>
+        )}
 
         {/* Tombol Praktis: Siapkan Kasir Tanpa Internet */}
         <div className="pt-2 border-t border-line/60">

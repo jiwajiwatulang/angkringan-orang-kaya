@@ -848,19 +848,20 @@ export default function POSPage() {
     setSelectedTable(table.id.toString());
     
     if (status === 'open') {
-      const order = activeOrders.find(o => o.tableId === table.id && o.status !== 'paid' && o.status !== 'void');
+      const numTableId = Number(table.id);
+      const strTableId = String(table.id);
+      const order = activeOrders.find(o => 
+        (Number(o.tableId) === numTableId || String(o.tableId) === strTableId) && 
+        o.status !== 'paid' && o.status !== 'void'
+      );
       if (order) {
         loadOrderIntoCart(order);
         setCustomerName(order.customerName || "");
       } else {
         setCustomerName("");
       }
-    } else if (status === 'lunas') {
-      const paidOrder = allOrders
-        .filter(o => o.tableId === table.id && o.status === 'paid')
-        .sort((a, b) => (b.id || 0) - (a.id || 0))[0];
-      setCustomerName(paidOrder?.customerName || "");
     } else {
+      // Meja kosong atau lunas yang dibuka untuk pesanan baru: selalu mulai dengan nama pembeli bersih
       setCustomerName("");
     }
     
@@ -959,17 +960,15 @@ export default function POSPage() {
     }
   };
 
-  const handleClearTable = async (targetTableId?: number) => {
-    const tId = targetTableId || (selectedTable ? parseInt(selectedTable) : null);
+  const handleClearTable = async (targetTableId?: number | string) => {
+    const tId = targetTableId || (selectedTable ? selectedTable : null);
     if (!tId) return;
     try {
       const { clearTable } = await import('@/lib/api');
       await clearTable(tId);
-      if (selectedTable === tId.toString()) {
-        setSelectedTable("");
-        setCustomerName("");
-        resetCart();
-      }
+      setSelectedTable("");
+      setCustomerName("");
+      resetCart();
       setView('meja');
       await loadData();
     } catch (e: any) {
@@ -1673,30 +1672,6 @@ export default function POSPage() {
               </div>
             )}
 
-            {selectedTableStatus !== 'lunas' && (
-              <div className="mt-2.5">
-                <div className="relative flex items-center">
-                  <span className="absolute left-3 text-xs text-muted">👤</span>
-                  <input
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Nama Pelanggan (opsional)..."
-                    className="w-full pl-8 pr-7 py-2 bg-surface border border-line rounded-xl text-xs font-semibold text-fg placeholder:text-muted focus:border-accent outline-none transition-colors"
-                  />
-                  {customerName && (
-                    <button
-                      type="button"
-                      onClick={() => setCustomerName("")}
-                      className="absolute right-2 text-xs text-muted hover:text-fg p-1"
-                      title="Hapus nama"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-card">
@@ -1926,28 +1901,6 @@ export default function POSPage() {
                 </div>
               )}
 
-              {selectedTableStatus !== 'lunas' && (
-                <div className="relative flex-1 flex items-center">
-                  <span className="absolute left-2.5 text-xs text-muted">👤</span>
-                  <input
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Nama Pelanggan (opsional)..."
-                    className="w-full pl-7 pr-7 py-1.5 bg-surface border border-line rounded-xl text-xs font-semibold text-fg placeholder:text-muted focus:border-accent outline-none transition-colors"
-                  />
-                  {customerName && (
-                    <button
-                      type="button"
-                      onClick={() => setCustomerName("")}
-                      className="absolute right-2 text-xs text-muted hover:text-fg p-0.5"
-                      title="Hapus nama"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
@@ -2521,13 +2474,21 @@ export default function POSPage() {
                     />
                     
                     {/* Tombol Cepat Pecahan Uang */}
-                    <div className="grid grid-cols-4 gap-1.5 mt-2">
+                    <div className="grid grid-cols-5 gap-1.5 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setCashTendered(totalPrice.toString())}
+                        className="py-1 px-1.5 text-xs bg-blue-50 border border-blue-200 text-blue-700 rounded-lg font-bold hover:bg-blue-100 transition-colors shadow-sm"
+                        title="Isi nominal pas sesuai total tagihan"
+                      >
+                        Pas
+                      </button>
                       {[10000, 20000, 50000, 100000].map(amt => (
                         <button
                           key={amt}
                           type="button"
                           onClick={() => setCashTendered(amt.toString())}
-                          className="py-1 px-2 text-xs bg-card border border-line rounded-lg font-bold text-slate-300 hover:bg-card transition-colors shadow-sm"
+                          className="py-1 px-1.5 text-xs bg-card border border-line rounded-lg font-bold text-fg hover:bg-surface transition-colors shadow-sm"
                         >
                           {amt >= 1000 ? (amt / 1000) + 'rb' : amt}
                         </button>
@@ -2535,15 +2496,17 @@ export default function POSPage() {
                     </div>
 
                     {/* Validasi Uang Kurang / Indikator Kembalian */}
-                    {(Number(cashTendered) || 0) > 0 && (Number(cashTendered) || 0) < totalPrice ? (
-                      <div className="mt-2.5 p-2 bg-red-950/40 border border-red-800 rounded-xl text-xs font-bold text-red-400 flex items-center justify-between">
-                        <span>⚠️ Uang diterima kurang:</span>
-                        <span className="font-extrabold">-Rp {(totalPrice - (Number(cashTendered) || 0)).toLocaleString('id-ID')}</span>
+                    {(!cashTendered || (Number(cashTendered) || 0) < totalPrice) ? (
+                      <div className="mt-2.5 p-2.5 bg-red-50 border border-red-300 rounded-xl text-xs font-bold text-red-700 flex items-center justify-between shadow-sm">
+                        <span>⚠️ Uang tunai kurang:</span>
+                        <span className="font-extrabold text-red-800">
+                          -Rp {(totalPrice - (Number(cashTendered) || 0)).toLocaleString('id-ID')}
+                        </span>
                       </div>
                     ) : (
                       <div className="mt-3 pt-2.5 border-t border-line flex justify-between items-center">
                         <span className="text-xs font-semibold text-muted">Kembalian:</span>
-                        <span className="text-base font-black text-accent-text">
+                        <span className="text-base font-black text-blue-600">
                           Rp {Math.max(0, (Number(cashTendered) || 0) - totalPrice).toLocaleString('id-ID')}
                         </span>
                       </div>
@@ -2601,8 +2564,17 @@ export default function POSPage() {
               )}
               <button 
                 type="button"
-                disabled={isProcessingPayment || (paymentMethod === 'Cash' && (Number(cashTendered) || 0) < totalPrice)}
-                onClick={() => processPayment(false, 'paid')} 
+                disabled={isProcessingPayment}
+                onClick={() => {
+                  if (paymentMethod === 'Cash') {
+                    const tendered = Number(cashTendered) || 0;
+                    if (tendered < totalPrice) {
+                      alert(`Uang tunai kurang dari total pesanan!\n\nTotal Tagihan: Rp ${totalPrice.toLocaleString('id-ID')}\nUang Diterima: Rp ${tendered.toLocaleString('id-ID')}\nKekurangan: Rp ${(totalPrice - tendered).toLocaleString('id-ID')}\n\nSilakan masukkan nominal yang cukup atau ketuk tombol [Pas].`);
+                      return;
+                    }
+                  }
+                  processPayment(false, 'paid');
+                }} 
                 className="flex-1 py-3 rounded-xl bg-accent hover:bg-accent-hover text-white font-extrabold transition-all shadow-md text-xs sm:text-sm active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isProcessingPayment ? 'Memproses...' : 'Bayar Sekarang'}
@@ -2837,7 +2809,7 @@ export default function POSPage() {
               {storeSettings.storeName || 'SakuNota'}
             </h1>
             <span className="text-[11px] text-muted font-medium line-clamp-1">
-              {storeSettings.storeAddress || 'Kasir simpel, usaha lebih tertata'}
+              {storeSettings.storeAddress || 'Kasir Jalan Tanpa Internet'}
             </span>
           </div>
         </Link>
@@ -2906,8 +2878,6 @@ export default function POSPage() {
               <span className="hidden sm:inline">Buka Shift</span>
             </button>
           )}
-
-          <ThemeToggle />
 
           <Link 
             href="/admin" 

@@ -28,9 +28,19 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const [passwordInput, setPasswordInput] = useState("");
   const [pinError, setPinError] = useState("");
   const [isLainnyaOpen, setIsLainnyaOpen] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
-    document.documentElement.classList.add('dark');
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    }
+    if (typeof window !== "undefined") {
+      const demoFlag =
+        sessionStorage.getItem("sakunota_demo_mode") === "true" ||
+        window.location.search.includes("demo=true");
+      setIsDemo(demoFlag);
+    }
   }, []);
 
   // Auth verification menggunakan sesi kriptografis aman (IndexedDB + sessionStorage)
@@ -544,34 +554,64 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
       {/* --- MAIN CONTENT AREA --- */}
       <div className="flex-1 flex flex-col min-w-0">
+        {/* Demo Sandbox Top Banner */}
+        {isDemo && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2 shadow-sm sticky top-0 z-40">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-black text-[10px] tracking-wide uppercase">
+                Demo Sandbox
+              </span>
+              <span className="font-medium text-[11px] sm:text-xs">
+                Anda sedang dalam <strong>Mode Demo Admin</strong>. Data & pengaturan di sini adalah simulasi uji coba.
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/pos?demo=true"
+                className="px-2.5 py-1 rounded-lg bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold text-[11px] transition-colors"
+              >
+                ← Kasir Demo
+              </Link>
+              <Link
+                href="/checkout"
+                className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] shadow-sm transition-all"
+              >
+                Beli Lisensi Rp65.000
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Top Header */}
-        <header className=" bg-surface border-b border-line px-4 sm:px-6 py-3.5 flex items-center justify-between sticky top-0 z-30">
+        <header className="bg-surface border-b border-line px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
             {/* Mobile Brand indicator */}
             <div className="flex items-center gap-2 md:hidden">
-              <div className="w-8 h-8 rounded-xl bg-accent text-white flex items-center justify-center font-black text-xs">
+              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-md shadow-blue-500/20">
                 SN
               </div>
               <span className="text-sm font-black text-fg">Admin</span>
             </div>
 
-            {/* Store Name pill */}
-            <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/40 border border-accent/40 text-xs font-bold text-accent-text">
-              <span>🏪</span>
-              <span>{storeSettings.storeName || "SakuNota POS"}</span>
+            {/* Store Name / Demo pill */}
+            <div className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+              isDemo
+                ? "bg-amber-100 border border-amber-300 text-amber-900"
+                : "bg-blue-50 border border-blue-200 text-blue-700"
+            }`}>
+              <span>{isDemo ? "🎮" : "🏪"}</span>
+              <span>{isDemo ? "Mode Demo Admin (Simulasi)" : (storeSettings.storeName || "SakuNota POS")}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <ThemeToggle size="sm" />
-
             {/* Kembali ke Kasir */}
             <Link
-              href="/pos"
-              className="px-3.5 py-2 rounded-xl bg-accent hover:bg-accent-hover active:scale-95 text-white text-xs font-black flex items-center gap-1.5 shadow-sm shadow-accent/20 transition-all"
+              href={isDemo ? "/pos?demo=true" : "/pos"}
+              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-black flex items-center gap-1.5 shadow-sm shadow-blue-500/20 transition-all"
             >
               <span>←</span>
-              <span>Kasir</span>
+              <span>{isDemo ? "Kasir Demo" : "Kasir"}</span>
             </Link>
           </div>
         </header>

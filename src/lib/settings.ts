@@ -59,7 +59,7 @@ export function isTableManagementEnabled(settings: StoreSettings): boolean {
 
 export const DEFAULT_SETTINGS: StoreSettings = {
   storeName: "SakuNota POS",
-  storeAddress: "Aplikasi Kasir Pintar UMKM",
+  storeAddress: "Kasir Jalan Tanpa Internet",
   storePhone: "",
   receiptFooter: "Terima Kasih atas Kunjungan Anda\nSilakan Datang Kembali",
   paperWidth: "58mm",

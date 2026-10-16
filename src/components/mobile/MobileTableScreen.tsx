@@ -24,9 +24,11 @@ export default function MobileTableScreen({
   const [filterStatus, setFilterStatus] = useState<"semua" | "kosong" | "terisi" | "lunas">("semua");
   const [activeSheetTable, setActiveSheetTable] = useState<any | null>(null);
 
-  const getTableActiveOrder = (tableId: number) => {
+  const getTableActiveOrder = (tableId: number | string) => {
+    const numId = Number(tableId);
+    const strId = String(tableId);
     return (activeOrders || []).find(
-      (o) => o && o.tableId === tableId && (o.status === "unpaid" || o.status === "paid")
+      (o) => o && (Number(o.tableId) === numId || String(o.tableId) === strId) && (o.status === "unpaid" || o.status === "paid")
     );
   };
 
@@ -118,8 +120,8 @@ export default function MobileTableScreen({
 
               if (isPaid) {
                 statusLabel = "Lunas";
-                badgeColor = "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-                cardBorder = "border-emerald-500/40 bg-card";
+                badgeColor = "bg-blue-50 text-blue-700 border border-blue-200";
+                cardBorder = "border-blue-300 bg-card";
               } else if (isOccupied) {
                 statusLabel = "Terisi";
                 badgeColor = "bg-amber-500/20 text-amber-300 border border-amber-500/30";
@@ -209,7 +211,7 @@ export default function MobileTableScreen({
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted">Status:</span>
-                      <span className={`font-bold ${isPaid ? "text-emerald-400" : "text-amber-400"}`}>
+                      <span className={`font-bold ${isPaid ? "text-blue-600" : "text-amber-500"}`}>
                         {isPaid ? "Lunas" : "Belum Bayar"}
                       </span>
                     </div>
@@ -222,7 +224,7 @@ export default function MobileTableScreen({
                         onTableAction(activeSheetTable);
                         setActiveSheetTable(null);
                       }}
-                      className="py-3 bg-accent hover:bg-accent-hover text-white text-xs font-bold rounded-xl active:scale-95 transition-all text-center flex items-center justify-center gap-1.5"
+                      className="py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl active:scale-95 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm"
                     >
                       <span>🍽️</span>
                       <span>{isPaid ? "Detail Pesanan" : "Bayar / Edit"}</span>
@@ -235,7 +237,7 @@ export default function MobileTableScreen({
                           onClearTable(activeSheetTable.id);
                           setActiveSheetTable(null);
                         }}
-                        className="py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl active:scale-95 transition-all text-center flex items-center justify-center gap-1.5"
+                        className="py-3 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl active:scale-95 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm"
                       >
                         <span>✓</span>
                         <span>Lepas Meja</span>

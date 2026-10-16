@@ -5,12 +5,7 @@ import { useEffect, useState } from "react";
 export type Theme = "dark" | "light";
 
 export function getInitialTheme(): Theme {
-  if (typeof window === "undefined") return "light";
-  try {
-    const saved = localStorage.getItem("sakunota_theme") || localStorage.getItem("theme");
-    if (saved === "light" || saved === "dark") return saved;
-  } catch (_) {}
-  return "light"; // Default is light (Clean Light Blue)
+  return "light"; // Enforce Clean Putih-Biru theme
 }
 
 export function applyTheme(theme: Theme) {

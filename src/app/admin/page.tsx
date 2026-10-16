@@ -225,7 +225,7 @@ export default function AdminDashboardPage() {
           <button
             type="button"
             onClick={() => setIsWaModalOpen(true)}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 transition-all flex items-center gap-1.5 active:scale-95"
+            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 active:scale-95"
           >
             <span>📲</span>
             <span>Kirim ke WhatsApp</span>
@@ -698,7 +698,7 @@ export default function AdminDashboardPage() {
                 <span className="font-bold text-muted uppercase tracking-wider">
                   Pratinjau Pesan ({filteredWaOrders.length} Transaksi):
                 </span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="font-bold text-blue-600">
                   Rp {periodOmzet.toLocaleString("id-ID")}
                 </span>
               </div>
@@ -719,7 +719,7 @@ export default function AdminDashboardPage() {
               <button
                 type="button"
                 onClick={handleOpenWhatsAppUrl}
-                className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
               >
                 <span>Kirim ke WhatsApp Sekarang →</span>
               </button>

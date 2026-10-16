@@ -263,42 +263,60 @@ export async function getTables() {
   );
 }
 
-export async function setTableStatus(id: number, status: 'kosong' | 'open' | 'lunas') {
-  await db.table('tables').update(id, { status });
+export async function setTableStatus(id: number | string, status: 'kosong' | 'open' | 'lunas') {
+  const numId = Number(id);
+  if (!isNaN(numId)) {
+    try {
+      await db.table('tables').update(numId, { status });
+    } catch (_) {}
+  }
+  try {
+    await db.table('tables').where('id').equals(id).modify({ status });
+  } catch (_) {}
 }
 
-export async function countUnpaidOrdersForTable(tableId: number) {
+export async function countUnpaidOrdersForTable(tableId: number | string) {
+  const numId = Number(tableId);
+  const strId = String(tableId);
   const orders = await db.table('orders').toArray();
-  return orders.filter((o: any) => o.tableId === tableId && o.status === 'unpaid').length;
+  return orders.filter((o: any) => 
+    (Number(o.tableId) === numId || String(o.tableId) === strId) && 
+    o.status === 'unpaid'
+  ).length;
 }
 
-export async function refreshTableStatus(tableId: number, justPaid: boolean = false) {
+export async function refreshTableStatus(tableId: number | string, justPaid: boolean = false) {
   const unpaid = await countUnpaidOrdersForTable(tableId);
   if (unpaid > 0) {
     await setTableStatus(tableId, 'open');
   } else if (justPaid) {
     await setTableStatus(tableId, 'lunas');
   } else {
-    const tableOrders = await db.table('orders').where('tableId').equals(tableId).toArray();
-    const hasUnpaid = tableOrders.some((o: any) => o.status === 'unpaid');
-    if (!hasUnpaid) {
-      await setTableStatus(tableId, 'kosong');
-    }
+    await setTableStatus(tableId, 'kosong');
   }
 }
 
-export async function clearTable(tableId: number) {
-  const unpaid = await countUnpaidOrdersForTable(tableId);
-  if (unpaid > 0) {
+export async function clearTable(tableId: number | string) {
+  const numId = Number(tableId);
+  const strId = String(tableId);
+  const allOrders = await db.table('orders').toArray();
+
+  const unpaid = allOrders.filter((o: any) => 
+    (Number(o.tableId) === numId || String(o.tableId) === strId) && 
+    o.status === 'unpaid'
+  );
+  if (unpaid.length > 0) {
     throw new Error('Masih ada tagihan yang belum lunas di meja ini.');
   }
-  // Lepas kaitan meja dari order yang sudah lunas/void agar tidak nyangkut ke pembeli baru
-  const tableOrders = await db.table('orders').where('tableId').equals(tableId).toArray();
-  for (const o of tableOrders) {
-    if (o.status === 'paid' || o.status === 'void') {
+
+  // Lepaskan kaitan meja dari SEMUA order pada meja ini (paid, void, draft)
+  for (const o of allOrders) {
+    if (Number(o.tableId) === numId || String(o.tableId) === strId) {
       await db.table('orders').update(o.id, { tableId: null, isTableCleared: true });
     }
   }
+
+  // Set status meja menjadi 'kosong'
   await setTableStatus(tableId, 'kosong');
 }
 

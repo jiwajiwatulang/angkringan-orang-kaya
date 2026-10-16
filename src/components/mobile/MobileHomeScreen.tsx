@@ -74,7 +74,7 @@ export default function MobileHomeScreen({
       {/* 1. Shift & Operator Status Strip (Functional, Non-Marketing) */}
       <div className="bg-card border border-line rounded-2xl p-3.5 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${activeShift ? "bg-emerald-400 animate-pulse" : "bg-slate-500"}`} />
+          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${activeShift ? "bg-blue-600 animate-pulse" : "bg-slate-400"}`} />
           <div className="min-w-0">
             <span className="text-xs font-black text-fg block truncate">
               {activeShift ? `Shift Aktif • ${activeShift.operatorName}` : "Shift Kasir Tutup"}

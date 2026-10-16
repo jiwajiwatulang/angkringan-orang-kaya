@@ -49,8 +49,6 @@ export default function MobileHeader({
 
       {/* Right Side: Shift Status & Quick Action */}
       <div className="flex items-center gap-1.5">
-        <ThemeToggle size="sm" />
-
         {activeShift ? (
           <button
             type="button"

@@ -67,9 +67,9 @@ export default function PengaturanProfilPage() {
         const ctx = canvas.getContext("2d");
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          const compressed = canvas.toDataURL("image/webp", 0.85);
+          const compressed = canvas.toDataURL("image/png");
           setStoreLogo(compressed);
-          showToast("Logo berhasil dimuat!", "info");
+          showToast("Logo berhasil dimuat! Klik Simpan Profil untuk menerapkan.", "info");
         }
       };
       img.src = readerEvent.target?.result as string;
@@ -194,13 +194,13 @@ export default function PengaturanProfilPage() {
                   )}
                 </div>
                 <div className="space-y-1.5 flex-1">
-                  <div className="flex gap-2">
-                    <label className="cursor-pointer px-3 py-1.5 bg-accent/40 text-accent-text border border-accent/40 rounded-xl text-xs font-bold hover:bg-accent/15 transition-colors inline-block">
-                      <span>Pilih Gambar Logo</span>
+                  <div className="flex flex-wrap gap-2">
+                    <label className="relative cursor-pointer px-3.5 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors inline-flex items-center gap-1.5 overflow-hidden active:scale-95 shadow-sm">
+                      <span>📁 Pilih Gambar Logo</span>
                       <input
                         type="file"
                         accept="image/png,image/jpeg,image/webp"
-                        className="hidden"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                         onChange={handleLogoUpload}
                       />
                     </label>
@@ -208,7 +208,7 @@ export default function PengaturanProfilPage() {
                       <button
                         type="button"
                         onClick={() => setStoreLogo("")}
-                        className="px-3 py-1.5 bg-red-950/40 text-red-400 border border-red-800 rounded-xl text-xs font-bold hover:bg-red-500/15 transition-colors"
+                        className="px-3.5 py-2 bg-red-50 text-red-600 border border-red-200 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors shadow-sm active:scale-95"
                       >
                         Hapus
                       </button>

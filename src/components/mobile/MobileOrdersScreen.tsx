@@ -87,7 +87,7 @@ export default function MobileOrdersScreen({
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       isPaid
-                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        ? "bg-blue-50 text-blue-700 border border-blue-200"
                         : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                     }`}
                   >
