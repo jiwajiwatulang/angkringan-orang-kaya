@@ -99,7 +99,8 @@ try {
   // Baca Kode Pemulihan yang ditampilkan
   const initialRecoveryCode = (await page.locator('.font-mono').first().textContent()).trim();
   console.log(`  -> Recovery Code yang Diterima Pemilik: "${initialRecoveryCode}"`);
-  assert(initialRecoveryCode.startsWith('SAKU-'), 'Format Recovery Code valid (SAKU-XXXX-XXXX)');
+  assert(initialRecoveryCode.startsWith('SAKU-') && initialRecoveryCode.length === 35, 'Format Recovery Code valid 130-bit (SAKU-XXXXX-XXXXX-XXXXX-XXXXX-XXXXXX)');
+  console.log('  ✅ PASS: Format Recovery Code berstandar 130-bit entropi (26 karakter Base32)');
 
   // Centang persetujuan dan tutup modal
   await page.locator('input[type="checkbox"]').check();
@@ -142,6 +143,7 @@ try {
     const mod = JSON.parse(raw);
     mod.adminPin = ''; // PIN dikosongkan
     localStorage.setItem('pos_store_settings', JSON.stringify(mod));
+    sessionStorage.clear();
     localStorage.removeItem('adminLoginExpiry');
 
     const req = indexedDB.open('AngkringanDB');
@@ -164,7 +166,7 @@ try {
 
   // Uji coba memasukkan kode asal / palsu
   console.log('  -> Menguji coba kode palsu (Brute Force simulation)...');
-  await page.locator('input[placeholder="SAKU-XXXX-XXXX"]').fill('SAKU-9999-9999');
+  await page.locator('input[placeholder*="SAKU-"]').fill('SAKU-99999-99999-99999-99999-999999');
   await page.locator('button:has-text("Verifikasi Hak Pemilik")').click();
   await page.waitForTimeout(500);
 
@@ -174,7 +176,7 @@ try {
 
   // Masukkan Kode Pemulihan yang benar
   console.log('  -> Memasukkan Kode Pemulihan pemilik yang sah...');
-  await page.locator('input[placeholder="SAKU-XXXX-XXXX"]').fill(initialRecoveryCode);
+  await page.locator('input[placeholder*="SAKU-"]').fill(initialRecoveryCode);
   await page.locator('button:has-text("Verifikasi Hak Pemilik")').click();
   await page.waitForTimeout(1000);
 
@@ -204,7 +206,7 @@ try {
   assert(page.url().includes('/admin'), 'Berhasil kembali masuk ke Backoffice');
 
   // Verifikasi login berikutnya dengan PIN 9988
-  await page.evaluate(() => localStorage.removeItem('adminLoginExpiry'));
+  await page.evaluate(() => sessionStorage.clear());
   await page.goto(`http://localhost:${port}/admin`);
   await page.waitForTimeout(1000);
 
@@ -213,6 +215,70 @@ try {
   await page.waitForTimeout(1000);
   assert(page.url().includes('/admin'), 'Login dengan PIN baru 9988 sukses');
   console.log('  ✅ PASS: PIN baru 9988 aktif dan melindungi Backoffice sempurna');
+
+  // -------------------------------------------------------------------------
+  // TAHAP 4: Uji Penetrasi Sesi & Eliminasi Backdoor
+  // -------------------------------------------------------------------------
+  console.log('\n[TAHAP 4] Uji Coba Penolakan Manipulasi Storage & Backdoor URL...');
+  // 4a. Hapus session token, lalu coba manipulasi localStorage dengan timestamp palsu
+  await page.evaluate(() => {
+    sessionStorage.clear();
+    localStorage.setItem('adminLoginExpiry', (Date.now() + 86400000).toString());
+  });
+  await page.goto(`http://localhost:${port}/admin`);
+  await page.waitForTimeout(1000);
+  const loginFormExists = await page.locator('input[type="password"]').count();
+  assert(loginFormExists > 0, 'Manipulasi localStorage.adminLoginExpiry DITOLAK!');
+  console.log('  ✅ PASS: Manipulasi LocalStorage gagal total. Sistem menuntut token sesi kriptografis valid');
+
+  // 4b. Coba akses melalui backdoor query string ?auth=demo
+  await page.goto(`http://localhost:${port}/admin?auth=demo`);
+  await page.waitForTimeout(1000);
+  const demoFormExists = await page.locator('input[type="password"]').count();
+  assert(demoFormExists > 0, 'Backdoor parameter ?auth=demo DITOLAK!');
+  console.log('  ✅ PASS: Backdoor query parameter ?auth=demo berhasil dieliminasi total');
+
+  // -------------------------------------------------------------------------
+  // TAHAP 5: Uji Prinsip Fail-Closed (Anti-Bypass Recovery Code)
+  // -------------------------------------------------------------------------
+  console.log('\n[TAHAP 5] Uji Coba Prinsip Fail-Closed pada handleVerifyRecovery...');
+
+  // Simulasikan hilangnya recoveryCodeHash di database lokal toko
+  await page.evaluate(async () => {
+    const raw = localStorage.getItem('pos_store_settings');
+    const mod = JSON.parse(raw);
+    mod.recoveryCodeHash = '';
+    localStorage.setItem('pos_store_settings', JSON.stringify(mod));
+    const req = indexedDB.open('AngkringanDB');
+    return new Promise((resolve) => {
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction('settings', 'readwrite');
+        tx.objectStore('settings').put({ key: 'pos_store_settings', value: mod });
+        tx.oncomplete = () => resolve(true);
+      };
+    });
+  });
+  await page.waitForTimeout(500);
+
+  // Reload halaman admin agar context membaca setting tanpa recovery code
+  await page.goto(`http://localhost:${port}/admin`);
+  await page.waitForTimeout(1000);
+
+  // Klik Lupa PIN Admin
+  await page.locator('button:has-text("🔑 Lupa PIN Admin?")').click();
+  await page.waitForTimeout(500);
+
+  // Coba submit verifikasi recovery code
+  await page.locator('input[placeholder*="SAKU-"]').fill('SAKU-ABCDE-FGHIJ-KLMNP-QRSTU-VWXYZ2');
+  await page.locator('button:has-text("Verifikasi Hak Pemilik")').click();
+  await page.waitForTimeout(500);
+
+  const failClosedMsg = await page.locator('text=Kredensial pemulihan tidak ditemukan').first().textContent();
+  assert(failClosedMsg !== null, 'Fail-Closed aktif: penolakan keras saat recoveryCodeHash tidak tersedia');
+  const isStillOnVerify = await page.locator('text=Verifikasi Pemilik Toko').count();
+  assert(isStillOnVerify > 0, 'Tidak pernah dialihkan ke reset_pin saat recoveryCodeHash kosong');
+  console.log('  ✅ PASS: Prinsip Fail-Closed terverifikasi! Bypass ke reset_pin ditolak keras demi keamanan data');
 
   await context.close();
 

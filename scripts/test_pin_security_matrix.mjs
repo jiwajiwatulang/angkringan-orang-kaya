@@ -101,7 +101,7 @@ try {
   console.log('  ✅ PASS: PIN berhasil diubah ke 5678');
 
   // Logout dan uji apakah 1234 DITOLAK
-  await pageA.evaluate(() => localStorage.removeItem('adminLoginExpiry'));
+  await pageA.evaluate(() => sessionStorage.clear());
   await pageA.goto(`http://localhost:${port}/admin`);
   await pageA.waitForTimeout(1000);
 
@@ -148,25 +148,25 @@ try {
   console.log('  ✅ PASS: Di perangkat lama, PIN lokal (5678) tetap dipertahankan');
 
   // -------------------------------------------------------------------------
-  // TEST 4: Zero-Fallback Saat PIN Hilang / Kosong (NO 1234 Bypasses!)
+  // TEST 4: Zero-Fallback Saat PIN Hilang / Dihapus di Toko Berjalan
   // -------------------------------------------------------------------------
-  console.log('\n[TEST 4] Uji Kasus Ekstrem: PIN Hilang / Dihapus di Penyimpanan...');
+  console.log('\n[TEST 4] Uji Kasus Ekstrem: PIN Hilang / Dihapus di Penyimpanan Toko Berjalan...');
   await pageA.evaluate(async () => {
     const entry = await window.__SAKUNOTA_API__.db.table('settings').get('pos_store_settings');
     const mod = { ...entry.value, adminPin: '' };
     await window.__SAKUNOTA_API__.db.table('settings').put({ key: 'pos_store_settings', value: mod });
     localStorage.setItem('pos_store_settings', JSON.stringify(mod));
-    localStorage.removeItem('adminLoginExpiry');
+    sessionStorage.clear();
   });
 
   await pageA.goto(`http://localhost:${port}/admin`);
   await pageA.waitForTimeout(1000);
 
-  // Memastikan sistem mendeteksi PIN hilang dan meminta konfigurasi PIN baru, bukan meminta login atau bypass 1234
-  const setupTitle = await pageA.locator('text=Konfigurasi PIN Admin').first().textContent();
-  assert(setupTitle !== null, 'Layar Konfigurasi PIN Admin Baru muncul saat PIN tidak ditemukan');
+  // Memastikan sistem mendeteksi PIN hilang dan mewajibkan Verifikasi Pemilik Toko
+  const verifyTitle = await pageA.locator('text=Verifikasi Pemilik Toko').first().textContent();
+  assert(verifyTitle !== null, 'Sistem mendeteksi PIN hilang dan mewajibkan Verifikasi Pemilik Toko');
   console.log('  ✅ PASS: Sistem TIDAK diam-diam kembali ke 1234 saat PIN hilang');
-  console.log('  ✅ PASS: Sistem mewajibkan konfigurasi PIN baru');
+  console.log('  ✅ PASS: Sistem mewajibkan Verifikasi Pemilik Toko (Recovery Code) untuk mencegah bypass');
 
   // -------------------------------------------------------------------------
   // TEST 5: Restore di Perangkat Baru Tanpa PIN -> Wajib Konfigurasi PIN Baru
@@ -179,10 +179,18 @@ try {
     viewport: { width: 412, height: 915 }
   });
   const pageB = contextB.pages()[0] || await contextB.newPage();
-  await pageB.goto(`http://localhost:${port}/admin/pengaturan/data?auth=demo`);
+  
+  // Login awal dengan PIN bawaan di profil baru
+  await pageB.goto(`http://localhost:${port}/admin`);
+  await pageB.waitForTimeout(1000);
+  await pageB.locator('input[type="password"]').fill('1234');
+  await pageB.locator('button:has-text("Masuk Backoffice")').click();
   await pageB.waitForTimeout(1000);
 
-  // Kosongkan settings di Profil B agar mensimulasikan perangkat baru
+  await pageB.goto(`http://localhost:${port}/admin/pengaturan/data`);
+  await pageB.waitForTimeout(1000);
+
+  // Kosongkan settings di Profil B agar mensimulasikan perangkat baru tanpa PIN
   await pageB.evaluate(async () => {
     await window.__SAKUNOTA_API__.db.table('settings').clear();
     localStorage.clear();
@@ -201,6 +209,7 @@ try {
   assert(pinProfilB === '' || pinProfilB === undefined, 'Perangkat baru tidak diinjeksi 1234 secara diam-diam');
 
   // Buka /admin di Perangkat Baru
+  await pageB.evaluate(() => sessionStorage.clear());
   await pageB.goto(`http://localhost:${port}/admin`);
   await pageB.waitForTimeout(1000);
 
@@ -210,7 +219,12 @@ try {
   // Konfigurasi PIN baru (misal: 9988)
   await pageB.locator('input[placeholder="4-6 digit angka..."]').fill('9988');
   await pageB.locator('input[placeholder="Ulangi PIN baru..."]').fill('9988');
-  await pageB.locator('button:has-text("Simpan PIN & Buka Backoffice")').click();
+  await pageB.locator('button:has-text("Simpan PIN & Buat Kode Pemulihan")').click();
+  await pageB.waitForTimeout(1000);
+
+  // Konfirmasi kode pemulihan baru
+  await pageB.locator('input[type="checkbox"]').check();
+  await pageB.locator('button:has-text("Selesai & Buka Backoffice")').click();
   await pageB.waitForTimeout(1000);
 
   assert(pageB.url().includes('/admin'), 'Berhasil masuk Backoffice setelah buat PIN baru');

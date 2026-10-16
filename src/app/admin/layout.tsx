@@ -8,6 +8,8 @@ import { AdminProvider, useAdmin } from "./AdminContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import { saveStoreSettingsAsync } from "@/lib/settings";
 import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "@/lib/recovery";
+import { createAdminSession, verifyAdminSession, destroyAdminSession } from "@/lib/session";
+import { db } from "@/lib/dexie";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: "📊" },
@@ -31,14 +33,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.add('dark');
   }, []);
 
-  // Auth verification
+  // Auth verification menggunakan sesi kriptografis aman (IndexedDB + sessionStorage)
   useEffect(() => {
-    const loginExpiry = localStorage.getItem("adminLoginExpiry");
-    if (loginExpiry && Date.now() < parseInt(loginExpiry)) {
-      setIsAuthenticated(true);
-    } else if (typeof window !== 'undefined' && window.location.search.includes('auth=demo')) {
-      setIsAuthenticated(true);
-    }
+    verifyAdminSession().then((isValid) => {
+      setIsAuthenticated(isValid);
+    });
   }, [setIsAuthenticated]);
 
   // Android Back button handler
@@ -84,24 +83,28 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         // Toko yang sudah memiliki data & recovery code tetapi kehilangan PIN -> WAJIB verifikasi Recovery Code
         setAuthView("verify_recovery");
       } else {
-        // Toko/perangkat baru bersih -> Setup awal mandiri
+        // Toko/perangkat baru bersih atau perangkat baru setelah restore cadangan -> Setup PIN awal mandiri
         setAuthView("setup_initial");
       }
     }
   }, [storeSettings.adminPin, storeSettings.recoveryCodeHash, isAuthenticated]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!storeSettings.adminPin) {
       setPinError("PIN Admin belum dikonfigurasi pada perangkat ini.");
       return;
     }
     if (passwordInput === storeSettings.adminPin) {
-      localStorage.setItem("adminLoginExpiry", (Date.now() + 2 * 60 * 60 * 1000).toString());
-      setIsAuthenticated(true);
-      setPasswordInput("");
-      setPinError("");
-      showToast("Selamat datang di Admin Backoffice", "success");
+      try {
+        await createAdminSession();
+        setIsAuthenticated(true);
+        setPasswordInput("");
+        setPinError("");
+        showToast("Selamat datang di Admin Backoffice", "success");
+      } catch (err: any) {
+        setPinError("Gagal membuat sesi aman: " + err.message);
+      }
     } else {
       setPinError("PIN otorisasi salah. Silakan coba lagi.");
     }
@@ -122,8 +125,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // PRINSIP FAIL-CLOSED: Tolak reset jika hash tidak ditemukan pada toko yang aktif
     if (!storeSettings.recoveryCodeHash) {
-      setAuthView("reset_pin");
+      setPinError("Kredensial pemulihan tidak ditemukan pada perangkat ini. Reset PIN ditolak demi keamanan data usaha Anda. Silakan hubungi dukungan resmi SakuNota dengan bukti lisensi usaha.");
       return;
     }
 
@@ -196,12 +200,16 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleFinishRecoverySetup = () => {
+  const handleFinishRecoverySetup = async () => {
     if (!acknowledgedCode) return;
-    localStorage.setItem("adminLoginExpiry", (Date.now() + 2 * 60 * 60 * 1000).toString());
-    setIsAuthenticated(true);
-    setRevealedCode(null);
-    showToast("Kredensial keamanan berhasil disimpan!", "success");
+    try {
+      await createAdminSession();
+      setIsAuthenticated(true);
+      setRevealedCode(null);
+      showToast("Kredensial keamanan berhasil disimpan!", "success");
+    } catch (err: any) {
+      setPinError("Gagal mengaktifkan sesi aman: " + err.message);
+    }
   };
 
   // Unauthenticated: PIN Login / Pemulihan Pemilik / Konfigurasi Awal
@@ -362,8 +370,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                     setRecoveryCodeInput(e.target.value.toUpperCase());
                     setPinError("");
                   }}
-                  placeholder="SAKU-XXXX-XXXX"
-                  className="w-full text-center text-lg font-mono tracking-widest font-black border-2 border-line focus:border-accent rounded-xl py-2.5 px-4 bg-card text-fg outline-none transition-all"
+                  placeholder="SAKU-XXXXX-XXXXX-XXXXX-XXXXX-XXXXXX"
+                  className="w-full text-center text-sm font-mono tracking-wider font-black border-2 border-line focus:border-accent rounded-xl py-2.5 px-3 bg-card text-fg outline-none transition-all"
                   required
                 />
               </div>

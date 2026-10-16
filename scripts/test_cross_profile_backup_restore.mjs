@@ -99,7 +99,6 @@ try {
   await pageA.evaluate(() => {
     localStorage.setItem('sakunota_onboarding_completed', 'true');
     localStorage.setItem('onboardingCompleted', 'true');
-    localStorage.setItem('adminLoginExpiry', (Date.now() + 86400000).toString());
   });
 
   // Isi data usaha kustom di Profil A
@@ -226,9 +225,14 @@ try {
 
   assert(customDataInserted === true, 'Data usaha kustom berhasil dibuat di Profil A');
 
-  // Buka halaman Data & Cadangan di Profil A
-  console.log('  -> Membuka halaman /admin/pengaturan/data di Profil A...');
-  await pageA.goto(`http://localhost:${port}/admin/pengaturan/data?auth=demo`);
+  // Autentikasi Admin di Profil A melalui form PIN 1234
+  console.log('  -> Autentikasi Admin di Profil A...');
+  await pageA.goto(`http://localhost:${port}/admin`);
+  await pageA.waitForTimeout(500);
+  await pageA.locator('input[type="password"]').fill('1234');
+  await pageA.locator('button:has-text("Masuk Backoffice")').click();
+  await pageA.waitForTimeout(500);
+  await pageA.goto(`http://localhost:${port}/admin/pengaturan/data`);
   await pageA.waitForTimeout(1500);
 
   // Verifikasi live count mencerminkan data yang baru diisi
@@ -274,9 +278,14 @@ try {
   await pageB.evaluate(() => {
     localStorage.setItem('sakunota_onboarding_completed', 'true');
     localStorage.setItem('onboardingCompleted', 'true');
-    localStorage.setItem('adminLoginExpiry', (Date.now() + 86400000).toString());
   });
-  await pageB.goto(`http://localhost:${port}/admin/pengaturan/data?auth=demo`);
+  console.log('  -> Autentikasi Admin di Profil B...');
+  await pageB.goto(`http://localhost:${port}/admin`);
+  await pageB.waitForTimeout(500);
+  await pageB.locator('input[type="password"]').fill('1234');
+  await pageB.locator('button:has-text("Masuk Backoffice")').click();
+  await pageB.waitForTimeout(500);
+  await pageB.goto(`http://localhost:${port}/admin/pengaturan/data`);
   await pageB.waitForTimeout(1500);
 
   // Verifikasi Profil B benar-benar kosong / tidak memiliki pesanan Profil A

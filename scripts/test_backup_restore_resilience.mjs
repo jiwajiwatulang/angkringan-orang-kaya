@@ -104,10 +104,14 @@ try {
   await page.evaluate(() => {
     localStorage.setItem('sakunota_onboarding_completed', 'true');
     localStorage.setItem('onboardingCompleted', 'true');
-    localStorage.setItem('adminLoginExpiry', (Date.now() + 86400000).toString());
   });
-
-  await page.goto(`http://localhost:${port}/admin/pengaturan/data?auth=demo`);
+  console.log('  -> Autentikasi Admin melalui form PIN 1234...');
+  await page.goto(`http://localhost:${port}/admin`);
+  await page.waitForTimeout(500);
+  await page.locator('input[type="password"]').fill('1234');
+  await page.locator('button:has-text("Masuk Backoffice")').click();
+  await page.waitForTimeout(500);
+  await page.goto(`http://localhost:${port}/admin/pengaturan/data`);
   await page.waitForTimeout(1500);
 
   // -------------------------------------------------------------------------

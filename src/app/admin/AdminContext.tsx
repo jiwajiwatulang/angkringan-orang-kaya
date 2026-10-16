@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { getStoreSettings, loadStoreSettingsAsync, subscribeStoreSettings, StoreSettings } from "@/lib/settings";
+import { destroyAdminSession } from "@/lib/session";
 
 export interface ToastInfo {
   id: string;
@@ -66,7 +67,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem("adminLoginExpiry");
+    destroyAdminSession();
     setIsAuthenticated(false);
   };
 

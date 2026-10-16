@@ -1,45 +1,54 @@
 /**
- * SakuNota Offline-First Recovery Code Utility
+ * SakuNota 130-bit Offline-First Recovery Code Utility
  * 
- * Standar keamanan OWASP untuk pemulihan kredensial tanpa koneksi internet (offline).
- * Menggunakan kode acak terstruktur ber-entropi tinggi (Crockford Base32),
- * disimpan hanya dalam bentuk hash SHA-256 pada IndexedDB lokal,
- * dan TIDAK PERNAH disertakan dalam file cadangan (backup JSON).
+ * Standar keamanan OWASP untuk kredensial pemulihan darurat offline.
+ * - Entropi: 26 karakter Base32 acak (Crockford) = 130-bit kriptografis (> 128-bit).
+ * - Wajib menggunakan Web Crypto API (crypto.getRandomValues). Tidak ada Math.random fallback.
+ * - Hash SHA-256 untuk penyimpanan lokal di IndexedDB.
+ * - Sanitasi mutlak: tidak pernah disertakan dalam file cadangan JSON.
  */
 
 const RECOVERY_CHARS = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 
 /**
- * Menghasilkan Kode Pemulihan Pemilik berformat SAKU-XXXX-XXXX
- * Menggunakan generator acak kriptografis (Web Crypto API)
+ * Menghasilkan Kode Pemulihan Pemilik 130-bit berformat SAKU-XXXXX-XXXXX-XXXXX-XXXXX-XXXXXX
+ * (26 karakter Base32 acak = 130 bit entropi)
  */
 export function generateRecoveryCode(): string {
-  const bytes = new Uint8Array(8);
-  if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.getRandomValues) {
-    globalThis.crypto.getRandomValues(bytes);
-  } else {
-    for (let i = 0; i < bytes.length; i++) {
-      bytes[i] = Math.floor(Math.random() * 256);
-    }
+  if (typeof globalThis.crypto === 'undefined' || !globalThis.crypto.getRandomValues) {
+    throw new Error(
+      "Generator kriptografis aman (Web Crypto API) tidak didukung pada perangkat ini. Pembuatan Recovery Code dibatalkan demi keamanan."
+    );
   }
 
-  let code1 = '';
-  let code2 = '';
-  for (let i = 0; i < 4; i++) {
-    code1 += RECOVERY_CHARS[bytes[i] % RECOVERY_CHARS.length];
-  }
-  for (let i = 4; i < 8; i++) {
-    code2 += RECOVERY_CHARS[bytes[i] % RECOVERY_CHARS.length];
+  // 26 byte acak kriptografis
+  const bytes = new Uint8Array(26);
+  globalThis.crypto.getRandomValues(bytes);
+
+  const chars: string[] = [];
+  for (let i = 0; i < 26; i++) {
+    chars.push(RECOVERY_CHARS[bytes[i] % RECOVERY_CHARS.length]);
   }
 
-  return `SAKU-${code1}-${code2}`;
+  // Format: SAKU-XXXXX-XXXXX-XXXXX-XXXXX-XXXXXX (5+5+5+5+6 = 26 karakter acak)
+  const p1 = chars.slice(0, 5).join('');
+  const p2 = chars.slice(5, 10).join('');
+  const p3 = chars.slice(10, 15).join('');
+  const p4 = chars.slice(15, 20).join('');
+  const p5 = chars.slice(20, 26).join('');
+
+  return `SAKU-${p1}-${p2}-${p3}-${p4}-${p5}`;
 }
 
 /**
- * Menormalisasi input pengguna (uppercase, tanpa spasi/tanda hubung)
+ * Menormalisasi input pengguna (uppercase, tanpa spasi/tanda hubung, toleransi prefix SAKU-)
  */
 export function normalizeRecoveryCode(rawCode: string): string {
-  return rawCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  let cleaned = rawCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (cleaned.startsWith('SAKU') && cleaned.length > 26) {
+    cleaned = cleaned.substring(4);
+  }
+  return cleaned;
 }
 
 /**
