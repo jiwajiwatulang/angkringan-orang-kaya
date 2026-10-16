@@ -1,12 +1,15 @@
 // Cloudflare Pages Function: GET /api/owner/orders
-import { listOwnerOrders } from "../../../src/lib/server/sakunotaServer";
+import { listOwnerOrders, extractBearerToken, getD1, initD1Tables } from "../../../src/lib/server/sakunotaServer";
 
 export async function onRequestGet(context: any) {
   try {
-    const authHeader = context.request.headers.get("Authorization") || "";
-    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const db = getD1(context.env?.DB);
+    await initD1Tables(db);
 
-    const res = listOwnerOrders(token);
+    const authHeader = context.request.headers.get("Authorization") || "";
+    const token = extractBearerToken(authHeader);
+
+    const res = await listOwnerOrders(db, token);
     if (!res.success) {
       return new Response(JSON.stringify({ success: false, error: res.error }), {
         status: 401,

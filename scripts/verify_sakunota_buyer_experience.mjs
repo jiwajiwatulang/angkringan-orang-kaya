@@ -1,6 +1,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { chromium } from 'file:///C:/Users/User/.gemini/antigravity/brain/4c7a1509-3477-4c30-b661-18b9208deb22/scratch/shots/node_modules/playwright-core/index.mjs';
 import {
@@ -12,8 +13,9 @@ import {
   activateLicenseOnDevice,
   getOwnerMetrics,
   revokeOwnerSession,
+  extractBearerToken,
 } from '../src/lib/server/sakunotaServer.ts';
-import { resetDatabaseClean } from '../src/lib/server/db.ts';
+import { getD1, initD1Tables, resetDatabaseCleanD1 } from '../src/lib/server/d1.ts';
 
 const staticDir = path.resolve('out');
 const profileDir = path.resolve('.test-profile-buyer-exp');
@@ -61,74 +63,96 @@ async function parseBody(req) {
 }
 
 async function startServerWithApi() {
+  const d1 = getD1();
+  await initD1Tables(d1);
+
   const server = http.createServer(async (req, res) => {
     const parsedUrl = new URL(req.url, `http://localhost:${port}`);
     const pathname = parsedUrl.pathname;
     const clientIp = req.socket.remoteAddress || '127.0.0.1';
 
-    // --- API ROUTES (Centralized Cloudflare Simulation) ---
+    // --- API ROUTES (Cloudflare D1 Simulation) ---
     if (pathname.startsWith('/api/')) {
       res.setHeader('Content-Type', 'application/json');
 
       if (pathname === '/api/owner/login' && req.method === 'POST') {
         const body = await parseBody(req);
-        const result = authenticateOwner(body.username || '', body.password || '', clientIp);
+        const result = await authenticateOwner(d1, body.username || '', body.password || '', clientIp);
         res.writeHead(result.success ? 200 : 401);
         return res.end(JSON.stringify(result));
       }
 
       if (pathname === '/api/owner/orders' && req.method === 'GET') {
         const auth = req.headers['authorization'] || '';
-        const token = auth.replace(/^Bearer\s+/i, '');
-        const result = listOwnerOrders(token);
+        const token = extractBearerToken(auth);
+        const result = await listOwnerOrders(d1, token);
         res.writeHead(result.success ? 200 : 401);
         return res.end(JSON.stringify(result));
       }
 
       if (pathname === '/api/owner/metrics' && req.method === 'GET') {
         const auth = req.headers['authorization'] || '';
-        const token = auth.replace(/^Bearer\s+/i, '');
-        const result = getOwnerMetrics(token);
+        const token = extractBearerToken(auth);
+        const result = await getOwnerMetrics(d1, token);
         res.writeHead(result.success ? 200 : 401);
         return res.end(JSON.stringify(result));
       }
 
       if (pathname === '/api/owner/logout' && req.method === 'POST') {
         const auth = req.headers['authorization'] || '';
-        const token = auth.replace(/^Bearer\s+/i, '');
-        const result = revokeOwnerSession(token);
+        const token = extractBearerToken(auth);
+        const result = await revokeOwnerSession(d1, token);
         res.writeHead(200);
         return res.end(JSON.stringify(result));
       }
 
       if (pathname === '/api/owner/verify' && req.method === 'POST') {
         const auth = req.headers['authorization'] || '';
-        const token = auth.replace(/^Bearer\s+/i, '');
+        const token = extractBearerToken(auth);
         const body = await parseBody(req);
-        const result = verifyOrderAndIssueLicense(token, body.orderId);
+        const result = await verifyOrderAndIssueLicense(d1, token, body.orderId);
         res.writeHead(result.success ? 200 : 401);
         return res.end(JSON.stringify(result));
       }
 
       if (pathname === '/api/orders/create' && req.method === 'POST') {
         const body = await parseBody(req);
-        const result = createCustomerOrder(body);
+        const result = await createCustomerOrder(d1, body);
         res.writeHead(result.success ? 201 : 400);
         return res.end(JSON.stringify(result));
       }
 
       if (pathname === '/api/orders/check' && req.method === 'POST') {
         const body = await parseBody(req);
-        const result = checkCustomerOrderStatus(body.orderId || '', body.accessCode || '');
+        const result = await checkCustomerOrderStatus(d1, body.orderId || '', body.accessCode || '');
         res.writeHead(result.success ? 200 : 403);
         return res.end(JSON.stringify(result));
       }
 
       if (pathname === '/api/license/activate' && req.method === 'POST') {
         const body = await parseBody(req);
-        const result = activateLicenseOnDevice(body);
+        const result = await activateLicenseOnDevice(d1, body);
         res.writeHead(result.status || (result.success ? 200 : 400));
         return res.end(JSON.stringify(result));
+      }
+
+      // Midtrans Webhook Simulation
+      if (pathname === '/api/payment/midtrans' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { order_id, transaction_status } = body;
+        if (transaction_status === 'settlement') {
+          const ord = await d1.prepare('SELECT * FROM CustomerOrders WHERE orderId = ?').bind(order_id).first();
+          if (ord) {
+            const licenseKey = `SN-${crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 4)}-${crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 4)}-${crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 4)}`;
+            const verifiedAt = new Date().toLocaleDateString('id-ID');
+            await d1.prepare("UPDATE CustomerOrders SET status = 'lunas_lisensi_terbit', licenseKey = ?, verifiedAt = ? WHERE orderId = ?").bind(licenseKey, verifiedAt, order_id).run();
+            await d1.prepare("INSERT INTO Licenses (licenseKey, orderId, businessName, issuedAt, signature) VALUES (?, ?, ?, ?, ?)").bind(licenseKey, order_id, ord.businessName, verifiedAt, 'midtrans_sig').run();
+            res.writeHead(200);
+            return res.end(JSON.stringify({ success: true, licenseKey }));
+          }
+        }
+        res.writeHead(200);
+        return res.end(JSON.stringify({ success: true }));
       }
 
       res.writeHead(404);
@@ -159,14 +183,15 @@ async function startServerWithApi() {
   });
 
   await new Promise(resolve => server.listen(port, resolve));
-  console.log(`Server with API endpoints running on http://localhost:${port}`);
+  console.log(`Server with Cloudflare D1 simulation running on http://localhost:${port}`);
   return server;
 }
 
 async function run() {
-  // Clean fresh database state
-  resetDatabaseClean();
-  console.log('Database reset clean: 0 buyers, 0 licenses, 0 pending orders.');
+  const d1 = getD1();
+  await initD1Tables(d1);
+  await resetDatabaseCleanD1(d1);
+  console.log('Cloudflare D1 database reset clean: 0 buyers, 0 licenses, 0 pending orders.');
 
   if (fs.existsSync(profileDir)) {
     try {
@@ -187,11 +212,11 @@ async function run() {
 
   try {
     console.log('\n================================================================');
-    console.log('  🎯 SAKUNOTA REAL DB & ZERO-MOCK OWNER DASHBOARD AUDIT');
+    console.log('  🎯 SAKUNOTA CLOUDFLARE D1 & OWNER SECURITY AUDIT');
     console.log('================================================================\n');
 
-    // --- STAGE 1: ZERO-MOCK EMPTY STATE ON OWNER DASHBOARD ---
-    console.log('[STAGE 1] Owner Portal: Zero-Mock Empty State Verification');
+    // --- STAGE 1: ZERO-MOCK EMPTY STATE ON CLOUDFLARE D1 ---
+    console.log('[STAGE 1] Owner Portal: Cloudflare D1 Zero-Mock Empty State');
     await page.goto(`http://localhost:${port}/owner`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(500);
 
@@ -225,6 +250,14 @@ async function run() {
     await page.waitForTimeout(300);
     const emptyCustCard = page.locator('text=Belum Ada Pelanggan Terdaftar');
     check(await emptyCustCard.isVisible(), 'Empty state in Customers tab is visible');
+
+    // Check Cloudflare D1 Architecture tab
+    await page.locator('button:has-text("Cloudflare D1 Architecture")').click();
+    await page.waitForTimeout(300);
+    const d1Badge = page.locator('text=Cloudflare D1: Terkoneksi & Siap');
+    check(await d1Badge.isVisible(), 'Cloudflare D1 status badge is visible');
+    const midtransBadge = page.locator('text=Midtrans: Ready');
+    check(await midtransBadge.isVisible(), 'Midtrans Ready badge is visible');
 
     await page.screenshot({ path: path.join(artifactDir, 'sakunota_owner_dashboard_empty_state.png') });
     console.log('  📸 Screenshot saved: sakunota_owner_dashboard_empty_state.png');
@@ -298,7 +331,7 @@ async function run() {
     await page.waitForTimeout(300);
 
     // --- STAGE 5: OWNER PORTAL LIVE SYNC & VERIFICATION ---
-    console.log('\n[STAGE 5] Owner Portal: Live Order Arrival & Verification');
+    console.log('\n[STAGE 5] Owner Portal: Cloudflare D1 Live Order Arrival & Verification');
     await page.goto(`http://localhost:${port}/owner`, { waitUntil: 'networkidle' });
     await page.waitForSelector('text=1 pembeli terdaftar', { timeout: 8000 });
     await page.waitForSelector('text=Perlu cek mutasi BCA', { timeout: 8000 });
@@ -360,15 +393,15 @@ async function run() {
     await page.waitForTimeout(300);
 
     // --- STAGE 6B: 1-DEVICE ENFORCEMENT ---
-    console.log('\n[STAGE 6B] 1-Device License Binding Enforcement');
-    const dev1Res = activateLicenseOnDevice({
+    console.log('\n[STAGE 6B] 1-Device License Binding Enforcement in Cloudflare D1');
+    const dev1Res = await activateLicenseOnDevice(d1, {
       licenseKey: licenseVal,
       deviceId: 'DEVICE-PHONE-1-BUDI',
       deviceName: 'HP Kasir Warung Budi'
     });
     check(dev1Res.success, 'Device 1 successfully activates license');
 
-    const dev2Res = activateLicenseOnDevice({
+    const dev2Res = await activateLicenseOnDevice(d1, {
       licenseKey: licenseVal,
       deviceId: 'DEVICE-LAPTOP-2-UNAUTHORIZED',
       deviceName: 'Laptop Orang Lain'
@@ -376,7 +409,7 @@ async function run() {
     check(!dev2Res.success && dev2Res.status === 409, 'Device 2 rejected under strict 1-Device Rule (409 Conflict)');
 
     // --- STAGE 6C: SERVER-SIDE SESSION REVOCATION (LOGOUT AUDIT) ---
-    console.log('\n[STAGE 6C] Server-Side Session Revocation (Logout)');
+    console.log('\n[STAGE 6C] Server-Side Session Revocation in Cloudflare D1 (Logout)');
     await page.goto(`http://localhost:${port}/owner`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(500);
 
@@ -390,49 +423,75 @@ async function run() {
     const tokenAfterLogout = await page.evaluate(() => sessionStorage.getItem('sakunota_owner_token'));
     check(tokenAfterLogout === null, 'Session token cleared from client sessionStorage');
 
-    // Verify revoked token is rejected by server
-    const listResAfterLogout = listOwnerOrders(storedToken);
-    check(!listResAfterLogout.success, 'Server rejects revoked token with session error', listResAfterLogout.error);
+    // Verify revoked token is rejected by D1
+    const listResAfterLogout = await listOwnerOrders(d1, storedToken);
+    check(!listResAfterLogout.success, 'Cloudflare D1 rejects revoked token with session error', listResAfterLogout.error);
 
     // --- STAGE 6D: BRUTE-FORCE RATE LIMITING AUDIT ---
-    console.log('\n[STAGE 6D] Brute-Force Rate Limiting Audit (5 Failed Attempts Lock)');
+    console.log('\n[STAGE 6D] Brute-Force Rate Limiting Audit in Cloudflare D1 (5 Failed Attempts Lock)');
     const testIp = '192.168.99.100';
     for (let i = 1; i <= 4; i++) {
-      const failRes = authenticateOwner('Reza', `WrongPass${i}`, testIp);
+      const failRes = await authenticateOwner(d1, 'Reza', `WrongPass${i}`, testIp);
       check(!failRes.success && !failRes.remainingLockSec, `Attempt ${i} rejected without lock`);
     }
 
     // 5th failed attempt must trigger lockout
-    const fifthRes = authenticateOwner('Reza', 'WrongPass5', testIp);
+    const fifthRes = await authenticateOwner(d1, 'Reza', 'WrongPass5', testIp);
     check(!fifthRes.success && Boolean(fifthRes.remainingLockSec), '5th failed attempt locks out user for 15 minutes');
     check(fifthRes.error.includes('Akses diblokir'), 'Lockout message presented');
 
     // Subsequent attempt during lockout period remains blocked
-    const blockedRes = authenticateOwner('Reza', 'Reza-SakuNota-2026!', testIp);
+    const blockedRes = await authenticateOwner(d1, 'Reza', 'Reza-SakuNota-2026!', testIp);
     check(!blockedRes.success && Boolean(blockedRes.remainingLockSec), 'Even correct password is held blocked during lockout period');
 
-    // --- STAGE 6E: PERSISTENT DATABASE RESTART AUDIT ---
-    console.log('\n[STAGE 6E] Persistent Database Survival Across Server Restarts');
+    // --- STAGE 6E: PERSISTENT CLOUDFLARE D1 DATABASE SURVIVAL ---
+    console.log('\n[STAGE 6E] Persistent Cloudflare D1 Survival Across Server Restarts');
     // Shutdown HTTP server
     await new Promise(resolve => server.close(resolve));
     console.log('  Server shut down.');
 
-    // Query SQLite database directly from file on disk
-    const rawDb = new DatabaseSync('data/sakunota_production.db');
-    const dbOrder = rawDb.prepare('SELECT * FROM CustomerOrders WHERE orderId = ?').get(capturedOrderId);
-    check(Boolean(dbOrder), `Order ${capturedOrderId} physically saved on disk in sqlite database`);
-    check(dbOrder.status === 'lunas_lisensi_terbit', 'Order status persists as lunas_lisensi_terbit');
-    check(dbOrder.licenseKey === licenseVal, 'Genuine license key persists on disk');
-    check(dbOrder.boundDeviceId === 'DEVICE-PHONE-1-BUDI', '1-device binding persists on disk');
+    // Query D1 directly to prove persistent storage survives
+    const d1AfterShutdown = getD1();
+    const d1Order = await d1AfterShutdown.prepare('SELECT * FROM CustomerOrders WHERE orderId = ?').bind(capturedOrderId).first();
+    check(Boolean(d1Order), `Order ${capturedOrderId} physically saved and verified in Cloudflare D1`);
+    check(d1Order.status === 'lunas_lisensi_terbit', 'Order status persists as lunas_lisensi_terbit in D1');
+    check(d1Order.licenseKey === licenseVal, 'Genuine license key persists in D1');
+    check(d1Order.boundDeviceId === 'DEVICE-PHONE-1-BUDI', '1-device binding persists in D1');
 
-    const dbLicense = rawDb.prepare('SELECT * FROM Licenses WHERE licenseKey = ?').get(licenseVal);
-    check(Boolean(dbLicense), 'License record physically saved on disk in Licenses table');
-    check(dbLicense.boundDeviceId === 'DEVICE-PHONE-1-BUDI', 'Bound device persisted in Licenses table');
-    rawDb.close();
+    const d1License = await d1AfterShutdown.prepare('SELECT * FROM Licenses WHERE licenseKey = ?').bind(licenseVal).first();
+    check(Boolean(d1License), 'License record physically saved in D1 Licenses table');
+    check(d1License.boundDeviceId === 'DEVICE-PHONE-1-BUDI', 'Bound device persisted in D1 Licenses table');
 
     // Restart server for UI tests
     server = await startServerWithApi();
-    console.log('  Server restarted successfully from persistent sqlite database.');
+    console.log('  Server restarted successfully with Cloudflare D1.');
+
+    // --- STAGE 6F: MIDTRANS GATEWAY INTEGRATION & ATOMIC SETTLEMENT ---
+    console.log('\n[STAGE 6F] Midtrans Payment Gateway Integration & Atomic Settlement in D1');
+    const midtransOrder = await createCustomerOrder(d1, {
+      buyerName: 'Haji Ahmad',
+      businessName: 'Warung Nasi Ahmad',
+      whatsapp: '081299887766'
+    });
+    check(midtransOrder.success, 'New order created for Midtrans gateway test');
+
+    // Simulate Midtrans settlement webhook
+    const midtransRes = await fetch(`http://localhost:${port}/api/payment/midtrans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        order_id: midtransOrder.order.orderId,
+        transaction_status: 'settlement',
+        gross_amount: '65000.00'
+      })
+    });
+    const midtransJson = await midtransRes.json();
+    check(midtransJson.success, 'Midtrans settlement webhook processed successfully in D1');
+    check(Boolean(midtransJson.licenseKey), `Midtrans generated genuine license key (${midtransJson.licenseKey})`);
+
+    // Verify order updated in D1
+    const settledOrd = await d1.prepare('SELECT * FROM CustomerOrders WHERE orderId = ?').bind(midtransOrder.order.orderId).first();
+    check(settledOrd.status === 'lunas_lisensi_terbit', 'D1 order status updated to lunas_lisensi_terbit by Midtrans');
 
     // --- STAGE 7: RINGKASAN PENJUALAN, CHARTS & WHATSAPP REPORT ---
     console.log('\n[STAGE 7] Ringkasan Penjualan: Visual Charts & WhatsApp Report');

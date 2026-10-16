@@ -1,8 +1,11 @@
 // Cloudflare Pages Function: POST /api/orders/check
-import { checkCustomerOrderStatus } from "../../../src/lib/server/sakunotaServer";
+import { checkCustomerOrderStatus, getD1, initD1Tables } from "../../../src/lib/server/sakunotaServer";
 
 export async function onRequestPost(context: any) {
   try {
+    const db = getD1(context.env?.DB);
+    await initD1Tables(db);
+
     const body = await context.request.json();
     const { orderId, accessCode } = body || {};
 
@@ -16,7 +19,7 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    const res = checkCustomerOrderStatus(orderId, accessCode);
+    const res = await checkCustomerOrderStatus(db, orderId, accessCode);
     if (!res.success) {
       return new Response(JSON.stringify({ success: false, error: res.error }), {
         status: res.error?.includes("tidak cocok") ? 403 : 404,

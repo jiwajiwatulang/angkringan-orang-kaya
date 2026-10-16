@@ -1,12 +1,15 @@
 // Cloudflare Pages Function: GET /api/owner/metrics
-import { getOwnerMetrics } from "../../../src/lib/server/sakunotaServer";
+import { getOwnerMetrics, extractBearerToken, getD1, initD1Tables } from "../../../src/lib/server/sakunotaServer";
 
 export async function onRequestGet(context: any) {
   try {
-    const authHeader = context.request.headers.get("Authorization") || "";
-    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const db = getD1(context.env?.DB);
+    await initD1Tables(db);
 
-    const res = getOwnerMetrics(token);
+    const authHeader = context.request.headers.get("Authorization") || "";
+    const token = extractBearerToken(authHeader);
+
+    const res = await getOwnerMetrics(db, token);
     if (!res.success) {
       return new Response(JSON.stringify({ success: false, error: res.error }), {
         status: 401,

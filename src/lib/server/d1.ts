@@ -1,0 +1,391 @@
+// Cloudflare D1 Universal Database Layer for SakuNota
+// Works identically on Cloudflare Edge (env.DB) and Local/Node test harness
+
+export interface DbCustomerOrder {
+  id?: number;
+  orderId: string;
+  accessCode: string;
+  buyerName: string;
+  businessName: string;
+  whatsapp: string;
+  email?: string;
+  amount: number;
+  paymentMethod: string;
+  bankAccount: string;
+  transferProofName?: string;
+  status: "menunggu_verifikasi" | "lunas_lisensi_terbit" | "batal";
+  licenseKey?: string;
+  boundDeviceId?: string;
+  createdAt: string;
+  verifiedAt?: string;
+  lastSeenAt?: string;
+}
+
+export interface DbLicense {
+  licenseKey: string;
+  orderId: string;
+  businessName: string;
+  boundDeviceId?: string;
+  deviceName?: string;
+  issuedAt: string;
+  activatedAt?: string;
+  lastConnectedAt?: string;
+  signature: string;
+}
+
+// Official Cloudflare D1 TypeScript Interfaces
+export interface D1Database {
+  prepare(query: string): D1PreparedStatement;
+  batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]>;
+  exec(query: string): Promise<D1ExecResult>;
+}
+
+export interface D1PreparedStatement {
+  bind(...values: any[]): D1PreparedStatement;
+  first<T = unknown>(colName?: string): Promise<T | null>;
+  run(): Promise<D1Response>;
+  all<T = unknown>(): Promise<D1Result<T>>;
+}
+
+export interface D1Result<T = unknown> {
+  results: T[];
+  success: boolean;
+  meta: any;
+  error?: string;
+}
+
+export interface D1Response {
+  success: boolean;
+  meta: any;
+  error?: string;
+}
+
+export interface D1ExecResult {
+  count: number;
+  duration: number;
+}
+
+// Node / Local Adapter for Cloudflare D1
+let fallbackD1: D1Database | null = null;
+
+export function createD1NodeAdapter(dbFilePath?: string): D1Database {
+  // Dynamically load node:sqlite when in Node.js environment
+  const { DatabaseSync } = require("node:sqlite");
+  const fs = require("node:fs");
+  const path = require("node:path");
+
+  const dataDir = path.resolve("data");
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+
+  const file = dbFilePath || path.join(dataDir, "sakunota_production.db");
+  const sqlite = new DatabaseSync(file);
+  sqlite.exec("PRAGMA journal_mode = WAL;");
+  sqlite.exec("PRAGMA foreign_keys = ON;");
+
+  class NodeD1Statement implements D1PreparedStatement {
+    private query: string;
+    private params: any[] = [];
+
+    constructor(query: string) {
+      this.query = query;
+    }
+
+    bind(...values: any[]): D1PreparedStatement {
+      this.params = values;
+      return this;
+    }
+
+    async first<T = unknown>(colName?: string): Promise<T | null> {
+      const stmt = sqlite.prepare(this.query);
+      const row = stmt.get(...this.params) as any;
+      if (!row) return null;
+      if (colName) return (row[colName] as T) ?? null;
+      return row as T;
+    }
+
+    async run(): Promise<D1Response> {
+      const stmt = sqlite.prepare(this.query);
+      stmt.run(...this.params);
+      return { success: true, meta: {} };
+    }
+
+    async all<T = unknown>(): Promise<D1Result<T>> {
+      const stmt = sqlite.prepare(this.query);
+      const rows = stmt.all(...this.params) as T[];
+      return { results: rows || [], success: true, meta: {} };
+    }
+  }
+
+  return {
+    prepare(query: string): D1PreparedStatement {
+      return new NodeD1Statement(query);
+    },
+    async batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]> {
+      const results: D1Result<T>[] = [];
+      for (const s of statements) {
+        const res = await s.all<T>();
+        results.push(res);
+      }
+      return results;
+    },
+    async exec(query: string): Promise<D1ExecResult> {
+      sqlite.exec(query);
+      return { count: 1, duration: 1 };
+    },
+  };
+}
+
+export function getD1(envDb?: D1Database): D1Database {
+  if (envDb) {
+    return envDb;
+  }
+  if (!fallbackD1) {
+    fallbackD1 = createD1NodeAdapter();
+  }
+  return fallbackD1;
+}
+
+// Table Initialization in Cloudflare D1
+export async function initD1Tables(db: D1Database): Promise<void> {
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS CustomerOrders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      orderId TEXT UNIQUE NOT NULL,
+      accessCode TEXT NOT NULL,
+      buyerName TEXT NOT NULL,
+      businessName TEXT NOT NULL,
+      whatsapp TEXT NOT NULL,
+      email TEXT,
+      amount INTEGER NOT NULL DEFAULT 65000,
+      paymentMethod TEXT NOT NULL DEFAULT 'Transfer Bank BCA',
+      bankAccount TEXT NOT NULL DEFAULT '8030 554 912 a.n. Reza',
+      transferProofName TEXT,
+      status TEXT NOT NULL DEFAULT 'menunggu_verifikasi',
+      licenseKey TEXT,
+      boundDeviceId TEXT,
+      createdAt TEXT NOT NULL,
+      verifiedAt TEXT,
+      lastSeenAt TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS Licenses (
+      licenseKey TEXT PRIMARY KEY,
+      orderId TEXT NOT NULL,
+      businessName TEXT NOT NULL,
+      boundDeviceId TEXT,
+      deviceName TEXT,
+      issuedAt TEXT NOT NULL,
+      activatedAt TEXT,
+      lastConnectedAt TEXT,
+      signature TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS OwnerSessions (
+      sessionId TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      expiresAt INTEGER NOT NULL,
+      revoked INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS OwnerAuthAttempts (
+      ip TEXT PRIMARY KEY,
+      failedAttempts INTEGER NOT NULL DEFAULT 0,
+      lockedUntil INTEGER NOT NULL DEFAULT 0
+    );
+  `);
+}
+
+// D1 Order Operations
+export async function insertOrderD1(db: D1Database, order: DbCustomerOrder): Promise<DbCustomerOrder> {
+  const stmt = db.prepare(`
+    INSERT INTO CustomerOrders (
+      orderId, accessCode, buyerName, businessName, whatsapp, email,
+      amount, paymentMethod, bankAccount, transferProofName, status,
+      licenseKey, boundDeviceId, createdAt, verifiedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  await stmt.bind(
+    order.orderId,
+    order.accessCode,
+    order.buyerName,
+    order.businessName,
+    order.whatsapp,
+    order.email || null,
+    order.amount || 65000,
+    order.paymentMethod || "Transfer Bank BCA",
+    order.bankAccount || "8030 554 912 a.n. Reza",
+    order.transferProofName || null,
+    order.status || "menunggu_verifikasi",
+    order.licenseKey || null,
+    order.boundDeviceId || null,
+    order.createdAt,
+    order.verifiedAt || null
+  ).run();
+
+  return order;
+}
+
+export async function getAllOrdersD1(db: D1Database): Promise<DbCustomerOrder[]> {
+  const res = await db.prepare(`SELECT * FROM CustomerOrders ORDER BY id DESC`).all<DbCustomerOrder>();
+  return res.results || [];
+}
+
+export async function getOrderByIdD1(db: D1Database, orderId: string): Promise<DbCustomerOrder | null> {
+  return await db.prepare(`SELECT * FROM CustomerOrders WHERE orderId = ?`).bind(orderId).first<DbCustomerOrder>();
+}
+
+export async function updateOrderStatusAndLicenseD1(
+  db: D1Database,
+  orderId: string,
+  licenseKey: string,
+  verifiedAt: string
+): Promise<DbCustomerOrder | null> {
+  await db.prepare(`
+    UPDATE CustomerOrders 
+    SET status = 'lunas_lisensi_terbit', licenseKey = ?, verifiedAt = ?
+    WHERE orderId = ?
+  `).bind(licenseKey, verifiedAt, orderId).run();
+
+  return await getOrderByIdD1(db, orderId);
+}
+
+// D1 License Operations
+export async function insertLicenseD1(db: D1Database, license: DbLicense): Promise<DbLicense> {
+  await db.prepare(`
+    INSERT OR REPLACE INTO Licenses (
+      licenseKey, orderId, businessName, boundDeviceId, deviceName,
+      issuedAt, activatedAt, lastConnectedAt, signature
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    license.licenseKey,
+    license.orderId,
+    license.businessName,
+    license.boundDeviceId || null,
+    license.deviceName || null,
+    license.issuedAt,
+    license.activatedAt || null,
+    license.lastConnectedAt || null,
+    license.signature
+  ).run();
+
+  return license;
+}
+
+export async function getLicenseD1(db: D1Database, licenseKey: string): Promise<DbLicense | null> {
+  return await db.prepare(`SELECT * FROM Licenses WHERE licenseKey = ?`).bind(licenseKey).first<DbLicense>();
+}
+
+export async function bindLicenseToDeviceD1(
+  db: D1Database,
+  licenseKey: string,
+  deviceId: string,
+  deviceName: string,
+  activatedAt: string
+): Promise<boolean> {
+  await db.prepare(`
+    UPDATE Licenses 
+    SET boundDeviceId = ?, deviceName = ?, activatedAt = ?, lastConnectedAt = ?
+    WHERE licenseKey = ?
+  `).bind(deviceId, deviceName, activatedAt, activatedAt, licenseKey).run();
+
+  await db.prepare(`
+    UPDATE CustomerOrders
+    SET boundDeviceId = ?, lastSeenAt = ?
+    WHERE licenseKey = ?
+  `).bind(deviceId, activatedAt, licenseKey).run();
+
+  return true;
+}
+
+// D1 Revocable Session Operations
+export async function createSessionD1(db: D1Database, sessionId: string, username: string, expiresAt: number): Promise<void> {
+  await db.prepare(`
+    INSERT INTO OwnerSessions (sessionId, username, createdAt, expiresAt, revoked)
+    VALUES (?, ?, ?, ?, 0)
+  `).bind(sessionId, username, new Date().toISOString(), expiresAt).run();
+}
+
+export async function isSessionValidD1(db: D1Database, sessionId: string): Promise<boolean> {
+  const row = await db.prepare(`
+    SELECT sessionId FROM OwnerSessions 
+    WHERE sessionId = ? AND revoked = 0 AND expiresAt > ?
+  `).bind(sessionId, Date.now()).first<any>();
+  return Boolean(row);
+}
+
+export async function revokeSessionD1(db: D1Database, sessionId: string): Promise<void> {
+  await db.prepare(`UPDATE OwnerSessions SET revoked = 1 WHERE sessionId = ?`).bind(sessionId).run();
+}
+
+// D1 Brute Force Guard
+export async function checkAuthLockD1(db: D1Database, ip: string): Promise<{ locked: boolean; remainingSec: number }> {
+  const row = await db.prepare(`SELECT * FROM OwnerAuthAttempts WHERE ip = ?`).bind(ip).first<any>();
+  if (!row) return { locked: false, remainingSec: 0 };
+
+  const now = Date.now();
+  if (row.lockedUntil > now) {
+    return { locked: true, remainingSec: Math.ceil((row.lockedUntil - now) / 1000) };
+  }
+  return { locked: false, remainingSec: 0 };
+}
+
+export async function recordFailedAuthD1(db: D1Database, ip: string): Promise<{ locked: boolean; remainingSec: number }> {
+  const row = await db.prepare(`SELECT * FROM OwnerAuthAttempts WHERE ip = ?`).bind(ip).first<any>();
+  const now = Date.now();
+
+  let attempts = (row ? row.failedAttempts : 0) + 1;
+  let lockedUntil = 0;
+
+  if (attempts >= 5) {
+    lockedUntil = now + 15 * 60 * 1000; // 15 mins lock
+  }
+
+  await db.prepare(`
+    INSERT INTO OwnerAuthAttempts (ip, failedAttempts, lockedUntil)
+    VALUES (?, ?, ?)
+    ON CONFLICT(ip) DO UPDATE SET failedAttempts = ?, lockedUntil = ?
+  `).bind(ip, attempts, lockedUntil, attempts, lockedUntil).run();
+
+  if (lockedUntil > now) {
+    return { locked: true, remainingSec: Math.ceil((lockedUntil - now) / 1000) };
+  }
+  return { locked: false, remainingSec: 0 };
+}
+
+export async function resetAuthAttemptsD1(db: D1Database, ip: string): Promise<void> {
+  await db.prepare(`DELETE FROM OwnerAuthAttempts WHERE ip = ?`).bind(ip).run();
+}
+
+// D1 Genuine Real Metrics
+export async function getMetricsD1(db: D1Database): Promise<{
+  totalPembeli: number;
+  lisensiAktif: number;
+  penggunaAktif: number;
+  menungguVerifikasi: number;
+}> {
+  const qBuyers = await db.prepare(`SELECT COUNT(*) as count FROM CustomerOrders`).first<any>();
+  const qLicenses = await db.prepare(`SELECT COUNT(*) as count FROM Licenses WHERE boundDeviceId IS NOT NULL OR licenseKey IS NOT NULL`).first<any>();
+  const qActiveDevices = await db.prepare(`SELECT COUNT(DISTINCT boundDeviceId) as count FROM Licenses WHERE boundDeviceId IS NOT NULL`).first<any>();
+  const qPending = await db.prepare(`SELECT COUNT(*) as count FROM CustomerOrders WHERE status = 'menunggu_verifikasi'`).first<any>();
+
+  return {
+    totalPembeli: qBuyers?.count || 0,
+    lisensiAktif: qLicenses?.count || 0,
+    penggunaAktif: qActiveDevices?.count || 0,
+    menungguVerifikasi: qPending?.count || 0,
+  };
+}
+
+// Clean Database helper for test suite
+export async function resetDatabaseCleanD1(db: D1Database): Promise<void> {
+  await db.exec(`
+    DELETE FROM CustomerOrders;
+    DELETE FROM Licenses;
+    DELETE FROM OwnerSessions;
+    DELETE FROM OwnerAuthAttempts;
+  `);
+}

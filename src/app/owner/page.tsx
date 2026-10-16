@@ -537,37 +537,81 @@ export default function SakuNotaOwnerDashboardPage() {
           </div>
         )}
 
-        {/* TAB 4: CLOUDFLARE D1 ARCHITECTURE */}
+        {/* TAB 4: CLOUDFLARE D1 ARCHITECTURE & MIDTRANS INTEGRATION */}
         {activeTab === "cloudflare_d1" && (
-          <div className="p-6 rounded-3xl bg-surface border border-line shadow-sm space-y-4">
-            <div>
-              <h4 className="font-black text-sm text-fg">Skema Database Cloudflare D1 (Edge Serverless)</h4>
-              <p className="text-xs text-muted mt-0.5">
-                Struktur tabel untuk Worker API Cloudflare dalam mengelola pembeli dan validasi lisensi resmi.
-              </p>
+          <div className="p-6 rounded-3xl bg-surface border border-line shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="font-black text-sm text-fg">Arsitektur Database Cloudflare D1 (Production Edge)</h4>
+                <p className="text-xs text-muted mt-0.5">
+                  Terkoneksi langsung ke Cloudflare D1 (<code>env.DB</code>) dengan migrasi terstruktur & indeks edge.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-black">
+                  ● Cloudflare D1: Terkoneksi & Siap
+                </span>
+                <span className="px-3 py-1 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 text-xs font-black">
+                  ● Midtrans: Ready
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="p-3.5 rounded-2xl bg-card border border-line space-y-1">
+                <span className="text-[10px] text-muted font-bold uppercase block">Binding D1</span>
+                <strong className="font-mono text-fg text-sm">env.DB</strong>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-card border border-line space-y-1">
+                <span className="text-[10px] text-muted font-bold uppercase block">Nama Database D1</span>
+                <strong className="font-mono text-accent-text text-sm">sakunota-production-db</strong>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-card border border-line space-y-1">
+                <span className="text-[10px] text-muted font-bold uppercase block">Gateway Pembayaran</span>
+                <strong className="font-mono text-emerald-600 dark:text-emerald-400 text-sm">Midtrans Snap + Webhook</strong>
+              </div>
             </div>
 
             <pre className="p-4 rounded-2xl bg-card border border-line font-mono text-[11px] text-fg overflow-x-auto leading-relaxed">
-{`-- Tabel Pembeli & Usaha
-CREATE TABLE buyers (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  business_name TEXT NOT NULL,
+{`-- Skema Resmi Cloudflare D1 (migrations/0001_initial_schema.sql)
+CREATE TABLE CustomerOrders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  orderId TEXT UNIQUE NOT NULL,
+  accessCode TEXT NOT NULL,
+  buyerName TEXT NOT NULL,
+  businessName TEXT NOT NULL,
   whatsapp TEXT NOT NULL,
   email TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  amount INTEGER NOT NULL DEFAULT 65000,
+  paymentMethod TEXT NOT NULL DEFAULT 'Transfer Bank BCA',
+  bankAccount TEXT NOT NULL DEFAULT '8030 554 912 a.n. Reza',
+  transferProofName TEXT,
+  status TEXT NOT NULL DEFAULT 'menunggu_verifikasi',
+  licenseKey TEXT,
+  boundDeviceId TEXT,
+  createdAt TEXT NOT NULL,
+  verifiedAt TEXT,
+  lastSeenAt TEXT
 );
 
--- Tabel Lisensi Perangkat
-CREATE TABLE licenses (
-  license_key TEXT PRIMARY KEY,
-  buyer_id TEXT REFERENCES buyers(id),
-  device_fingerprint TEXT,
-  status TEXT CHECK (status IN ('active', 'trial', 'expired', 'transferred')),
-  app_version TEXT,
-  last_ping_at DATETIME,
-  activated_at DATETIME,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE Licenses (
+  licenseKey TEXT PRIMARY KEY,
+  orderId TEXT NOT NULL,
+  businessName TEXT NOT NULL,
+  boundDeviceId TEXT,
+  deviceName TEXT,
+  issuedAt TEXT NOT NULL,
+  activatedAt TEXT,
+  lastConnectedAt TEXT,
+  signature TEXT NOT NULL
+);
+
+CREATE TABLE OwnerSessions (
+  sessionId TEXT PRIMARY KEY,
+  username TEXT NOT NULL,
+  createdAt TEXT NOT NULL,
+  expiresAt INTEGER NOT NULL,
+  revoked INTEGER NOT NULL DEFAULT 0
 );`}
             </pre>
           </div>

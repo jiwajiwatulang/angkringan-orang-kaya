@@ -1,9 +1,17 @@
 {
-  // Config deploy Cloudflare: aplikasi ini static export (folder "out"), data tersimpan di IndexedDB perangkat.
+  // Config deploy Cloudflare: SakuNota Edge Production
   "name": "angkringan-orang-kaya",
   "compatibility_date": "2026-10-01",
   "assets": {
     "directory": "./out",
     "not_found_handling": "404-page"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sakunota-production-db",
+      "database_id": "sakunota-d1-prod-001",
+      "migrations_dir": "migrations"
+    }
+  ]
 }

@@ -1,25 +1,31 @@
 import crypto from "node:crypto";
 import {
-  insertDbOrder,
-  getAllDbOrders,
-  getDbOrderById,
-  updateDbOrderStatusAndLicense,
-  insertDbLicense,
-  getDbLicense,
-  bindDbLicenseToDevice,
-  createDbSession,
-  isDbSessionValid,
-  revokeDbSession,
-  checkAuthLock,
-  recordFailedAuth,
-  resetAuthAttempts,
-  getDbMetrics,
+  D1Database,
+  getD1,
+  initD1Tables,
+  insertOrderD1,
+  getAllOrdersD1,
+  getOrderByIdD1,
+  updateOrderStatusAndLicenseD1,
+  insertLicenseD1,
+  getLicenseD1,
+  bindLicenseToDeviceD1,
+  createSessionD1,
+  isSessionValidD1,
+  revokeSessionD1,
+  checkAuthLockD1,
+  recordFailedAuthD1,
+  resetAuthAttemptsD1,
+  getMetricsD1,
+  resetDatabaseCleanD1,
   DbCustomerOrder,
   DbLicense,
-} from "./db";
+} from "./d1";
 
 export type ServerCustomerOrder = DbCustomerOrder;
 export type LicenseRecord = DbLicense;
+
+export { getD1, initD1Tables, resetDatabaseCleanD1 };
 
 // Server Secrets
 const SERVER_SECRET = process.env.SAKUNOTA_SERVER_SECRET || "sakunota_secure_hmac_master_secret_2026_xyz";
@@ -33,6 +39,20 @@ function hashPassword(pass: string): string {
 }
 
 const OWNER_PASSWORD_HASH = hashPassword(OWNER_PASSWORD);
+
+// Ultra-robust Bearer token extraction that eliminates any regex spacing bugs
+export function extractBearerToken(authHeader?: string | null): string {
+  if (!authHeader) return "";
+  const clean = authHeader.trim();
+  const match = clean.match(/^Bearer\s+(.+)$/i);
+  if (match) return match[1].trim();
+  return clean.replace(/^Bearer\s*/i, "").trim();
+}
+
+// Database argument resolver (supports both (db, ...args) and (...args))
+function isD1(arg: any): arg is D1Database {
+  return arg && typeof arg === "object" && typeof arg.prepare === "function";
+}
 
 // --- Crypto Helpers ---
 
@@ -55,12 +75,18 @@ export function signOwnerSession(username: string, sessionId: string): string {
   return Buffer.from(`${payload}:${sig}`).toString("base64url");
 }
 
-export function verifyOwnerSession(token?: string | null): {
+export async function verifyOwnerSession(
+  dbOrToken: D1Database | string | null | undefined,
+  maybeToken?: string | null
+): Promise<{
   valid: boolean;
   username?: string;
   sessionId?: string;
   error?: string;
-} {
+}> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const token = isD1(dbOrToken) ? maybeToken : (dbOrToken as string);
+
   if (!token) return { valid: false, error: "Token sesi tidak ditemukan. Silakan login terlebih dahulu." };
   try {
     const raw = Buffer.from(token, "base64url").toString("utf8");
@@ -81,8 +107,9 @@ export function verifyOwnerSession(token?: string | null): {
       return { valid: false, error: "Sesi telah berakhir. Silakan login kembali." };
     }
 
-    // Check DB session status (support revoking)
-    if (!isDbSessionValid(sessionId)) {
+    // Check D1 database session status (revocable session)
+    const valid = await isSessionValidD1(db, sessionId);
+    if (!valid) {
       return { valid: false, error: "Sesi telah dicabut (logged out) atau kedaluwarsa. Silakan login kembali." };
     }
 
@@ -92,14 +119,20 @@ export function verifyOwnerSession(token?: string | null): {
   }
 }
 
-export function revokeOwnerSession(token?: string | null): { success: boolean; error?: string } {
+export async function revokeOwnerSession(
+  dbOrToken: D1Database | string | null | undefined,
+  maybeToken?: string | null
+): Promise<{ success: boolean; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const token = isD1(dbOrToken) ? maybeToken : (dbOrToken as string);
+
   if (!token) return { success: false, error: "Token tidak diberikan." };
   try {
     const raw = Buffer.from(token, "base64url").toString("utf8");
     const parts = raw.split(":");
     const sessionId = parts[1];
     if (sessionId) {
-      revokeDbSession(sessionId);
+      await revokeSessionD1(db, sessionId);
       return { success: true };
     }
     return { success: false, error: "Session ID tidak ditemukan." };
@@ -116,13 +149,19 @@ export function signDeviceActivation(licenseKey: string, deviceId: string): stri
 
 // --- API Service Methods ---
 
-export function authenticateOwner(
-  usernameInput: string,
-  passwordInput: string,
-  clientIp: string = "127.0.0.1"
-): { success: boolean; token?: string; error?: string; remainingLockSec?: number } {
-  // Check brute force lock
-  const lock = checkAuthLock(clientIp);
+export async function authenticateOwner(
+  dbOrUser: D1Database | string,
+  userOrPass: string,
+  passOrIp?: string,
+  maybeIp?: string
+): Promise<{ success: boolean; token?: string; error?: string; remainingLockSec?: number }> {
+  const db = isD1(dbOrUser) ? dbOrUser : getD1();
+  const usernameInput = (isD1(dbOrUser) ? userOrPass : (dbOrUser as string)) || "";
+  const passwordInput = (isD1(dbOrUser) ? passOrIp : userOrPass) || "";
+  const clientIp = (isD1(dbOrUser) ? maybeIp : passOrIp) || "127.0.0.1";
+
+  // Check brute force lock in D1
+  const lock = await checkAuthLockD1(db, clientIp);
   if (lock.locked) {
     return {
       success: false,
@@ -146,7 +185,7 @@ export function authenticateOwner(
   }
 
   if (!isUserValid || !isPassValid) {
-    const failStatus = recordFailedAuth(clientIp);
+    const failStatus = await recordFailedAuthD1(db, clientIp);
     if (failStatus.locked) {
       return {
         success: false,
@@ -160,24 +199,25 @@ export function authenticateOwner(
     };
   }
 
-  // Authentication succeeded, reset failed attempts
-  resetAuthAttempts(clientIp);
+  // Authentication succeeded, reset failed attempts in D1
+  await resetAuthAttemptsD1(db, clientIp);
 
-  // Generate unique session in DB
+  // Generate unique session in D1
   const sessionId = crypto.randomBytes(24).toString("hex");
   const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
-  createDbSession(sessionId, OWNER_USERNAME, expiresAt);
+  await createSessionD1(db, sessionId, OWNER_USERNAME, expiresAt);
 
   const token = signOwnerSession(OWNER_USERNAME, sessionId);
   return { success: true, token };
 }
 
-export function createCustomerOrder(data: {
-  buyerName: string;
-  businessName: string;
-  whatsapp: string;
-  email?: string;
-}): { success: boolean; order: ServerCustomerOrder } {
+export async function createCustomerOrder(
+  dbOrData: D1Database | { buyerName: string; businessName: string; whatsapp: string; email?: string },
+  maybeData?: { buyerName: string; businessName: string; whatsapp: string; email?: string }
+): Promise<{ success: boolean; order: ServerCustomerOrder }> {
+  const db = isD1(dbOrData) ? dbOrData : getD1();
+  const data = (isD1(dbOrData) ? maybeData : (dbOrData as any)) || {};
+
   const randomNum = Math.floor(100 + Math.random() * 900);
   const orderId = `SN-2026-${randomNum}`;
   const randomCode = crypto.randomBytes(3).toString("hex").toUpperCase();
@@ -186,9 +226,9 @@ export function createCustomerOrder(data: {
   const newOrder: ServerCustomerOrder = {
     orderId,
     accessCode,
-    buyerName: data.buyerName.trim(),
-    businessName: data.businessName.trim(),
-    whatsapp: data.whatsapp.trim(),
+    buyerName: (data.buyerName || "").trim(),
+    businessName: (data.businessName || "").trim(),
+    whatsapp: (data.whatsapp || "").trim(),
     email: data.email?.trim() || undefined,
     amount: 65000,
     paymentMethod: "Transfer Bank BCA",
@@ -203,15 +243,20 @@ export function createCustomerOrder(data: {
     }),
   };
 
-  insertDbOrder(newOrder);
+  await insertOrderD1(db, newOrder);
   return { success: true, order: newOrder };
 }
 
-export function checkCustomerOrderStatus(
-  orderId: string,
-  accessCode: string
-): { success: boolean; order?: ServerCustomerOrder; error?: string } {
-  const order = getDbOrderById(orderId.trim());
+export async function checkCustomerOrderStatus(
+  dbOrOrderId: D1Database | string,
+  orderIdOrCode: string,
+  maybeAccessCode?: string
+): Promise<{ success: boolean; order?: ServerCustomerOrder; error?: string }> {
+  const db = isD1(dbOrOrderId) ? dbOrOrderId : getD1();
+  const orderId = (isD1(dbOrOrderId) ? orderIdOrCode : (dbOrOrderId as string)) || "";
+  const accessCode = (isD1(dbOrOrderId) ? maybeAccessCode : orderIdOrCode) || "";
+
+  const order = await getOrderByIdD1(db, orderId.trim());
   if (!order) {
     return { success: false, error: "Pesanan dengan nomor tersebut tidak ditemukan." };
   }
@@ -227,30 +272,41 @@ export function checkCustomerOrderStatus(
   return { success: true, order };
 }
 
-export function listOwnerOrders(ownerToken?: string | null): {
+export async function listOwnerOrders(
+  dbOrToken?: D1Database | string | null,
+  maybeToken?: string | null
+): Promise<{
   success: boolean;
   orders?: ServerCustomerOrder[];
   error?: string;
-} {
-  const auth = verifyOwnerSession(ownerToken);
+}> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? maybeToken : (dbOrToken as string);
+
+  const auth = await verifyOwnerSession(db, ownerToken);
   if (!auth.valid) {
     return { success: false, error: auth.error || "Akses ditolak. Sesi Owner tidak sah." };
   }
 
-  const list = getAllDbOrders();
+  const list = await getAllOrdersD1(db);
   return { success: true, orders: list };
 }
 
-export function verifyOrderAndIssueLicense(
-  ownerToken: string | null,
-  orderId: string
-): {
+export async function verifyOrderAndIssueLicense(
+  dbOrToken: D1Database | string | null,
+  tokenOrOrderId: string | null,
+  maybeOrderId?: string
+): Promise<{
   success: boolean;
   order?: ServerCustomerOrder;
   licenseKey?: string;
   error?: string;
-} {
-  const auth = verifyOwnerSession(ownerToken);
+}> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrOrderId as string) : (dbOrToken as string);
+  const orderId = (isD1(dbOrToken) ? maybeOrderId : tokenOrOrderId) || "";
+
+  const auth = await verifyOwnerSession(db, ownerToken);
   if (!auth.valid) {
     return {
       success: false,
@@ -258,7 +314,7 @@ export function verifyOrderAndIssueLicense(
     };
   }
 
-  const order = getDbOrderById(orderId);
+  const order = await getOrderByIdD1(db, orderId);
   if (!order) {
     return { success: false, error: "Pesanan tidak ditemukan." };
   }
@@ -275,9 +331,9 @@ export function verifyOrderAndIssueLicense(
     minute: "2-digit",
   });
 
-  const updated = updateDbOrderStatusAndLicense(orderId, licenseKey, verifiedAt);
+  const updated = await updateOrderStatusAndLicenseD1(db, orderId, licenseKey, verifiedAt);
 
-  insertDbLicense({
+  await insertLicenseD1(db, {
     licenseKey,
     orderId,
     businessName: order.businessName,
@@ -288,21 +344,23 @@ export function verifyOrderAndIssueLicense(
   return { success: true, order: updated || order, licenseKey };
 }
 
-export function activateLicenseOnDevice(data: {
-  licenseKey: string;
-  deviceId: string;
-  deviceName?: string;
-}): {
+export async function activateLicenseOnDevice(
+  dbOrData: D1Database | { licenseKey: string; deviceId: string; deviceName?: string },
+  maybeData?: { licenseKey: string; deviceId: string; deviceName?: string }
+): Promise<{
   success: boolean;
   activationToken?: string;
   activatedAt?: string;
   error?: string;
   status: number;
-} {
-  const key = data.licenseKey.trim().toUpperCase();
-  const devId = data.deviceId.trim();
+}> {
+  const db = isD1(dbOrData) ? dbOrData : getD1();
+  const data = (isD1(dbOrData) ? maybeData : (dbOrData as any)) || {};
 
-  const lic = getDbLicense(key);
+  const key = (data.licenseKey || "").trim().toUpperCase();
+  const devId = (data.deviceId || "").trim();
+
+  const lic = await getLicenseD1(db, key);
   if (!lic) {
     return {
       success: false,
@@ -322,12 +380,12 @@ export function activateLicenseOnDevice(data: {
     };
   }
 
-  // Bind device
+  // Bind device in D1
   const now = new Date().toISOString();
   const deviceName = data.deviceName || "Perangkat Kasir";
   const activatedAt = lic.activatedAt || now;
 
-  bindDbLicenseToDevice(key, devId, deviceName, activatedAt);
+  await bindLicenseToDeviceD1(db, key, devId, deviceName, activatedAt);
 
   const token = signDeviceActivation(key, devId);
 
@@ -339,7 +397,10 @@ export function activateLicenseOnDevice(data: {
   };
 }
 
-export function getOwnerMetrics(ownerToken?: string | null): {
+export async function getOwnerMetrics(
+  dbOrToken?: D1Database | string | null,
+  maybeToken?: string | null
+): Promise<{
   success: boolean;
   metrics?: {
     totalPembeli: number;
@@ -348,12 +409,15 @@ export function getOwnerMetrics(ownerToken?: string | null): {
     menungguVerifikasi: number;
   };
   error?: string;
-} {
-  const auth = verifyOwnerSession(ownerToken);
+}> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? maybeToken : (dbOrToken as string);
+
+  const auth = await verifyOwnerSession(db, ownerToken);
   if (!auth.valid) {
     return { success: false, error: auth.error || "Akses ditolak." };
   }
 
-  const metrics = getDbMetrics();
+  const metrics = await getMetricsD1(db);
   return { success: true, metrics };
 }

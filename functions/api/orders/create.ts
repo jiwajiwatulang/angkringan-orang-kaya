@@ -1,8 +1,11 @@
 // Cloudflare Pages Function: POST /api/orders/create
-import { createCustomerOrder } from "../../../src/lib/server/sakunotaServer";
+import { createCustomerOrder, getD1, initD1Tables } from "../../../src/lib/server/sakunotaServer";
 
 export async function onRequestPost(context: any) {
   try {
+    const db = getD1(context.env?.DB);
+    await initD1Tables(db);
+
     const body = await context.request.json();
     const { buyerName, businessName, whatsapp, email } = body || {};
 
@@ -13,7 +16,7 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    const res = createCustomerOrder({ buyerName, businessName, whatsapp, email });
+    const res = await createCustomerOrder(db, { buyerName, businessName, whatsapp, email });
 
     return new Response(JSON.stringify({ success: true, order: res.order }), {
       status: 201,

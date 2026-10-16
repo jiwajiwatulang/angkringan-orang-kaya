@@ -1,8 +1,11 @@
 // Cloudflare Pages Function: POST /api/license/activate
-import { activateLicenseOnDevice } from "../../../src/lib/server/sakunotaServer";
+import { activateLicenseOnDevice, getD1, initD1Tables } from "../../../src/lib/server/sakunotaServer";
 
 export async function onRequestPost(context: any) {
   try {
+    const db = getD1(context.env?.DB);
+    await initD1Tables(db);
+
     const body = await context.request.json();
     const { licenseKey, deviceId, deviceName } = body || {};
 
@@ -13,7 +16,7 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    const res = activateLicenseOnDevice({ licenseKey, deviceId, deviceName });
+    const res = await activateLicenseOnDevice(db, { licenseKey, deviceId, deviceName });
 
     return new Response(
       JSON.stringify({
