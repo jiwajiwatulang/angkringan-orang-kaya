@@ -24,8 +24,9 @@ import MobileTableScreen from '@/components/mobile/MobileTableScreen';
 import MobileOrdersScreen from '@/components/mobile/MobileOrdersScreen';
 import MobileMoreScreen from '@/components/mobile/MobileMoreScreen';
 import MobileBottomNav, { MobileTab } from '@/components/mobile/MobileBottomNav';
-import MobileFloatingCartBar from '@/components/mobile/MobileFloatingCartBar';
 import ThemeToggle from '@/components/ThemeToggle';
+import { checkCashierAccess, CashierAccessStatus } from '@/lib/licenseGuard';
+import { activateLicenseServer } from '@/lib/ordersClient';
 
 type MenuItem = { id: number; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; modifiers?: any[]; };
 type CartItem = MenuItem & { qty: number; selectedModifiers?: { groupName: string; optionName: string; harga: number }[]; itemKey?: string };
@@ -106,6 +107,41 @@ export default function POSPage() {
   const [discountValue, setDiscountValue] = useState<number>(0);
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [tempDiscountVal, setTempDiscountVal] = useState("");
+
+  // --- CLOSED BETA & LICENSE GUARD STATES ---
+  const [accessStatus, setAccessStatus] = useState<CashierAccessStatus>({
+    isValid: true,
+    isDemo: false,
+    status: 'trial_active',
+  });
+  const [isAccessChecking, setIsAccessChecking] = useState(true);
+  const [activationInputKey, setActivationInputKey] = useState("");
+  const [activationNotice, setActivationNotice] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
+  const [isActivatingKey, setIsActivatingKey] = useState(false);
+
+  const handleActivateFromGate = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!activationInputKey.trim()) return;
+    setIsActivatingKey(true);
+    setActivationNotice(null);
+    try {
+      const res = await activateLicenseServer(
+        activationInputKey.trim(),
+        typeof navigator !== 'undefined' && navigator.userAgent.includes('Mobile') ? 'HP Kasir' : 'Desktop Kasir'
+      );
+      if (res.success) {
+        setActivationNotice({ type: 'success', message: 'Aktivasi berhasil! Memuat kasir...' });
+        const refreshed = await checkCashierAccess(true);
+        setAccessStatus(refreshed);
+      } else {
+        setActivationNotice({ type: 'error', message: res.error || 'Aktivasi gagal. Periksa nomor lisensi Anda.' });
+      }
+    } catch (err: any) {
+      setActivationNotice({ type: 'error', message: err.message || 'Terjadi kesalahan aktivasi.' });
+    } finally {
+      setIsActivatingKey(false);
+    }
+  };
 
   // --- ATOMIC MODAL & HISTORY MANAGER ---
   const isProgrammaticPopRef = useRef<boolean>(false);
@@ -698,12 +734,23 @@ export default function POSPage() {
   };
 
   useEffect(() => {
+    async function initAccess() {
+      setIsAccessChecking(true);
+      try {
+        const res = await checkCashierAccess();
+        setAccessStatus(res);
+      } catch (e) {
+        console.error("Gagal memeriksa akses kasir:", e);
+      } finally {
+        setIsAccessChecking(false);
+      }
+    }
+    initAccess();
+
     loadData();
     const interval = setInterval(loadData, 5000);
-  
-  
 
-  return () => clearInterval(interval);
+    return () => clearInterval(interval);
   }, []);
 
   const categories = ["Semua", ...Array.from(new Set(menuData.map(m => m.kategori)))];
@@ -2024,10 +2071,176 @@ export default function POSPage() {
     );
   };
 
-  if (isLoading) return <div className="flex h-screen bg-surface text-fg items-center justify-center">Memuat data...</div>;
+  if (isLoading || isAccessChecking) {
+    return (
+      <div className="flex flex-col h-screen bg-surface text-fg items-center justify-center p-6 text-center">
+        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mb-4" />
+        <h2 className="text-base font-bold text-fg">Memeriksa Izin Kasir SakuNota...</h2>
+        <p className="text-xs text-muted mt-1">Kasir jalan tanpa internet • Memvalidasi lisensi & masa coba</p>
+      </div>
+    );
+  }
+
+  if (!accessStatus.isValid) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white flex flex-col justify-between p-4 sm:p-6 md:p-8">
+        <div className="max-w-xl w-full mx-auto my-auto py-8">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30 mb-4 shadow-lg">
+              {accessStatus.status === 'trial_expired' ? (
+                <svg className="w-8 h-8 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : accessStatus.isClockTampered ? (
+                <svg className="w-8 h-8 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              ) : (
+                <svg className="w-8 h-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              )}
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              {accessStatus.status === 'trial_expired'
+                ? 'Masa Coba 7 Hari Selesai'
+                : accessStatus.isClockTampered
+                ? 'Peringatan Waktu Perangkat Dimundurkan'
+                : accessStatus.status === 'revoked'
+                ? 'Akses Kasir Telah Dicabut'
+                : 'Akses Kasir Terkunci (Closed Beta)'}
+            </h1>
+            <p className="mt-2 text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+              {accessStatus.error || 'Aplikasi kasir ini dikunci untuk pendaftar Closed Beta atau pemilik lisensi resmi SakuNota.'}
+            </p>
+          </div>
+
+          {/* Guarantee Box: Data Never Held Hostage */}
+          <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-4 sm:p-5 mb-6 text-emerald-200">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">🛡️</span>
+              <div className="flex-1">
+                <h3 className="text-sm font-bold text-emerald-100">Jaminan Keamanan: Data Bisnis Anda Tidak Pernah Disandera</h3>
+                <p className="text-xs text-emerald-300/90 mt-1 leading-relaxed">
+                  Semua data menu, riwayat transaksi, dan rekap shift kasir tersimpan utuh di perangkat Anda dan tidak pernah dihapus. Anda berhak mengunduh seluruh data usaha Anda kapan pun tanpa biaya tambahan.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleExportBackupFromPos}
+                    className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors shadow-sm"
+                  >
+                    <span>📥</span> Unduh Cadangan Data Bisnis (.JSON)
+                  </button>
+                  {backupSuccessNotice && (
+                    <span className="text-xs text-emerald-300 font-semibold">{backupSuccessNotice}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Activation Form Box */}
+          <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 mb-6 shadow-xl backdrop-blur-sm">
+            <h2 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+              <span>🔑</span> Sudah Memiliki Kode Lisensi atau Undangan Beta?
+            </h2>
+            <p className="text-xs text-slate-400 mb-4">
+              Masukkan kode lisensi resmi (SN-2026-...) atau kode undangan Closed Beta (SN-TRIAL-...) yang telah disetujui:
+            </p>
+            <form onSubmit={handleActivateFromGate} className="space-y-3">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={activationInputKey}
+                  onChange={(e) => setActivationInputKey(e.target.value.toUpperCase())}
+                  placeholder="Contoh: SN-TRIAL-ABCD-1234 atau SN-2026-XXXX"
+                  className="flex-1 bg-slate-900 border border-slate-700 focus:border-blue-500 rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-500 outline-none uppercase"
+                />
+                <button
+                  type="submit"
+                  disabled={isActivatingKey || !activationInputKey.trim()}
+                  className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold px-5 py-3 rounded-xl text-sm transition-all whitespace-nowrap shadow-md"
+                >
+                  {isActivatingKey ? 'Memeriksa...' : 'Aktifkan Perangkat'}
+                </button>
+              </div>
+              {activationNotice && (
+                <div className={`p-3 rounded-xl text-xs font-semibold ${
+                  activationNotice.type === 'success' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                }`}>
+                  {activationNotice.message}
+                </div>
+              )}
+            </form>
+          </div>
+
+          {/* Navigation & CTAs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-center">
+            <Link
+              href="/?beta=register"
+              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold p-3.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
+            >
+              <span>📝</span> Daftar Closed Beta (Gratis 7 Hari)
+            </Link>
+            <Link
+              href="/?beli=true"
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold p-3.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-900/30"
+            >
+              <span>💳</span> Beli Lisensi Resmi (Rp65.000)
+            </Link>
+            <Link
+              href="/pos?demo=true"
+              className="bg-amber-900/40 hover:bg-amber-900/60 border border-amber-600/40 text-amber-200 font-bold p-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
+            >
+              <span>🎮</span> Coba Demo Sandbox Kasir
+            </Link>
+            <Link
+              href="/panduan"
+              className="bg-slate-800/60 hover:bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 font-bold p-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
+            >
+              <span>📖</span> Buku Panduan Penggunaan
+            </Link>
+          </div>
+        </div>
+
+        <div className="text-center text-[11px] text-slate-500 py-3">
+          SakuNota Kasir Jalan Tanpa Internet &copy; 2026. Data bisnis Anda sepenuhnya tersimpan secara lokal.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
     <div id="main-app-container" className="flex flex-col h-screen font-sans relative bg-surface text-fg transition-colors duration-200 overflow-hidden">
+      {/* Demo Sandbox Alert Banner */}
+      {accessStatus.isDemo && (
+        <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2 flex flex-wrap items-center justify-between text-xs text-amber-200 shrink-0 z-40">
+          <div className="flex items-center gap-2">
+            <span className="font-extrabold bg-amber-500/30 text-amber-300 px-2 py-0.5 rounded text-[10px] tracking-wider uppercase">DEMO SANDBOX</span>
+            <span>Anda sedang mencoba demo interaktif. Transaksi ini simulasi di browser Anda.</span>
+          </div>
+          <div className="flex items-center gap-3 mt-1 sm:mt-0 font-bold">
+            <Link href="/?beta=register" className="underline hover:text-white">Daftar Beta 7 Hari</Link>
+            <Link href="/?beli=true" className="bg-amber-500 text-slate-950 px-2.5 py-0.5 rounded text-[11px] hover:bg-amber-400">Beli Rp65.000</Link>
+          </div>
+        </div>
+      )}
+
+      {/* Trial Expiry Countdown Banner */}
+      {!accessStatus.isDemo && accessStatus.licenseType === "trial" && (
+        <div className="bg-blue-950/80 border-b border-blue-500/30 px-4 py-1.5 flex flex-wrap items-center justify-between text-xs text-blue-200 shrink-0 z-40">
+          <div className="flex items-center gap-2">
+            <span className="font-extrabold bg-blue-500/30 text-blue-300 px-2 py-0.5 rounded text-[10px] tracking-wider uppercase">CLOSED BETA TRIAL</span>
+            <span>Sisa waktu: <strong>{accessStatus.daysRemaining ?? 7} hari</strong> ({accessStatus.hoursRemaining ?? 168} jam). Usaha: <strong>{accessStatus.businessName}</strong></span>
+          </div>
+          <Link href="/?beli=true" className="mt-1 sm:mt-0 bg-blue-600 text-white font-bold px-2.5 py-0.5 rounded text-[11px] hover:bg-blue-500 shadow-sm">
+            Upgrade Permanen Rp65.000 →
+          </Link>
+        </div>
+      )}
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body * { visibility: hidden !important; }

@@ -40,6 +40,29 @@ export interface DbLicense {
   revoked?: number;
 }
 
+export interface DbBetaRegistration {
+  id?: number | string;
+  registrationId: string;
+  trialLicenseKey?: string | null;
+  licenseKey?: string | null;
+  ownerName: string;
+  businessName: string;
+  whatsapp: string;
+  email?: string;
+  status: "pending" | "disetujui" | "ditolak" | "dicabut" | "dikonversi_berbayar";
+  notes?: string;
+  boundDeviceId?: string | null;
+  deviceName?: string | null;
+  registeredAt: string;
+  approvedAt?: string | null;
+  activatedAt?: string | null;
+  expiresAt?: string | null;
+  lastConnectedAt?: string | null;
+  durationDays: number;
+  rejectionReason?: string | null;
+  auditLog?: string | null;
+}
+
 // Official Cloudflare D1 TypeScript Interfaces
 export interface D1Database {
   prepare(query: string): D1PreparedStatement;
@@ -161,17 +184,6 @@ export function getD1(envDb?: D1Database): D1Database {
 
 // Table Initialization in Cloudflare D1
 export async function initD1Tables(db: D1Database): Promise<void> {
-  try {
-    const existing = await db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='CustomerOrders'")
-      .first();
-    if (existing) {
-      return;
-    }
-  } catch {
-    // If check fails, proceed with safe creation
-  }
-
   const tableStatements = [
     `CREATE TABLE IF NOT EXISTS CustomerOrders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -232,6 +244,27 @@ export async function initD1Tables(db: D1Database): Promise<void> {
       createdAt TEXT NOT NULL,
       activatedAt TEXT,
       revoked INTEGER NOT NULL DEFAULT 0
+    )`,
+    `CREATE TABLE IF NOT EXISTS BetaRegistrations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      registrationId TEXT UNIQUE NOT NULL,
+      trialLicenseKey TEXT UNIQUE,
+      ownerName TEXT NOT NULL,
+      businessName TEXT NOT NULL,
+      whatsapp TEXT NOT NULL,
+      email TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      notes TEXT,
+      boundDeviceId TEXT,
+      deviceName TEXT,
+      registeredAt TEXT NOT NULL,
+      approvedAt TEXT,
+      activatedAt TEXT,
+      expiresAt TEXT,
+      lastConnectedAt TEXT,
+      durationDays INTEGER NOT NULL DEFAULT 7,
+      rejectionReason TEXT,
+      auditLog TEXT
     )`,
   ];
 
@@ -575,6 +608,7 @@ export async function resetDatabaseCleanD1(db: D1Database): Promise<void> {
     DELETE FROM OwnerSessions;
     DELETE FROM OwnerAuthAttempts;
     DELETE FROM TesterLicenses;
+    DELETE FROM BetaRegistrations;
   `);
 }
 
@@ -682,6 +716,150 @@ export async function bindTesterLicenseToDeviceD1(
     SET boundDeviceId = ?, deviceName = ?, activatedAt = ?
     WHERE licenseKey = ?
   `).bind(deviceId, deviceName, activatedAt, licenseKey).run();
+  return true;
+}
+
+// D1 Beta Registrations Operations
+export async function insertBetaRegistrationD1(
+  db: D1Database,
+  reg: DbBetaRegistration
+): Promise<DbBetaRegistration> {
+  await db.prepare(`
+    INSERT INTO BetaRegistrations (
+      registrationId, trialLicenseKey, ownerName, businessName, whatsapp, email,
+      status, notes, boundDeviceId, deviceName, registeredAt, approvedAt,
+      activatedAt, expiresAt, lastConnectedAt, durationDays, rejectionReason, auditLog
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    reg.registrationId,
+    reg.trialLicenseKey,
+    reg.ownerName,
+    reg.businessName,
+    reg.whatsapp,
+    reg.email || null,
+    reg.status || 'pending',
+    reg.notes || null,
+    reg.boundDeviceId || null,
+    reg.deviceName || null,
+    reg.registeredAt,
+    reg.approvedAt || null,
+    reg.activatedAt || null,
+    reg.expiresAt || null,
+    reg.lastConnectedAt || null,
+    reg.durationDays || 7,
+    reg.rejectionReason || null,
+    reg.auditLog || null
+  ).run();
+
+  return reg;
+}
+
+function normalizeBetaRow(row: any): DbBetaRegistration | null {
+  if (!row) return null;
+  return {
+    ...row,
+    id: row.registrationId || row.id,
+    licenseKey: row.trialLicenseKey || row.licenseKey || null,
+  };
+}
+
+export async function getAllBetaRegistrationsD1(db: D1Database): Promise<DbBetaRegistration[]> {
+  const res = await db.prepare(`SELECT * FROM BetaRegistrations ORDER BY id DESC`).all<DbBetaRegistration>();
+  return (res.results || []).map(r => normalizeBetaRow(r)!);
+}
+
+export async function getBetaRegistrationByIdD1(db: D1Database, registrationId: string): Promise<DbBetaRegistration | null> {
+  const row = await db.prepare(`SELECT * FROM BetaRegistrations WHERE registrationId = ?`).bind(registrationId).first<DbBetaRegistration>();
+  return normalizeBetaRow(row);
+}
+
+export async function getBetaRegistrationByLicenseKeyD1(db: D1Database, trialLicenseKey: string): Promise<DbBetaRegistration | null> {
+  const row = await db.prepare(`SELECT * FROM BetaRegistrations WHERE trialLicenseKey = ?`).bind(trialLicenseKey).first<DbBetaRegistration>();
+  return normalizeBetaRow(row);
+}
+
+export async function getBetaRegistrationByWhatsappD1(db: D1Database, whatsapp: string): Promise<DbBetaRegistration | null> {
+  const row = await db.prepare(`SELECT * FROM BetaRegistrations WHERE whatsapp = ?`).bind(whatsapp).first<DbBetaRegistration>();
+  return normalizeBetaRow(row);
+}
+
+export async function approveBetaRegistrationD1(db: D1Database, registrationId: string, licenseKey: string, approvedAt: string): Promise<boolean> {
+  await db.prepare(`
+    UPDATE BetaRegistrations 
+    SET status = 'disetujui', trialLicenseKey = ?, approvedAt = ?
+    WHERE registrationId = ?
+  `).bind(licenseKey, approvedAt, registrationId).run();
+  return true;
+}
+
+export async function rejectBetaRegistrationD1(db: D1Database, registrationId: string, rejectionReason: string): Promise<boolean> {
+  await db.prepare(`
+    UPDATE BetaRegistrations 
+    SET status = 'ditolak', rejectionReason = ?
+    WHERE registrationId = ?
+  `).bind(rejectionReason, registrationId).run();
+  return true;
+}
+
+export async function revokeBetaRegistrationD1(db: D1Database, trialLicenseKey: string): Promise<boolean> {
+  await db.prepare(`
+    UPDATE BetaRegistrations 
+    SET status = 'dicabut'
+    WHERE trialLicenseKey = ?
+  `).bind(trialLicenseKey).run();
+  return true;
+}
+
+export async function unbindBetaRegistrationDeviceD1(db: D1Database, trialLicenseKey: string): Promise<boolean> {
+  await db.prepare(`
+    UPDATE BetaRegistrations 
+    SET boundDeviceId = NULL, deviceName = NULL 
+    WHERE trialLicenseKey = ?
+  `).bind(trialLicenseKey).run();
+  return true;
+}
+
+export async function bindBetaRegistrationToDeviceD1(
+  db: D1Database,
+  trialLicenseKey: string,
+  deviceId: string,
+  deviceName: string,
+  activatedAt: string,
+  expiresAt: string
+): Promise<boolean> {
+  await db.prepare(`
+    UPDATE BetaRegistrations 
+    SET boundDeviceId = ?, deviceName = ?, activatedAt = ?, expiresAt = ?, lastConnectedAt = ?
+    WHERE trialLicenseKey = ?
+  `).bind(deviceId, deviceName, activatedAt, expiresAt, activatedAt, trialLicenseKey).run();
+  return true;
+}
+
+export async function extendBetaRegistrationTrialD1(
+  db: D1Database,
+  registrationId: string,
+  extraDays: number,
+  newExpiresAt: string,
+  auditLog: string
+): Promise<boolean> {
+  await db.prepare(`
+    UPDATE BetaRegistrations 
+    SET durationDays = durationDays + ?, expiresAt = ?, auditLog = ?
+    WHERE registrationId = ?
+  `).bind(extraDays, newExpiresAt, auditLog, registrationId).run();
+  return true;
+}
+
+export async function convertBetaTrialToPaidD1(
+  db: D1Database,
+  registrationId: string,
+  auditNote: string
+): Promise<boolean> {
+  await db.prepare(`
+    UPDATE BetaRegistrations 
+    SET status = 'dikonversi_berbayar', auditLog = ?
+    WHERE registrationId = ?
+  `).bind(auditNote, registrationId).run();
   return true;
 }
 

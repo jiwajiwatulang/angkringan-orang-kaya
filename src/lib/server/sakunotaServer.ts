@@ -34,11 +34,25 @@ import {
   unbindLicenseDeviceD1,
   revokeLicenseD1,
   updateOrderPaymentMethodD1,
+  DbBetaRegistration,
+  insertBetaRegistrationD1,
+  getAllBetaRegistrationsD1,
+  getBetaRegistrationByIdD1,
+  getBetaRegistrationByLicenseKeyD1,
+  getBetaRegistrationByWhatsappD1,
+  approveBetaRegistrationD1,
+  rejectBetaRegistrationD1,
+  revokeBetaRegistrationD1,
+  unbindBetaRegistrationDeviceD1,
+  bindBetaRegistrationToDeviceD1,
+  extendBetaRegistrationTrialD1,
+  convertBetaTrialToPaidD1,
 } from "./d1";
 
 export type ServerCustomerOrder = DbCustomerOrder;
 export type LicenseRecord = DbLicense;
 export type ServerTesterLicense = DbTesterLicense;
+export type ServerBetaRegistration = DbBetaRegistration;
 
 export { getD1, initD1Tables, resetDatabaseCleanD1 };
 
@@ -156,10 +170,50 @@ export async function revokeOwnerSession(
   }
 }
 
-export function signDeviceActivation(licenseKey: string, deviceId: string): string {
-  const payload = `${licenseKey}:${deviceId}`;
+export function signDeviceActivation(
+  licenseKey: string,
+  deviceId: string,
+  licenseType: string = "berbayar",
+  expiresAt: string | null = null
+): string {
+  const exp = expiresAt || "0";
+  const payload = `${licenseKey}:${deviceId}:${licenseType}:${exp}`;
   const sig = crypto.createHmac("sha256", SERVER_SECRET).update(payload).digest("hex");
   return `${payload}:${sig}`;
+}
+
+export function verifyDeviceActivationToken(token: string): {
+  valid: boolean;
+  licenseKey?: string;
+  deviceId?: string;
+  licenseType?: string;
+  expiresAt?: string | null;
+  isExpired?: boolean;
+  error?: string;
+} {
+  if (!token) return { valid: false, error: "Token tidak ada" };
+  try {
+    const parts = token.split(":");
+    // Legacy format (key:dev:sig)
+    if (parts.length === 3) {
+      const [key, devId, sig] = parts;
+      const expectedSig = crypto.createHmac("sha256", SERVER_SECRET).update(`${key}:${devId}`).digest("hex");
+      if (sig !== expectedSig) return { valid: false, error: "Tanda tangan token tidak sah" };
+      return { valid: true, licenseKey: key, deviceId: devId, licenseType: "berbayar", expiresAt: null, isExpired: false };
+    }
+    // New format (key:dev:type:exp:sig)
+    if (parts.length === 5) {
+      const [key, devId, type, exp, sig] = parts;
+      const expectedSig = crypto.createHmac("sha256", SERVER_SECRET).update(`${key}:${devId}:${type}:${exp}`).digest("hex");
+      if (sig !== expectedSig) return { valid: false, error: "Tanda tangan token tidak sah" };
+      const expiresAt = exp === "0" ? null : exp;
+      const isExpired = expiresAt ? new Date(expiresAt).getTime() < Date.now() : false;
+      return { valid: true, licenseKey: key, deviceId: devId, licenseType: type, expiresAt, isExpired };
+    }
+    return { valid: false, error: "Format token tidak valid" };
+  } catch {
+    return { valid: false, error: "Gagal memverifikasi token" };
+  }
 }
 
 // --- API Service Methods ---
@@ -233,8 +287,22 @@ export async function createCustomerOrder(
   const db = isD1(dbOrData) ? dbOrData : getD1();
   const data = (isD1(dbOrData) ? maybeData : (dbOrData as any)) || {};
 
-  const randomNum = Math.floor(100 + Math.random() * 900);
-  const orderId = `SN-2026-${randomNum}`;
+  // High-entropy collision-free order ID with database uniqueness check
+  let orderId = "";
+  let isUnique = false;
+  let attempts = 0;
+  const year = new Date().getFullYear();
+  while (!isUnique && attempts < 10) {
+    attempts++;
+    const timePart = Date.now().toString(36).toUpperCase().slice(-4);
+    const randPart = crypto.randomBytes(2).toString("hex").toUpperCase();
+    orderId = `SN-${year}-${timePart}${randPart}`;
+    const existing = await getOrderByIdD1(db, orderId);
+    if (!existing) {
+      isUnique = true;
+    }
+  }
+
   const randomCode = crypto.randomBytes(3).toString("hex").toUpperCase();
   const accessCode = `KOD-${randomCode}`;
 
@@ -416,15 +484,29 @@ export async function verifyOrderAndIssueLicense(
   error?: string;
 }> {
   const db = isD1(dbOrToken) ? dbOrToken : getD1();
-  const ownerToken = isD1(dbOrToken) ? (tokenOrOrderId as string) : (dbOrToken as string);
-  const orderId = (isD1(dbOrToken) ? maybeOrderId : tokenOrOrderId) || "";
+  let ownerToken: string | null = null;
+  let orderId: string = "";
 
-  const auth = await verifyOwnerSession(db, ownerToken);
-  if (!auth.valid) {
-    return {
-      success: false,
-      error: auth.error || "Akses ditolak. Hanya Owner Reza yang dapat memverifikasi pembayaran.",
-    };
+  if (isD1(dbOrToken)) {
+    if (maybeOrderId) {
+      ownerToken = tokenOrOrderId;
+      orderId = maybeOrderId;
+    } else {
+      orderId = tokenOrOrderId || "";
+    }
+  } else {
+    ownerToken = dbOrToken as string;
+    orderId = tokenOrOrderId || "";
+  }
+
+  if (ownerToken) {
+    const auth = await verifyOwnerSession(db, ownerToken);
+    if (!auth.valid) {
+      return {
+        success: false,
+        error: auth.error || "Akses ditolak. Hanya Owner Reza yang dapat memverifikasi pembayaran.",
+      };
+    }
   }
 
   const order = await getOrderByIdD1(db, orderId);
@@ -444,17 +526,23 @@ export async function verifyOrderAndIssueLicense(
     minute: "2-digit",
   });
 
-  const updated = await updateOrderStatusAndLicenseD1(db, orderId, licenseKey, verifiedAt);
+  // Atomic Batch Transaction in D1: order status update + license insert executed together
+  const stmtOrder = db.prepare(`
+    UPDATE CustomerOrders 
+    SET status = 'lunas_lisensi_terbit', licenseKey = ?, verifiedAt = ?
+    WHERE orderId = ?
+  `).bind(licenseKey, verifiedAt, orderId);
 
-  await insertLicenseD1(db, {
-    licenseKey,
-    orderId,
-    businessName: order.businessName,
-    issuedAt: verifiedAt,
-    signature: signLicenseKey(licenseKey),
-  });
+  const stmtLicense = db.prepare(`
+    INSERT OR REPLACE INTO Licenses (
+      licenseKey, orderId, businessName, issuedAt, signature, licenseType
+    ) VALUES (?, ?, ?, ?, ?, 'berbayar')
+  `).bind(licenseKey, orderId, order.businessName, verifiedAt, signLicenseKey(licenseKey));
 
-  return { success: true, order: updated || order, licenseKey };
+  await db.batch([stmtOrder, stmtLicense]);
+
+  const refreshed = await getOrderByIdD1(db, orderId);
+  return { success: true, order: refreshed || order, licenseKey };
 }
 
 export async function activateLicenseOnDevice(
@@ -464,6 +552,9 @@ export async function activateLicenseOnDevice(
   success: boolean;
   activationToken?: string;
   activatedAt?: string;
+  expiresAt?: string | null;
+  licenseType?: string;
+  businessName?: string;
   error?: string;
   status: number;
 }> {
@@ -476,6 +567,14 @@ export async function activateLicenseOnDevice(
   // 1. Check Commercial License
   const lic = await getLicenseD1(db, key);
   if (lic) {
+    if (lic.revoked === 1) {
+      return {
+        success: false,
+        error: "Lisensi resmi ini telah dicabut oleh Owner SakuNota.",
+        status: 403,
+      };
+    }
+
     // 1-Device Rule Enforcement
     if (lic.boundDeviceId && lic.boundDeviceId !== devId) {
       return {
@@ -493,12 +592,15 @@ export async function activateLicenseOnDevice(
     const activatedAt = lic.activatedAt || now;
 
     await bindLicenseToDeviceD1(db, key, devId, deviceName, activatedAt);
-    const token = signDeviceActivation(key, devId);
+    const token = signDeviceActivation(key, devId, "berbayar", null);
 
     return {
       success: true,
       activationToken: token,
       activatedAt,
+      expiresAt: null,
+      licenseType: "berbayar",
+      businessName: lic.businessName,
       status: 200,
     };
   }
@@ -537,12 +639,83 @@ export async function activateLicenseOnDevice(
     const activatedAt = testerLic.activatedAt || now;
 
     await bindTesterLicenseToDeviceD1(db, key, devId, deviceName, activatedAt);
-    const token = signDeviceActivation(key, devId);
+    const token = signDeviceActivation(key, devId, "tester", testerLic.expiresAt || null);
 
     return {
       success: true,
       activationToken: token,
       activatedAt,
+      expiresAt: testerLic.expiresAt || null,
+      licenseType: "tester",
+      businessName: testerLic.recipientName,
+      status: 200,
+    };
+  }
+
+  // 3. Check Closed Beta Trial License (7 Hari Gratis)
+  const betaReg = await getBetaRegistrationByLicenseKeyD1(db, key);
+  if (betaReg) {
+    if (betaReg.status === "pending") {
+      return {
+        success: false,
+        error: "Pendaftaran Closed Beta Anda masih menunggu persetujuan Owner SakuNota. Anda akan dihubungi via WhatsApp setelah disetujui.",
+        status: 403,
+      };
+    }
+
+    if (betaReg.status === "ditolak") {
+      return {
+        success: false,
+        error: `Pendaftaran Beta Anda tidak disetujui${betaReg.rejectionReason ? `: ${betaReg.rejectionReason}` : ""}.`,
+        status: 403,
+      };
+    }
+
+    if (betaReg.status === "dicabut") {
+      return {
+        success: false,
+        error: "Akses Trial Beta ini telah dicabut oleh Owner SakuNota.",
+        status: 403,
+      };
+    }
+
+    // If trial was already activated, check expiration
+    if (betaReg.expiresAt && new Date(betaReg.expiresAt).getTime() < Date.now()) {
+      return {
+        success: false,
+        error: "Masa uji coba 7 hari telah berakhir. Silakan beli lisensi resmi SakuNota untuk melanjutkan berjualan.",
+        status: 403,
+      };
+    }
+
+    // 1-Device Rule Enforcement for Trial
+    if (betaReg.boundDeviceId && betaReg.boundDeviceId !== devId) {
+      return {
+        success: false,
+        error: `Akses trial ini sudah aktif pada perangkat lain (${
+          betaReg.deviceName || "Perangkat Kasir Beta"
+        }). SakuNota memberlakukan batas 1 perangkat untuk trial 7 hari. Hubungi Owner untuk memindahkan perangkat.`,
+        status: 409,
+      };
+    }
+
+    // First activation starts the 7-day clock!
+    const now = new Date().toISOString();
+    const deviceName = data.deviceName || "Perangkat Kasir Beta";
+    const activatedAt = betaReg.activatedAt || now;
+    const durationDays = betaReg.durationDays || 7;
+    const expiresAt = betaReg.expiresAt || new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+
+    await bindBetaRegistrationToDeviceD1(db, key, devId, deviceName, activatedAt, expiresAt);
+    const token = signDeviceActivation(key, devId, "trial", expiresAt);
+
+    return {
+      success: true,
+      activationToken: token,
+      activatedAt,
+      expiresAt,
+      licenseType: "trial",
+      businessName: betaReg.businessName,
       status: 200,
     };
   }
@@ -761,5 +934,421 @@ export async function revokeOwnerLicense(
 
   await revokeLicenseD1(db, licenseKey);
   return { success: true };
+}
+
+// --- Closed Beta Registration & Trial Operations ---
+
+export async function registerBetaAccount(
+  dbOrData: D1Database | { ownerName: string; businessName: string; whatsapp: string; email?: string; notes?: string; honeypot?: string },
+  maybeData?: { ownerName: string; businessName: string; whatsapp: string; email?: string; notes?: string; honeypot?: string }
+): Promise<{ success: boolean; registration?: ServerBetaRegistration; error?: string }> {
+  const db = isD1(dbOrData) ? dbOrData : getD1();
+  const data = (isD1(dbOrData) ? maybeData : (dbOrData as any)) || {};
+
+  // Bot protection: honeypot field
+  if (data.honeypot && data.honeypot.trim().length > 0) {
+    return { success: false, error: "Deteksi bot aktif. Permintaan ditolak.", status: 400 } as any;
+  }
+
+  const ownerName = (data.ownerName || "").trim();
+  const businessName = (data.businessName || "").trim();
+  const rawWhatsapp = (data.whatsapp || "").trim();
+  const cleanPhone = rawWhatsapp.replace(/^0/, "62").replace(/[^0-9]/g, "");
+
+  if (!ownerName || !businessName || !cleanPhone) {
+    return { success: false, error: "Nama Pemilik, Nama Usaha, dan Nomor WhatsApp wajib diisi." };
+  }
+
+  if (cleanPhone.length < 9) {
+    return { success: false, error: "Nomor WhatsApp tidak valid." };
+  }
+
+  // Anti-abuse: check if already registered
+  const existing = await getBetaRegistrationByWhatsappD1(db, cleanPhone) || await getBetaRegistrationByWhatsappD1(db, rawWhatsapp);
+  if (existing && existing.status !== "ditolak") {
+    return {
+      success: false,
+      error: `Nomor WhatsApp ini sudah pernah terdaftar untuk usaha "${existing.businessName}" (Status: ${existing.status}). SakuNota memberlakukan batas 1 trial gratis per usaha.`,
+    };
+  }
+
+  const registrationId = `REG-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
+
+  const reg: ServerBetaRegistration = {
+    id: registrationId,
+    registrationId,
+    trialLicenseKey: null,
+    ownerName,
+    businessName,
+    whatsapp: cleanPhone,
+    email: data.email?.trim() || undefined,
+    status: "pending",
+    notes: data.notes?.trim() || undefined,
+    durationDays: 7,
+    registeredAt: new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  };
+
+  await insertBetaRegistrationD1(db, reg);
+  return { success: true, registration: reg };
+}
+
+export async function listBetaRegistrations(
+  dbOrToken?: D1Database | string | null,
+  maybeToken?: string | null
+): Promise<{ success: boolean; registrations?: ServerBetaRegistration[]; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? maybeToken : (dbOrToken as string);
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) return { success: false, error: auth.error || "Akses ditolak." };
+
+  const registrations = await getAllBetaRegistrationsD1(db);
+  return { success: true, registrations };
+}
+
+export async function approveBetaRegistration(
+  dbOrToken: D1Database | string | null,
+  tokenOrId: string | null,
+  maybeId?: string
+): Promise<{ success: boolean; registration?: ServerBetaRegistration; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  let ownerToken: string | null = null;
+  let regId: string = "";
+
+  if (isD1(dbOrToken)) {
+    if (maybeId) {
+      ownerToken = tokenOrId;
+      regId = maybeId;
+    } else {
+      regId = tokenOrId || "";
+    }
+  } else {
+    ownerToken = dbOrToken as string;
+    regId = tokenOrId || "";
+  }
+
+  if (ownerToken) {
+    const auth = await verifyOwnerSession(db, ownerToken);
+    if (!auth.valid) return { success: false, error: auth.error || "Akses ditolak." };
+  }
+
+  const reg = await getBetaRegistrationByIdD1(db, regId);
+  if (!reg) return { success: false, error: "Pendaftaran beta tidak ditemukan." };
+
+  const approvedAt = new Date().toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const randPart1 = crypto.randomBytes(2).toString("hex").toUpperCase();
+  const randPart2 = crypto.randomBytes(2).toString("hex").toUpperCase();
+  const licenseKey = `SN-TRIAL-${randPart1}-${randPart2}`;
+
+  await approveBetaRegistrationD1(db, regId, licenseKey, approvedAt);
+  const updated = await getBetaRegistrationByIdD1(db, regId);
+  return { success: true, registration: updated || reg };
+}
+
+export async function rejectBetaRegistration(
+  dbOrToken: D1Database | string | null,
+  tokenOrId: string | null,
+  maybeIdOrReason?: string,
+  maybeReason?: string
+): Promise<{ success: boolean; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrId as string) : (dbOrToken as string);
+  const regId = (isD1(dbOrToken) ? maybeIdOrReason : tokenOrId) || "";
+  const reason = (isD1(dbOrToken) ? maybeReason : maybeIdOrReason) || "Data usaha tidak memenuhi kriteria beta.";
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) return { success: false, error: auth.error || "Akses ditolak." };
+
+  await rejectBetaRegistrationD1(db, regId, reason);
+  return { success: true };
+}
+
+export async function extendBetaTrial(
+  dbOrToken: D1Database | string | null,
+  tokenOrId: string | null,
+  maybeIdOrDays?: string | number,
+  maybeDaysOrReason?: number | string,
+  maybeReason?: string
+): Promise<{ success: boolean; newExpiresAt?: string; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrId as string) : (dbOrToken as string);
+  const regId = (isD1(dbOrToken) ? (maybeIdOrDays as string) : tokenOrId) || "";
+  const extraDays = Number(isD1(dbOrToken) ? maybeDaysOrReason : maybeIdOrDays) || 7;
+  const reason = (isD1(dbOrToken) ? maybeReason : (maybeDaysOrReason as string)) || "Perpanjangan atas permintaan tester";
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) return { success: false, error: auth.error || "Akses ditolak." };
+
+  const reg = await getBetaRegistrationByIdD1(db, regId);
+  if (!reg) return { success: false, error: "Pendaftaran beta tidak ditemukan." };
+
+  const currentBase = reg.expiresAt ? new Date(reg.expiresAt).getTime() : Date.now();
+  const baseTime = currentBase > Date.now() ? currentBase : Date.now();
+  const newExpiresAt = new Date(baseTime + extraDays * 24 * 60 * 60 * 1000).toISOString();
+  const auditLog = `${reg.auditLog ? reg.auditLog + " | " : ""}[${new Date().toISOString()}] Perpanjang +${extraDays} hari (${reason}) oleh Owner Reza`;
+
+  await extendBetaRegistrationTrialD1(db, regId, extraDays, newExpiresAt, auditLog);
+  return { success: true, newExpiresAt };
+}
+
+export async function revokeBetaTrial(
+  dbOrToken: D1Database | string | null,
+  tokenOrKey: string | null,
+  maybeKey?: string
+): Promise<{ success: boolean; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrKey as string) : (dbOrToken as string);
+  const licenseKey = (isD1(dbOrToken) ? maybeKey : tokenOrKey) || "";
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) return { success: false, error: auth.error || "Akses ditolak." };
+
+  await revokeBetaRegistrationD1(db, licenseKey);
+  return { success: true };
+}
+
+export async function unbindBetaTrialDevice(
+  dbOrToken: D1Database | string | null,
+  tokenOrKey: string | null,
+  maybeKey?: string
+): Promise<{ success: boolean; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrKey as string) : (dbOrToken as string);
+  const licenseKey = (isD1(dbOrToken) ? maybeKey : tokenOrKey) || "";
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) return { success: false, error: auth.error || "Akses ditolak." };
+
+  await unbindBetaRegistrationDeviceD1(db, licenseKey);
+  return { success: true };
+}
+
+export async function convertBetaTrialToPaid(
+  dbOrToken: D1Database | string | null,
+  tokenOrId: string | null,
+  maybeId?: string
+): Promise<{ success: boolean; status?: string; licenseKey?: string; commercialLicenseKey?: string; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  let ownerToken: string | null = null;
+  let regId: string = "";
+
+  if (isD1(dbOrToken)) {
+    if (maybeId) {
+      ownerToken = tokenOrId;
+      regId = maybeId;
+    } else {
+      regId = tokenOrId || "";
+    }
+  } else {
+    ownerToken = dbOrToken as string;
+    regId = tokenOrId || "";
+  }
+
+  if (ownerToken) {
+    const auth = await verifyOwnerSession(db, ownerToken);
+    if (!auth.valid) return { success: false, error: auth.error || "Akses ditolak." };
+  }
+
+  const reg = await getBetaRegistrationByIdD1(db, regId);
+  if (!reg) return { success: false, error: "Pendaftaran beta tidak ditemukan." };
+
+  const commercialKey = generateGenuineLicenseKey(regId);
+  const verifiedAt = new Date().toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const auditNote = `Dikonversi ke berbayar lisensi ${commercialKey} pada ${verifiedAt} oleh Owner Reza`;
+
+  // Atomic batch: Update BetaRegistration status + insert commercial License in Licenses table
+  const stmtBeta = db.prepare(`
+    UPDATE BetaRegistrations 
+    SET status = 'dikonversi_berbayar', auditLog = ?
+    WHERE registrationId = ?
+  `).bind(auditNote, regId);
+
+  const stmtLicense = db.prepare(`
+    INSERT OR REPLACE INTO Licenses (
+      licenseKey, orderId, businessName, boundDeviceId, deviceName, issuedAt, activatedAt, signature, licenseType
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'berbayar')
+  `).bind(
+    commercialKey,
+    regId,
+    reg.businessName,
+    reg.boundDeviceId || null,
+    reg.deviceName || null,
+    verifiedAt,
+    reg.activatedAt || verifiedAt,
+    signLicenseKey(commercialKey)
+  );
+
+  await db.batch([stmtBeta, stmtLicense]);
+
+  return { success: true, status: "dikonversi_berbayar", licenseKey: commercialKey, commercialLicenseKey: commercialKey };
+}
+
+export async function verifyDeviceLicense(
+  db: D1Database,
+  dataOrKey: string | { licenseKey: string; deviceId: string; token?: string },
+  maybeDeviceId?: string,
+  maybeToken?: string
+): Promise<{
+  valid: boolean;
+  status: "unregistered" | "pending_approval" | "trial_active" | "trial_expired" | "paid_active" | "tester_active" | "tester_expired" | "revoked";
+  licenseType?: "berbayar" | "trial" | "tester";
+  businessName?: string;
+  expiresAt?: string | null;
+  daysRemaining?: number;
+  hoursRemaining?: number;
+  error?: string;
+}> {
+  const data = typeof dataOrKey === "string" 
+    ? { licenseKey: dataOrKey, deviceId: maybeDeviceId || "", token: maybeToken }
+    : dataOrKey;
+  const key = (data.licenseKey || "").trim().toUpperCase();
+  const devId = (data.deviceId || "").trim();
+
+  if (!key) {
+    return { valid: false, status: "unregistered", error: "Nomor lisensi tidak disertakan." };
+  }
+
+  // 1. Check Commercial License
+  const lic = await getLicenseD1(db, key);
+  if (lic) {
+    if (lic.revoked === 1) {
+      return { valid: false, status: "revoked", error: "Lisensi resmi ini telah dicabut oleh Owner SakuNota." };
+    }
+    if (lic.boundDeviceId && devId && lic.boundDeviceId !== devId) {
+      return { valid: false, status: "revoked", error: `Lisensi resmi ini terikat pada perangkat lain (${lic.deviceName || "Perangkat Utama"}).` };
+    }
+
+    // Telemetry: update lastConnectedAt in D1
+    const now = new Date().toISOString();
+    try {
+      await db.prepare("UPDATE Licenses SET lastConnectedAt = ? WHERE licenseKey = ?").bind(now, key).run();
+    } catch (_) {}
+
+    return {
+      valid: true,
+      status: "paid_active",
+      licenseType: "berbayar",
+      businessName: lic.businessName,
+      expiresAt: null,
+    };
+  }
+
+  // 2. Check Tester License
+  const tester = await getTesterLicenseD1(db, key);
+  if (tester) {
+    if (tester.revoked === 1) {
+      return { valid: false, status: "revoked", error: "Lisensi tester ini telah dicabut oleh Owner SakuNota." };
+    }
+    if (tester.boundDeviceId && devId && tester.boundDeviceId !== devId) {
+      return { valid: false, status: "revoked", error: `Lisensi tester ini terikat pada perangkat lain (${tester.deviceName || "Perangkat Tester"}).` };
+    }
+    const isExpired = tester.expiresAt ? new Date(tester.expiresAt).getTime() < Date.now() : false;
+    if (isExpired) {
+      return {
+        valid: false,
+        status: "tester_expired",
+        licenseType: "tester",
+        businessName: tester.recipientName,
+        expiresAt: tester.expiresAt,
+        error: "Masa berlaku lisensi tester ini telah berakhir.",
+      };
+    }
+
+    const now = new Date().toISOString();
+    try {
+      await db.prepare("UPDATE TesterLicenses SET activatedAt = COALESCE(activatedAt, ?) WHERE licenseKey = ?").bind(now, key).run();
+    } catch (_) {}
+
+    const diffMs = tester.expiresAt ? new Date(tester.expiresAt).getTime() - Date.now() : 0;
+    const hoursRemaining = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60)));
+    const daysRemaining = Math.max(0, Math.floor(hoursRemaining / 24));
+
+    return {
+      valid: true,
+      status: "tester_active",
+      licenseType: "tester",
+      businessName: tester.recipientName,
+      expiresAt: tester.expiresAt,
+      daysRemaining,
+      hoursRemaining,
+    };
+  }
+
+  // 3. Check Closed Beta Trial
+  const beta = await getBetaRegistrationByLicenseKeyD1(db, key);
+  if (beta) {
+    if (beta.status === "pending") {
+      return { valid: false, status: "pending_approval", error: "Pendaftaran Closed Beta masih menunggu persetujuan Owner." };
+    }
+    if (beta.status === "ditolak") {
+      return { valid: false, status: "revoked", error: `Pendaftaran Closed Beta ditolak${beta.rejectionReason ? `: ${beta.rejectionReason}` : ""}.` };
+    }
+    if (beta.status === "dicabut") {
+      return { valid: false, status: "revoked", error: "Akses Trial Beta ini telah dicabut oleh Owner." };
+    }
+    if (beta.status === "dikonversi_berbayar") {
+      return {
+        valid: true,
+        status: "paid_active",
+        licenseType: "berbayar",
+        businessName: beta.businessName,
+        expiresAt: null,
+      };
+    }
+    if (beta.boundDeviceId && devId && beta.boundDeviceId !== devId) {
+      return { valid: false, status: "revoked", error: `Akses trial ini terikat pada perangkat lain (${beta.deviceName || "Perangkat Beta"}).` };
+    }
+
+    const isExpired = beta.expiresAt ? new Date(beta.expiresAt).getTime() < Date.now() : false;
+    if (isExpired) {
+      return {
+        valid: false,
+        status: "trial_expired",
+        licenseType: "trial",
+        businessName: beta.businessName,
+        expiresAt: beta.expiresAt,
+        error: "Masa coba 7 hari telah berakhir. Akses kasir terkunci sampai lisensi dibeli atau diperpanjang Owner.",
+      };
+    }
+
+    // Telemetry: update lastConnectedAt
+    const now = new Date().toISOString();
+    try {
+      await db.prepare("UPDATE BetaRegistrations SET lastConnectedAt = ? WHERE trialLicenseKey = ?").bind(now, key).run();
+    } catch (_) {}
+
+    const diffMs = beta.expiresAt ? new Date(beta.expiresAt).getTime() - Date.now() : 7 * 24 * 3600 * 1000;
+    const hoursRemaining = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60)));
+    const daysRemaining = Math.max(0, Math.floor(hoursRemaining / 24));
+
+    return {
+      valid: true,
+      status: "trial_active",
+      licenseType: "trial",
+      businessName: beta.businessName,
+      expiresAt: beta.expiresAt,
+      daysRemaining,
+      hoursRemaining,
+    };
+  }
+
+  return { valid: false, status: "unregistered", error: "Nomor lisensi tidak terdaftar di sistem SakuNota." };
 }
 

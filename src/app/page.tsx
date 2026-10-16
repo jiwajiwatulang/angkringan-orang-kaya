@@ -8,12 +8,61 @@ import {
   CustomerOrder, 
   submitBuyerOrder, 
   checkOrderStatusServer,
-  activateLicenseServer
+  activateLicenseServer,
+  registerBetaServer,
 } from "@/lib/ordersClient";
 
 export default function SakuNotaLandingPage() {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const [selectedBusinessType, setSelectedBusinessType] = useState<"warung" | "restoran" | "kafe" | "retail">("warung");
+
+  // Closed Beta Registration State
+  const [isBetaModalOpen, setIsBetaModalOpen] = useState(false);
+  const [betaOwnerName, setBetaOwnerName] = useState("");
+  const [betaBusinessName, setBetaBusinessName] = useState("");
+  const [betaWhatsapp, setBetaWhatsapp] = useState("");
+  const [betaHoneypot, setBetaHoneypot] = useState("");
+  const [isSubmittingBeta, setIsSubmittingBeta] = useState(false);
+  const [betaSuccessResult, setBetaSuccessResult] = useState<any>(null);
+  const [betaErrorMsg, setBetaErrorMsg] = useState("");
+
+  const handleSubmitBeta = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBetaErrorMsg("");
+    if (!betaOwnerName.trim()) {
+      setBetaErrorMsg("Mohon masukkan nama lengkap pemilik usaha.");
+      return;
+    }
+    if (!betaBusinessName.trim()) {
+      setBetaErrorMsg("Mohon masukkan nama usaha / toko Anda.");
+      return;
+    }
+    const cleanPhone = betaWhatsapp.replace(/[^0-9]/g, "");
+    if (!cleanPhone || cleanPhone.length < 9) {
+      setBetaErrorMsg("Nomor WhatsApp tidak valid (minimal 9 digit).");
+      return;
+    }
+
+    setIsSubmittingBeta(true);
+    try {
+      const res = await registerBetaServer(
+        betaOwnerName.trim(),
+        betaBusinessName.trim(),
+        cleanPhone,
+        betaHoneypot
+      );
+      if (res.success && res.registration) {
+        setBetaSuccessResult(res.registration);
+      } else {
+        setBetaErrorMsg(res.error || "Gagal mendaftar. Silakan coba kembali.");
+      }
+    } catch (err: any) {
+      setBetaErrorMsg("Terjadi gangguan koneksi: " + (err.message || err));
+    } finally {
+      setIsSubmittingBeta(false);
+    }
+  };
+
 
   // Mini Interactive Simulation State (Coba Kasir)
   const sampleProducts = [
@@ -101,16 +150,23 @@ export default function SakuNotaLandingPage() {
       if (e.key === "Escape") {
         setIsBuyModalOpen(false);
         setIsCheckStatusModalOpen(false);
+        setIsBetaModalOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Handle return from Midtrans finish callback
+  // Handle URL query parameters and Midtrans callback
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
+      if (params.get("beta") === "register") {
+        setIsBetaModalOpen(true);
+      } else if (params.get("beli") === "true") {
+        setIsBuyModalOpen(true);
+      }
+
       const paymentStatus = params.get("payment");
       const ordId = params.get("orderId");
       const code = params.get("accessCode");
@@ -484,6 +540,13 @@ export default function SakuNotaLandingPage() {
           </button>
           <button
             type="button"
+            onClick={() => setIsBetaModalOpen(true)}
+            className="hidden sm:inline-flex px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md shadow-blue-600/20 transition-all active:scale-95 items-center gap-1.5"
+          >
+            <span>Daftar Beta (7 Hari)</span>
+          </button>
+          <button
+            type="button"
             onClick={handleOpenBuyModal}
             className="hidden sm:inline-flex px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-md shadow-emerald-600/20 transition-all active:scale-95 items-center gap-1.5"
           >
@@ -502,10 +565,10 @@ export default function SakuNotaLandingPage() {
 
       {/* 2. Hero Section */}
       <section className="relative px-4 sm:px-8 pt-12 pb-14 md:pt-16 md:pb-20 max-w-5xl mx-auto text-center space-y-6">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/15 border border-accent/30 text-accent-text text-xs font-black">
-          <span>Kasir Simpel, Tetap Offline</span>
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400 text-xs font-black">
+          <span>🚀 CLOSED BETA DIBUKA</span>
           <span className="text-muted">•</span>
-          <span>SakuNota — Kasir Jalan Tanpa Internet.</span>
+          <span>Daftar Sekarang & Nikmati Gratis 7 Hari</span>
         </div>
 
         <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-fg tracking-tight leading-[1.15] max-w-3xl mx-auto">
@@ -563,39 +626,34 @@ export default function SakuNotaLandingPage() {
         <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
           <button
             type="button"
+            onClick={() => setIsBetaModalOpen(true)}
+            className="w-full sm:w-auto px-7 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm rounded-2xl shadow-xl shadow-blue-600/25 transition-all active:scale-95 flex items-center justify-center gap-2"
+          >
+            <span>🚀 Daftar Closed Beta — Gratis 7 Hari</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleOpenBuyModal}
-            className="w-full sm:w-auto px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-2xl shadow-xl shadow-emerald-600/25 transition-all active:scale-95 flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-7 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-2xl shadow-xl shadow-emerald-600/25 transition-all active:scale-95 flex items-center justify-center gap-2"
           >
             <span>Beli SakuNota — Rp65.000</span>
           </button>
 
           <Link
-            href="/pos"
-            className="w-full sm:w-auto px-7 py-4 bg-card hover:bg-line text-fg font-bold text-sm rounded-2xl border border-line transition-all flex items-center justify-center gap-2"
+            href="/pos?demo=true"
+            className="w-full sm:w-auto px-6 py-4 bg-card hover:bg-line text-fg font-bold text-sm rounded-2xl border border-line transition-all flex items-center justify-center gap-2"
           >
-            <span>Coba Kasir Sekarang</span>
+            <span>🎮 Coba Sandbox Kasir</span>
             <span>→</span>
           </Link>
 
           <a
             href="#pasang-hp"
-            className="w-full sm:w-auto px-6 py-4 bg-surface hover:bg-card text-blue-600 dark:text-blue-400 font-bold text-xs rounded-2xl border border-blue-200 dark:border-blue-800 transition-all flex items-center justify-center gap-1.5"
+            className="w-full sm:w-auto px-5 py-4 bg-surface hover:bg-card text-blue-600 dark:text-blue-400 font-bold text-xs rounded-2xl border border-blue-200 dark:border-blue-800 transition-all flex items-center justify-center gap-1.5"
           >
-            <span>📱</span>
-            <span>Pasang di HP</span>
+            <span>📱 Pasang di HP</span>
           </a>
-
-          <button
-            type="button"
-            onClick={() => {
-              setIsCheckStatusModalOpen(true);
-              setSearchAttempted(false);
-              setSearchResult(null);
-            }}
-            className="w-full sm:w-auto px-6 py-4 bg-surface hover:bg-card text-muted hover:text-fg font-bold text-xs rounded-2xl border border-line transition-all"
-          >
-            Cek Status Pesanan Saya
-          </button>
         </div>
 
         {/* Trust Badges */}
@@ -1173,6 +1231,191 @@ export default function SakuNotaLandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Closed Beta Registration Modal (Trial 7 Hari Gratis) */}
+      {isBetaModalOpen && (
+        <div 
+          onClick={() => setIsBetaModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-surface border border-line rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl my-8 cursor-default"
+          >
+            {/* Modal Header */}
+            <div className="flex justify-between items-start">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-xs font-black border border-blue-500/30">
+                  <span>🚀 PROGRAM CLOSED BETA</span>
+                </div>
+                <h3 className="font-black text-xl text-fg">Uji Coba 7 Hari SakuNota</h3>
+                <p className="text-xs text-muted">
+                  Daftarkan usaha Anda untuk mendapatkan lisensi uji coba gratis selama 7 hari tanpa komitmen.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBetaModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-card hover:bg-line text-muted hover:text-fg text-xs font-black transition-colors flex items-center justify-center border border-line"
+              >
+                ✕
+              </button>
+            </div>
+
+            {betaSuccessResult ? (
+              <div className="space-y-5 text-center py-4">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 flex items-center justify-center mx-auto text-3xl">
+                  🎉
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-lg font-black text-fg">Pendaftaran Berhasil Dikirim!</h4>
+                  <p className="text-xs text-muted max-w-sm mx-auto leading-relaxed">
+                    Terima kasih, <strong>{betaSuccessResult.ownerName}</strong>. Pendaftaran usaha <strong>&ldquo;{betaSuccessResult.businessName}&rdquo;</strong> telah tercatat di sistem kami.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-card border border-line text-left text-xs space-y-2 text-muted">
+                  <div className="flex justify-between">
+                    <span>Status Pendaftaran:</span>
+                    <span className="font-bold text-amber-500">Menunggu Persetujuan Owner</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>WhatsApp Terdaftar:</span>
+                    <span className="font-mono font-bold text-fg">{betaSuccessResult.whatsapp}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Masa Uji Coba:</span>
+                    <span className="font-bold text-fg">7 Hari Penuh (Setelah Diaktifkan)</span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-xs text-blue-600 dark:text-blue-300 leading-relaxed text-left">
+                  Owner Reza akan memverifikasi pendaftaran Anda dan mengirimkan nomor lisensi trial via WhatsApp. Anda bisa langsung mencoba kasir sandbox sambil menunggu!
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                  <Link
+                    href="/pos?demo=true"
+                    onClick={() => setIsBetaModalOpen(false)}
+                    className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-md text-center"
+                  >
+                    Coba Demo Sandbox Kasir Sekarang →
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setIsBetaModalOpen(false)}
+                    className="py-3 px-4 rounded-xl bg-card hover:bg-line text-muted hover:text-fg font-bold text-xs transition-colors border border-line"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitBeta} className="space-y-4">
+                {/* Honeypot field - invisible to humans */}
+                <div style={{ display: "none" }} aria-hidden="true">
+                  <input
+                    type="text"
+                    name="website"
+                    tabIndex={-1}
+                    value={betaHoneypot}
+                    onChange={(e) => setBetaHoneypot(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-fg mb-1">
+                    Nama Lengkap Pemilik Usaha <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={betaOwnerName}
+                    onChange={(e) => setBetaOwnerName(e.target.value)}
+                    placeholder="Contoh: Hendra Wijaya"
+                    className="w-full bg-card border border-line rounded-xl px-4 py-2.5 text-xs text-fg placeholder-muted outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-fg mb-1">
+                    Nama Usaha / Toko <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={betaBusinessName}
+                    onChange={(e) => setBetaBusinessName(e.target.value)}
+                    placeholder="Contoh: Kedai Kopi Nusantara"
+                    className="w-full bg-card border border-line rounded-xl px-4 py-2.5 text-xs text-fg placeholder-muted outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-fg mb-1">
+                    Nomor WhatsApp Aktif <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={betaWhatsapp}
+                    onChange={(e) => setBetaWhatsapp(e.target.value)}
+                    placeholder="Contoh: 081234567890"
+                    className="w-full bg-card border border-line rounded-xl px-4 py-2.5 text-xs text-fg placeholder-muted outline-none focus:border-blue-500 transition-colors"
+                  />
+                  <span className="text-[10px] text-muted block mt-1">
+                    Nomor ini digunakan untuk mengirimkan lisensi trial dan verifikasi aktivasi kasir.
+                  </span>
+                </div>
+
+                {/* Safe Data Guarantee Box */}
+                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-700 dark:text-emerald-300 space-y-1">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <span>🛡️</span> Jaminan Keamanan Data Toko
+                  </div>
+                  <p className="leading-relaxed opacity-90">
+                    Semua transaksi, menu, dan rekap shift selama uji coba tersimpan utuh di perangkat Anda dan dapat diekspor kapan pun.
+                  </p>
+                </div>
+
+                {betaErrorMsg && (
+                  <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-500 text-xs font-bold">
+                    {betaErrorMsg}
+                  </div>
+                )}
+
+                <div className="pt-2 space-y-2">
+                  <button
+                    type="submit"
+                    disabled={isSubmittingBeta}
+                    className="w-full py-3.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black text-xs transition-all shadow-md shadow-blue-600/20 active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    {isSubmittingBeta ? (
+                      <span>Mengirim Pendaftaran...</span>
+                    ) : (
+                      <span>Daftar Closed Beta Sekarang (Gratis) →</span>
+                    )}
+                  </button>
+
+                  <div className="text-center pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsBetaModalOpen(false);
+                        handleOpenBuyModal();
+                      }}
+                      className="text-[11px] text-muted hover:text-emerald-600 dark:hover:text-emerald-400 font-bold underline"
+                    >
+                      Ingin langsung beli lisensi permanen tanpa batas hari? Beli Rp65.000 →
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 13. Interactive Buy Modal (Alur Transfer Bank Manual & Verifikasi Owner) */}
       {isBuyModalOpen && (

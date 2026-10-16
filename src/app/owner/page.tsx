@@ -23,7 +23,15 @@ import {
   cancelOwnerOrderServer,
   archiveOwnerOrderServer,
   deleteOwnerTestOrderServer,
-  syncOwnerMidtransServer
+  syncOwnerMidtransServer,
+  BetaRegistration,
+  fetchBetaRegistrationsServer,
+  approveBetaRegistrationServer,
+  rejectBetaRegistrationServer,
+  extendBetaTrialServer,
+  revokeBetaTrialServer,
+  unbindBetaTrialServer,
+  convertBetaTrialToPaidServer,
 } from "@/lib/ordersClient";
 
 export default function SakuNotaOwnerDashboardPage() {
@@ -37,12 +45,20 @@ export default function SakuNotaOwnerDashboardPage() {
 
   // Dashboard Tabs & Data State
   const [activeTab, setActiveTab] = useState<
-    "orders" | "summary" | "customers" | "devices" | "tester" | "support" | "settings"
+    "orders" | "beta" | "summary" | "customers" | "devices" | "tester" | "support" | "settings"
   >("orders");
   const [orderFilter, setOrderFilter] = useState<"semua" | "menunggu" | "berhasil" | "gagal" | "kedaluwarsa" | "dikembalikan" | "arsip">("semua");
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [licenses, setLicenses] = useState<CommercialLicense[]>([]);
   const [testerLicenses, setTesterLicenses] = useState<TesterLicense[]>([]);
+  const [betaRegistrations, setBetaRegistrations] = useState<BetaRegistration[]>([]);
+  const [isLoadingBeta, setIsLoadingBeta] = useState(false);
+  const [betaFilter, setBetaFilter] = useState<"semua" | "pending" | "disetujui" | "trial_active" | "trial_expired" | "dicabut" | "dikonversi_berbayar">("semua");
+  const [betaSearch, setBetaSearch] = useState("");
+  const [extendTarget, setExtendTarget] = useState<BetaRegistration | null>(null);
+  const [extendDays, setExtendDays] = useState<number>(7);
+  const [extendReason, setExtendReason] = useState<string>("Permintaan perpanjangan evaluasi fitur");
+  const [isExtending, setIsExtending] = useState(false);
   const [metrics, setMetrics] = useState<OwnerMetrics>({
     totalPembeli: 0,
     pembayaranBerhasil: 0,
@@ -130,6 +146,20 @@ export default function SakuNotaOwnerDashboardPage() {
     } catch (_) {}
   };
 
+  // Load beta registrations
+  const loadBetaRegistrations = async (token: string, silent = false) => {
+    if (!silent) setIsLoadingBeta(true);
+    try {
+      const res = await fetchBetaRegistrationsServer(token);
+      if (res.success && res.registrations) {
+        setBetaRegistrations(res.registrations);
+      }
+    } catch (_) {}
+    finally {
+      if (!silent) setIsLoadingBeta(false);
+    }
+  };
+
   // Check stored session token on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -140,6 +170,7 @@ export default function SakuNotaOwnerDashboardPage() {
         loadOrders(storedToken);
         loadLicenses(storedToken);
         loadTesterLicenses(storedToken);
+        loadBetaRegistrations(storedToken);
       }
     }
   }, []);
@@ -152,6 +183,129 @@ export default function SakuNotaOwnerDashboardPage() {
     }, 8000);
     return () => clearInterval(interval);
   }, [ownerToken, isLoggedIn]);
+
+  const handleApproveBeta = async (regId: string) => {
+    if (!ownerToken) return;
+    try {
+      const res = await approveBetaRegistrationServer(ownerToken, regId);
+      if (res.success && res.registration) {
+        setToastMsg(`Pendaftaran disetujui! Lisensi: ${res.registration.licenseKey}`);
+        await loadBetaRegistrations(ownerToken, true);
+        setTimeout(() => setToastMsg(""), 5000);
+      } else {
+        alert(res.error || "Gagal menyetujui pendaftaran beta.");
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    }
+  };
+
+  const handleRejectBeta = async (regId: string) => {
+    if (!ownerToken) return;
+    const reason = window.prompt("Alasan penolakan (opsional):") || "";
+    try {
+      const res = await rejectBetaRegistrationServer(ownerToken, regId, reason);
+      if (res.success) {
+        setToastMsg("Pendaftaran beta telah ditolak.");
+        await loadBetaRegistrations(ownerToken, true);
+        setTimeout(() => setToastMsg(""), 4000);
+      } else {
+        alert(res.error || "Gagal menolak pendaftaran.");
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    }
+  };
+
+  const handleCopyBetaInvite = (reg: BetaRegistration) => {
+    if (!reg.licenseKey) {
+      alert("Lisensi belum diterbitkan.");
+      return;
+    }
+    const cleanPhone = reg.whatsapp.replace(/[^0-9]/g, "");
+    const formattedPhone = cleanPhone.startsWith("0") ? "62" + cleanPhone.slice(1) : cleanPhone;
+    const message = `Halo ${reg.ownerName}, pendaftaran Closed Beta SakuNota untuk "${reg.businessName}" telah DISETUJUI! 🎉\n\nNomor Lisensi Uji Coba 7 Hari Anda:\n👉 *${reg.licenseKey}*\n\nCara Aktivasi di HP Kasir:\n1. Buka https://angkringan-orang-kaya.ranutarde.workers.dev/pos\n2. Masukkan nomor lisensi di atas lalu tekan "Aktifkan Perangkat".\n3. SakuNota siap dipakai berjualan secara offline tanpa internet!\n\nPanduan Pemasangan & Pemakaian:\nhttps://angkringan-orang-kaya.ranutarde.workers.dev/panduan\n\nJika butuh bantuan teknis, silakan balas pesan WhatsApp ini. Selamat mencoba!`;
+
+    navigator.clipboard.writeText(message);
+    setToastMsg("Teks undangan disalin ke clipboard!");
+    setTimeout(() => setToastMsg(""), 4000);
+    window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, "_blank");
+  };
+
+  const handleUnbindBeta = async (regId: string) => {
+    if (!ownerToken) return;
+    if (!confirm("Lepas perangkat kasir terikat? Pendaftar dapat mengaktifkan kasir di HP baru.")) return;
+    const reason = window.prompt("Alasan pelepasan perangkat:", "Ganti perangkat kasir") || "Ganti perangkat kasir";
+    try {
+      const res = await unbindBetaTrialServer(ownerToken, regId, reason);
+      if (res.success) {
+        setToastMsg("Perangkat kasir berhasil dilepas.");
+        await loadBetaRegistrations(ownerToken, true);
+        setTimeout(() => setToastMsg(""), 4000);
+      } else {
+        alert(res.error || "Gagal melepas perangkat.");
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    }
+  };
+
+  const handleRevokeBeta = async (regId: string) => {
+    if (!ownerToken) return;
+    if (!confirm("Cabut izin trial beta ini? Kasir akan langsung terkunci pada sinkronisasi berikutnya.")) return;
+    const reason = window.prompt("Alasan pencabutan izin:", "Pelanggaran ketentuan evaluasi") || "Dicabut oleh Owner";
+    try {
+      const res = await revokeBetaTrialServer(ownerToken, regId, reason);
+      if (res.success) {
+        setToastMsg("Akses trial berhasil dicabut.");
+        await loadBetaRegistrations(ownerToken, true);
+        setTimeout(() => setToastMsg(""), 4000);
+      } else {
+        alert(res.error || "Gagal mencabut akses.");
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    }
+  };
+
+  const handleConvertBetaToPaid = async (regId: string) => {
+    if (!ownerToken) return;
+    if (!confirm("Konversi pendaftar beta ini menjadi Lisensi Berbayar Permanen (Rp65.000)? Perangkat dan data lokal kasir tetap utuh tanpa reset.")) return;
+    try {
+      const res = await convertBetaTrialToPaidServer(ownerToken, regId);
+      if (res.success) {
+        setToastMsg(`Berhasil dikonversi menjadi lisensi berbayar permanen! Lisensi: ${res.licenseKey}`);
+        await loadBetaRegistrations(ownerToken, true);
+        await loadOrders(ownerToken, true);
+        setTimeout(() => setToastMsg(""), 5000);
+      } else {
+        alert(res.error || "Gagal mengonversi pendaftar beta.");
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    }
+  };
+
+  const handleConfirmExtend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ownerToken || !extendTarget) return;
+    setIsExtending(true);
+    try {
+      const res = await extendBetaTrialServer(ownerToken, extendTarget.id, extendDays, extendReason);
+      if (res.success) {
+        setToastMsg(`Trial diperpanjang +${extendDays} hari!`);
+        setExtendTarget(null);
+        await loadBetaRegistrations(ownerToken, true);
+        setTimeout(() => setToastMsg(""), 4000);
+      } else {
+        alert(res.error || "Gagal memperpanjang trial.");
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    } finally {
+      setIsExtending(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,6 +323,7 @@ export default function SakuNotaOwnerDashboardPage() {
         await loadOrders(res.token);
         await loadLicenses(res.token);
         await loadTesterLicenses(res.token);
+        await loadBetaRegistrations(res.token);
       } else {
         setLoginError(res.error || "Username atau Password salah! Akses khusus Owner Reza.");
       }
@@ -652,6 +807,20 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
           </button>
           <button
             type="button"
+            onClick={() => {
+              setActiveTab("beta");
+              if (ownerToken) loadBetaRegistrations(ownerToken);
+            }}
+            className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
+              activeTab === "beta"
+                ? "bg-purple-600 text-white shadow-sm"
+                : "bg-surface text-muted hover:text-fg border border-line"
+            }`}
+          >
+            🚀 Pendaftar Beta ({betaRegistrations.filter((b) => b.status === "pending").length} baru)
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab("customers")}
             className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
               activeTab === "customers"
@@ -947,6 +1116,368 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB: PENDAFTAR CLOSED BETA (7-DAY TRIAL) */}
+        {activeTab === "beta" && (
+          <div className="bg-surface rounded-3xl border border-line shadow-sm p-5 sm:p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-black text-base text-fg">Pendaftar Closed Beta (Trial 7 Hari)</h3>
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-500 text-[10px] font-black border border-blue-500/30">
+                    {betaRegistrations.length} Pendaftar
+                  </span>
+                </div>
+                <p className="text-xs text-muted mt-0.5">
+                  Setujui pendaftaran untuk menerbitkan lisensi trial 7 hari unik. Pantau masa berlaku, perpanjang, lepas perangkat, atau konversi ke lisensi berbayar permanen.
+                </p>
+              </div>
+
+              {/* Beta Filter Pills */}
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+                {[
+                  { id: "semua", label: "Semua" },
+                  { id: "pending", label: "Menunggu" },
+                  { id: "disetujui", label: "Disetujui" },
+                  { id: "trial_active", label: "Trial Aktif" },
+                  { id: "trial_expired", label: "Kedaluwarsa" },
+                  { id: "dicabut", label: "Dicabut" },
+                  { id: "dikonversi_berbayar", label: "Berbayar" },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setBetaFilter(f.id as any)}
+                    className={`px-3 py-1 rounded-xl transition-colors ${
+                      betaFilter === f.id
+                        ? "bg-purple-600 text-white"
+                        : "bg-card text-muted hover:text-fg border border-line"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Search Box */}
+            <div className="relative">
+              <input
+                type="text"
+                value={betaSearch}
+                onChange={(e) => setBetaSearch(e.target.value)}
+                placeholder="Cari berdasarkan nama pemilik, nama usaha, lisensi, atau WhatsApp..."
+                className="w-full bg-card border border-line rounded-2xl px-4 py-2.5 text-xs text-fg placeholder-muted outline-none focus:border-purple-500 transition-colors"
+              />
+              {betaSearch && (
+                <button
+                  type="button"
+                  onClick={() => setBetaSearch("")}
+                  className="absolute right-3 top-2.5 text-xs text-muted hover:text-fg font-bold"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Registration Cards */}
+            {isLoadingBeta ? (
+              <div className="py-12 text-center text-xs text-muted">Memuat data pendaftar beta...</div>
+            ) : betaRegistrations.length === 0 ? (
+              <div className="py-14 px-4 text-center space-y-2.5 bg-card/40 rounded-2xl border border-line/60">
+                <div className="text-3xl">🚀</div>
+                <h4 className="text-sm font-black text-fg">Belum Ada Pendaftar Closed Beta</h4>
+                <p className="text-xs text-muted max-w-sm mx-auto leading-relaxed">
+                  Pendaftar dari form pendaftaran website akan otomatis masuk ke sini untuk Anda evaluasi dan setujui.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {betaRegistrations
+                  .filter((b) => {
+                    if (betaFilter !== "semua" && b.status !== betaFilter) return false;
+                    if (!betaSearch.trim()) return true;
+                    const q = betaSearch.toLowerCase();
+                    return (
+                      b.ownerName.toLowerCase().includes(q) ||
+                      b.businessName.toLowerCase().includes(q) ||
+                      b.whatsapp.includes(q) ||
+                      (b.licenseKey && b.licenseKey.toLowerCase().includes(q))
+                    );
+                  })
+                  .map((b) => {
+                    const isPending = b.status === "pending";
+                    const isApproved = b.status === "disetujui";
+                    const isActive = b.status === "trial_active";
+                    const isExpired = b.status === "trial_expired";
+                    const isRevoked = b.status === "dicabut";
+                    const isConverted = b.status === "dikonversi_berbayar";
+
+                    let remainingText = "";
+                    if (b.expiresAt) {
+                      const exp = new Date(b.expiresAt).getTime();
+                      const now = Date.now();
+                      if (now >= exp) {
+                        remainingText = "Kedaluwarsa";
+                      } else {
+                        const hrs = Math.floor((exp - now) / 3600000);
+                        const days = Math.floor(hrs / 24);
+                        remainingText = days > 0 ? `Sisa ${days} hari` : `Sisa ${hrs} jam`;
+                      }
+                    }
+
+                    return (
+                      <div
+                        key={b.id}
+                        className="bg-card p-5 rounded-2xl border border-line space-y-4 shadow-sm hover:border-purple-500/40 transition-colors"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-black text-sm text-fg">{b.businessName}</span>
+                              <span className="text-xs text-muted">• {b.ownerName}</span>
+                              
+                              {/* Status Badge */}
+                              <span
+                                className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                                  isPending
+                                    ? "bg-amber-500/15 text-amber-500 border-amber-500/30"
+                                    : isApproved
+                                    ? "bg-sky-500/15 text-sky-500 border-sky-500/30"
+                                    : isActive
+                                    ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+                                    : isExpired
+                                    ? "bg-rose-500/15 text-rose-500 border-rose-500/30"
+                                    : isConverted
+                                    ? "bg-purple-500/15 text-purple-400 border-purple-500/30"
+                                    : "bg-slate-500/15 text-slate-400 border-slate-500/30"
+                                }`}
+                              >
+                                {isPending
+                                  ? "Menunggu Persetujuan"
+                                  : isApproved
+                                  ? "Disetujui (Belum Aktif)"
+                                  : isActive
+                                  ? "Trial Aktif"
+                                  : isExpired
+                                  ? "Trial Kedaluwarsa"
+                                  : isConverted
+                                  ? "Berbayar Permanen"
+                                  : "Dicabut"}
+                              </span>
+                            </div>
+
+                            <div className="text-xs text-muted flex flex-wrap items-center gap-3">
+                              <span>
+                                WhatsApp:{" "}
+                                <a
+                                  href={`https://wa.me/${b.whatsapp.replace(/[^0-9]/g, "").startsWith("0") ? "62" + b.whatsapp.replace(/[^0-9]/g, "").slice(1) : b.whatsapp.replace(/[^0-9]/g, "")}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-purple-400 hover:underline font-mono"
+                                >
+                                  {b.whatsapp}
+                                </a>
+                              </span>
+                              <span>Daftar: {new Date(b.createdAt).toLocaleDateString("id-ID")}</span>
+                            </div>
+                          </div>
+
+                          {/* Right Side License & Expiry Info */}
+                          {b.licenseKey && (
+                            <div className="text-left sm:text-right space-y-0.5 shrink-0">
+                              <div className="font-mono font-bold text-xs text-purple-400 select-all bg-surface px-3 py-1 rounded-xl border border-line inline-block">
+                                {b.licenseKey}
+                              </div>
+                              {remainingText && (
+                                <div className="text-[11px] font-semibold text-muted">
+                                  {remainingText} {b.expiresAt ? `(s.d ${new Date(b.expiresAt).toLocaleDateString("id-ID")})` : ""}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Device Info */}
+                        <div className="text-[11px] bg-surface p-3 rounded-xl border border-line/60 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span>📱 Perangkat Kasir:</span>
+                            {b.boundDeviceId ? (
+                              <span className="font-semibold text-fg">
+                                {b.deviceName || "Perangkat Kasir"} ({b.boundDeviceId.slice(0, 10)}...)
+                              </span>
+                            ) : (
+                              <span className="text-muted italic">Belum terikat ke perangkat mana pun</span>
+                            )}
+                          </div>
+                          {b.activatedAt && (
+                            <div className="text-muted">
+                              Pertama Aktif: {new Date(b.activatedAt).toLocaleDateString("id-ID")}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Audit Log / Notes */}
+                        {b.notes && (
+                          <div className="text-[10px] text-muted italic bg-card/60 px-3 py-1.5 rounded-lg border border-line/40">
+                            Catatan Audit: {b.notes}
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-line/60">
+                          {isPending && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleApproveBeta(b.id)}
+                                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors shadow-sm"
+                              >
+                                ✅ Setujui & Terbitkan Trial
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRejectBeta(b.id)}
+                                className="px-3 py-1.5 rounded-xl bg-surface hover:bg-rose-500/15 text-rose-400 border border-line hover:border-rose-500/30 text-xs font-bold transition-colors"
+                              >
+                                ❌ Tolak
+                              </button>
+                            </>
+                          )}
+
+                          {b.licenseKey && (
+                            <button
+                              type="button"
+                              onClick={() => handleCopyBetaInvite(b)}
+                              className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5"
+                            >
+                              <span>📲</span> Salin & Buka WA
+                            </button>
+                          )}
+
+                          {!isPending && b.status !== "ditolak" && !isRevoked && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setExtendTarget(b);
+                                  setExtendDays(7);
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-surface hover:bg-card text-muted hover:text-fg border border-line text-xs font-bold transition-colors"
+                              >
+                                ⏳ Perpanjang Trial
+                              </button>
+
+                              {b.boundDeviceId && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUnbindBeta(b.id)}
+                                  className="px-3 py-1.5 rounded-xl bg-surface hover:bg-amber-500/15 text-amber-500 border border-line hover:border-amber-500/30 text-xs font-bold transition-colors"
+                                >
+                                  📱 Lepas Perangkat
+                                </button>
+                              )}
+
+                              {!isConverted && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleConvertBetaToPaid(b.id)}
+                                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+                                >
+                                  <span>💎</span> Konversi Berbayar (Rp65rb)
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => handleRevokeBeta(b.id)}
+                                className="px-3 py-1.5 rounded-xl bg-surface hover:bg-rose-500/15 text-rose-500 border border-line hover:border-rose-500/30 text-xs font-bold transition-colors"
+                              >
+                                🚫 Cabut Akses
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+
+            {/* Extend Trial Modal */}
+            {extendTarget && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+                <div className="bg-surface border border-line rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-black text-sm text-fg">Perpanjang Masa Trial Beta</h4>
+                    <button
+                      type="button"
+                      onClick={() => setExtendTarget(null)}
+                      className="text-muted hover:text-fg text-xs font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted leading-relaxed">
+                    Perpanjang akses kasir trial untuk <strong>{extendTarget.businessName}</strong> ({extendTarget.ownerName}).
+                  </p>
+                  <form onSubmit={handleConfirmExtend} className="space-y-3">
+                    <div>
+                      <label className="text-[11px] font-bold text-muted block mb-1">
+                        Tambah Hari Masa Berlaku
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[7, 14, 30].map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => setExtendDays(d)}
+                            className={`py-2 rounded-xl text-xs font-bold border transition-colors ${
+                              extendDays === d
+                                ? "bg-purple-600 text-white border-purple-600"
+                                : "bg-card text-muted border-line hover:text-fg"
+                            }`}
+                          >
+                            +{d} Hari
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-muted block mb-1">
+                        Alasan / Catatan Audit
+                      </label>
+                      <input
+                        type="text"
+                        value={extendReason}
+                        onChange={(e) => setExtendReason(e.target.value)}
+                        placeholder="Contoh: Tambahan waktu uji coba fitur laporan"
+                        className="w-full bg-card border border-line rounded-xl px-3 py-2 text-xs text-fg outline-none focus:border-purple-500"
+                        required
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setExtendTarget(null)}
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-muted hover:text-fg"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isExtending}
+                        className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white transition-colors"
+                      >
+                        {isExtending ? "Memproses..." : "Simpan Perpanjangan"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
             )}
           </div>

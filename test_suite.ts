@@ -18,7 +18,13 @@ import {
   generateGenuineLicenseKey,
   signLicenseKey,
   activateLicenseOnDevice,
-  checkCustomerOrderStatus
+  checkCustomerOrderStatus,
+  createCustomerOrder,
+  verifyOrderAndIssueLicense,
+  registerBetaAccount,
+  approveBetaRegistration,
+  verifyDeviceLicense,
+  convertBetaTrialToPaid
 } from './src/lib/server/sakunotaServer';
 import {
   getD1,
@@ -27,8 +33,21 @@ import {
   insertLicenseD1,
   getLicenseD1,
   unbindLicenseDeviceD1,
-  updateOrderStatusAndLicenseD1
+  updateOrderStatusAndLicenseD1,
+  getBetaRegistrationByIdD1,
+  getBetaRegistrationByLicenseKeyD1
 } from './src/lib/server/d1';
+import { detectClockTampering } from './src/lib/licenseGuard';
+
+if (typeof (globalThis as any).localStorage === 'undefined') {
+  let mockStore: Record<string, string> = {};
+  (globalThis as any).localStorage = {
+    getItem: (key: string) => mockStore[key] || null,
+    setItem: (key: string, val: string) => { mockStore[key] = String(val); },
+    removeItem: (key: string) => { delete mockStore[key]; },
+    clear: () => { mockStore = {}; }
+  };
+}
 
 interface TestResult {
   name: string;
@@ -1105,6 +1124,136 @@ Berikut rincian lisensi resmi untuk usaha *${testOrder.businessName}*:
     assert(waMessage.includes(testOrder.orderId), 'WhatsApp message contains order ID');
   } catch (err: any) {
     assert(false, 'Test Group 17 Error', err.message);
+  }
+
+  // --------------------------------------------------------------------------
+  console.log('\n[TEST GROUP 18] Fix 1A (Order ID Collisions), Fix 1B (Atomic Batch Issuance) & Closed Beta 7-Day Trial Lifecycle');
+
+  try {
+    const dbD1 = getD1();
+    await initD1Tables(dbD1);
+
+    // 1. Fix 1A: Collision-Free High-Entropy Order ID Generation
+    const orderIds: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const res = await createCustomerOrder(dbD1, {
+        buyerName: `Tester ${i}`,
+        businessName: `Usaha ${i}`,
+        whatsapp: `08123456789${i}`,
+        email: `tester${i}@example.com`,
+        paymentMethod: "manual_bca"
+      });
+      assert(res.success && !!res.order, `Order creation ${i} succeeded`);
+      if (res.order) {
+        orderIds.push(res.order.orderId);
+      }
+    }
+
+    const uniqueIds = new Set(orderIds);
+    assert(uniqueIds.size === 10, 'All 10 generated order IDs are strictly unique (no collision)');
+    assert(
+      orderIds.every(id => /^SN-\d{4}-[A-Z0-9]{8,12}$/.test(id)),
+      'Order IDs strictly follow high-entropy collision-free format SN-YYYY-XXXXXXXX'
+    );
+
+    // 2. Fix 1B: Atomic Batch License Issuance
+    const targetOrderId = orderIds[0];
+    const verifyRes = await verifyOrderAndIssueLicense(dbD1, targetOrderId);
+    assert(verifyRes.success, 'Atomic verification and license issuance succeeded');
+    assert(!!verifyRes.licenseKey, `Issued genuine license key: ${verifyRes.licenseKey}`);
+    
+    // Verify D1 order and license state
+    const orderInD1 = await checkCustomerOrderStatus(dbD1, targetOrderId, verifyRes.order?.accessCode || "");
+    assert(orderInD1.success && orderInD1.order?.status === "lunas_lisensi_terbit", 'Order status atomically updated to lunas_lisensi_terbit');
+    const licenseInD1 = await getLicenseD1(dbD1, verifyRes.licenseKey!);
+    assert(!!licenseInD1 && licenseInD1.revoked === 0 && licenseInD1.licenseType === "berbayar", 'Commercial license atomically inserted in D1');
+
+    // 3. Closed Beta Honeypot Bot Trap
+    const botRes = await registerBetaAccount(dbD1, {
+      ownerName: "Bot Spammer",
+      businessName: "Casino Online",
+      whatsapp: "081200000000",
+      honeypot: "http://spam.org"
+    });
+    assert(!botRes.success, 'Bot honeypot submission was blocked');
+    assert(botRes.status === 400, 'Bot honeypot returns status 400 Bad Request');
+
+    // 4. Legitimate Closed Beta Registration
+    const testBetaPhone = `0812${Date.now().toString().slice(-8)}`;
+    const betaRegRes = await registerBetaAccount(dbD1, {
+      ownerName: "Hendra Wijaya",
+      businessName: "Kopi Titik Temu",
+      whatsapp: testBetaPhone,
+      honeypot: ""
+    });
+    assert(betaRegRes.success && !!betaRegRes.registration, 'Legitimate beta registration succeeded');
+    assert(betaRegRes.registration?.status === "pending", 'Initial beta registration status is strictly "pending"');
+    assert(!betaRegRes.registration?.licenseKey, 'No license key issued before owner approval');
+    const betaId = betaRegRes.registration!.id || betaRegRes.registration!.registrationId;
+
+    // 5. Owner Approval of Beta Registration
+    const approveRes = await approveBetaRegistration(dbD1, betaId);
+    assert(approveRes.success && !!approveRes.registration, 'Owner approval succeeded');
+    assert(approveRes.registration?.status === "disetujui", 'Beta registration status transitioned to "disetujui"');
+    const trialKey = approveRes.registration!.licenseKey!;
+    assert(trialKey.startsWith("SN-TRIAL-"), `Trial license starts with "SN-TRIAL-" (${trialKey})`);
+
+    // 6. First Device Activation Starts 7-Day Clock
+    const dev1Res = await activateLicenseOnDevice(dbD1, {
+      licenseKey: trialKey,
+      deviceId: "DEV-CASHIER-HP-01",
+      deviceName: "Samsung A54 Kasir"
+    });
+    assert(dev1Res.success, 'First device trial activation succeeded (HTTP 200)');
+    assert(dev1Res.licenseType === "trial", 'License type is trial');
+    assert(!!dev1Res.activationToken, 'Cryptographic activation token generated');
+    assert(!!dev1Res.activatedAt, `Activation timestamp recorded: ${dev1Res.activatedAt}`);
+    assert(!!dev1Res.expiresAt, `Expiration timestamp recorded: ${dev1Res.expiresAt}`);
+
+    const trialStart = new Date(dev1Res.activatedAt!).getTime();
+    const trialEnd = new Date(dev1Res.expiresAt!).getTime();
+    const durationDays = Math.round((trialEnd - trialStart) / (1000 * 60 * 60 * 24));
+    assert(durationDays === 7, `Trial duration is exactly 7 days (calculated: ${durationDays} days)`);
+
+    // 7. Strict 1-Device Rule for Beta Trial (Conflict 409)
+    const dev2Res = await activateLicenseOnDevice(dbD1, {
+      licenseKey: trialKey,
+      deviceId: "DEV-CASHIER-HP-02",
+      deviceName: "Redmi Note 12"
+    });
+    assert(!dev2Res.success, 'Second device activation was REJECTED');
+    assert(dev2Res.status === 409, 'Rejection returned HTTP 409 Conflict');
+    assert(dev2Res.error?.includes("Samsung A54 Kasir"), 'Rejection error identifies existing bound device');
+
+    // 8. Monotonic Clock Tampering Detection
+    localStorage.setItem("sakunota_clock_watermark", String(Date.now() + 120000)); // Future watermark
+    const isTampered = detectClockTampering();
+    assert(isTampered === true, 'Clock tampering correctly detected when system clock is turned back');
+    localStorage.removeItem("sakunota_clock_watermark");
+
+    // 9. Trial Expiration & Verification
+    const telemetryCheck = await verifyDeviceLicense(dbD1, trialKey, "DEV-CASHIER-HP-01");
+    assert(telemetryCheck.valid, 'Active trial device telemetry check is valid');
+    assert(telemetryCheck.status === "trial_active", 'Status is trial_active');
+    assert(telemetryCheck.daysRemaining! <= 7 && telemetryCheck.daysRemaining! >= 6, 'Days remaining accurately calculated');
+
+    // 10. Data Safety Guarantee (Never Held Hostage)
+    const exportedData = await exportAllData();
+    assert(!!exportedData && typeof exportedData === "object", 'exportAllData() successfully exports complete business data');
+    assert(Array.isArray(exportedData.orders), 'Exported data contains orders array');
+
+    // 11. Conversion of Beta Trial to Permanent Commercial License
+    const convertRes = await convertBetaTrialToPaid(dbD1, betaId);
+    assert(convertRes.success, 'Conversion to paid license succeeded');
+    assert(convertRes.status === "dikonversi_berbayar", 'Beta registration marked as dikonversi_berbayar');
+    assert(!!convertRes.licenseKey && convertRes.licenseKey.startsWith("SN-"), `New permanent license key issued: ${convertRes.licenseKey}`);
+
+    // Verify converted license preserves bound device
+    const convertedLic = await getLicenseD1(dbD1, convertRes.licenseKey!);
+    assert(!!convertedLic, 'Permanent commercial license retrievable from D1');
+    assert(convertedLic?.boundDeviceId === "DEV-CASHIER-HP-01", 'Device binding preserved intact without resetting merchant setup');
+  } catch (err: any) {
+    assert(false, 'Test Group 18 Error', err.message);
   }
 
   // --------------------------------------------------------------------------

@@ -407,6 +407,59 @@ export default function SakuNotaPanduanPage() {
         </div>
       ),
     },
+    {
+      id: 12,
+      slug: "closed-beta-dan-keamanan-data",
+      title: "12. Program Closed Beta & Jaminan Keamanan Data",
+      tag: "Trial & Lisensi",
+      summary: "Ketentuan uji coba 7 hari gratis, verifikasi perangkat, proteksi waktu, dan jaminan data tidak disandera.",
+      content: (
+        <div className="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
+          <div className="bg-blue-950/40 border border-blue-500/30 rounded-2xl p-4 space-y-2">
+            <h4 className="font-extrabold text-sm text-blue-300 flex items-center gap-2">
+              <span>🚀</span> Apa Itu Program Closed Beta SakuNota?
+            </h4>
+            <p className="text-xs text-blue-200/90 leading-relaxed">
+              Closed Beta adalah tahap uji coba terkontrol yang memberikan akses penuh seluruh fitur kasir offline SakuNota selama <strong>7 hari gratis</strong> bagi pelaku usaha terpilih. Tujuannya adalah memastikan kecocokan aplikasi di berbagai model HP dan printer sebelum membeli lisensi resmi permanen.
+            </p>
+          </div>
+
+          <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
+            <h4 className="font-extrabold text-sm text-fg">Alur Registrasi &amp; Aktivasi Trial 7 Hari:</h4>
+            <ol className="list-decimal list-inside space-y-2 pl-1">
+              <li><strong>Pendaftaran di Beranda:</strong> Buka beranda SakuNota, ketuk <em>Daftar Closed Beta (Gratis 7 Hari)</em>, lalu isi nama pemilik, nama usaha, dan nomor WhatsApp aktif.</li>
+              <li><strong>Verifikasi Owner:</strong> Pendaftaran akan masuk ke sistem Owner Portal untuk diperiksa kelengkapannya agar terhindar dari bot atau pendaftaran ganda.</li>
+              <li><strong>Penerbitan Lisensi Trial:</strong> Setelah disetujui, nomor lisensi unik berformat <code>SN-TRIAL-XXXX-YYYY</code> diterbitkan dan dikirimkan via WhatsApp.</li>
+              <li><strong>Aktivasi di HP Kasir:</strong> Buka halaman kasir di HP yang akan dipakai berjualan, masukkan nomor lisensi trial, lalu ketuk <em>Aktifkan Perangkat</em>.</li>
+              <li><strong>Masa Berlaku 7 Hari Dimulai:</strong> Penghitungan 7 hari dimulai tepat saat perangkat pertama kali diaktifkan. Kasir terikat ketat ke 1 perangkat (1-device policy).</li>
+            </ol>
+          </div>
+
+          <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-4 space-y-2 text-emerald-200">
+            <h4 className="font-extrabold text-sm text-emerald-300 flex items-center gap-2">
+              <span>🛡️</span> Jaminan Keamanan: Data Bisnis Anda Tidak Pernah Disandera
+            </h4>
+            <p className="text-xs text-emerald-200/90 leading-relaxed">
+              SakuNota memegang prinsip etika privasi tertinggi. Apabila masa uji coba 7 hari telah berakhir atau belum diperpanjang:
+            </p>
+            <ul className="list-disc list-inside space-y-1 pl-1 text-xs text-emerald-300/90">
+              <li>Akses input transaksi baru akan dikunci sementara.</li>
+              <li><strong>Semua data menu, riwayat transaksi, dan rekap shift Anda TETAP AMAN dan TIDAK PERNAH DIHAPUS.</strong></li>
+              <li>Tombol <strong>&ldquo;Unduh Cadangan Data Bisnis (.JSON)&rdquo;</strong> selalu tersedia di layar kunci kasir. Anda berhak mengunduh seluruh data usaha Anda kapan pun secara cuma-cuma.</li>
+            </ul>
+          </div>
+
+          <div className="bg-surface border border-line rounded-2xl p-4 space-y-2">
+            <h4 className="font-extrabold text-sm text-fg">Ketentuan Waktu &amp; Upgrade Lisensi:</h4>
+            <ul className="list-disc list-inside space-y-1.5 pl-1">
+              <li><strong>Proteksi Waktu Perangkat:</strong> Sistem kasir offline dilengkapi dengan pendeteksi jam mundur (monotonic clock watermark). Memundurkan kalender HP secara sengaja akan mengunci kasir untuk mencegah kecurangan.</li>
+              <li><strong>Pindah Perangkat:</strong> Jika HP kasir rusak saat masa trial, hubungi Owner via WhatsApp untuk melepas ikatan perangkat lama (unbind device).</li>
+              <li><strong>Upgrade ke Lisensi Permanen (Rp65.000):</strong> Kapan pun Anda memutuskan membeli lisensi resmi permanen, Anda cukup memasukkan kode lisensi baru. Seluruh data katalog menu dan laporan toko langsung berlanjut tanpa perlu direset atau dibuat ulang.</li>
+            </ul>
+          </div>
+        </div>
+      ),
+    },
   ];
 
   const filteredChapters = searchQuery.trim()

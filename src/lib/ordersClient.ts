@@ -55,8 +55,10 @@ export async function submitBuyerOrder(data: {
   }
 
   // Local fallback simulation if server is unreachable
-  const randomNum = Math.floor(100 + Math.random() * 900);
-  const orderId = `SN-2026-${randomNum}`;
+  const year = new Date().getFullYear();
+  const timePart = Date.now().toString(36).toUpperCase().slice(-4);
+  const randPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const orderId = `SN-${year}-${timePart}${randPart}`;
   const accessCode = `KOD-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
   const fallbackOrder: CustomerOrder = {
     orderId,
@@ -631,6 +633,199 @@ export async function deleteOwnerTestOrderServer(
     return { success: false, error: err.error || "Gagal menghapus data uji coba." };
   } catch {
     return { success: false, error: "Gagal menghubungi server." };
+  }
+}
+
+// --- Closed Beta Registration & Trial Client Operations ---
+
+export interface BetaRegistration {
+  id?: number;
+  registrationId: string;
+  trialLicenseKey: string;
+  ownerName: string;
+  businessName: string;
+  whatsapp: string;
+  email?: string;
+  status: "pending" | "disetujui" | "ditolak" | "dicabut" | "dikonversi_berbayar";
+  notes?: string;
+  boundDeviceId?: string | null;
+  deviceName?: string | null;
+  registeredAt: string;
+  approvedAt?: string | null;
+  activatedAt?: string | null;
+  expiresAt?: string | null;
+  lastConnectedAt?: string | null;
+  durationDays: number;
+  rejectionReason?: string | null;
+  auditLog?: string | null;
+}
+
+export async function registerBetaServer(data: {
+  ownerName: string;
+  businessName: string;
+  whatsapp: string;
+  email?: string;
+  notes?: string;
+  honeypot?: string;
+}): Promise<{ success: boolean; registration?: BetaRegistration; error?: string }> {
+  try {
+    const res = await fetch("/api/beta/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal mengirim pendaftaran beta." };
+  }
+}
+
+export async function checkBetaStatusServer(query: string): Promise<{
+  success: boolean;
+  registration?: Partial<BetaRegistration>;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`/api/beta/status?q=${encodeURIComponent(query)}`);
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal memeriksa status beta." };
+  }
+}
+
+export async function fetchBetaRegistrationsServer(token: string): Promise<{
+  success: boolean;
+  registrations?: BetaRegistration[];
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/owner/beta", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal mengambil data pendaftar beta." };
+  }
+}
+
+export async function approveBetaRegistrationServer(token: string, registrationId: string): Promise<{
+  success: boolean;
+  registration?: BetaRegistration;
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/owner/beta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: "approve", registrationId }),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal menyetujui pendaftaran beta." };
+  }
+}
+
+export async function rejectBetaRegistrationServer(token: string, registrationId: string, reason: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/owner/beta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: "reject", registrationId, reason }),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal menolak pendaftaran beta." };
+  }
+}
+
+export async function extendBetaTrialServer(token: string, registrationId: string, extraDays: number, reason: string): Promise<{
+  success: boolean;
+  newExpiresAt?: string;
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/owner/beta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: "extend", registrationId, extraDays, reason }),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal memperpanjang masa trial." };
+  }
+}
+
+export async function revokeBetaTrialServer(token: string, trialLicenseKey: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/owner/beta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: "revoke", trialLicenseKey }),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal mencabut akses trial." };
+  }
+}
+
+export async function unbindBetaTrialServer(token: string, trialLicenseKey: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/owner/beta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: "unbind", trialLicenseKey }),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal melepas perangkat trial." };
+  }
+}
+
+export async function convertBetaTrialToPaidServer(token: string, registrationId: string): Promise<{
+  success: boolean;
+  commercialLicenseKey?: string;
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/owner/beta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: "convert", registrationId }),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal mengonversi ke lisensi berbayar." };
+  }
+}
+
+export async function verifyLicenseServer(licenseKey: string, deviceId: string, token?: string): Promise<{
+  valid: boolean;
+  status: "unregistered" | "pending_approval" | "trial_active" | "trial_expired" | "paid_active" | "tester_active" | "tester_expired" | "revoked";
+  licenseType?: "berbayar" | "trial" | "tester";
+  businessName?: string;
+  expiresAt?: string | null;
+  daysRemaining?: number;
+  hoursRemaining?: number;
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/license/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ licenseKey, deviceId, token }),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { valid: false, status: "unregistered", error: e.message || "Gagal memverifikasi lisensi." };
   }
 }
 
