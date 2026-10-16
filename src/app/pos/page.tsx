@@ -1533,272 +1533,496 @@ export default function POSPage() {
   };
 
 
-  const renderCartInner = (isMobile: boolean) => (
-    <>
-      <div 
-        className={`${isMobile ? 'px-5 pb-4 pt-2' : 'p-5'} border-b border-line bg-surface rounded-t-3xl`}
-        onTouchStart={isMobile ? handleCartTouchStart : undefined}
-        onTouchMove={isMobile ? handleCartTouchMove : undefined}
-        onTouchEnd={isMobile ? handleCartTouchEnd : undefined}
-      >
-        {isMobile && (
-          <div 
-            className="flex flex-col items-center justify-center -mt-1 mb-2.5 pt-1 pb-1 cursor-pointer select-none active:opacity-70 touch-none"
-            onClick={closeMobileCart}
-            title="Ketuk atau tarik ke bawah untuk menutup"
-          >
-            <div className="w-14 h-1.5 bg-slate-600 rounded-full mb-1"></div>
-            <span className="text-[10px] text-muted font-semibold flex items-center gap-1">
-              <span>↓</span> Tarik ke bawah atau ketuk untuk kembali
-            </span>
-          </div>
-        )}
+  const renderCartInner = (isMobile: boolean) => {
+    if (!isMobile) {
+      return (
+        <div className="flex flex-col h-full">
+          <div className="p-5 border-b border-line bg-surface rounded-t-3xl">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-fg tracking-tight">{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-accent/60 text-accent-text font-extrabold">
+                  {cart.reduce((sum, item) => sum + item.qty, 0)} item
+                </span>
+              </div>
 
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-fg tracking-tight">{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-accent/60 text-accent-text font-extrabold">
-              {cart.reduce((sum, item) => sum + item.qty, 0)} item
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {selectedTable && (
-              <button 
-                type="button"
-                onClick={handleReleaseTable} 
-                className="text-xs font-bold hover:bg-red-500/15 bg-red-950/40 text-red-400 px-3 py-1.5 rounded-full transition-colors"
-              >
-                Lepas Meja
-              </button>
-            )}
-
-            {isMobile && (
-              <button
-                type="button"
-                onClick={closeMobileCart}
-                className="w-9 h-9 rounded-full bg-card hover:bg-line text-slate-300 flex items-center justify-center text-base font-bold shadow-sm transition-all active:scale-90"
-                aria-label="Tutup keranjang"
-                title="Tutup dan kembali ke daftar menu"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        </div>
-        {selectedTableObj && (
-          <div className="mt-3 flex flex-wrap gap-2 items-center">
-            <div className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm ${selectedTableStatus === 'open' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : selectedTableStatus === 'lunas' ? 'bg-accent/10 text-accent-text border border-accent/30' : 'bg-card text-slate-200 border border-line'}`}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" /></svg>
-              {selectedTableObj.nomor.replace(/^Meja\s*/i, '')}
-              <span className="opacity-70 ml-1">({selectedTableStatus === 'open' ? 'Open Bill' : selectedTableStatus === 'lunas' ? 'Lunas' : 'Kosong'})</span>
+              <div className="flex items-center gap-2">
+                {selectedTable && (
+                  <button 
+                    type="button"
+                    onClick={handleReleaseTable} 
+                    className="text-xs font-bold hover:bg-red-500/15 bg-red-950/40 text-red-400 px-3 py-1.5 rounded-full transition-colors"
+                  >
+                    Lepas Meja
+                  </button>
+                )}
+              </div>
             </div>
-            {customerName && (
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-line text-fg border border-line shadow-sm">
-                👤 {customerName}
+
+            {selectedTableObj && (
+              <div className="mt-3 flex flex-wrap gap-2 items-center">
+                <div className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm ${selectedTableStatus === 'open' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : selectedTableStatus === 'lunas' ? 'bg-accent/10 text-accent-text border border-accent/30' : 'bg-card text-slate-200 border border-line'}`}>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" /></svg>
+                  {selectedTableObj.nomor.replace(/^Meja\s*/i, '')}
+                  <span className="opacity-70 ml-1">({selectedTableStatus === 'open' ? 'Open Bill' : selectedTableStatus === 'lunas' ? 'Lunas' : 'Kosong'})</span>
+                </div>
+                {customerName && (
+                  <div className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-line text-fg border border-line shadow-sm">
+                    👤 {customerName}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {selectedTableStatus !== 'lunas' && (
+              <div className="mt-2.5">
+                <div className="relative flex items-center">
+                  <span className="absolute left-3 text-xs text-muted">👤</span>
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Nama Pelanggan (opsional)..."
+                    className="w-full pl-8 pr-7 py-2 bg-surface border border-line rounded-xl text-xs font-semibold text-fg placeholder:text-muted focus:border-accent outline-none transition-colors"
+                  />
+                  {customerName && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomerName("")}
+                      className="absolute right-2 text-xs text-muted hover:text-fg p-1"
+                      title="Hapus nama"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
-        )}
 
-        {selectedTableStatus !== 'lunas' && (
-          <div className="mt-2.5">
-            <div className="relative flex items-center">
-              <span className="absolute left-3 text-xs text-muted">👤</span>
-              <input
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Nama Pelanggan (opsional)..."
-                className="w-full pl-8 pr-7 py-2 bg-surface border border-line rounded-xl text-xs font-semibold text-fg placeholder:text-muted focus:border-accent outline-none transition-colors"
-              />
-              {customerName && (
+          <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-card">
+            {cart.length === 0 && selectedTableStatus === 'lunas' && (() => {
+              const paidOrder = allOrders
+                .filter(o => o.tableId === selectedTableObj?.id && o.status === 'paid')
+                .sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+              const displayCustomer = customerName || paidOrder?.customerName || (selectedTableObj ? `Meja ${selectedTableObj.nomor.replace(/^Meja\s*/i, '')}` : "Tamu");
+
+              return (
+                <div className="text-center mt-6 flex flex-col items-center">
+                  <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center text-3xl mb-3 border border-accent/40 shadow-sm">✅</div>
+                  <p className="font-extrabold text-base text-fg">Tagihan Meja Ini Sudah LUNAS</p>
+                  
+                  <div className="bg-surface border border-line rounded-xl p-3.5 mt-3 text-xs text-slate-300 text-left w-full space-y-2">
+                    <div className="flex justify-between items-center pb-2 border-b border-line">
+                      <span className="text-muted font-medium">Pelanggan:</span>
+                      <span className="font-bold text-accent-text text-sm">👤 {displayCustomer}</span>
+                    </div>
+                    {paidOrder && (
+                      <>
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-muted">No. Nota:</span>
+                          <span className="font-mono text-fg font-semibold">#{paidOrder.id}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-muted">Total Bayar:</span>
+                          <span className="font-extrabold text-fg">Rp {paidOrder.total.toLocaleString('id-ID')}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-muted">Metode:</span>
+                          <span className="font-semibold text-fg">{paidOrder.paymentMethod || 'Cash'}</span>
+                        </div>
+                      </>
+                    )}
+                    <p className="text-[11px] text-muted pt-1 leading-snug">
+                      Meja siap dikosongkan untuk tamu berikutnya, atau pilih menu di samping untuk membuat pesanan baru.
+                    </p>
+                  </div>
+
+                  <button 
+                    onClick={() => { handleClearTable(); setIsMobileCartOpen(false); }} 
+                    className="w-full mt-4 py-3.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-extrabold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <span>🔄</span>
+                    <span>Kosongkan Meja (Lepas)</span>
+                  </button>
+                </div>
+              );
+            })()}
+            
+            {cart.length === 0 && selectedTableStatus !== 'lunas' && (
+              <div className="text-center text-muted mt-12 flex flex-col items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-16 h-16 mb-4 opacity-50"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
+                <p className="font-medium text-sm">Belum ada pesanan.</p>
+              </div>
+            )}
+
+            {cart.map(item => (
+              <div key={item.itemKey || item.id} className="flex justify-between items-start border-b border-line pb-4">
+                <div className="flex-1 pr-3">
+                  <h4 className="font-bold text-fg text-sm md:text-base leading-tight">{item.nama}</h4>
+                  {item.selectedModifiers && item.selectedModifiers.length > 0 && (
+                    <div className="mt-1 space-y-0.5">
+                      {item.selectedModifiers.map((m: any, mIdx: number) => (
+                        <div key={mIdx} className="text-[11px] text-muted flex items-center gap-1">
+                          <span>•</span>
+                          <span>{m.optionName}</span>
+                          {m.harga > 0 && <span className="font-bold text-accent-text">(+Rp {m.harga.toLocaleString('id-ID')})</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className=" text-accent-text text-sm font-extrabold mt-1">Rp {item.harga.toLocaleString('id-ID')}</p>
+                </div>
+                <div className="flex items-center bg-surface rounded-xl p-1 border border-line shadow-sm">
+                  <button onClick={() => updateQty(item.itemKey || item.id, -1)} className="w-8 h-8 rounded-lg bg-card text-fg hover:bg-card flex items-center justify-center font-black transition-colors">-</button>
+                  <span className="w-8 text-center font-bold text-fg text-sm">{item.qty}</span>
+                  <button onClick={() => updateQty(item.itemKey || item.id, 1)} className="w-8 h-8 rounded-lg bg-accent hover:bg-accent-hover text-white flex items-center justify-center font-black transition-colors">+</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="p-5 bg-surface border-t border-line shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+            {cart.length > 0 && (
+              <div className="mb-3 space-y-1.5 text-xs text-muted border-b border-line pb-3">
+                <div className="flex justify-between items-center">
+                  <span>Subtotal:</span>
+                  <span className="font-semibold text-fg">Rp {rawSubtotal.toLocaleString('id-ID')}</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  {discountAmount > 0 ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className=" text-accent-text font-bold">
+                        🏷️ Diskon ({discountType === 'percent' ? discountValue + '%' : 'Rp'}):
+                      </span>
+                      <button 
+                        onClick={() => { setDiscountValue(0); setTempDiscountVal(""); }}
+                        className="text-red-500 hover:text-red-400 text-[10px] underline"
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => setIsDiscountModalOpen(true)}
+                      className=" text-accent-text font-bold hover:underline flex items-center gap-1"
+                    >
+                      + Tambah Diskon / Promo
+                    </button>
+                  )}
+                  {discountAmount > 0 && (
+                    <span className="font-bold text-accent-text">-Rp {discountAmount.toLocaleString('id-ID')}</span>
+                  )}
+                </div>
+
+                {storeSettings.enableService && serviceAmount > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span>Layanan ({storeSettings.servicePercent}%):</span>
+                    <span>Rp {serviceAmount.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+
+                {storeSettings.enableTax && taxAmount > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span>Pajak Resto ({storeSettings.taxPercent}%):</span>
+                    <span>Rp {taxAmount.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-between items-end mb-4">
+              <span className=" text-muted font-bold text-xs uppercase tracking-wider">Total Pembayaran</span>
+              <span className="text-2xl md:text-3xl font-black text-fg leading-none tracking-tight">Rp {totalPrice.toLocaleString('id-ID')}</span>
+            </div>
+            <div className="flex gap-2">
+              {editingOrderId && (
+                <button onClick={handleShowDraftBill} className="w-1/4 bg-card border border-line text-fg py-3.5 rounded-xl font-bold text-xs shadow-sm active:scale-95 transition-all">📝 Draft</button>
+              )}
+              {(editingOrderId || (orderType === "Dine-in" && selectedTable && activeOrders.some(o => o.tableId === parseInt(selectedTable)))) && (
+                <button 
+                  type="button"
+                  onClick={handleOpenSplitBillFromCart} 
+                  className="w-1/3 bg-line hover:bg-slate-600 text-white py-3.5 rounded-xl font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
+                >
+                  ✂️ Split Bill
+                </button>
+              )}
+              <button 
+                onClick={openPaymentModal} 
+                className="flex-1 bg-accent hover:bg-accent-hover text-white py-3.5 rounded-xl font-extrabold text-sm md:text-base shadow-lg shadow-accent/25 active:scale-95 transition-all disabled:opacity-40" 
+                disabled={cart.length === 0}
+              >
+                Lanjut ke Pembayaran →
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 2. MOBILE & TABLET VIEW (Responsive Landscape Split-Screen + Portrait Sheet)
+    return (
+      <div className="flex flex-col landscape:flex-row flex-1 min-h-0 h-full w-full overflow-hidden bg-card">
+        {/* LEFT PANE in landscape / TOP & MIDDLE in portrait: Header + Cart Items List */}
+        <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden bg-card">
+          {/* Header */}
+          <div 
+            className="px-4 py-2 sm:px-5 sm:pb-3 sm:pt-2 border-b border-line bg-surface rounded-t-3xl landscape:rounded-none shrink-0"
+            onTouchStart={handleCartTouchStart}
+            onTouchMove={handleCartTouchMove}
+            onTouchEnd={handleCartTouchEnd}
+          >
+            {/* Grab handle: ONLY visible in portrait mode, hidden in landscape to save vertical pixels */}
+            <div 
+              className="flex flex-col items-center justify-center -mt-1 mb-2 pt-1 pb-0.5 cursor-pointer select-none active:opacity-70 touch-none landscape:hidden"
+              onClick={closeMobileCart}
+              title="Ketuk atau tarik ke bawah untuk menutup"
+            >
+              <div className="w-14 h-1.5 bg-slate-600 rounded-full mb-1"></div>
+              <span className="text-[10px] text-muted font-semibold flex items-center gap-1">
+                <span>↓</span> Tarik ke bawah atau ketuk untuk kembali
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-xl font-bold text-fg tracking-tight">{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-accent/60 text-accent-text font-extrabold">
+                  {cart.reduce((sum, item) => sum + item.qty, 0)} item
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {selectedTable && (
+                  <button 
+                    type="button"
+                    onClick={handleReleaseTable} 
+                    className="text-[11px] sm:text-xs font-bold hover:bg-red-500/15 bg-red-950/40 text-red-400 px-2.5 py-1 rounded-full transition-colors"
+                  >
+                    Lepas Meja
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => setCustomerName("")}
-                  className="absolute right-2 text-xs text-muted hover:text-fg p-1"
-                  title="Hapus nama"
+                  onClick={closeMobileCart}
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-card hover:bg-line text-slate-300 flex items-center justify-center text-sm sm:text-base font-bold shadow-sm transition-all active:scale-90"
+                  aria-label="Tutup keranjang"
+                  title="Tutup dan kembali ke daftar menu"
                 >
                   ✕
                 </button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className={`flex-1 overflow-y-auto ${isMobile ? 'p-6' : 'p-5'} space-y-4 bg-card`}>
-        {cart.length === 0 && selectedTableStatus === 'lunas' && (() => {
-          const paidOrder = allOrders
-            .filter(o => o.tableId === selectedTableObj?.id && o.status === 'paid')
-            .sort((a, b) => (b.id || 0) - (a.id || 0))[0];
-          const displayCustomer = customerName || paidOrder?.customerName || (selectedTableObj ? `Meja ${selectedTableObj.nomor.replace(/^Meja\s*/i, '')}` : "Tamu");
-
-          return (
-            <div className="text-center mt-6 flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center text-3xl mb-3 border border-accent/40 shadow-sm">✅</div>
-              <p className="font-extrabold text-base text-fg">Tagihan Meja Ini Sudah LUNAS</p>
-              
-              <div className="bg-surface border border-line rounded-xl p-3.5 mt-3 text-xs text-slate-300 text-left w-full space-y-2">
-                <div className="flex justify-between items-center pb-2 border-b border-line">
-                  <span className="text-muted font-medium">Pelanggan:</span>
-                  <span className="font-bold text-accent-text text-sm">👤 {displayCustomer}</span>
-                </div>
-                {paidOrder && (
-                  <>
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span className="text-muted">No. Nota:</span>
-                      <span className="font-mono text-fg font-semibold">#{paidOrder.id}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span className="text-muted">Total Bayar:</span>
-                      <span className="font-extrabold text-fg">Rp {paidOrder.total.toLocaleString('id-ID')}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span className="text-muted">Metode:</span>
-                      <span className="font-semibold text-fg">{paidOrder.paymentMethod || 'Cash'}</span>
-                    </div>
-                  </>
-                )}
-                <p className="text-[11px] text-muted pt-1 leading-snug">
-                  Meja siap dikosongkan untuk tamu berikutnya, atau pilih menu di samping untuk membuat pesanan baru.
-                </p>
               </div>
-
-              <button 
-                onClick={() => { handleClearTable(); setIsMobileCartOpen(false); }} 
-                className="w-full mt-4 py-3.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-extrabold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
-              >
-                <span>🔄</span>
-                <span>Kosongkan Meja (Lepas)</span>
-              </button>
             </div>
-          );
-        })()}
-        
-        {cart.length === 0 && selectedTableStatus !== 'lunas' && (
-          <div className="text-center text-muted mt-12 flex flex-col items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-16 h-16 mb-4 opacity-50"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
-            <p className="font-medium text-sm">Belum ada pesanan.</p>
-          </div>
-        )}
 
-        {cart.map(item => (
-          <div key={item.itemKey || item.id} className="flex justify-between items-start border-b border-line pb-4">
-            <div className="flex-1 pr-3">
-              <h4 className="font-bold text-fg text-sm md:text-base leading-tight">{item.nama}</h4>
-              {item.selectedModifiers && item.selectedModifiers.length > 0 && (
-                <div className="mt-1 space-y-0.5">
-                  {item.selectedModifiers.map((m: any, mIdx: number) => (
-                    <div key={mIdx} className="text-[11px] text-muted flex items-center gap-1">
-                      <span>•</span>
-                      <span>{m.optionName}</span>
-                      {m.harga > 0 && <span className="font-bold text-accent-text">(+Rp {m.harga.toLocaleString('id-ID')})</span>}
-                    </div>
-                  ))}
+            {/* Meja badge & Customer Name */}
+            <div className="mt-2 flex items-center gap-2">
+              {selectedTableObj && (
+                <div className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm shrink-0 ${selectedTableStatus === 'open' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : selectedTableStatus === 'lunas' ? 'bg-accent/10 text-accent-text border border-accent/30' : 'bg-card text-slate-200 border border-line'}`}>
+                  <span>🪑</span>
+                  <span>{selectedTableObj.nomor.replace(/^Meja\s*/i, '')}</span>
+                  <span className="opacity-70 text-[10px]">({selectedTableStatus === 'open' ? 'Open' : selectedTableStatus === 'lunas' ? 'Lunas' : 'Kosong'})</span>
                 </div>
               )}
-              <p className=" text-accent-text text-sm font-extrabold mt-1">Rp {item.harga.toLocaleString('id-ID')}</p>
-            </div>
-            <div className="flex items-center bg-surface rounded-xl p-1 border border-line shadow-sm">
-              <button onClick={() => updateQty(item.itemKey || item.id, -1)} className="w-8 h-8 rounded-lg bg-card text-fg hover:bg-card flex items-center justify-center font-black transition-colors">-</button>
-              <span className="w-8 text-center font-bold text-fg text-sm">{item.qty}</span>
-              <button onClick={() => updateQty(item.itemKey || item.id, 1)} className="w-8 h-8 rounded-lg bg-accent hover:bg-accent-hover text-white flex items-center justify-center font-black transition-colors">+</button>
+
+              {selectedTableStatus !== 'lunas' && (
+                <div className="relative flex-1 flex items-center">
+                  <span className="absolute left-2.5 text-xs text-muted">👤</span>
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Nama Pelanggan (opsional)..."
+                    className="w-full pl-7 pr-7 py-1.5 bg-surface border border-line rounded-xl text-xs font-semibold text-fg placeholder:text-muted focus:border-accent outline-none transition-colors"
+                  />
+                  {customerName && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomerName("")}
+                      className="absolute right-2 text-xs text-muted hover:text-fg p-0.5"
+                      title="Hapus nama"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
-        ))}
-      </div>
 
-      <div className={`${isMobile ? 'p-6 pb-8' : 'p-5'} bg-surface border-t border-line shadow-[0_-4px_10px_rgba(0,0,0,0.02)]`}>
-        
-        {/* Rincian Diskon & Biaya */}
-        {cart.length > 0 && (
-          <div className="mb-3 space-y-1.5 text-xs text-muted border-b border-line pb-3">
-            <div className="flex justify-between items-center">
-              <span>Subtotal:</span>
-              <span className="font-semibold">Rp {rawSubtotal.toLocaleString('id-ID')}</span>
-            </div>
+          {/* Scrollable Cart Items List */}
+          <div className="flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-5 space-y-2.5 sm:space-y-4 bg-card overscroll-contain">
+            {cart.length === 0 && selectedTableStatus === 'lunas' && (() => {
+              const paidOrder = allOrders
+                .filter(o => o.tableId === selectedTableObj?.id && o.status === 'paid')
+                .sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+              const displayCustomer = customerName || paidOrder?.customerName || (selectedTableObj ? `Meja ${selectedTableObj.nomor.replace(/^Meja\s*/i, '')}` : "Tamu");
 
-            <div className="flex justify-between items-center">
-              {discountAmount > 0 ? (
-                <div className="flex items-center gap-1.5">
-                  <span className=" text-accent-text font-bold">
-                    🏷️ Diskon ({discountType === 'percent' ? discountValue + '%' : 'Rp'}):
-                  </span>
+              return (
+                <div className="text-center py-4 flex flex-col items-center">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-accent/20 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 border border-accent/40 shadow-sm">✅</div>
+                  <p className="font-extrabold text-sm sm:text-base text-fg">Tagihan Meja Ini Sudah LUNAS</p>
+                  
+                  <div className="bg-surface border border-line rounded-xl p-3 mt-2 text-xs text-slate-300 text-left w-full space-y-1.5">
+                    <div className="flex justify-between items-center pb-1.5 border-b border-line">
+                      <span className="text-muted font-medium">Pelanggan:</span>
+                      <span className="font-bold text-accent-text text-sm">👤 {displayCustomer}</span>
+                    </div>
+                    {paidOrder && (
+                      <>
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-muted">No. Nota:</span>
+                          <span className="font-mono text-fg font-semibold">#{paidOrder.id}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-muted">Total Bayar:</span>
+                          <span className="font-extrabold text-fg">Rp {paidOrder.total.toLocaleString('id-ID')}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
                   <button 
-                    onClick={() => { setDiscountValue(0); setTempDiscountVal(""); }}
-                    className="text-red-500 hover:text-red-400 text-[10px] underline"
+                    onClick={() => { handleClearTable(); setIsMobileCartOpen(false); }} 
+                    className="w-full mt-3 py-2.5 sm:py-3.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-extrabold text-xs sm:text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
                   >
-                    Hapus
+                    <span>🔄</span>
+                    <span>Kosongkan Meja (Lepas)</span>
                   </button>
                 </div>
-              ) : (
+              );
+            })()}
+            
+            {cart.length === 0 && selectedTableStatus !== 'lunas' && (
+              <div className="text-center text-muted py-8 flex flex-col items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-12 h-12 sm:w-16 sm:h-16 mb-2 opacity-50"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
+                <p className="font-medium text-xs sm:text-sm">Belum ada pesanan.</p>
+              </div>
+            )}
+
+            {cart.map(item => (
+              <div key={item.itemKey || item.id} className="flex justify-between items-start border-b border-line pb-2.5 sm:pb-4">
+                <div className="flex-1 pr-2">
+                  <h4 className="font-bold text-fg text-xs sm:text-sm md:text-base leading-tight">{item.nama}</h4>
+                  {item.selectedModifiers && item.selectedModifiers.length > 0 && (
+                    <div className="mt-0.5 space-y-0.5">
+                      {item.selectedModifiers.map((m: any, mIdx: number) => (
+                        <div key={mIdx} className="text-[10px] sm:text-[11px] text-muted flex items-center gap-1">
+                          <span>•</span>
+                          <span>{m.optionName}</span>
+                          {m.harga > 0 && <span className="font-bold text-accent-text">(+Rp {m.harga.toLocaleString('id-ID')})</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-accent-text text-xs sm:text-sm font-extrabold mt-0.5 sm:mt-1">Rp {item.harga.toLocaleString('id-ID')}</p>
+                </div>
+                <div className="flex items-center bg-surface rounded-xl p-0.5 sm:p-1 border border-line shadow-sm shrink-0">
+                  <button onClick={() => updateQty(item.itemKey || item.id, -1)} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-card text-fg hover:bg-card flex items-center justify-center font-black transition-colors text-sm">-</button>
+                  <span className="w-7 sm:w-8 text-center font-bold text-fg text-xs sm:text-sm">{item.qty}</span>
+                  <button onClick={() => updateQty(item.itemKey || item.id, 1)} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-accent hover:bg-accent-hover text-white flex items-center justify-center font-black transition-colors text-sm">+</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* RIGHT PANE in landscape / BOTTOM in portrait: Payment & Actions */}
+        <div className="bg-surface border-t landscape:border-t-0 landscape:border-l border-line p-3.5 sm:p-5 landscape:p-3.5 landscape:w-72 sm:landscape:w-80 landscape:shrink-0 flex flex-col justify-between shrink-0 overflow-y-auto shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+          <div>
+            {/* Rincian Diskon & Biaya */}
+            {cart.length > 0 && (
+              <div className="mb-2 sm:mb-3 space-y-1 text-[11px] sm:text-xs text-muted border-b border-line pb-2 sm:pb-3">
+                <div className="flex justify-between items-center">
+                  <span>Subtotal:</span>
+                  <span className="font-semibold text-fg">Rp {rawSubtotal.toLocaleString('id-ID')}</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  {discountAmount > 0 ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-accent-text font-bold">
+                        🏷️ Diskon ({discountType === 'percent' ? discountValue + '%' : 'Rp'}):
+                      </span>
+                      <button 
+                        onClick={() => { setDiscountValue(0); setTempDiscountVal(""); }}
+                        className="text-red-500 hover:text-red-400 text-[10px] underline"
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => setIsDiscountModalOpen(true)}
+                      className="text-accent-text font-bold hover:underline flex items-center gap-1"
+                    >
+                      + Tambah Diskon / Promo
+                    </button>
+                  )}
+                  {discountAmount > 0 && (
+                    <span className="font-bold text-accent-text">-Rp {discountAmount.toLocaleString('id-ID')}</span>
+                  )}
+                </div>
+
+                {storeSettings.enableService && serviceAmount > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span>Layanan ({storeSettings.servicePercent}%):</span>
+                    <span>Rp {serviceAmount.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+
+                {storeSettings.enableTax && taxAmount > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span>Pajak Resto ({storeSettings.taxPercent}%):</span>
+                    <span>Rp {taxAmount.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-between items-end mb-2.5 sm:mb-4">
+              <span className="text-muted font-bold text-[10px] sm:text-xs uppercase tracking-wider">Total Pembayaran</span>
+              <span className="text-xl sm:text-2xl md:text-3xl font-black text-fg leading-none tracking-tight">Rp {totalPrice.toLocaleString('id-ID')}</span>
+            </div>
+          </div>
+
+          <div className="space-y-2 mt-2">
+            <button
+              type="button"
+              onClick={closeMobileCart}
+              className="w-full py-2 sm:py-2.5 rounded-xl bg-card hover:bg-line/80 border border-line text-fg font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-98 shadow-sm"
+            >
+              <span>←</span>
+              <span>Tambah Menu Lain</span>
+            </button>
+            <div className="flex gap-2">
+              {editingOrderId && (
+                <button onClick={handleShowDraftBill} className="w-1/4 bg-card border border-line text-fg py-2.5 sm:py-3.5 rounded-xl font-bold text-xs shadow-sm active:scale-95 transition-all">📝 Draft</button>
+              )}
+              {(editingOrderId || (orderType === "Dine-in" && selectedTable && activeOrders.some(o => o.tableId === parseInt(selectedTable)))) && (
                 <button 
-                  onClick={() => setIsDiscountModalOpen(true)}
-                  className=" text-accent-text font-bold hover:underline flex items-center gap-1"
+                  type="button"
+                  onClick={handleOpenSplitBillFromCart} 
+                  className="w-1/3 bg-line hover:bg-slate-600 text-white py-2.5 sm:py-3.5 rounded-xl font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
                 >
-                  + Tambah Diskon / Promo
+                  ✂️ Split
                 </button>
               )}
-              {discountAmount > 0 && (
-                <span className="font-bold text-accent-text">-Rp {discountAmount.toLocaleString('id-ID')}</span>
-              )}
+              <button 
+                onClick={openPaymentModal} 
+                className="flex-1 bg-accent hover:bg-accent-hover text-white py-2.5 sm:py-3.5 rounded-xl font-extrabold text-sm md:text-base shadow-lg shadow-accent/25 active:scale-95 transition-all disabled:opacity-40" 
+                disabled={cart.length === 0}
+              >
+                Bayar →
+              </button>
             </div>
-
-            {storeSettings.enableService && serviceAmount > 0 && (
-              <div className="flex justify-between items-center">
-                <span>Layanan ({storeSettings.servicePercent}%):</span>
-                <span>Rp {serviceAmount.toLocaleString('id-ID')}</span>
-              </div>
-            )}
-
-            {storeSettings.enableTax && taxAmount > 0 && (
-              <div className="flex justify-between items-center">
-                <span>Pajak Resto ({storeSettings.taxPercent}%):</span>
-                <span>Rp {taxAmount.toLocaleString('id-ID')}</span>
-              </div>
-            )}
           </div>
-        )}
-
-        <div className="flex justify-between items-end mb-4">
-          <span className=" text-muted font-bold text-xs uppercase tracking-wider">Total Pembayaran</span>
-          <span className="text-2xl md:text-3xl font-black text-fg leading-none tracking-tight">Rp {totalPrice.toLocaleString('id-ID')}</span>
-        </div>
-        {isMobile && (
-          <button
-            type="button"
-            onClick={closeMobileCart}
-            className="w-full mb-3 py-3 rounded-2xl bg-card hover:bg-line/80 border border-line text-fg font-extrabold text-xs flex items-center justify-center gap-2 transition-all active:scale-98 shadow-sm"
-          >
-            <span>←</span>
-            <span>Tambah Menu Lain (Kembali ke Menu)</span>
-          </button>
-        )}
-        <div className="flex gap-2">
-          {editingOrderId && (
-            <button onClick={handleShowDraftBill} className="w-1/4 bg-card border border-line text-fg py-3.5 rounded-xl font-bold text-xs shadow-sm active:scale-95 transition-all">📝 Draft</button>
-          )}
-          {(editingOrderId || (orderType === "Dine-in" && selectedTable && activeOrders.some(o => o.tableId === parseInt(selectedTable)))) && (
-            <button 
-              type="button"
-              onClick={handleOpenSplitBillFromCart} 
-              className="w-1/3 bg-line hover:bg-slate-600 text-white py-3.5 rounded-xl font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
-            >
-              ✂️ Split Bill
-            </button>
-          )}
-          <button 
-            onClick={openPaymentModal} 
-            className="flex-1 bg-accent hover:bg-accent-hover text-white py-3.5 rounded-xl font-extrabold text-sm md:text-base shadow-lg shadow-accent/25 active:scale-95 transition-all disabled:opacity-40" 
-            disabled={cart.length === 0}
-          >
-            Lanjut ke Pembayaran →
-          </button>
         </div>
       </div>
-    </>
-  );
+    );
+  };
 
   if (isLoading) return <div className="flex h-screen bg-surface text-fg items-center justify-center">Memuat data...</div>;
   return (
@@ -2744,7 +2968,7 @@ export default function POSPage() {
               aria-label="Tutup keranjang"
             />
             <div 
-              className="relative bg-surface rounded-t-3xl shadow-2xl flex flex-col max-h-[88vh] w-full animate-in slide-in-from-bottom-2 duration-200 transition-transform ease-out"
+              className="relative bg-surface rounded-t-3xl landscape:rounded-none shadow-2xl flex flex-col max-h-[88vh] landscape:max-h-[100dvh] landscape:h-[100dvh] w-full animate-in slide-in-from-bottom-2 duration-200 transition-transform ease-out overflow-hidden"
               style={{
                 transform: cartSheetDragY > 0 ? `translateY(${cartSheetDragY}px)` : undefined,
                 touchAction: 'pan-y'
@@ -2894,7 +3118,7 @@ export default function POSPage() {
               aria-label="Tutup keranjang"
             />
             <div 
-              className="relative bg-surface rounded-t-3xl shadow-2xl flex flex-col max-h-[88vh] w-full animate-in slide-in-from-bottom-2 duration-200 transition-transform ease-out"
+              className="relative bg-surface rounded-t-3xl landscape:rounded-none shadow-2xl flex flex-col max-h-[88vh] landscape:max-h-[100dvh] landscape:h-[100dvh] w-full animate-in slide-in-from-bottom-2 duration-200 transition-transform ease-out overflow-hidden"
               style={{
                 transform: cartSheetDragY > 0 ? `translateY(${cartSheetDragY}px)` : undefined,
                 touchAction: 'pan-y'

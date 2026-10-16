@@ -1,7 +1,7 @@
 // SakuNota POS — Service Worker v2.6.0
 // Resilient Offline-First Precache, CSS Fallback, & Multi-Route Isolation
 
-const CACHE_NAME = 'sakunota-pos-v2.6.0-1792131424645';
+const CACHE_NAME = 'sakunota-pos-v2.6.0-1792132325510';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
