@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS CustomerOrders (
   email TEXT,
   amount INTEGER NOT NULL DEFAULT 65000,
   paymentMethod TEXT NOT NULL DEFAULT 'Transfer Bank BCA',
-  bankAccount TEXT NOT NULL DEFAULT '8030 554 912 a.n. Reza',
+  bankAccount TEXT NOT NULL DEFAULT '8030 554 912 a.n. SakuNota Official',
   transferProofName TEXT,
   status TEXT NOT NULL DEFAULT 'menunggu_verifikasi',
   licenseKey TEXT,

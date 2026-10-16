@@ -409,7 +409,7 @@ async function run() {
     const tokenInStage5 = await page.evaluate(() => sessionStorage.getItem('sakunota_owner_token'));
     console.log('  [DEBUG] Token in Stage 5:', tokenInStage5);
 
-    // Reza confirms money arrival and issues license
+    // Owner confirms money arrival and issues license
     await pendingOrderRow.click();
     console.log('  [DEBUG] Pending order button clicked, waiting for status change...');
     await page.waitForSelector('text=✓ Lunas & Lisensi Terbit', { timeout: 8000 });

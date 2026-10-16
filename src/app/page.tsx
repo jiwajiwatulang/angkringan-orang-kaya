@@ -9,6 +9,11 @@ import {
   activateLicenseServer,
   registerBetaServer,
 } from "@/lib/ordersClient";
+import {
+  SUPPORT_WHATSAPP,
+  PAYMENT_ACCOUNT_NAME,
+  PAYMENT_ACCOUNT_NUMBER,
+} from "@/lib/config";
 
 export default function SakuNotaLandingPage() {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -1229,9 +1234,9 @@ export default function SakuNotaLandingPage() {
 
           {/* Need further assistance footer note */}
           <div className="text-center pt-4 space-y-1 text-xs">
-            <span className="text-slate-500 block">Need further assistance?</span>
+            <span className="text-slate-500 block">Butuh bantuan lebih lanjut?</span>
             <a
-              href="https://wa.me/6281234567890"
+              href={`https://wa.me/${SUPPORT_WHATSAPP}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:text-blue-700 font-extrabold inline-flex items-center gap-1.5"
@@ -1327,13 +1332,12 @@ export default function SakuNotaLandingPage() {
             </ul>
           </div>
 
-          {/* Col 3: Company */}
+          {/* Col 3: Support */}
           <div className="space-y-3">
             <span className="text-slate-900 font-extrabold text-xs uppercase tracking-wider block">
-              Company
+              Bantuan &amp; Legal
             </span>
             <ul className="space-y-2 text-xs">
-              <li><a href="#fitur" className="hover:text-blue-600 transition-colors">Tentang SakuNota</a></li>
               <li><Link href="/panduan" className="hover:text-blue-600 transition-colors">Buku Panduan</Link></li>
               <li>
                 <button
@@ -1346,7 +1350,7 @@ export default function SakuNotaLandingPage() {
               </li>
               <li>
                 <a
-                  href="https://wa.me/6281234567890"
+                  href={`https://wa.me/${SUPPORT_WHATSAPP}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-blue-600 transition-colors"
@@ -1362,11 +1366,11 @@ export default function SakuNotaLandingPage() {
         {/* Bottom Bar: Copyright, Privacy, Terms */}
         <div className="max-w-6xl mx-auto mt-12 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
           <div>
-            © 2026 SakuNota. All rights reserved.
+            © 2026 SakuNota. Hak cipta dilindungi.
           </div>
           <div className="flex items-center gap-6">
-            <Link href="/privacy" className="hover:text-slate-800 transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-slate-800 transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-slate-800 transition-colors">Kebijakan Privasi</Link>
+            <Link href="/terms" className="hover:text-slate-800 transition-colors">Syarat &amp; Ketentuan</Link>
           </div>
         </div>
       </footer>
@@ -1393,7 +1397,7 @@ export default function SakuNotaLandingPage() {
                 <span>Meja 04</span>
               </div>
               <div className="flex justify-between text-slate-600">
-                <span>Kasir: Reza</span>
+                <span>Kasir: Kasir 1</span>
                 <span>{new Date().toLocaleDateString("id-ID")}</span>
               </div>
             </div>
@@ -1502,7 +1506,7 @@ export default function SakuNotaLandingPage() {
                 </div>
 
                 <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 text-xs text-blue-800 leading-relaxed text-left">
-                  Owner Reza akan memverifikasi pendaftaran Anda dan mengirimkan nomor lisensi trial via WhatsApp. Anda bisa langsung mencoba kasir sandbox sambil menunggu!
+                  Tim SakuNota akan memverifikasi pendaftaran Anda dan mengirimkan nomor lisensi trial via WhatsApp. Anda bisa langsung mencoba kasir sandbox sambil menunggu!
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2 pt-2">
@@ -1842,7 +1846,7 @@ export default function SakuNotaLandingPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText("8030554912");
+                          navigator.clipboard.writeText(PAYMENT_ACCOUNT_NUMBER.replace(/\s+/g, ""));
                           alert("Nomor rekening BCA berhasil disalin!");
                         }}
                         className="text-[10px] font-bold text-blue-600 hover:underline"
@@ -1850,7 +1854,7 @@ export default function SakuNotaLandingPage() {
                         Salin No Rek
                       </button>
                     </div>
-                    <span className="text-[11px] text-slate-600 block">Atas Nama: <strong>Reza / SakuNota Official</strong></span>
+                    <span className="text-[11px] text-slate-600 block">Atas Nama: <strong>{PAYMENT_ACCOUNT_NAME}</strong></span>
                   </div>
 
                   <div className="flex justify-between items-center text-xs pt-1">
@@ -1890,7 +1894,7 @@ export default function SakuNotaLandingPage() {
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed space-y-1">
                   <strong className="text-slate-800 block">ℹ️ Proses Verifikasi:</strong>
                   <p>
-                    Setelah bukti transfer terlampir, status pesanan akan menjadi <strong>Menunggu Verifikasi</strong>. Reza (Owner) akan mencocokkan mutasi rekening sebelum lisensi terbit.
+                    Setelah bukti transfer terlampir, status pesanan akan menjadi <strong>Menunggu Verifikasi</strong>. Tim SakuNota akan mencocokkan mutasi rekening sebelum lisensi terbit.
                   </p>
                 </div>
 
@@ -1961,7 +1965,7 @@ export default function SakuNotaLandingPage() {
                 <div className="p-3.5 rounded-2xl bg-white border border-slate-200 text-left text-xs text-slate-600 space-y-1.5 leading-relaxed">
                   <strong className="text-slate-900 block">💡 Apa yang terjadi selanjutnya?</strong>
                   <p>
-                    1. Reza (Owner SakuNota) memeriksa dana masuk di mutasi BCA.<br />
+                    1. Tim SakuNota memeriksa dana masuk di mutasi BCA.<br />
                     2. Setelah dana cocok, lisensi resmi akan langsung diterbitkan.<br />
                     3. Buka tombol <strong>Cek Status Lisensi</strong> dengan nomor pesanan <strong>{currentOrderId}</strong> dan kode akses <strong>{currentAccessCode}</strong> untuk mengambil lisensi Anda.
                   </p>
@@ -1969,7 +1973,7 @@ export default function SakuNotaLandingPage() {
 
                 <div className="pt-2 flex flex-col gap-2">
                   <a
-                    href={`https://wa.me/6281234567890?text=Halo%20Mas%20Reza%20(Owner%20SakuNota),%20saya%20sudah%20transfer%20Rp65.000%20untuk%20pesanan%20${currentOrderId}%20(${businessName}).%20Kode%20akses:%20${currentAccessCode}.%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
+                    href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20sudah%20transfer%20Rp65.000%20untuk%20pesanan%20${currentOrderId}%20(${businessName}).%20Kode%20akses:%20${currentAccessCode}.%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
@@ -2309,7 +2313,7 @@ export default function SakuNotaLandingPage() {
                         Jika Anda membayar otomatis via Midtrans, tekan tombol sinkronisasi di bawah untuk memeriksa status secara langsung.
                       </p>
                       <p>
-                        Jika Anda membayar transfer BCA manual, Reza (Owner) akan mencocokkan mutasi rekening sebelum lisensi terbit.
+                        Jika Anda membayar transfer BCA manual, Tim SakuNota akan mencocokkan mutasi rekening sebelum lisensi terbit.
                       </p>
                     </div>
 
@@ -2339,13 +2343,13 @@ export default function SakuNotaLandingPage() {
                     </button>
 
                     <a
-                      href={`https://wa.me/6281234567890?text=Halo%20Mas%20Reza%20(Owner%20SakuNota),%20saya%20sudah%20transfer%20untuk%20pesanan%20${searchResult.orderId}%20(${searchResult.businessName}).%20Kode%20akses:%20${searchResult.accessCode}.%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
+                      href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20sudah%20transfer%20untuk%20pesanan%20${searchResult.orderId}%20(${searchResult.businessName}).%20Kode%20akses:%20${searchResult.accessCode}.%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold rounded-xl border border-blue-200 transition-all flex items-center justify-center gap-1.5"
                     >
                       <span>💬</span>
-                      <span>Konfirmasi via WhatsApp Owner Reza</span>
+                      <span>Konfirmasi via WhatsApp SakuNota</span>
                     </a>
                   </div>
                 )}

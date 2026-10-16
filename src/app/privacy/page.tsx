@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { SUPPORT_WHATSAPP } from "@/lib/config";
 
 export default function PrivacyPolicyPage() {
   return (
@@ -84,7 +85,7 @@ export default function PrivacyPolicyPage() {
             </p>
             <div className="pt-2">
               <a
-                href="https://wa.me/6281234567890?text=Halo%20SakuNota,%20saya%20ingin%20bertanya%20seputar%20kebijakan%20privasi."
+                href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20ingin%20bertanya%20seputar%20kebijakan%20privasi.`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all"

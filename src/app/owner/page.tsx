@@ -32,6 +32,7 @@ import {
   unbindBetaTrialServer,
   convertBetaTrialToPaidServer,
 } from "@/lib/ordersClient";
+import { SUPPORT_WHATSAPP } from "@/lib/config";
 
 export default function SakuNotaOwnerDashboardPage() {
   // Authentication State
@@ -340,7 +341,7 @@ export default function SakuNotaOwnerDashboardPage() {
         await loadTesterLicenses(res.token);
         await loadBetaRegistrations(res.token);
       } else {
-        setLoginError(res.error || "Username atau Password salah! Akses khusus Owner Reza.");
+        setLoginError(res.error || "Username atau Password salah! Akses khusus Owner.");
       }
     } catch (err: any) {
       setLoginError("Koneksi gagal: " + err.message);
@@ -652,7 +653,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
               <input
                 type="text"
                 required
-                placeholder="Masukkan username (contoh: Reza)"
+                placeholder="Masukkan username Owner"
                 value={usernameInput}
                 onChange={(e) => setUsernameInput(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-line text-xs text-fg focus:border-purple-500 outline-none transition-colors"
@@ -730,7 +731,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
               </span>
             </div>
             <span className="text-[10px] text-muted font-bold block mt-0.5">
-              Halo, Reza • Cloudflare Production Edge
+              Halo, Owner • Cloudflare Production Edge
             </span>
           </div>
         </div>
@@ -1888,15 +1889,15 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
             <div className="p-4 rounded-2xl bg-card border border-line space-y-3 text-xs">
               <span className="text-[10px] text-muted font-bold uppercase block">Kontak Bantuan Resmi:</span>
               <p className="text-muted leading-relaxed">
-                Pengguna yang mengalami kendala aktivasi lisensi atau pemindahan HP dapat menghubungi WhatsApp resmi Reza.
+                Pengguna yang mengalami kendala aktivasi lisensi atau pemindahan HP dapat menghubungi WhatsApp resmi SakuNota.
               </p>
               <a
-                href="https://wa.me/6281234567890?text=Halo%20Reza,%20saya%20butuh%20bantuan%20terkait%20lisensi%20SakuNota"
+                href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20butuh%20bantuan%20terkait%20lisensi%20SakuNota`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-black hover:bg-emerald-700 transition-colors"
               >
-                <span>💬 Buka WhatsApp Bantuan Reza</span>
+                <span>💬 Buka WhatsApp Bantuan SakuNota</span>
               </a>
             </div>
           </div>
@@ -1954,7 +1955,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                   <input
                     type="password"
                     required
-                    placeholder="Sandi Owner Reza"
+                    placeholder="Sandi Owner"
                     value={deletePasswordConfirm}
                     onChange={(e) => setDeletePasswordConfirm(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs text-fg outline-none"

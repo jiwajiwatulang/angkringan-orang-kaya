@@ -352,7 +352,7 @@ export async function createCustomerOrder(
     email: data.email?.trim() || undefined,
     amount: 65000,
     paymentMethod: "Transfer Bank BCA",
-    bankAccount: "8030 554 912 a.n. Reza",
+    bankAccount: "8030 554 912 a.n. SakuNota Official",
     transferProofName: "bukti_transfer_pembeli.jpg",
     status: "menunggu_verifikasi",
     createdAt: new Date().toLocaleDateString("id-ID", {

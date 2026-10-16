@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import InstallGuideSection from "@/components/InstallGuideSection";
+import { SUPPORT_WHATSAPP } from "@/lib/config";
 
 interface Chapter {
   id: number;
@@ -76,7 +77,7 @@ export default function SakuNotaPanduanPage() {
               Jika Anda tidak sengaja menutup browser sebelum menyalin nomor lisensi:
             </p>
             <ol className="list-decimal list-inside space-y-1.5 pl-1">
-              <li>Buka halaman depan SakuNota di <code className="text-accent-text font-mono">sakunota.my.id</code>.</li>
+              <li>Buka halaman depan SakuNota di browser Anda.</li>
               <li>Ketuk tombol <strong>Cek Status Pesanan Saya</strong> di bagian atas atau bawah halaman.</li>
               <li>Masukkan <strong>Nomor Pesanan</strong> (contoh: <code className="font-mono">SN-2026-XXXX</code>) dan <strong>Kode Akses Rahasia</strong> (contoh: <code className="font-mono">KOD-XXXX</code>) yang Anda dapatkan saat memesan.</li>
               <li>Nomor lisensi Anda akan langsung tampil kembali dan siap disalin atau diaktifkan.</li>
@@ -386,7 +387,7 @@ export default function SakuNotaPanduanPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <a
-                href="https://wa.me/6281234567890?text=Halo%20SakuNota,%20saya%20memerlukan%20bantuan%20seputar%20aplikasi%20kasir."
+                href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20memerlukan%20bantuan%20seputar%20aplikasi%20kasir.`}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all active:scale-95"
@@ -582,7 +583,7 @@ export default function SakuNotaPanduanPage() {
               Tim SakuNota siap membantu pengaturan printer dan pertanyaan seputar usaha Anda.
             </p>
             <a
-              href="https://wa.me/6281234567890?text=Halo%20SakuNota,%20saya%20butuh%20bantuan%20panduan."
+              href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20butuh%20bantuan%20panduan.`}
               target="_blank"
               rel="noreferrer"
               className="inline-block text-xs font-bold text-accent-text hover:underline pt-1"

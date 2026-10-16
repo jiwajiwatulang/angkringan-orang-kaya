@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { App } from "@capacitor/app";
 import { downloadAllOfflineAssets } from "@/lib/offlineManager";
 import { checkCashierAccess, CashierAccessStatus } from "@/lib/licenseGuard";
+import { SUPPORT_WHATSAPP } from "@/lib/config";
 
 export default function PengaturanTentangPage() {
   const router = useRouter();
@@ -190,7 +191,7 @@ export default function PengaturanTentangPage() {
       {/* Support & Legal Links */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
         <a
-          href="https://wa.me/6281234567890?text=Halo%20Bantuan%20SakuNota,%20saya%20butuh%20panduan."
+          href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20Bantuan%20SakuNota,%20saya%20butuh%20panduan.`}
           target="_blank"
           rel="noopener noreferrer"
           className="p-4 rounded-2xl bg-surface border border-line hover:border-emerald-500 transition-colors flex items-center justify-between group"
@@ -207,21 +208,21 @@ export default function PengaturanTentangPage() {
           <span className="text-muted group-hover:text-emerald-500">→</span>
         </a>
 
-        <a
-          href="mailto:support@sakunota.my.id"
+        <Link
+          href="/panduan"
           className="p-4 rounded-2xl bg-surface border border-line hover:border-accent transition-colors flex items-center justify-between group"
         >
           <div className="flex items-center gap-3">
-            <span className="text-2xl">✉️</span>
+            <span className="text-2xl">📖</span>
             <div>
               <strong className="text-fg block group-hover:text-accent transition-colors">
-                support@sakunota.my.id
+                Buku Panduan
               </strong>
-              <span className="text-[10px] text-muted">Kirim email bantuan</span>
+              <span className="text-[10px] text-muted">Pelajari fitur lengkap</span>
             </div>
           </div>
           <span className="text-muted group-hover:text-accent">→</span>
-        </a>
+        </Link>
       </div>
 
       {/* Policy link */}
