@@ -127,7 +127,7 @@ export default function MobileHomeScreen({
             type="text"
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
-            placeholder="Cari menu cepat..."
+            placeholder="Pencarian cepat..."
             className="w-full bg-card border border-line rounded-xl pl-9 pr-4 py-2.5 text-xs text-fg placeholder:text-muted focus:outline-none focus:border-accent transition-colors"
           />
         </form>

@@ -2973,7 +2973,7 @@ export default function POSPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[10px]">
-                    Kosong: {tableData.filter(t => getTableStatus(t) === 'kosong').length}
+                    Tersedia: {tableData.filter(t => getTableStatus(t) === 'kosong').length}
                   </span>
                   <span className="px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold text-[10px]">
                     Terisi: {tableData.filter(t => getTableStatus(t) === 'open').length}

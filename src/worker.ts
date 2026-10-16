@@ -214,7 +214,41 @@ export default {
       }
     }
 
-    // 3. Serve Next.js static assets from ./out via env.ASSETS
-    return env.ASSETS.fetch(request);
+    // 3. Normalize Next.js App Router RSC prefetch path if generated as nested folder on Windows
+    // e.g. /pos/__next.pos.__PAGE__.txt -> /pos/__next.pos/__PAGE__.txt
+    let assetRequest = request;
+    if (url.pathname.endsWith('.__PAGE__.txt')) {
+      const idx = url.pathname.indexOf('/__next.');
+      if (idx !== -1) {
+        const prefix = url.pathname.substring(0, idx);
+        const suffix = url.pathname.substring(idx).replace(/\.__PAGE__\.txt$/, '/__PAGE__.txt');
+        const normalizedSuffix = suffix.replace(/(?<=__next)[^/]*\./g, (m) => m.slice(0, -1) + '/');
+        const normalizedPath = prefix + normalizedSuffix;
+        if (normalizedPath !== url.pathname) {
+          const newUrl = new URL(request.url);
+          newUrl.pathname = normalizedPath;
+          assetRequest = new Request(newUrl.toString(), request);
+        }
+      }
+    }
+
+    try {
+      const response = await env.ASSETS.fetch(assetRequest);
+      if (response.status === 404 && url.pathname.endsWith('.__PAGE__.txt')) {
+        return new Response("", {
+          status: 200,
+          headers: { "Content-Type": "text/plain; charset=utf-8" }
+        });
+      }
+      return response;
+    } catch (err: any) {
+      if (url.pathname.endsWith('.__PAGE__.txt')) {
+        return new Response("", {
+          status: 200,
+          headers: { "Content-Type": "text/plain; charset=utf-8" }
+        });
+      }
+      return new Response("Not Found", { status: 404 });
+    }
   },
 };
