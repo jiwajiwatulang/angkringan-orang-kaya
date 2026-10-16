@@ -61,12 +61,12 @@ export default function MobileHomeScreen({
   };
 
   // Top 4 favorite items from menu
-  const favoriteItems = menuData.filter((m) => !m.isSoldOut).slice(0, 4);
+  const favoriteItems = (menuData || []).filter((m) => m && !m.isSoldOut).slice(0, 4);
 
   // Active metrics
-  const occupiedTables = tableData.filter((t) => t.status === "terisi").length;
-  const totalTables = tableData.length;
-  const todayOrdersCount = activeOrders.length;
+  const occupiedTables = (tableData || []).filter((t) => t && (t.status === "terisi" || t.status === "open")).length;
+  const totalTables = (tableData || []).length;
+  const todayOrdersCount = (activeOrders || []).length;
   const expectedCash = currentShiftStats?.expectedCash || activeShift?.startingCash || 0;
 
   return (
@@ -243,7 +243,7 @@ export default function MobileHomeScreen({
                     {item.nama}
                   </h4>
                   <span className="text-xs font-black text-accent-text mt-0.5 block">
-                    Rp {item.harga.toLocaleString("id-ID")}
+                    Rp {(item.harga ?? 0).toLocaleString("id-ID")}
                   </span>
                 </div>
                 <span className="text-base shrink-0">

@@ -15,10 +15,11 @@ export default function MobileOrdersScreen({
 }: MobileOrdersScreenProps) {
   const [search, setSearch] = useState("");
 
-  const filteredOrders = allOrders.filter((o) => {
-    const q = search.toLowerCase();
+  const filteredOrders = (allOrders || []).filter((o) => {
+    if (!o) return false;
+    const q = (search || "").toLowerCase();
     const idMatch = o.id?.toString().includes(q);
-    const nameMatch = o.customerName?.toLowerCase().includes(q);
+    const nameMatch = (o.customerName || "").toLowerCase().includes(q);
     const tableMatch = o.tableId?.toString().includes(q);
     return idMatch || nameMatch || tableMatch;
   });

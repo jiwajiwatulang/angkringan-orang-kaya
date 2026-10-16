@@ -65,7 +65,7 @@ export default function MobileMoreScreen({
           <div className="bg-surface rounded-2xl p-3 border border-line flex items-center justify-between">
             <span className="text-xs text-muted">Kas di Laci:</span>
             <span className="text-sm font-black text-accent-text">
-              Rp {(currentShiftStats?.expectedCash || activeShift.startingCash || 0).toLocaleString("id-ID")}
+              Rp {(currentShiftStats?.expectedCash || activeShift?.startingCash || 0).toLocaleString("id-ID")}
             </span>
           </div>
         )}

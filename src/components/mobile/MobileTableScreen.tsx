@@ -25,12 +25,13 @@ export default function MobileTableScreen({
   const [activeSheetTable, setActiveSheetTable] = useState<any | null>(null);
 
   const getTableActiveOrder = (tableId: number) => {
-    return activeOrders.find(
-      (o) => o.tableId === tableId && (o.status === "unpaid" || o.status === "paid")
+    return (activeOrders || []).find(
+      (o) => o && o.tableId === tableId && (o.status === "unpaid" || o.status === "paid")
     );
   };
 
-  const filteredTables = tableData.filter((table) => {
+  const filteredTables = (tableData || []).filter((table) => {
+    if (!table || table.id == null) return false;
     const activeOrder = getTableActiveOrder(table.id);
     const isPaid = activeOrder && activeOrder.status === "paid";
     const isOccupied = activeOrder && activeOrder.status === "unpaid";
@@ -43,6 +44,7 @@ export default function MobileTableScreen({
   });
 
   const handleCardClick = (table: any) => {
+    if (!table || table.id == null) return;
     const activeOrder = getTableActiveOrder(table.id);
     if (!activeOrder) {
       // Empty table -> Directly open for new order

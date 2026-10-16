@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Printer } from '@capgo/capacitor-printer';
-import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
+import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { getStoreSettings, loadStoreSettingsAsync, subscribeStoreSettings, StoreSettings, isTableManagementEnabled } from '@/lib/settings';
-import { getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement, recordPayment, refundPartialPayment, getOrderPayments, exportAllData, clearTable } from '@/lib/api';
+import { getMenus, getTables, getOrders, getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement, recordPayment, refundPartialPayment, getOrderPayments, exportAllData, clearTable } from '@/lib/api';
 import { 
   generateEscPosReceipt, 
   generatePartialPaymentReceipt, 
@@ -570,49 +569,53 @@ export default function POSPage() {
 
   // Android Hardware Back button listener: closes active modal or bottom-sheet before exiting
   useEffect(() => {
-    let removeListener: any;
+    let removeListener: any = null;
     try {
-      App.addListener('backButton', ({ canGoBack }) => {
-        if (unsavedConfirm?.isOpen) {
-          setUnsavedConfirm(null);
-        } else if (receiptData) {
-          closeReceipt();
-        } else if (blindCloseResult) {
-          setBlindCloseResult(null);
-        } else if (isSplitBillModalOpen) {
-          handleCloseSplitBill();
-        } else if (isPaymentModalOpen) {
-          handleClosePaymentModal();
-        } else if (activeModItem) {
-          handleCloseModifiers();
-        } else if (activeVariantGroup) {
-          setActiveVariantGroup(null);
-        } else if (isRefundModalOpen) {
-          setIsRefundModalOpen(false);
-        } else if (isDiscountModalOpen) {
-          handleCloseDiscountModal();
-        } else if (isCashMovementModalOpen) {
-          handleCloseCashMovement();
-        } else if (isOpenShiftModalOpen) {
-          handleCloseOpenShift();
-        } else if (isCloseShiftModalOpen) {
-          handleCloseCloseShift();
-        } else if (isMobileCartOpen) {
-          closeMobileCart();
-        } else if (view === 'menu' && selectedTable) {
-          setView('meja');
-        } else if (canGoBack) {
-          window.history.back();
-        }
-      }).then(handle => {
-        removeListener = handle;
-      }).catch(() => {});
+      if (typeof window !== "undefined" && Capacitor.isNativePlatform()) {
+        App.addListener('backButton', ({ canGoBack }) => {
+          if (unsavedConfirm?.isOpen) {
+            setUnsavedConfirm(null);
+          } else if (receiptData) {
+            closeReceipt();
+          } else if (blindCloseResult) {
+            setBlindCloseResult(null);
+          } else if (isSplitBillModalOpen) {
+            handleCloseSplitBill();
+          } else if (isPaymentModalOpen) {
+            handleClosePaymentModal();
+          } else if (activeModItem) {
+            handleCloseModifiers();
+          } else if (activeVariantGroup) {
+            setActiveVariantGroup(null);
+          } else if (isRefundModalOpen) {
+            setIsRefundModalOpen(false);
+          } else if (isDiscountModalOpen) {
+            handleCloseDiscountModal();
+          } else if (isCashMovementModalOpen) {
+            handleCloseCashMovement();
+          } else if (isOpenShiftModalOpen) {
+            handleCloseOpenShift();
+          } else if (isCloseShiftModalOpen) {
+            handleCloseCloseShift();
+          } else if (isMobileCartOpen) {
+            closeMobileCart();
+          } else if (view === 'menu' && selectedTable) {
+            setView('meja');
+          } else if (canGoBack) {
+            window.history.back();
+          }
+        }).then(handle => {
+          removeListener = handle;
+        }).catch(() => {});
+      }
     } catch (_) {}
 
     return () => {
-      if (removeListener && removeListener.remove) {
-        removeListener.remove();
-      }
+      try {
+        if (removeListener && typeof removeListener.remove === 'function') {
+          removeListener.remove();
+        }
+      } catch (_) {}
     };
   }, [
     unsavedConfirm,
@@ -726,7 +729,6 @@ export default function POSPage() {
         setStoreSettings(getStoreSettings());
       }
       await refreshShiftData();
-      const { getMenus, getOrders, getTables } = await import('@/lib/api');
       const menus = await getMenus();
       const tables = await getTables();
       const orders = await getOrders();
@@ -800,15 +802,17 @@ export default function POSPage() {
     };
   }, []);
 
-  const categories = ["Semua", ...Array.from(new Set(menuData.map(m => m.kategori)))];
+  const categories = ["Semua", ...Array.from(new Set(menuData.filter(Boolean).map(m => m.kategori || 'Lainnya')))];
 
   const filteredMenu = menuData.filter(m => 
+    m &&
     (activeCategory === "Semua" || m.kategori === activeCategory) &&
-    (m.nama.toLowerCase().includes(searchQuery.toLowerCase()))
+    ((m.nama || '').toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const getTableStatus = (table: any) => {
-    if (activeOrders.some(o => o.tableId === table.id && o.status !== 'paid' && o.status !== 'void')) return 'open';
+    if (!table) return 'kosong';
+    if ((activeOrders || []).some(o => o && o.tableId === table.id && o.status !== 'paid' && o.status !== 'void')) return 'open';
     if (table.status === 'lunas') return 'lunas';
     return 'kosong';
   };
@@ -1379,7 +1383,7 @@ export default function POSPage() {
   const taxBase = afterDiscount + (storeSettings.taxAppliesToService ? serviceAmount : 0);
   const taxAmount = storeSettings.enableTax ? Math.round(taxBase * ((storeSettings.taxPercent || 0) / 100)) : 0;
   const totalPrice = afterDiscount + serviceAmount + taxAmount;
-  const selectedTableObj = tableData.find(t => t.id.toString() === selectedTable);
+  const selectedTableObj = (tableData || []).find(t => t && t.id != null && t.id.toString() === selectedTable);
   const selectedTableStatus = selectedTableObj ? getTableStatus(selectedTableObj) : null;
   const isDrinkCategory = (cat: string) => {
     if(!cat) return false;
@@ -3011,15 +3015,16 @@ export default function POSPage() {
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-4">
-                {tableData.map(table => {
+                {(tableData || []).map(table => {
+                  if (!table || table.id == null) return null;
                   const tStatus = getTableStatus(table);
-                  const openOrder = activeOrders.find(o => o.tableId === table.id && o.status !== 'paid' && o.status !== 'void');
+                  const openOrder = (activeOrders || []).find(o => o && o.tableId === table.id && o.status !== 'paid' && o.status !== 'void');
                   const paidOrder = tStatus === 'lunas' 
-                    ? allOrders.filter(o => o.tableId === table.id && o.status === 'paid').sort((a, b) => (b.id || 0) - (a.id || 0))[0] 
+                    ? (allOrders || []).filter(o => o && o.tableId === table.id && o.status === 'paid').sort((a, b) => (b.id || 0) - (a.id || 0))[0] 
                     : null;
                   const activeTableOrder = openOrder || paidOrder;
                   const name = activeTableOrder?.customerName;
-                  const isSelected = selectedTable === table.id.toString();
+                  const isSelected = selectedTable === (table.id != null ? table.id.toString() : '');
                   const style = tStatus === 'open' 
                     ? { card: 'border-rose-500 bg-card shadow-rose-500/10', badge: 'bg-rose-600 text-white', label: 'Terisi (Open)', labelCls: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold' } 
                     : tStatus === 'lunas' 
@@ -3032,7 +3037,7 @@ export default function POSPage() {
                       className={`relative rounded-2xl border-2 ${style.card} p-4 h-40 flex flex-col items-center justify-between shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer ${isSelected ? 'ring-4 ring-accent/70' : ''}`}
                     >
                       <span className={`w-12 h-12 rounded-full ${style.badge} text-xl flex items-center justify-center shadow-md mt-1`}>
-                        {table.nomor.replace(/^Meja\s*/i, '')}
+                        {(table.nomor || '').replace(/^Meja\s*/i, '')}
                       </span>
                       <div className="flex flex-col items-center text-center w-full px-1">
                         <span className={`text-[11px] px-2 py-0.5 rounded-full ${style.labelCls}`}>
@@ -3045,12 +3050,12 @@ export default function POSPage() {
                         )}
                         {openOrder && (
                           <span className="text-[11px] font-extrabold text-rose-400 mt-0.5">
-                            Rp {openOrder.total.toLocaleString('id-ID')}
+                            Rp {(openOrder.total ?? 0).toLocaleString('id-ID')}
                           </span>
                         )}
                         {paidOrder && (
                           <span className="text-[10px] font-semibold text-muted mt-0.5 truncate max-w-full">
-                            Nota #{paidOrder.id} • Rp {paidOrder.total.toLocaleString('id-ID')}
+                            Nota #{paidOrder.id} • Rp {(paidOrder.total ?? 0).toLocaleString('id-ID')}
                           </span>
                         )}
                       </div>
@@ -3402,7 +3407,7 @@ export default function POSPage() {
         <MobileBottomNav
           currentTab={mobileTab}
           onTabChange={setMobileTab}
-          occupiedTablesCount={tableData.filter((t) => t.status === 'terisi').length}
+          occupiedTablesCount={(tableData || []).filter((t) => t && (t.status === 'terisi' || t.status === 'open')).length}
           enableTables={isTableManagementEnabled(storeSettings)}
         />
 
