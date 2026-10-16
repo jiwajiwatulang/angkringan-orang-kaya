@@ -94,7 +94,7 @@ export async function onRequestDelete(context: any) {
     const authHeader = context.request.headers.get("Authorization") || "";
     const token = extractBearerToken(authHeader);
     const body = await context.request.json().catch(() => ({}));
-    const { orderId, auditNote } = body || {};
+    const { orderId, auditNote, passwordConfirm } = body || {};
 
     if (!orderId) {
       return new Response(JSON.stringify({ success: false, error: "Nomor pesanan diperlukan." }), {
@@ -103,7 +103,7 @@ export async function onRequestDelete(context: any) {
       });
     }
 
-    const res = await deleteOwnerTestOrder(db, token, orderId, auditNote);
+    const res = await deleteOwnerTestOrder(db, token, orderId, auditNote, passwordConfirm);
     return new Response(JSON.stringify(res), {
       status: res.success ? 200 : 400,
       headers: { "Content-Type": "application/json" },

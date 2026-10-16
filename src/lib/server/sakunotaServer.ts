@@ -915,14 +915,30 @@ export async function deleteOwnerTestOrder(
   dbOrToken: D1Database | string | null,
   tokenOrId: string | null,
   maybeId?: string,
-  maybeNote?: string
+  maybeNote?: string,
+  maybePassword?: string
 ): Promise<{ success: boolean; error?: string }> {
   const db = isD1(dbOrToken) ? dbOrToken : getD1();
   const ownerToken = isD1(dbOrToken) ? (tokenOrId as string) : (dbOrToken as string);
   const orderId = (isD1(dbOrToken) ? maybeId : tokenOrId) || "";
+  const passwordConfirm = (isD1(dbOrToken) ? maybePassword : maybeNote) || "";
 
   const auth = await verifyOwnerSession(db, ownerToken);
   if (!auth.valid) return { success: false, error: auth.error || "Akses ditolak." };
+
+  if (passwordConfirm) {
+    try {
+      const inputHash = hashPassword(passwordConfirm);
+      const targetHash = hashPassword(getOwnerPassword());
+      const bufA = Buffer.from(inputHash, "hex");
+      const bufB = Buffer.from(targetHash, "hex");
+      if (bufA.length !== bufB.length || !crypto.timingSafeEqual(bufA, bufB)) {
+        return { success: false, error: "Konfirmasi sandi Owner salah." };
+      }
+    } catch {
+      return { success: false, error: "Konfigurasi sandi server belum disetel." };
+    }
+  }
 
   return await deleteTestOrderD1(db, orderId);
 }

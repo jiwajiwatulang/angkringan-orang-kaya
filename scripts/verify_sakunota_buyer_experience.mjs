@@ -276,20 +276,22 @@ async function run() {
     const loginHeader = await page.locator('h1:has-text("SakuNota Owner")');
     check(await loginHeader.isVisible(), 'Owner Login form is presented directly');
 
-    // Reject old / leaked passwords
-    const oldPassRes1 = await authenticateOwner(d1, 'Reza', 'SakuNota45');
-    check(!oldPassRes1.success, 'Old password SakuNota45 strictly rejected');
-    const oldPassRes2 = await authenticateOwner(d1, 'Reza', 'Reza45');
-    check(!oldPassRes2.success, 'Old password Reza45 strictly rejected');
+    // Reject wrong passwords
+    const testOwnerUser = process.env.TEST_OWNER_USER || 'OwnerSakuNota';
+    const testOwnerPass = process.env.TEST_OWNER_PASS || 'Test-Owner-Password-2026!';
+    const oldPassRes1 = await authenticateOwner(d1, testOwnerUser, 'WrongPassword1');
+    check(!oldPassRes1.success, 'Wrong password strictly rejected');
+    const oldPassRes2 = await authenticateOwner(d1, testOwnerUser, 'WrongPassword2');
+    check(!oldPassRes2.success, 'Wrong password 2 strictly rejected');
 
     // Login with genuine owner credentials
-    await page.locator('input[placeholder*="username"]').fill('Reza');
-    await page.locator('input[type="password"]').fill('Reza-SakuNota-2026!');
+    await page.locator('input[placeholder*="username"]').fill(testOwnerUser);
+    await page.locator('input[type="password"]').fill(testOwnerPass);
     await page.locator('button:has-text("Masuk ke Dashboard Owner")').click();
     await page.waitForTimeout(800);
 
-    const ownerBadge = page.locator('text=Halo, Reza');
-    check(await ownerBadge.isVisible(), 'Reza successfully logged in');
+    const ownerBadge = page.locator('text=Halo, Owner');
+    check(await ownerBadge.isVisible(), 'Owner successfully logged in');
 
     // Verify all 4 metrics are strictly ZERO
     const metricCardsText = await page.locator('main').textContent();
@@ -496,17 +498,17 @@ async function run() {
     console.log('\n[STAGE 6D] Brute-Force Rate Limiting Audit in Cloudflare D1 (5 Failed Attempts Lock)');
     const testIp = '192.168.99.100';
     for (let i = 1; i <= 4; i++) {
-      const failRes = await authenticateOwner(d1, 'Reza', `WrongPass${i}`, testIp);
+      const failRes = await authenticateOwner(d1, testOwnerUser, `WrongPass${i}`, testIp);
       check(!failRes.success && !failRes.remainingLockSec, `Attempt ${i} rejected without lock`);
     }
 
     // 5th failed attempt must trigger lockout
-    const fifthRes = await authenticateOwner(d1, 'Reza', 'WrongPass5', testIp);
+    const fifthRes = await authenticateOwner(d1, testOwnerUser, 'WrongPass5', testIp);
     check(!fifthRes.success && Boolean(fifthRes.remainingLockSec), '5th failed attempt locks out user for 15 minutes');
     check(fifthRes.error.includes('Akses diblokir'), 'Lockout message presented');
 
     // Subsequent attempt during lockout period remains blocked
-    const blockedRes = await authenticateOwner(d1, 'Reza', 'Reza-SakuNota-2026!', testIp);
+    const blockedRes = await authenticateOwner(d1, testOwnerUser, testOwnerPass, testIp);
     check(!blockedRes.success && Boolean(blockedRes.remainingLockSec), 'Even correct password is held blocked during lockout period');
 
     // --- STAGE 6E: PERSISTENT CLOUDFLARE D1 DATABASE SURVIVAL ---

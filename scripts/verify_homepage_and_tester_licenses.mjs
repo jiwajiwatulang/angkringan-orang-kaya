@@ -281,8 +281,10 @@ async function run() {
     await page.waitForTimeout(500);
 
     // Login Owner
-    await page.locator('input[placeholder*="username"]').fill('Reza');
-    await page.locator('input[placeholder*="password"]').fill('Reza-SakuNota-2026!');
+    const testOwnerUser = process.env.TEST_OWNER_USER || 'OwnerSakuNota';
+    const testOwnerPass = process.env.TEST_OWNER_PASS || 'Test-Owner-Password-2026!';
+    await page.locator('input[placeholder*="username"]').fill(testOwnerUser);
+    await page.locator('input[placeholder*="password"]').fill(testOwnerPass);
     await page.locator('button:has-text("Masuk ke Dashboard Owner")').click();
     await page.waitForTimeout(600);
 

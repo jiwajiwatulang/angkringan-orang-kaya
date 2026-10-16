@@ -582,13 +582,18 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
       return;
     }
 
-    if (deletePasswordConfirm !== "Reza-SakuNota-2026!") {
-      setDeleteMessage("❌ Konfirmasi sandi Owner Reza salah.");
+    if (!deletePasswordConfirm.trim()) {
+      setDeleteMessage("❌ Konfirmasi sandi Owner wajib diisi.");
       return;
     }
 
     setIsDeletingOrder(true);
-    const res = await deleteOwnerTestOrderServer(ownerToken, deleteTargetOrderId.trim(), deleteAuditNote.trim());
+    const res = await deleteOwnerTestOrderServer(
+      ownerToken,
+      deleteTargetOrderId.trim(),
+      deleteAuditNote.trim(),
+      deletePasswordConfirm.trim()
+    );
     if (res.success) {
       setDeleteMessage(`✅ Data uji coba ${deleteTargetOrderId} berhasil dibersihkan dengan aman.`);
       setDeleteTargetOrderId("");

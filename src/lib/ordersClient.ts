@@ -158,29 +158,14 @@ export async function loginOwnerServer(
       body: JSON.stringify({ username: usernameInput, password: passwordInput }),
     });
 
-    if (res.ok) {
-      const json = await res.json();
-      if (json.success && json.token) {
-        return { success: true, token: json.token };
-      }
-      if (json.error) {
-        return { success: false, error: json.error };
-      }
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && json.success && json.token) {
+      return { success: true, token: json.token };
     }
+    return { success: false, error: json.error || "Username atau Password salah! Akses khusus Owner." };
   } catch (_) {
-    // Fallback to local authentication below
+    return { success: false, error: "Tidak dapat terhubung ke server autentikasi." };
   }
-
-  // Fallback / Offline / Static Export Authentication
-  const isUserValid = usernameInput.trim().toLowerCase() === "reza";
-  const isPassValid = passwordInput === "Reza-SakuNota-2026!";
-
-  if (isUserValid && isPassValid) {
-    const localToken = "sakunota_reza_token_" + Date.now();
-    return { success: true, token: localToken };
-  }
-
-  return { success: false, error: "Username atau Password salah! Akses khusus Owner Reza." };
 }
 
 export async function fetchOwnerOrdersServer(
@@ -618,7 +603,8 @@ export async function syncOwnerMidtransServer(
 export async function deleteOwnerTestOrderServer(
   token: string,
   orderId: string,
-  auditNote?: string
+  auditNote?: string,
+  passwordConfirm?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const res = await fetch("/api/owner/orders", {
@@ -627,7 +613,7 @@ export async function deleteOwnerTestOrderServer(
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ orderId, auditNote }),
+      body: JSON.stringify({ orderId, auditNote, passwordConfirm }),
     });
     if (res.ok) return { success: true };
     const err = await res.json().catch(() => ({}));
