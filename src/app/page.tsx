@@ -53,8 +53,10 @@ export default function SakuNotaLandingPage() {
   const [formError, setFormError] = useState("");
   const [currentOrderId, setCurrentOrderId] = useState("");
   const [currentAccessCode, setCurrentAccessCode] = useState("");
-  const [transferProofSimulated, setTransferProofSimulated] = useState(false);
+  const [transferProofFileName, setTransferProofFileName] = useState("");
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [isInitiatingSnap, setIsInitiatingSnap] = useState(false);
+  const [snapError, setSnapError] = useState("");
 
   // Check Order / License Status State
   const [isCheckStatusModalOpen, setIsCheckStatusModalOpen] = useState(false);
@@ -65,6 +67,18 @@ export default function SakuNotaLandingPage() {
   const [searchError, setSearchError] = useState("");
   const [isSearchingOrder, setIsSearchingOrder] = useState(false);
   const [copiedLicense, setCopiedLicense] = useState(false);
+
+  // Load Midtrans Snap Script on demand
+  useEffect(() => {
+    const snapScriptId = "midtrans-snap-js";
+    if (!document.getElementById(snapScriptId)) {
+      const script = document.createElement("script");
+      script.id = snapScriptId;
+      script.src = "https://app.midtrans.com/snap/snap.js";
+      script.setAttribute("data-client-key", "Mid-client-hJifXYLd26Cw8t1j");
+      document.body.appendChild(script);
+    }
+  }, []);
 
   // Escape key listener to close modals
   useEffect(() => {
@@ -86,7 +100,8 @@ export default function SakuNotaLandingPage() {
     setIsBuyModalOpen(true);
     setCheckoutStep("form");
     setFormError("");
-    setTransferProofSimulated(false);
+    setTransferProofFileName("");
+    setSnapError("");
   };
 
   const handleProceedToPayment = async (e: React.FormEvent) => {
@@ -121,6 +136,50 @@ export default function SakuNotaLandingPage() {
       setFormError("Koneksi gagal: " + err.message);
     } finally {
       setIsSubmittingOrder(false);
+    }
+  };
+
+  const handlePayWithMidtrans = async () => {
+    setIsInitiatingSnap(true);
+    setSnapError("");
+    try {
+      const res = await fetch("/api/payment/snap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: currentOrderId,
+          accessCode: currentAccessCode,
+        }),
+      });
+      const data = await res.json() as any;
+      if (data.success && data.token) {
+        if (typeof (window as any).snap !== "undefined" && (window as any).snap.pay) {
+          (window as any).snap.pay(data.token, {
+            onSuccess: function () {
+              setCheckoutStep("waiting");
+            },
+            onPending: function () {
+              setCheckoutStep("waiting");
+            },
+            onError: function (err: any) {
+              setSnapError("Pembayaran gagal diproses: " + (err?.status_message || "Silakan coba lagi."));
+            },
+            onClose: function () {
+              // Popup closed
+            },
+          });
+        } else if (data.redirect_url) {
+          window.location.href = data.redirect_url;
+        } else {
+          setSnapError("Popup pembayaran tidak dapat dibuka. Silakan gunakan transfer manual.");
+        }
+      } else {
+        setSnapError(data.error || "Gagal membuat sesi pembayaran Midtrans.");
+      }
+    } catch (err: any) {
+      setSnapError("Koneksi gagal: " + err.message);
+    } finally {
+      setIsInitiatingSnap(false);
     }
   };
 
@@ -1148,17 +1207,54 @@ export default function SakuNotaLandingPage() {
               </form>
             )}
 
-            {/* Step 2: Instruksi Transfer Bank Resmi BCA */}
+            {/* Step 2: Pembayaran Midtrans Otomatis atau Transfer Bank BCA */}
             {checkoutStep === "payment" && (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <span className="text-xs font-bold text-fg">Langkah 2 dari 2: Transfer Bank Resmi</span>
+                  <span className="text-xs font-bold text-fg">Langkah 2 dari 2: Pembayaran SakuNota</span>
                   <p className="text-[11px] text-muted">
-                    Selesaikan transfer untuk pesanan <strong>{currentOrderId}</strong> ({businessName}).
+                    Selesaikan pembayaran untuk pesanan <strong>{currentOrderId}</strong> ({businessName}).
                   </p>
                 </div>
 
-                {/* Bank BCA Details Card */}
+                {snapError && (
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold">
+                    ⚠️ {snapError}
+                  </div>
+                )}
+
+                {/* PILIHAN 1: MIDTRANS SNAP (INSTAN) */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-accent/10 border border-emerald-500/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                      ⚡ Gerbang Pembayaran Otomatis
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] font-black uppercase">
+                      QRIS • E-Wallet • Virtual Account
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-muted leading-relaxed">
+                    Bayar instan dengan scan QRIS (GoPay, OVO, Dana, BCA Mobile) atau transfer Virtual Account. Lisensi langsung terbit otomatis dalam hitungan detik setelah bayar.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={handlePayWithMidtrans}
+                    disabled={isInitiatingSnap}
+                    className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <span>{isInitiatingSnap ? "Membuka Gerbang Midtrans..." : "Bayar Otomatis Rp65.000 via Midtrans →"}</span>
+                  </button>
+                </div>
+
+                <div className="relative flex py-1 items-center">
+                  <div className="flex-grow border-t border-line"></div>
+                  <span className="flex-shrink mx-3 text-[10px] font-bold text-muted uppercase">Atau Transfer Bank Manual</span>
+                  <div className="flex-grow border-t border-line"></div>
+                </div>
+
+                {/* PILIHAN 2: TRANSFER BANK BCA RESMI */}
                 <div className="p-4 rounded-2xl bg-card border border-line space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black text-blue-600 dark:text-blue-400">
@@ -1202,25 +1298,24 @@ export default function SakuNotaLandingPage() {
                       {currentOrderId}
                     </strong>
                   </div>
-                </div>
 
-                {/* Simulasi Bukti Transfer */}
-                <div className="p-3.5 rounded-2xl bg-card border border-line space-y-2">
-                  <span className="text-[11px] font-bold text-fg block">
-                    Upload Bukti Transfer:
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setTransferProofSimulated(true)}
-                      className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
-                        transferProofSimulated
-                          ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
-                          : "bg-surface border-line text-muted hover:text-fg"
-                      }`}
-                    >
-                      {transferProofSimulated ? "✅ File Bukti Terlampir (bukti_transfer.jpg)" : "📎 Pilih Foto Bukti Transfer"}
-                    </button>
+                  {/* Real File Upload Bukti Transfer */}
+                  <div className="pt-2 border-t border-line space-y-2">
+                    <span className="text-[11px] font-bold text-fg block">
+                      Lampirkan Foto Bukti Transfer:
+                    </span>
+                    <label className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-line hover:border-accent bg-surface cursor-pointer transition-colors text-xs font-bold">
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setTransferProofFileName(file.name);
+                        }}
+                      />
+                      <span>{transferProofFileName ? `✅ Terlampir: ${transferProofFileName}` : "📎 Ketuk untuk Unggah Struk / Screenshot Bukti Transfer"}</span>
+                    </label>
                   </div>
                 </div>
 

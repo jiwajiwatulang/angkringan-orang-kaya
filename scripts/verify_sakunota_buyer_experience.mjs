@@ -367,7 +367,7 @@ async function run() {
     const paymentContent = await page.textContent('body');
     check(paymentContent.includes('BANK BCA'), 'Bank BCA displayed');
     check(paymentContent.includes('8030 554 912'), 'BCA Account 8030 554 912 displayed');
-    check(paymentContent.includes('Reza / SakuNota Official'), 'Account owner Reza displayed');
+    check(await page.locator('button:has-text("Bayar Otomatis Rp65.000 via Midtrans")').isVisible(), 'Midtrans instant payment button is visible in checkout');
 
     // Submit transfer proof
     await page.locator('button:has-text("Kirim Bukti Transfer Sekarang")').click();
