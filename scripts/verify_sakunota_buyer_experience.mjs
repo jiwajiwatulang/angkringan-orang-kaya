@@ -2,7 +2,6 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { DatabaseSync } from 'node:sqlite';
 import { chromium } from 'file:///C:/Users/User/.gemini/antigravity/brain/4c7a1509-3477-4c30-b661-18b9208deb22/scratch/shots/node_modules/playwright-core/index.mjs';
 import {
   authenticateOwner,
@@ -16,11 +15,14 @@ import {
   extractBearerToken,
 } from '../src/lib/server/sakunotaServer.ts';
 import { getD1, initD1Tables, resetDatabaseCleanD1 } from '../src/lib/server/d1.ts';
+import { onRequestPost as midtransPost } from '../functions/api/payment/midtrans.ts';
+import { onRequestPost as snapPost } from '../functions/api/payment/snap.ts';
 
 const staticDir = path.resolve('out');
 const profileDir = path.resolve('.test-profile-buyer-exp');
 const artifactDir = path.resolve('C:\\Users\\User\\.gemini\\antigravity\\brain\\4c7a1509-3477-4c30-b661-18b9208deb22');
 const port = 4399;
+const MIDTRANS_TEST_SECRET = 'SB-Mid-server-sakunota-real-secret-key-2026';
 
 const MIME = { 
   '.html': 'text/html', 
@@ -71,7 +73,7 @@ async function startServerWithApi() {
     const pathname = parsedUrl.pathname;
     const clientIp = req.socket.remoteAddress || '127.0.0.1';
 
-    // --- API ROUTES (Cloudflare D1 Simulation) ---
+    // --- API ROUTES (Cloudflare D1 & Pages Functions Simulation) ---
     if (pathname.startsWith('/api/')) {
       res.setHeader('Content-Type', 'application/json');
 
@@ -136,23 +138,34 @@ async function startServerWithApi() {
         return res.end(JSON.stringify(result));
       }
 
-      // Midtrans Webhook Simulation
+      // Hardened Midtrans Webhook: execute the real Cloudflare Pages Function
       if (pathname === '/api/payment/midtrans' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { order_id, transaction_status } = body;
-        if (transaction_status === 'settlement') {
-          const ord = await d1.prepare('SELECT * FROM CustomerOrders WHERE orderId = ?').bind(order_id).first();
-          if (ord) {
-            const licenseKey = `SN-${crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 4)}-${crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 4)}-${crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 4)}`;
-            const verifiedAt = new Date().toLocaleDateString('id-ID');
-            await d1.prepare("UPDATE CustomerOrders SET status = 'lunas_lisensi_terbit', licenseKey = ?, verifiedAt = ? WHERE orderId = ?").bind(licenseKey, verifiedAt, order_id).run();
-            await d1.prepare("INSERT INTO Licenses (licenseKey, orderId, businessName, issuedAt, signature) VALUES (?, ?, ?, ?, ?)").bind(licenseKey, order_id, ord.businessName, verifiedAt, 'midtrans_sig').run();
-            res.writeHead(200);
-            return res.end(JSON.stringify({ success: true, licenseKey }));
-          }
-        }
-        res.writeHead(200);
-        return res.end(JSON.stringify({ success: true }));
+        const cfResponse = await midtransPost({
+          env: { DB: d1, MIDTRANS_SERVER_KEY: MIDTRANS_TEST_SECRET },
+          request: {
+            json: async () => body,
+            headers: new Map([['content-type', 'application/json']]),
+          },
+        });
+        const resText = await cfResponse.text();
+        res.writeHead(cfResponse.status, { 'Content-Type': 'application/json' });
+        return res.end(resText);
+      }
+
+      // Midtrans Snap Token Generator: execute the real Cloudflare Pages Function
+      if (pathname === '/api/payment/snap' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const cfResponse = await snapPost({
+          env: { DB: d1, MIDTRANS_SERVER_KEY: MIDTRANS_TEST_SECRET },
+          request: {
+            json: async () => body,
+            headers: new Map([['content-type', 'application/json']]),
+          },
+        });
+        const resText = await cfResponse.text();
+        res.writeHead(cfResponse.status, { 'Content-Type': 'application/json' });
+        return res.end(resText);
       }
 
       res.writeHead(404);
@@ -212,7 +225,7 @@ async function run() {
 
   try {
     console.log('\n================================================================');
-    console.log('  🎯 SAKUNOTA CLOUDFLARE D1 & OWNER SECURITY AUDIT');
+    console.log('  🎯 SAKUNOTA CLOUDFLARE D1, MIDTRANS GATEWAY & OWNER SECURITY');
     console.log('================================================================\n');
 
     // --- STAGE 1: ZERO-MOCK EMPTY STATE ON CLOUDFLARE D1 ---
@@ -222,6 +235,12 @@ async function run() {
 
     const loginHeader = await page.locator('h1:has-text("SakuNota Owner")');
     check(await loginHeader.isVisible(), 'Owner Login form is presented directly');
+
+    // Reject old / leaked passwords
+    const oldPassRes1 = await authenticateOwner(d1, 'Reza', 'SakuNota45');
+    check(!oldPassRes1.success, 'Old password SakuNota45 strictly rejected');
+    const oldPassRes2 = await authenticateOwner(d1, 'Reza', 'Reza45');
+    check(!oldPassRes2.success, 'Old password Reza45 strictly rejected');
 
     // Login with genuine owner credentials
     await page.locator('input[placeholder="Masukkan username (contoh: Reza)"]').fill('Reza');
@@ -466,8 +485,8 @@ async function run() {
     server = await startServerWithApi();
     console.log('  Server restarted successfully with Cloudflare D1.');
 
-    // --- STAGE 6F: MIDTRANS GATEWAY INTEGRATION & ATOMIC SETTLEMENT ---
-    console.log('\n[STAGE 6F] Midtrans Payment Gateway Integration & Atomic Settlement in D1');
+    // --- STAGE 6F: HARDENED MIDTRANS WEBHOOK & ATOMIC D1 BATCH VERIFICATION ---
+    console.log('\n[STAGE 6F] Hardened Midtrans Webhook & Atomic D1 Batch Audit');
     const midtransOrder = await createCustomerOrder(d1, {
       buyerName: 'Haji Ahmad',
       businessName: 'Warung Nasi Ahmad',
@@ -475,23 +494,105 @@ async function run() {
     });
     check(midtransOrder.success, 'New order created for Midtrans gateway test');
 
-    // Simulate Midtrans settlement webhook
-    const midtransRes = await fetch(`http://localhost:${port}/api/payment/midtrans`, {
+    const testOrderId = midtransOrder.order.orderId;
+
+    // Security Test 1: Missing signature MUST BE REJECTED (401)
+    const noSigRes = await fetch(`http://localhost:${port}/api/payment/midtrans`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        order_id: midtransOrder.order.orderId,
-        transaction_status: 'settlement',
-        gross_amount: '65000.00'
+        order_id: testOrderId,
+        status_code: '200',
+        gross_amount: '65000.00',
+        transaction_status: 'settlement'
       })
     });
-    const midtransJson = await midtransRes.json();
-    check(midtransJson.success, 'Midtrans settlement webhook processed successfully in D1');
-    check(Boolean(midtransJson.licenseKey), `Midtrans generated genuine license key (${midtransJson.licenseKey})`);
+    check(noSigRes.status === 401, 'Midtrans webhook strictly rejects payload without signature_key (401)');
 
-    // Verify order updated in D1
-    const settledOrd = await d1.prepare('SELECT * FROM CustomerOrders WHERE orderId = ?').bind(midtransOrder.order.orderId).first();
-    check(settledOrd.status === 'lunas_lisensi_terbit', 'D1 order status updated to lunas_lisensi_terbit by Midtrans');
+    // Security Test 2: Fake/Invalid signature MUST BE REJECTED (403)
+    const fakeSigRes = await fetch(`http://localhost:${port}/api/payment/midtrans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        order_id: testOrderId,
+        status_code: '200',
+        gross_amount: '65000.00',
+        signature_key: 'fake_tampered_signature_99999',
+        transaction_status: 'settlement'
+      })
+    });
+    check(fakeSigRes.status === 403, 'Midtrans webhook strictly rejects tampered signature_key (403)');
+
+    // Security Test 3: Mismatched gross_amount MUST BE REJECTED (400)
+    const fakeAmountSig = crypto.createHash('sha512').update(`${testOrderId}20050000.00${MIDTRANS_TEST_SECRET}`).digest('hex');
+    const wrongAmountRes = await fetch(`http://localhost:${port}/api/payment/midtrans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        order_id: testOrderId,
+        status_code: '200',
+        gross_amount: '50000.00', // Underpayment attack
+        signature_key: fakeAmountSig,
+        transaction_status: 'settlement'
+      })
+    });
+    check(wrongAmountRes.status === 400, 'Midtrans webhook strictly rejects underpayment amount (400)');
+
+    // Security Test 4: Genuine SHA-512 Signature & Amount -> Atomic Success
+    const genuinePayload = `${testOrderId}20065000.00${MIDTRANS_TEST_SECRET}`;
+    const genuineSig = crypto.createHash('sha512').update(genuinePayload).digest('hex');
+
+    const validMidtransRes = await fetch(`http://localhost:${port}/api/payment/midtrans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        order_id: testOrderId,
+        status_code: '200',
+        gross_amount: '65000.00',
+        signature_key: genuineSig,
+        transaction_status: 'settlement'
+      })
+    });
+    check(validMidtransRes.status === 200, 'Valid Midtrans webhook returns HTTP 200');
+    const validMidtransJson = await validMidtransRes.json();
+    check(validMidtransJson.success, 'Valid Midtrans settlement processed successfully');
+    check(!validMidtransJson.licenseKey, 'Public webhook response DOES NOT leak licenseKey to caller');
+
+    // Security Test 5: Verify Atomic D1 Commitment
+    const midtransDbOrder = await d1.prepare('SELECT * FROM CustomerOrders WHERE orderId = ?').bind(testOrderId).first();
+    check(midtransDbOrder.status === 'lunas_lisensi_terbit', 'Order status atomically updated to lunas_lisensi_terbit in D1');
+    check(Boolean(midtransDbOrder.licenseKey), `Genuine license key saved in CustomerOrders (${midtransDbOrder.licenseKey})`);
+
+    const midtransDbLicense = await d1.prepare('SELECT * FROM Licenses WHERE licenseKey = ?').bind(midtransDbOrder.licenseKey).first();
+    check(Boolean(midtransDbLicense), 'License record atomically committed into Licenses table via D1 batch');
+
+    // Security Test 6: Idempotency Protection against duplicate webhooks
+    const duplicateRes = await fetch(`http://localhost:${port}/api/payment/midtrans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        order_id: testOrderId,
+        status_code: '200',
+        gross_amount: '65000.00',
+        signature_key: genuineSig,
+        transaction_status: 'settlement'
+      })
+    });
+    const dupJson = await duplicateRes.json();
+    check(duplicateRes.status === 200 && dupJson.message.includes('Idempotent'), 'Duplicate webhook safely handled via idempotency guard');
+
+    // --- STAGE 6G: MIDTRANS SNAP CHECKOUT INITIATION AUDIT ---
+    console.log('\n[STAGE 6G] Midtrans Snap Checkout Initiation Audit (/api/payment/snap)');
+    // Invalid access code check
+    const invalidSnapRes = await fetch(`http://localhost:${port}/api/payment/snap`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId: testOrderId,
+        accessCode: 'WRONG-ACCESS-CODE'
+      })
+    });
+    check(invalidSnapRes.status === 403, 'Snap creation rejected when secret access code is incorrect (403)');
 
     // --- STAGE 7: RINGKASAN PENJUALAN, CHARTS & WHATSAPP REPORT ---
     console.log('\n[STAGE 7] Ringkasan Penjualan: Visual Charts & WhatsApp Report');

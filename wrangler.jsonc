@@ -10,7 +10,7 @@
     {
       "binding": "DB",
       "database_name": "sakunota-production-db",
-      "database_id": "sakunota-d1-prod-001",
+      "database_id": "09a2c118-5c9d-49e8-a199-d14e930d02f2",
       "migrations_dir": "migrations"
     }
   ]
