@@ -160,13 +160,23 @@ export default function SakuNotaOwnerDashboardPage() {
     }
   };
 
+  // Comprehensive data synchronizer for all owner tabs
+  const refreshAllData = async (token: string, silent = false) => {
+    await Promise.allSettled([
+      loadOrders(token, silent),
+      loadLicenses(token),
+      loadTesterLicenses(token),
+      loadBetaRegistrations(token, silent),
+    ]);
+  };
+
   // Check and validate stored session token on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedToken = sessionStorage.getItem("sakunota_owner_token");
       if (storedToken) {
         fetchOwnerMetricsServer(storedToken)
-          .then((res) => {
+          .then(async (res) => {
             if (!res.success) {
               sessionStorage.removeItem("sakunota_owner_token");
               setOwnerToken(null);
@@ -175,10 +185,7 @@ export default function SakuNotaOwnerDashboardPage() {
             } else {
               setOwnerToken(storedToken);
               setIsLoggedIn(true);
-              loadOrders(storedToken);
-              loadLicenses(storedToken);
-              loadTesterLicenses(storedToken);
-              loadBetaRegistrations(storedToken);
+              await refreshAllData(storedToken);
             }
           })
           .catch(() => {
@@ -190,11 +197,11 @@ export default function SakuNotaOwnerDashboardPage() {
     }
   }, []);
 
-  // Real-time live polling (every 8 seconds)
+  // Real-time live polling across ALL tabs (every 8 seconds)
   useEffect(() => {
     if (!ownerToken || !isLoggedIn) return;
     const interval = setInterval(() => {
-      loadOrders(ownerToken, true);
+      refreshAllData(ownerToken, true);
     }, 8000);
     return () => clearInterval(interval);
   }, [ownerToken, isLoggedIn]);
@@ -336,10 +343,7 @@ export default function SakuNotaOwnerDashboardPage() {
         sessionStorage.setItem("sakunota_owner_token", res.token);
         setUsernameInput("");
         setPasswordInput("");
-        await loadOrders(res.token);
-        await loadLicenses(res.token);
-        await loadTesterLicenses(res.token);
-        await loadBetaRegistrations(res.token);
+        await refreshAllData(res.token);
       } else {
         setLoginError(res.error || "Username atau Password salah! Akses khusus Owner.");
       }
@@ -739,7 +743,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
         <div className="flex items-center gap-2 sm:gap-3">
           <button
             type="button"
-            onClick={() => ownerToken && loadOrders(ownerToken)}
+            onClick={() => ownerToken && refreshAllData(ownerToken)}
             disabled={isLoadingOrders}
             className="p-2 bg-card hover:bg-line text-xs font-bold text-fg rounded-xl border border-line transition-colors"
             title="Segarkan Data"
@@ -767,7 +771,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
             </div>
             <button
               type="button"
-              onClick={() => ownerToken && loadOrders(ownerToken)}
+              onClick={() => ownerToken && refreshAllData(ownerToken)}
               className="px-3 py-1.5 rounded-xl bg-rose-600 text-white font-black hover:bg-rose-700 transition-colors shrink-0"
             >
               Coba Lagi
