@@ -10,10 +10,10 @@ export default function TentangSakuNotaPage() {
       {/* 1. Top Navigation Bar (Consistent Light Mode) */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-blue-100 px-4 sm:px-8 py-3.5 shadow-xs">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2 group" title="SakuNota - PT Pemuda Gaya Bebas">
+          <Link href="/" className="flex items-center gap-2 group" title="SakuNota - Kasir Jalan Tanpa Internet">
             <img
               src="/logo-sakunota.png"
-              alt="SakuNota - PT Pemuda Gaya Bebas"
+              alt="SakuNota"
               className="h-8 sm:h-9 w-auto object-contain group-hover:scale-105 transition-transform"
             />
           </Link>
@@ -42,19 +42,19 @@ export default function TentangSakuNotaPage() {
         </div>
       </header>
 
-      {/* 2. Hero Section Tentang SakuNota & PT Pemuda Gaya Bebas */}
+      {/* 2. Hero Section Tentang SakuNota */}
       <section className="relative py-14 sm:py-20 px-4 sm:px-8 bg-gradient-to-b from-blue-50/80 via-white to-slate-50 border-b border-blue-100 overflow-hidden">
         <div className="max-w-4xl mx-auto text-center space-y-5 relative z-10">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-extrabold shadow-xs">
             <span>🏢</span>
-            <span>Profil Resmi Perusahaan &amp; Produk</span>
+            <span>Profil Resmi Produk</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
             Tentang SakuNota
           </h1>
           <p className="text-base sm:text-xl font-extrabold text-blue-600">
-            Inovasi Kasir Kuliner Mandiri di Bawah Naungan PT Pemuda Gaya Bebas
+            Inovasi Kasir Kuliner Mandiri 100% Tanpa Internet
           </p>
           <p className="max-w-2xl mx-auto text-xs sm:text-sm text-slate-600 leading-relaxed">
             SakuNota dibangun dengan satu tujuan sederhana: membantu pedagang kuliner, pemilik warung makan, kedai kopi, hingga rumah makan di seluruh Indonesia agar memiliki sistem pencatatan kasir yang cepat, rapi, dan 100% tetap berjalan lancar meskipun tanpa sinyal internet.
@@ -252,12 +252,12 @@ export default function TentangSakuNotaPage() {
                 <span>💬</span> Hubungi Tim Dukungan Kami
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Butuh bantuan mengaktifkan lisensi, memindahkan lisensi ke HP baru, atau konsultasi penggunaan untuk warung Anda? Tim PT Pemuda Gaya Bebas siap membantu.
+                Butuh bantuan mengaktifkan lisensi, memindahkan lisensi ke HP baru, atau konsultasi penggunaan untuk warung Anda? Tim SakuNota siap membantu.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 pt-2">
               <a
-                href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20Tim%20SakuNota%20(PT%20Pemuda%20Gaya%20Bebas),%20saya%20ingin%20bertanya%20mengenai%20aplikasi%20kasir%20SakuNota.`}
+                href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20Tim%20SakuNota,%20saya%20ingin%20bertanya%20mengenai%20aplikasi%20kasir%20SakuNota.`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs transition-all flex items-center gap-1.5"
@@ -286,7 +286,7 @@ export default function TentangSakuNotaPage() {
       <footer className="bg-white border-t border-slate-200 px-4 sm:px-8 py-8 text-xs text-slate-500">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
-            © 2026 <strong>SakuNota</strong> - Produk Resmi di Bawah Naungan <strong>PT Pemuda Gaya Bebas</strong>.
+            © 2026 <strong>SakuNota</strong>. Hak cipta dilindungi.
           </div>
           <div className="flex items-center gap-5 font-semibold">
             <Link href="/" className="hover:text-blue-600">Beranda</Link>

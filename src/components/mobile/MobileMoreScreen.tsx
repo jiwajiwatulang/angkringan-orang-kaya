@@ -36,7 +36,7 @@ export default function MobileMoreScreen({
           </p>
         </div>
         <span className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-[10px] font-extrabold text-blue-700">
-          PT Pemuda Gaya Bebas
+          SakuNota
         </span>
       </div>
 

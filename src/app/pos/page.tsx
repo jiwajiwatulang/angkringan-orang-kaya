@@ -2156,7 +2156,7 @@ export default function POSPage() {
               )}
             </div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-extrabold mb-2">
-              <span>SakuNota • PT Pemuda Gaya Bebas</span>
+              <span>SakuNota - Kasir Pintar Offline</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
               {accessStatus.status === 'trial_expired'
@@ -2289,7 +2289,7 @@ export default function POSPage() {
         </div>
 
         <div className="text-center text-[11px] text-slate-500 py-3">
-          SakuNota - Kasir Jalan Tanpa Internet &copy; 2026 <strong>PT Pemuda Gaya Bebas</strong>.
+          SakuNota - Kasir Jalan Tanpa Internet &copy; 2026. Hak cipta dilindungi.
         </div>
       </div>
     );

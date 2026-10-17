@@ -2,11 +2,9 @@
 
 **SakuNota** adalah aplikasi kasir (*Point of Sale*) berbasis perangkat lokal (*Offline-First*) untuk usaha kuliner dan F&B di Indonesia (Warung Makan, Rumah Makan, Restoran, Kafe, Kedai Kopi, Booth Jajanan, dan Street Food).
 
-Dikembangkan dan dikelola secara resmi di bawah naungan **PT Pemuda Gaya Bebas**.
-
 - **Website Resmi**: [https://sakunota.my.id](https://sakunota.my.id)
 - **Pusat Panduan Pengguna**: [https://sakunota.my.id/panduan](https://sakunota.my.id/panduan)
-- **Tentang Perusahaan**: [https://sakunota.my.id/tentang](https://sakunota.my.id/tentang)
+- **Tentang Kami**: [https://sakunota.my.id/tentang](https://sakunota.my.id/tentang)
 
 ---
 
@@ -38,7 +36,7 @@ Dikembangkan dan dikelola secara resmi di bawah naungan **PT Pemuda Gaya Bebas**
 | `/admin/menu` | Pengelolaan Katalog Makanan, Minuman, Varian, & Status Stok Habis |
 | `/admin/pengaturan` | Pengaturan Identitas Toko, Pajak/Layanan, Printer Bluetooth, & Cadangan Data |
 | `/panduan` | Pusat Panduan Pengguna Lengkap Beserta Peta Arah Penggunaan |
-| `/tentang` | Profil Resmi SakuNota di bawah naungan **PT Pemuda Gaya Bebas** |
+| `/tentang` | Profil Resmi & Filosofi Aplikasi SakuNota |
 | `/owner` | Portal Manajemen Lisensi, Verifikasi Pesanan, & Database Cloud (Cloudflare D1) |
 
 ---
@@ -86,4 +84,4 @@ npx wrangler deploy
 
 ## Hak Cipta & Perusahaan
 
-© 2026 **SakuNota** - Dikelola oleh **PT Pemuda Gaya Bebas**. Hak cipta dilindungi undang-undang.
+© 2026 **SakuNota**. Hak cipta dilindungi undang-undang.

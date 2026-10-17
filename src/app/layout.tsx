@@ -20,8 +20,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "SakuNota - Kasir Jalan Tanpa Internet | PT Pemuda Gaya Bebas",
-  description: "Aplikasi kasir offline pintar di bawah naungan PT Pemuda Gaya Bebas untuk usaha kuliner (kafe, restoran, angkringan, warung makan, kedai kopi). Catat pesanan, kelola meja, cetak struk Bluetooth fisik, dan pantau omzet tanpa kuota internet.",
+  title: "SakuNota - Kasir Jalan Tanpa Internet",
+  description: "Aplikasi kasir offline pintar untuk usaha kuliner (kafe, restoran, angkringan, warung makan, kedai kopi). Catat pesanan, kelola meja, cetak struk Bluetooth fisik, dan pantau omzet tanpa kuota internet.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

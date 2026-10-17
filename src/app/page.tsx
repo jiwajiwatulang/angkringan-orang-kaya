@@ -534,7 +534,7 @@ export default function SakuNotaLandingPage() {
                 <div className="flex items-center gap-2">
                   <img
                     src="/logo-sakunota.png"
-                    alt="SakuNota - PT Pemuda Gaya Bebas"
+                    alt="SakuNota"
                     className="h-8 w-auto object-contain"
                   />
                 </div>
@@ -1464,7 +1464,7 @@ export default function SakuNotaLandingPage() {
         </div>
       </section>
 
-      {/* 11. Footer (Under PT Pemuda Gaya Bebas) */}
+      {/* 11. Footer */}
       <footer className="mt-auto bg-white border-t border-slate-200 px-4 sm:px-8 py-14 text-xs text-slate-600">
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10">
           
@@ -1473,16 +1473,15 @@ export default function SakuNotaLandingPage() {
             <div className="flex flex-col gap-1">
               <img
                 src="/logo-sakunota.png"
-                alt="SakuNota - PT Pemuda Gaya Bebas"
+                alt="SakuNota"
                 className="h-8 w-auto object-contain self-start"
               />
-              <span className="text-[10px] font-bold text-slate-500">di bawah naungan PT Pemuda Gaya Bebas</span>
             </div>
             <p className="text-blue-600 font-bold text-xs">
               Kasir Jalan Tanpa Internet
             </p>
             <p className="text-slate-600 text-[11px] leading-relaxed max-w-sm">
-              Aplikasi kasir offline yang dirancang khusus untuk usaha kuliner dan F&amp;B di Indonesia. Dikelola resmi oleh <strong>PT Pemuda Gaya Bebas</strong>.
+              Aplikasi kasir offline yang dirancang khusus untuk usaha kuliner dan F&amp;B di Indonesia.
             </p>
           </div>
 
@@ -1495,7 +1494,7 @@ export default function SakuNotaLandingPage() {
               <li><a href="#fitur" className="hover:text-blue-600 transition-colors">Fitur Kasir</a></li>
               <li><a href="#jenis-usaha" className="hover:text-blue-600 transition-colors">Jenis Usaha</a></li>
               <li><a href="#harga" className="hover:text-blue-600 transition-colors">Harga Lisensi</a></li>
-              <li><Link href="/tentang" className="hover:text-blue-600 transition-colors font-bold text-blue-600">Tentang Kami (PT Pemuda Gaya Bebas)</Link></li>
+              <li><Link href="/tentang" className="hover:text-blue-600 transition-colors font-bold text-blue-600">Tentang Kami</Link></li>
               <li><Link href="/pos?demo=true" className="hover:text-blue-600 transition-colors">Coba Sandbox Kasir</Link></li>
             </ul>
           </div>
@@ -1543,7 +1542,7 @@ export default function SakuNotaLandingPage() {
         {/* Bottom Bar: Copyright, Privacy, Terms */}
         <div className="max-w-6xl mx-auto mt-12 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-600">
           <div>
-            © 2026 SakuNota - <strong>PT Pemuda Gaya Bebas</strong>. Hak cipta dilindungi.
+            © 2026 SakuNota. Hak cipta dilindungi.
           </div>
           <div className="flex items-center gap-6 font-semibold">
             <Link href="/tentang" className="hover:text-blue-600 transition-colors">Tentang Kami</Link>
@@ -1566,7 +1565,6 @@ export default function SakuNotaLandingPage() {
             <div className="text-center space-y-1 pb-3 border-b-2 border-dashed border-slate-300">
               <h3 className="font-black text-sm tracking-widest uppercase">SAKUNOTA</h3>
               <p className="text-[10px] text-slate-600">KASIR JALAN TANPA INTERNET</p>
-              <p className="text-[9px] text-slate-500">PT Pemuda Gaya Bebas</p>
             </div>
 
             <div className="space-y-1.5 text-[11px]">

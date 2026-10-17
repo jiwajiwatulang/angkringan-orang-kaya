@@ -241,9 +241,6 @@ export default function PanduanPage() {
                     Pusat Panduan
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-500 font-bold block mt-0.5">
-                  PT Pemuda Gaya Bebas
-                </span>
               </div>
             </Link>
           </div>
@@ -827,7 +824,7 @@ export default function PanduanPage() {
                   Masih butuh bantuan langsung dari tim kami?
                 </h4>
                 <p className="text-xs text-slate-700">
-                  Tim dukungan SakuNota - PT Pemuda Gaya Bebas siap membantu lewat WhatsApp.
+                  Tim dukungan SakuNota siap membantu lewat WhatsApp.
                 </p>
               </div>
               <a
@@ -848,7 +845,7 @@ export default function PanduanPage() {
       <footer className="mt-auto bg-white border-t border-slate-200 px-4 sm:px-8 py-6 text-xs text-slate-600">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
-            © 2026 <strong>SakuNota</strong> - Di bawah naungan <strong>PT Pemuda Gaya Bebas</strong>.
+            © 2026 <strong>SakuNota</strong>. Hak cipta dilindungi.
           </div>
           <div className="flex items-center gap-5 font-bold">
             <Link href="/" className="hover:text-blue-600">Beranda</Link>

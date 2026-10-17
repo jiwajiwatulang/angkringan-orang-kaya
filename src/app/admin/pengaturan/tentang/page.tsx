@@ -97,8 +97,8 @@ export default function PengaturanTentangPage() {
           <p className="text-sm font-semibold text-muted">
             Kasir Jalan Tanpa Internet.
           </p>
-          <p className="text-xs font-extrabold text-accent-text">
-            Produk Resmi di Bawah Naungan PT Pemuda Gaya Bebas
+          <p className="text-xs font-bold text-accent-text">
+            Aplikasi Kasir Mandiri 100% Offline
           </p>
         </div>
 
