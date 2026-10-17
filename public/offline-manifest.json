@@ -1,6 +1,6 @@
 {
-  "version": "sakunota-pos-v2.6.0-1792210031427",
-  "generatedAt": "2026-10-17T04:07:11.427Z",
+  "version": "sakunota-pos-v2.6.0-1792216402893",
+  "generatedAt": "2026-10-17T05:53:22.893Z",
   "totalFiles": 110,
   "totalBytes": 4174464,
   "totalSizeFormatted": "3.98 MB",
@@ -47,9 +47,9 @@
     "/terms.html"
   ],
   "assets": [
-    "/_next/static/8QVFWJ7cRNE8KUJv6kee7/_buildManifest.js",
-    "/_next/static/8QVFWJ7cRNE8KUJv6kee7/_clientMiddlewareManifest.js",
-    "/_next/static/8QVFWJ7cRNE8KUJv6kee7/_ssgManifest.js",
+    "/_next/static/DvdMOVy4NZHDEBwDqkXg4/_buildManifest.js",
+    "/_next/static/DvdMOVy4NZHDEBwDqkXg4/_clientMiddlewareManifest.js",
+    "/_next/static/DvdMOVy4NZHDEBwDqkXg4/_ssgManifest.js",
     "/_next/static/chunks/003ze18iz7n7v.js",
     "/_next/static/chunks/0_pl7ek_bw2ez.js",
     "/_next/static/chunks/0cz1d0mv5g_q7.js",
@@ -120,9 +120,9 @@
   ],
   "allUrls": [
     "/",
-    "/_next/static/8QVFWJ7cRNE8KUJv6kee7/_buildManifest.js",
-    "/_next/static/8QVFWJ7cRNE8KUJv6kee7/_clientMiddlewareManifest.js",
-    "/_next/static/8QVFWJ7cRNE8KUJv6kee7/_ssgManifest.js",
+    "/_next/static/DvdMOVy4NZHDEBwDqkXg4/_buildManifest.js",
+    "/_next/static/DvdMOVy4NZHDEBwDqkXg4/_clientMiddlewareManifest.js",
+    "/_next/static/DvdMOVy4NZHDEBwDqkXg4/_ssgManifest.js",
     "/_next/static/chunks/003ze18iz7n7v.js",
     "/_next/static/chunks/0_pl7ek_bw2ez.js",
     "/_next/static/chunks/0cz1d0mv5g_q7.js",
