@@ -2136,91 +2136,50 @@ export default function POSPage() {
 
   if (!accessStatus.isValid) {
     return (
-      <div className="min-h-screen bg-slate-900 text-white flex flex-col justify-between p-4 sm:p-6 md:p-8">
-        <div className="max-w-xl w-full mx-auto my-auto py-8">
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between p-4 sm:p-6 md:p-8">
+        <div className="max-w-xl w-full mx-auto my-auto py-6">
           {/* Header */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30 mb-4 shadow-lg">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 border-2 border-blue-200 mb-4 shadow-sm">
               {accessStatus.status === 'trial_expired' ? (
-                <svg className="w-8 h-8 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-8 h-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               ) : accessStatus.isClockTampered ? (
-                <svg className="w-8 h-8 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-8 h-8 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               ) : (
-                <svg className="w-8 h-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               )}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-extrabold mb-2">
+              <span>SakuNota • PT Pemuda Gaya Bebas</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
               {accessStatus.status === 'trial_expired'
                 ? 'Masa Coba 7 Hari Selesai'
                 : accessStatus.isClockTampered
                 ? 'Peringatan Waktu Perangkat Dimundurkan'
                 : accessStatus.status === 'revoked'
                 ? 'Akses Kasir Telah Dicabut'
-                : 'Akses Kasir Terkunci (Closed Beta)'}
+                : 'Aktivasi Lisensi Kasir SakuNota'}
             </h1>
-            <p className="mt-2 text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
-              {accessStatus.error || 'Aplikasi kasir ini dikunci untuk pendaftar Closed Beta atau pemilik lisensi resmi SakuNota.'}
+            <p className="mt-2 text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+              {accessStatus.error || 'Masukkan Kode Lisensi Resmi, Lisensi Tester, atau Kode Trial Anda di bawah ini untuk membuka kasir.'}
             </p>
           </div>
 
-          {/* Quick Demo Access Box */}
-          <div className="bg-amber-500/10 border-2 border-amber-500/40 rounded-2xl p-4 sm:p-5 mb-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg backdrop-blur-sm">
-            <div className="flex items-center gap-3.5 text-left">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-2xl shrink-0">
-                🎮
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-amber-200">Ingin Langsung Mencoba Kasir Tanpa Registrasi?</h3>
-                <p className="text-xs text-amber-300/80 mt-0.5">Buka Demo Sandbox interaktif gratis untuk simulasi pesanan & cetak struk.</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleStartDemo}
-              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 shrink-0"
-            >
-              Buka Demo Kasir Sekarang →
-            </button>
-          </div>
-
-          {/* Guarantee Box: Data Never Held Hostage */}
-          <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-4 sm:p-5 mb-6 text-emerald-200">
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">🛡️</span>
-              <div className="flex-1">
-                <h3 className="text-sm font-bold text-emerald-100">Jaminan Keamanan: Data Bisnis Anda Tidak Pernah Disandera</h3>
-                <p className="text-xs text-emerald-300/90 mt-1 leading-relaxed">
-                  Semua data menu, riwayat transaksi, dan rekap shift kasir tersimpan utuh di perangkat Anda dan tidak pernah dihapus. Anda berhak mengunduh seluruh data usaha Anda kapan pun tanpa biaya tambahan.
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={handleExportBackupFromPos}
-                    className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors shadow-sm"
-                  >
-                    <span>📥</span> Unduh Cadangan Data Bisnis (.JSON)
-                  </button>
-                  {backupSuccessNotice && (
-                    <span className="text-xs text-emerald-300 font-semibold">{backupSuccessNotice}</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Activation Form Box */}
-          <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 mb-6 shadow-xl backdrop-blur-sm">
-            <h2 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-              <span>🔑</span> Sudah Memiliki Kode Lisensi atau Undangan Beta?
+          {/* Direct Activation Form Box (Primary & High-Contrast Light Blue) */}
+          <div className="bg-white border-2 border-blue-300 rounded-3xl p-5 sm:p-6 mb-5 shadow-lg shadow-blue-900/5">
+            <h2 className="text-sm sm:text-base font-black text-slate-900 mb-1.5 flex items-center gap-2">
+              <span>🔑</span>
+              <span>Punya Kode Lisensi / Lisensi Tester? Aktifkan Langsung:</span>
             </h2>
-            <p className="text-xs text-slate-400 mb-4">
-              Masukkan kode lisensi resmi (SN-2026-...) atau kode undangan Closed Beta (SN-TRIAL-...) yang telah disetujui:
+            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+              Tempel kode lisensi Anda (contoh: <strong>SN-TEST-...</strong>, <strong>SN-XXXX-...</strong>, atau <strong>SN-TRIAL-...</strong>) tanpa perlu Nomor Pesanan atau Kode Akses Rahasia:
             </p>
             <form onSubmit={handleActivateFromGate} className="space-y-3">
               <div className="flex flex-col sm:flex-row gap-2">
@@ -2228,20 +2187,22 @@ export default function POSPage() {
                   type="text"
                   value={activationInputKey}
                   onChange={(e) => setActivationInputKey(e.target.value.toUpperCase())}
-                  placeholder="Contoh: SN-TRIAL-ABCD-1234 atau SN-2026-XXXX"
-                  className="flex-1 bg-slate-900 border border-slate-700 focus:border-blue-500 rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-500 outline-none uppercase"
+                  placeholder="Contoh: SN-TEST-XXXX atau SN-XXXX-XXXX-XXXX"
+                  className="flex-1 bg-slate-50 border-2 border-slate-300 focus:border-blue-600 focus:bg-white rounded-xl px-4 py-3 text-sm font-mono font-bold text-slate-900 placeholder-slate-400 outline-none uppercase"
                 />
                 <button
                   type="submit"
                   disabled={isActivatingKey || !activationInputKey.trim()}
-                  className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold px-5 py-3 rounded-xl text-sm transition-all whitespace-nowrap shadow-md"
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black px-6 py-3 rounded-xl text-xs sm:text-sm transition-all whitespace-nowrap shadow-md shadow-blue-600/25 active:scale-95"
                 >
-                  {isActivatingKey ? 'Memeriksa...' : 'Aktifkan Perangkat'}
+                  {isActivatingKey ? 'Memeriksa...' : '🚀 Aktifkan Kasir'}
                 </button>
               </div>
               {activationNotice && (
-                <div className={`p-3 rounded-xl text-xs font-semibold ${
-                  activationNotice.type === 'success' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                <div className={`p-3 rounded-xl text-xs font-bold ${
+                  activationNotice.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : 'bg-rose-50 text-rose-700 border border-rose-200'
                 }`}>
                   {activationNotice.message}
                 </div>
@@ -2249,38 +2210,86 @@ export default function POSPage() {
             </form>
           </div>
 
-          {/* Navigation & CTAs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-center">
-            <Link
-              href="/?beta=register"
-              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold p-3.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
-            >
-              <span>📝</span> Daftar Closed Beta (Gratis 7 Hari)
-            </Link>
-            <Link
-              href="/?beli=true"
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold p-3.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-900/30"
-            >
-              <span>💳</span> Beli Lisensi Resmi (Rp50.000)
-            </Link>
+          {/* Quick Demo Access Box */}
+          <div className="bg-blue-50/80 border border-blue-200 rounded-2xl p-4 sm:p-5 mb-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-center gap-3.5 text-left">
+              <div className="w-11 h-11 rounded-xl bg-white border border-blue-200 text-blue-600 flex items-center justify-center text-2xl shrink-0 shadow-2xs">
+                🎮
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-black text-slate-900">Ingin Mencoba Simulasi Kasir Tanpa Lisensi?</h3>
+                <p className="text-xs text-slate-600 mt-0.5">Buka Demo Sandbox interaktif gratis untuk mencoba menu, meja, dan cetak struk.</p>
+              </div>
+            </div>
             <button
               type="button"
               onClick={handleStartDemo}
-              className="bg-amber-900/40 hover:bg-amber-900/60 border border-amber-600/40 text-amber-200 font-bold p-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs transition-all shadow-sm active:scale-95 shrink-0"
             >
-              <span>🎮</span> Coba Demo Sandbox Kasir
+              Buka Demo Kasir →
             </button>
+          </div>
+
+          {/* Guarantee Box: Data Never Held Hostage */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 mb-5 text-slate-800 shadow-2xs">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">🛡️</span>
+              <div className="flex-1">
+                <h3 className="text-xs sm:text-sm font-black text-slate-900">Jaminan Keamanan: Data Usaha Anda 100% Milik Anda</h3>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Semua data menu, riwayat transaksi, dan rekap shift kasir tersimpan utuh di perangkat Anda. Anda dapat mengunduh cadangan data kapan saja.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleExportBackupFromPos}
+                    className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-bold px-4 py-2 rounded-xl text-xs transition-colors"
+                  >
+                    <span>📥</span> Unduh Cadangan Data (.JSON)
+                  </button>
+                  {backupSuccessNotice && (
+                    <span className="text-xs text-emerald-700 font-bold">{backupSuccessNotice}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Compact 4-Grid Navigation & CTAs */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+            <Link
+              href="/?beli=true"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-black p-3 rounded-xl text-xs transition-colors flex flex-col items-center justify-center gap-1 shadow-xs"
+            >
+              <span className="text-base">💳</span>
+              <span>Beli Lisensi Rp50rb</span>
+            </Link>
+            <Link
+              href="/?beta=register"
+              className="bg-white hover:bg-blue-50 border border-slate-200 text-slate-800 font-bold p-3 rounded-xl text-xs transition-colors flex flex-col items-center justify-center gap-1"
+            >
+              <span className="text-base">📝</span>
+              <span>Trial 7 Hari</span>
+            </Link>
             <Link
               href="/panduan"
-              className="bg-slate-800/60 hover:bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 font-bold p-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
+              className="bg-white hover:bg-blue-50 border border-slate-200 text-slate-800 font-bold p-3 rounded-xl text-xs transition-colors flex flex-col items-center justify-center gap-1"
             >
-              <span>📖</span> Buku Panduan Penggunaan
+              <span className="text-base">📖</span>
+              <span>Buku Panduan</span>
+            </Link>
+            <Link
+              href="/tentang"
+              className="bg-white hover:bg-blue-50 border border-slate-200 text-slate-800 font-bold p-3 rounded-xl text-xs transition-colors flex flex-col items-center justify-center gap-1"
+            >
+              <span className="text-base">🏢</span>
+              <span>Tentang Kami</span>
             </Link>
           </div>
         </div>
 
         <div className="text-center text-[11px] text-slate-500 py-3">
-          SakuNota Kasir Jalan Tanpa Internet &copy; 2026. Data bisnis Anda sepenuhnya tersimpan secara lokal.
+          SakuNota - Kasir Jalan Tanpa Internet &copy; 2026 <strong>PT Pemuda Gaya Bebas</strong>.
         </div>
       </div>
     );
@@ -3666,14 +3675,14 @@ export default function POSPage() {
         </div>
       )}
 
-      {/* Modal Pilihan Modifier & Add-on Menu (GrabFood Style Bottom Sheet) */}
+      {/* Modal Pilihan Modifier & Add-on Menu (High-Contrast Light Blue & White Bottom Sheet) */}
       {activeModItem && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
           onClick={handleCloseModifiers}
         >
           <div 
-            className=" bg-card rounded-t-3xl sm:rounded-2xl p-6 max-w-md w-full shadow-2xl border border-line relative flex flex-col max-h-[85vh] transition-transform ease-out"
+            className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl border-2 border-blue-200 relative flex flex-col max-h-[88vh] transition-transform ease-out text-slate-900"
             style={{
               transform: modSheetDragY > 0 ? `translateY(${modSheetDragY}px)` : undefined,
               touchAction: 'pan-y'
@@ -3688,26 +3697,26 @@ export default function POSPage() {
               onTouchEnd={handleModTouchEnd}
               onClick={handleCloseModifiers}
             >
-              <div className="w-14 h-1.5 bg-slate-600 rounded-full mb-1"></div>
-              <span className="text-[10px] text-muted font-semibold flex items-center gap-1">
-                <span>↓</span> Tarik ke bawah untuk batal
+              <div className="w-14 h-1.5 bg-blue-300 rounded-full mb-1"></div>
+              <span className="text-[10px] text-slate-600 font-bold flex items-center gap-1">
+                <span>↓</span> Tarik ke bawah untuk tutup
               </span>
             </div>
 
             <div 
-              className="flex justify-between items-center pb-4 border-b border-line gap-3"
+              className="flex justify-between items-center pb-4 border-b border-blue-100 gap-3"
               onTouchStart={handleModTouchStart}
               onTouchMove={handleModTouchMove}
               onTouchEnd={handleModTouchEnd}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-14 h-14 rounded-2xl bg-surface border border-line flex items-center justify-center text-3xl shrink-0 shadow-inner">
+                <div className="w-13 h-13 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-3xl shrink-0">
                   {getCategoryIcon(activeModItem.kategori, activeModItem.nama)}
                 </div>
                 <div className="min-w-0">
-                  <span className="text-[10px] font-bold tracking-widest text-accent-text uppercase block">Pilihan Menu</span>
-                  <h3 className="text-base sm:text-lg font-black text-fg leading-tight truncate">{activeModItem.nama}</h3>
-                  <p className="text-xs text-accent-text font-bold mt-0.5">
+                  <span className="text-[10px] font-extrabold tracking-widest text-blue-600 uppercase block">Pilihan Menu &amp; Varian</span>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 leading-tight truncate">{activeModItem.nama}</h3>
+                  <p className="text-xs text-blue-700 font-extrabold mt-0.5">
                     Harga Dasar: Rp {activeModItem.harga.toLocaleString('id-ID')}
                   </p>
                 </div>
@@ -3715,28 +3724,28 @@ export default function POSPage() {
               <button
                 type="button"
                 onClick={handleCloseModifiers}
-                className="w-9 h-9 rounded-full bg-line text-muted hover:text-fg flex items-center justify-center text-sm font-bold active:scale-90 transition-all shrink-0"
+                className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 flex items-center justify-center text-sm font-black active:scale-90 transition-all shrink-0"
               >
                 ✕
               </button>
             </div>
 
             {/* Daftar Kelompok Modifier */}
-            <div className="mt-4 space-y-4 max-h-[55vh] overflow-y-auto pr-1">
+            <div className="mt-4 space-y-3.5 max-h-[55vh] overflow-y-auto pr-1">
               {(activeModItem.modifiers || []).map((group: any) => {
                 const selected = selectedModOptions[group.id] || [];
                 const isSingle = group.maxSelect === 1;
 
                 return (
-                  <div key={group.id} className=" bg-surface/60 p-3.5 rounded-2xl border border-line">
+                  <div key={group.id} className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
                     <div className="flex justify-between items-center mb-2.5">
-                      <span className="text-xs font-black text-fg">
+                      <span className="text-xs font-black text-slate-900">
                         {group.nama}
                       </span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-extrabold border ${
                         group.minSelect >= 1 
-                          ? ' bg-rose-950/60 text-rose-400' 
-                          : ' bg-line text-slate-300'
+                          ? 'bg-rose-50 text-rose-700 border-rose-200' 
+                          : 'bg-blue-50 text-blue-700 border-blue-200'
                       }`}>
                         {group.minSelect >= 1 ? (isSingle ? 'Wajib (Pilih 1)' : `Wajib (Min ${group.minSelect})`) : 'Opsional'}
                       </span>
@@ -3751,14 +3760,14 @@ export default function POSPage() {
                               key={opt.id}
                               type="button"
                               onClick={() => toggleModOption(group, opt)}
-                              className={`p-2.5 rounded-xl border text-center transition-all ${
+                              className={`p-2.5 rounded-xl border-2 text-center transition-all ${
                                 isChecked
-                                  ? 'bg-accent border-accent text-white font-bold shadow-md shadow-accent/20'
-                                  : 'bg-card border-line text-slate-300 hover:border-slate-500'
+                                  ? 'bg-blue-600 border-blue-600 text-white font-black shadow-sm'
+                                  : 'bg-white border-slate-200 text-slate-800 hover:border-blue-400 font-bold'
                               }`}
                             >
-                              <div className="text-xs font-bold leading-tight">{opt.nama}</div>
-                              <div className={`text-[10px] mt-0.5 ${isChecked ? 'text-blue-100 font-extrabold' : 'text-accent-text font-bold'}`}>
+                              <div className="text-xs font-extrabold leading-tight">{opt.nama}</div>
+                              <div className={`text-[10px] mt-0.5 ${isChecked ? 'text-blue-100 font-extrabold' : 'text-blue-600 font-bold'}`}>
                                 {opt.harga > 0 ? `+Rp ${opt.harga.toLocaleString('id-ID')}` : 'Gratis'}
                               </div>
                             </button>
@@ -3774,26 +3783,26 @@ export default function POSPage() {
                               key={opt.id}
                               type="button"
                               onClick={() => toggleModOption(group, opt)}
-                              className={`w-full p-2.5 rounded-xl border text-left flex justify-between items-center transition-all ${
+                              className={`w-full p-2.5 rounded-xl border-2 text-left flex justify-between items-center transition-all ${
                                 isChecked
-                                  ? 'bg-accent/20 border-accent text-accent-text font-bold shadow-sm'
-                                  : 'bg-card border-line text-slate-300 hover:border-slate-500'
+                                  ? 'bg-blue-50 border-blue-600 text-blue-900 font-extrabold shadow-2xs'
+                                  : 'bg-white border-slate-200 text-slate-800 hover:border-blue-400 font-semibold'
                               }`}
                             >
                               <div className="flex items-center gap-2.5">
                                 <span className={`w-4 h-4 rounded-md border flex items-center justify-center text-[10px] ${
-                                  isChecked ? 'bg-accent border-accent text-white font-black' : 'border-line'
+                                  isChecked ? 'bg-blue-600 border-blue-600 text-white font-black' : 'border-slate-300 bg-white'
                                 }`}>
                                   {isChecked ? '✓' : ''}
                                 </span>
-                                <span className="text-xs font-medium text-fg">{opt.nama}</span>
+                                <span className="text-xs font-bold text-slate-900">{opt.nama}</span>
                               </div>
                               {opt.harga > 0 ? (
-                                <span className="text-xs font-bold text-accent-text">
+                                <span className="text-xs font-black text-blue-600">
                                   +Rp {opt.harga.toLocaleString('id-ID')}
                                 </span>
                               ) : (
-                                <span className="text-[10px] text-muted">Gratis</span>
+                                <span className="text-[10px] font-bold text-slate-500">Gratis</span>
                               )}
                             </button>
                           );
@@ -3805,8 +3814,8 @@ export default function POSPage() {
               })}
 
               {/* Catatan Khusus Dapur */}
-              <div className="bg-surface/80 p-3.5 rounded-2xl border border-line">
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                <label className="block text-xs font-extrabold text-slate-800 mb-1.5">
                   Catatan Khusus untuk Dapur (Opsional):
                 </label>
                 <input
@@ -3817,16 +3826,16 @@ export default function POSPage() {
                     setModItemNotes(e.target.value);
                   }}
                   placeholder="Contoh: jangan terlalu pedas, es dipisah..."
-                  className="w-full bg-card border border-line rounded-xl p-2.5 text-xs text-fg focus:border-accent outline-none"
+                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 outline-none"
                 />
               </div>
             </div>
 
             {/* Bottom Bar Total & Action */}
-            <div className="mt-4 pt-3 border-t border-line flex items-center justify-between gap-3">
+            <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between gap-3">
               <div>
-                <span className="text-[10px] text-muted block font-semibold">Subtotal Item</span>
-                <span className="text-base font-black text-accent-text">
+                <span className="text-[10px] text-slate-600 block font-bold uppercase">Subtotal Item</span>
+                <span className="text-base font-black text-blue-600">
                   Rp {(
                     activeModItem.harga +
                     Object.values(selectedModOptions).flat().reduce((sum: number, opt: any) => sum + (opt.harga || 0), 0)
@@ -3837,14 +3846,14 @@ export default function POSPage() {
                 <button
                   type="button"
                   onClick={handleCloseModifiers}
-                  className="px-4 py-2.5 bg-line text-fg rounded-xl text-xs font-bold transition-colors"
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-extrabold transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmModifiers}
-                  className="px-5 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-black shadow-md transition-transform active:scale-95"
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-md shadow-blue-600/20 transition-transform active:scale-95"
                 >
                   + Tambahkan
                 </button>

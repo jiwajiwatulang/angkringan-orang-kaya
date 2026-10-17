@@ -1,34 +1,25 @@
 @import "tailwindcss";
 
-/* Custom dark variant selector for Tailwind v4 */
-@custom-variant dark (&:where(.dark, .dark *));
+/* Custom dark variant selector for Tailwind v4 - forced to light mode */
+@custom-variant dark (&:where(.dark-disabled-never-match));
 
-:root {
-  --app-bg: #F8FAFC;             /* Light: clean slate-50 background */
+:root,
+html,
+html.light,
+html.dark,
+:root.dark {
+  --app-bg: #F8FAFC;             /* Light: clean slate-50 / soft ice-blue background */
   --surface-bg: #FFFFFF;         /* Light: pure white surface/sidebar/header */
   --card-bg: #FFFFFF;            /* Light: pure white cards */
-  --line-color: #E2E8F0;         /* Light: slate-200 border */
-  --fg-color: #0F172A;           /* Light: slate-900 crisp text */
-  --muted-color: #64748B;        /* Light: slate-500 secondary text */
+  --line-color: #DBEAFE;         /* Light Blue-100 / Slate-200 crisp border */
+  --fg-color: #0F172A;           /* Light: slate-900 crisp dark text */
+  --muted-color: #475569;        /* Light: slate-600 high-visibility secondary text */
   --accent-text-color: #2563EB;  /* Light: royal blue text (accessible) */
   color-scheme: light;
 }
 
-html.dark,
-:root.dark {
-  --app-bg: #0B0F17;             /* Dark Blue Pro main background */
-  --surface-bg: #111827;         /* Dark Blue Pro sidebar, header, primary surfaces */
-  --card-bg: #1E293B;            /* Dark Blue Pro cards & elevated elements */
-  --line-color: #334155;         /* Dark Blue Pro standard border */
-  --fg-color: #F8FAFC;           /* Dark Blue Pro primary text */
-  --muted-color: #94A3B8;        /* Dark Blue Pro secondary text */
-  --accent-text-color: #60A5FA;  /* Dark Blue Pro accent text */
-  color-scheme: dark;
-}
-
 /*
- * SakuNota theme design tokens - single source of truth.
- * Supports dynamic Light and Dark mode switching via CSS variables.
+ * SakuNota theme design tokens - single source of truth (100% Light & Light Blue Mode).
  */
 @theme {
   --color-app: var(--app-bg);
@@ -36,13 +27,13 @@ html.dark,
   --color-card: var(--card-bg);
   --color-line: var(--line-color);
   --color-accent: #2563EB;
-  --color-accent-hover: #3B82F6;
+  --color-accent-hover: #1D4ED8;
   --color-accent-text: var(--accent-text-color);
   --color-fg: var(--fg-color);
   --color-muted: var(--muted-color);
-  --color-success: #22C55E;
-  --color-warning: #F59E0B;
-  --color-danger: #EF4444;
+  --color-success: #16A34A;
+  --color-warning: #D97706;
+  --color-danger: #DC2626;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -61,43 +52,50 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* High-contrast safeguard: ensure any legacy dark-mode pale text classes remain crisp & readable in Light Mode */
+.text-slate-300 {
+  color: #334155 !important; /* slate-700 */
+}
+.text-slate-200 {
+  color: #1E293B !important; /* slate-800 */
+}
+.text-slate-400 {
+  color: #475569 !important; /* slate-600 */
+}
+
 /* Consistent keyboard focus indicator across every interactive element */
 :where(button, a, input, select, textarea, [role="button"], [tabindex]):focus-visible {
   outline: 2px solid var(--color-accent-hover);
   outline-offset: 2px;
 }
 
-/* Native form controls & scrollbars adapt to light/dark surface */
+/* Native form controls & scrollbars forced to light surface */
 input,
 select,
 textarea {
   color-scheme: light;
 }
-.dark input,
-.dark select,
-.dark textarea {
-  color-scheme: dark;
-}
 
 input::placeholder,
 textarea::placeholder {
-  color: #94A3B8;
-}
-.dark input::placeholder,
-.dark textarea::placeholder {
   color: #64748B;
 }
 
 * {
-  scrollbar-color: #CBD5E1 transparent;
+  scrollbar-color: #93C5FD transparent;
 }
-.dark * {
-  scrollbar-color: #334155 transparent;
+
+/* Hide scrollbar for clean compact horizontal elements when needed */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /*
- * Print safety: printers ignore dark backgrounds, so force black-on-white for any printed view
- * (receipts, Z-Report, reprints, printer test) regardless of the on-screen theme.
+ * Print safety: printers ignore backgrounds, force black-on-white for any printed view
  */
 @media print {
   html,
@@ -130,7 +128,7 @@ textarea::placeholder {
   animation-play-state: paused;
 }
 
-/* Anti-Gravity Zero-G Floating Animations */
+/* Zero-G Floating Animations for Hero Galaxy */
 @keyframes float-antigravity-1 {
   0%, 100% {
     transform: translateY(0px) rotate(0deg);

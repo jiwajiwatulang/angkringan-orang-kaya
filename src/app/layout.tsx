@@ -20,8 +20,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "SakuNota - Kasir Jalan Tanpa Internet",
-  description: "Aplikasi kasir offline pintar untuk usaha kuliner (kafe, restoran, angkringan, warung makan, kedai kopi). Catat pesanan, kelola meja, cetak struk Bluetooth fisik, dan pantau omzet tanpa kuota internet.",
+  title: "SakuNota - Kasir Jalan Tanpa Internet | PT Pemuda Gaya Bebas",
+  description: "Aplikasi kasir offline pintar di bawah naungan PT Pemuda Gaya Bebas untuk usaha kuliner (kafe, restoran, angkringan, warung makan, kedai kopi). Catat pesanan, kelola meja, cetak struk Bluetooth fisik, dan pantau omzet tanpa kuota internet.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -51,7 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('sakunota_theme')||localStorage.getItem('theme');if(t==='dark'){document.documentElement.classList.add('dark');document.documentElement.classList.remove('light');document.documentElement.style.colorScheme='dark';}else{document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');document.documentElement.style.colorScheme='light';}}catch(e){}})()`,
+            __html: `(function(){try{localStorage.setItem('sakunota_theme','light');localStorage.setItem('theme','light');document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');document.documentElement.style.colorScheme='light';}catch(e){}})()`,
           }}
         />
       </head>

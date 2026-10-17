@@ -381,8 +381,8 @@ export default function AntiGravityGalaxy() {
               ⚡
             </div>
             <div className="text-left">
-              <span className="text-[11px] font-black text-slate-800 block">Zero-G Latency: 0s</span>
-              <span className="text-[10px] text-slate-500 font-medium">0% Komisi • 100% Milik Anda</span>
+              <span className="text-[11px] font-black text-slate-800 block">Tanpa Biaya Bulanan</span>
+              <span className="text-[10px] text-slate-600 font-medium">0% Komisi • 100% Milik Anda</span>
             </div>
           </div>
         </div>

@@ -24,36 +24,43 @@ export default function MobileMoreScreen({
   onOpenOnboarding,
 }: MobileMoreScreenProps) {
   return (
-    <div className="flex-1 overflow-y-auto p-4 pb-28 space-y-4 select-none">
+    <div className="flex-1 overflow-y-auto p-3.5 pb-28 space-y-3.5 select-none bg-slate-50 text-slate-900">
       {/* 1. Header */}
-      <div>
-        <h2 className="text-lg font-black text-fg">
-          Lainnya & Pengaturan
-        </h2>
-        <p className="text-xs text-muted">
-          Kelola shift kasir, menu, printer, dan konfigurasi toko.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-black text-slate-900">
+            Menu Lainnya &amp; Pengaturan
+          </h2>
+          <p className="text-[11px] text-slate-600">
+            Kelola shift kasir, menu, printer, dan konfigurasi toko.
+          </p>
+        </div>
+        <span className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-[10px] font-extrabold text-blue-700">
+          PT Pemuda Gaya Bebas
+        </span>
       </div>
 
       {/* 2. Shift Management Card */}
-      <div className="bg-card border border-line rounded-3xl p-4 shadow-sm space-y-3">
+      <div className="bg-white border border-blue-100 rounded-2xl p-3.5 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xl">💼</span>
             <div>
-              <h3 className="text-xs font-black text-fg uppercase tracking-wider">
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
                 Shift Kasir
               </h3>
-              <span className="text-[11px] text-muted block">
-                {activeShift ? `Operator: ${activeShift.operatorName}` : "Belum ada shift terbuka"}
+              <span className="text-[11px] text-slate-600 block">
+                {activeShift
+                  ? `Operator: ${activeShift.operatorName}`
+                  : "Belum ada shift terbuka"}
               </span>
             </div>
           </div>
           <span
-            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+            className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
               activeShift
                 ? "bg-blue-50 text-blue-700 border border-blue-200"
-                : "bg-line text-muted"
+                : "bg-slate-100 text-slate-600 border border-slate-200"
             }`}
           >
             {activeShift ? "Shift Aktif" : "Shift Tutup"}
@@ -61,28 +68,33 @@ export default function MobileMoreScreen({
         </div>
 
         {activeShift && (
-          <div className="bg-surface rounded-2xl p-3 border border-line flex items-center justify-between">
-            <span className="text-xs text-muted">Kas di Laci:</span>
-            <span className="text-sm font-black text-accent-text">
-              Rp {(currentShiftStats?.expectedCash || activeShift?.startingCash || 0).toLocaleString("id-ID")}
+          <div className="bg-blue-50/60 rounded-xl p-2.5 border border-blue-200 flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-700">Kas di Laci:</span>
+            <span className="text-sm font-black text-blue-700">
+              Rp{" "}
+              {(
+                currentShiftStats?.expectedCash ||
+                activeShift?.startingCash ||
+                0
+              ).toLocaleString("id-ID")}
             </span>
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-2 pt-1">
+        <div className="grid grid-cols-2 gap-2">
           {activeShift ? (
             <>
               <button
                 type="button"
                 onClick={onOpenCashMovement}
-                className="py-2.5 bg-surface hover:bg-line border border-line text-xs font-bold text-fg rounded-xl active:scale-95 transition-all text-center"
+                className="py-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-xs font-extrabold text-blue-800 rounded-xl active:scale-95 transition-all text-center"
               >
                 💵 +/- Kas Fisik
               </button>
               <button
                 type="button"
                 onClick={onOpenCloseShiftModal}
-                className="py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl active:scale-95 transition-all text-center shadow-sm"
+                className="py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold rounded-xl active:scale-95 transition-all text-center shadow-xs"
               >
                 🔒 Tutup Shift
               </button>
@@ -91,7 +103,7 @@ export default function MobileMoreScreen({
             <button
               type="button"
               onClick={onOpenShiftModal}
-              className="col-span-2 py-3 bg-accent hover:bg-accent-hover text-white text-xs font-black rounded-xl active:scale-95 transition-all shadow-md shadow-accent/20"
+              className="col-span-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl active:scale-95 transition-all shadow-sm"
             >
               💼 Buka Shift Baru Sekarang
             </button>
@@ -99,116 +111,119 @@ export default function MobileMoreScreen({
         </div>
       </div>
 
-      {/* 3. Navigation Shortcuts */}
-      <div className="bg-card border border-line rounded-3xl overflow-hidden shadow-sm divide-y divide-line/40">
-        <Link
-          href="/admin"
-          className="p-3.5 flex items-center justify-between hover:bg-surface/50 active:bg-surface transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-xl">📊</span>
-            <div>
-              <h4 className="text-xs font-bold text-fg">Dashboard Admin</h4>
-              <p className="text-[10px] text-muted">Laporan omzet, produk terlaris, dan analitik</p>
-            </div>
-          </div>
-          <span className="text-muted text-xs">→</span>
-        </Link>
+      {/* 3. Compact 4-Grid Navigation Shortcuts (Tidak Memanjang ke Bawah) */}
+      <div>
+        <span className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider px-1 block mb-2">
+          Menu Pengaturan &amp; Backoffice (4 Grid Ringkas):
+        </span>
+        <div className="grid grid-cols-4 gap-2">
+          <Link
+            href="/admin"
+            className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
+          >
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg">
+              📊
+            </span>
+            <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
+              Laporan Omzet
+            </span>
+          </Link>
 
-        <Link
-          href="/admin/menu"
-          className="p-3.5 flex items-center justify-between hover:bg-surface/50 active:bg-surface transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-xl">🍽️</span>
-            <div>
-              <h4 className="text-xs font-bold text-fg">Kelola Menu & Varian</h4>
-              <p className="text-[10px] text-muted">Tambah item, ubah harga, toggle stok habis</p>
-            </div>
-          </div>
-          <span className="text-muted text-xs">→</span>
-        </Link>
+          <Link
+            href="/admin/menu"
+            className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
+          >
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg">
+              🍽️
+            </span>
+            <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
+              Kelola Menu
+            </span>
+          </Link>
 
-        <Link
-          href="/admin/pengaturan/printer"
-          className="p-3.5 flex items-center justify-between hover:bg-surface/50 active:bg-surface transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-xl">🖨️</span>
-            <div>
-              <h4 className="text-xs font-bold text-fg">Printer Thermal Bluetooth</h4>
-              <p className="text-[10px] text-muted">Hubungkan printer kasir 58mm / 80mm</p>
-            </div>
-          </div>
-          <span className="text-muted text-xs">→</span>
-        </Link>
+          <Link
+            href="/admin/pengaturan/printer"
+            className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
+          >
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg">
+              🖨️
+            </span>
+            <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
+              Printer Struk
+            </span>
+          </Link>
 
-        <Link
-          href="/admin/pengaturan/data"
-          className="p-3.5 flex items-center justify-between hover:bg-surface/50 active:bg-surface transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-xl">💾</span>
-            <div>
-              <h4 className="text-xs font-bold text-fg">Data & Cadangan</h4>
-              <p className="text-[10px] text-muted">Simpan data usaha atau pindah ke HP baru</p>
-            </div>
-          </div>
-          <span className="text-muted text-xs">→</span>
-        </Link>
+          <Link
+            href="/admin/pengaturan/data"
+            className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
+          >
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg">
+              💾
+            </span>
+            <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
+              Backup Data
+            </span>
+          </Link>
 
-        <Link
-          href="/admin/pengaturan"
-          className="p-3.5 flex items-center justify-between hover:bg-surface/50 active:bg-surface transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-xl">⚙️</span>
-            <div>
-              <h4 className="text-xs font-bold text-fg">Pengaturan Toko & Pajak</h4>
-              <p className="text-[10px] text-muted">Nama toko, alamat, footer struk, persentase pajak</p>
-            </div>
-          </div>
-          <span className="text-muted text-xs">→</span>
-        </Link>
+          <Link
+            href="/admin/pengaturan"
+            className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
+          >
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg">
+              ⚙️
+            </span>
+            <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
+              Info Toko
+            </span>
+          </Link>
 
-        <Link
-          href="/panduan"
-          className="p-3.5 flex items-center justify-between hover:bg-surface/50 active:bg-surface transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-xl">📖</span>
-            <div>
-              <h4 className="text-xs font-bold text-fg">Buku Panduan</h4>
-              <p className="text-[10px] text-muted">Panduan lengkap cara pakai kasir, printer, dan laporan</p>
-            </div>
-          </div>
-          <span className="text-muted text-xs">→</span>
-        </Link>
+          <Link
+            href="/panduan"
+            className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
+          >
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg">
+              📖
+            </span>
+            <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
+              Buku Panduan
+            </span>
+          </Link>
 
-        <Link
-          href="/admin/pengaturan/tentang"
-          className="p-3.5 flex items-center justify-between hover:bg-surface/50 active:bg-surface transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-xl">ℹ️</span>
-            <div>
-              <h4 className="text-xs font-bold text-fg">Tentang SakuNota</h4>
-              <p className="text-[10px] text-muted">Status lisensi, informasi aplikasi, dan bantuan WhatsApp</p>
-            </div>
-          </div>
-          <span className="text-muted text-xs">→</span>
-        </Link>
+          <Link
+            href="/admin/pengaturan/tentang"
+            className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
+          >
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg">
+              🔑
+            </span>
+            <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
+              Status Lisensi
+            </span>
+          </Link>
+
+          <Link
+            href="/tentang"
+            className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
+          >
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg">
+              🏢
+            </span>
+            <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
+              Tentang Kami
+            </span>
+          </Link>
+        </div>
       </div>
 
       {/* 4. Help & Wizard */}
-      <div className="pt-2">
+      <div>
         <button
           type="button"
           onClick={onOpenOnboarding}
-          className="w-full py-3 rounded-2xl bg-surface border border-line text-xs font-bold text-muted hover:text-fg hover:border-slate-500 active:scale-95 transition-all text-center flex items-center justify-center gap-2"
+          className="w-full py-2.5 rounded-2xl bg-blue-50 border border-blue-200 text-xs font-extrabold text-blue-700 hover:bg-blue-100 active:scale-95 transition-all text-center flex items-center justify-center gap-2"
         >
           <span>✨</span>
-          <span>Panduan Penggunaan Awal (Onboarding)</span>
+          <span>Buka Panduan Persiapan Awal Toko</span>
         </button>
       </div>
     </div>

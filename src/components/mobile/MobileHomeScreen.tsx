@@ -216,49 +216,41 @@ export default function MobileHomeScreen({
         </div>
       </div>
 
-      {/* 5. Menu Terlaris (1-Tap Direct Add) */}
+      {/* 5. Menu Terlaris (Compact 4-Grid 1-Tap Direct Add) */}
       <div>
         <div className="flex items-center justify-between px-1 mb-2">
-          <span className="text-[11px] font-bold text-muted uppercase tracking-wider">
-            Menu Sering Dipesan
+          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+            Menu Sering Dipesan (4 Grid)
           </span>
           <button
             type="button"
             onClick={() => onNavigate("menu")}
-            className="text-xs font-bold text-accent-text hover:underline"
+            className="text-xs font-extrabold text-blue-600 hover:underline"
           >
             Semua Menu →
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-4 gap-2">
           {favoriteItems.map((item) => (
-            <div
+            <button
               key={item.id}
-              className="bg-card border border-line rounded-xl p-3 flex flex-col justify-between shadow-sm"
+              type="button"
+              onClick={() => onAddToCart(item)}
+              className="bg-white border border-slate-200 hover:border-blue-500 rounded-xl p-2 flex flex-col justify-between text-left shadow-2xs active:scale-95 transition-all"
             >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="min-w-0">
-                  <h4 className="font-bold text-xs text-fg leading-tight truncate" title={item.nama}>
-                    {item.nama}
-                  </h4>
-                  <span className="text-xs font-black text-accent-text mt-0.5 block">
-                    Rp {(item.harga ?? 0).toLocaleString("id-ID")}
-                  </span>
-                </div>
-                <span className="text-base shrink-0">
-                  {getCategoryIcon(item.kategori, item.nama)}
+              <div className="w-full h-10 rounded-lg bg-blue-50/70 border border-blue-100 flex items-center justify-center text-lg mb-1.5">
+                {getCategoryIcon(item.kategori, item.nama)}
+              </div>
+              <div className="w-full">
+                <h4 className="font-extrabold text-[10px] text-slate-900 leading-tight line-clamp-2" title={item.nama}>
+                  {item.nama}
+                </h4>
+                <span className="text-[10px] font-black text-blue-600 mt-1 block truncate">
+                  Rp {((item.harga ?? 0) / 1000).toFixed(0)}rb
                 </span>
               </div>
-
-              <button
-                type="button"
-                onClick={() => onAddToCart(item)}
-                className="w-full py-1.5 bg-surface hover:bg-line border border-line text-accent-text font-bold text-xs rounded-lg active:scale-95 transition-all flex items-center justify-center gap-1"
-              >
-                <span>+ Tambah</span>
-              </button>
-            </div>
+            </button>
           ))}
         </div>
       </div>

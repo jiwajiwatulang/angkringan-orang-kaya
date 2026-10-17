@@ -73,6 +73,7 @@ export default function SakuNotaLandingPage() {
     { id: "p1", name: "Kopi Susu Gula Aren", price: 12000, cat: "Minuman" },
     { id: "p2", name: "Es Teh Manis", price: 4000, cat: "Minuman" },
     { id: "p3", name: "Nasi Goreng Spesial", price: 18000, cat: "Makanan" },
+    { id: "p4", name: "Sate Taichan Crispy", price: 15000, cat: "Camilan" },
   ];
   const [demoCart, setDemoCart] = useState<{ [id: string]: number }>({ p1: 1, p2: 2 });
   const [showDemoReceipt, setShowDemoReceipt] = useState(false);
@@ -117,8 +118,15 @@ export default function SakuNotaLandingPage() {
   const [activateMsg, setActivateMsg] = useState("");
   const [isActivatedHere, setIsActivatedHere] = useState(false);
 
-  // Check Order / License Status State
+  // Check Order / Direct License Activation State
   const [isCheckStatusModalOpen, setIsCheckStatusModalOpen] = useState(false);
+  const [statusModalTab, setStatusModalTab] = useState<"direct_license" | "order_lookup">("direct_license");
+  const [directLicenseInput, setDirectLicenseInput] = useState("");
+  const [directDeviceName, setDirectDeviceName] = useState("");
+  const [isActivatingDirect, setIsActivatingDirect] = useState(false);
+  const [directActivateSuccess, setDirectActivateSuccess] = useState<string | null>(null);
+  const [directActivateError, setDirectActivateError] = useState("");
+
   const [searchOrderId, setSearchOrderId] = useState("");
   const [searchAccessCode, setSearchAccessCode] = useState("");
   const [searchResult, setSearchResult] = useState<CustomerOrder | null>(null);
@@ -171,6 +179,9 @@ export default function SakuNotaLandingPage() {
         setIsBetaModalOpen(true);
       } else if (params.get("beli") === "true") {
         setIsBuyModalOpen(true);
+      } else if (params.get("aktivasi") === "true") {
+        setStatusModalTab("direct_license");
+        setIsCheckStatusModalOpen(true);
       }
 
       const paymentStatus = params.get("payment");
@@ -179,6 +190,7 @@ export default function SakuNotaLandingPage() {
       if (paymentStatus === "finish" && ordId && code) {
         setSearchOrderId(ordId);
         setSearchAccessCode(code);
+        setStatusModalTab("order_lookup");
         setIsCheckStatusModalOpen(true);
         setIsSearchingOrder(true);
         checkOrderStatusServer(ordId, code).then((res) => {
@@ -204,6 +216,42 @@ export default function SakuNotaLandingPage() {
     setFormError("");
     setTransferProofFileName("");
     setSnapError("");
+  };
+
+  const handleOpenLicenseModal = (tab: "direct_license" | "order_lookup" = "direct_license") => {
+    setStatusModalTab(tab);
+    setDirectActivateError("");
+    setDirectActivateSuccess(null);
+    setSearchError("");
+    setIsCheckStatusModalOpen(true);
+  };
+
+  const handleDirectActivateLicense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDirectActivateError("");
+    setDirectActivateSuccess(null);
+
+    const key = directLicenseInput.trim().toUpperCase();
+    if (!key) {
+      setDirectActivateError("Mohon masukkan Kode Lisensi SakuNota atau Lisensi Tester Anda.");
+      return;
+    }
+
+    setIsActivatingDirect(true);
+    try {
+      const res = await activateLicenseServer(key, directDeviceName.trim() || "Perangkat Kasir Utama");
+      if (res.success) {
+        setDirectActivateSuccess(
+          `Lisensi berhasil diaktifkan untuk "${res.businessName || "Toko Anda"}"! Kasir sekarang siap digunakan 100% offline.`
+        );
+      } else {
+        setDirectActivateError(res.error || "Kode lisensi tidak ditemukan atau sudah terikat di perangkat lain.");
+      }
+    } catch (err: any) {
+      setDirectActivateError("Gagal menghubungi server: " + (err.message || err));
+    } finally {
+      setIsActivatingDirect(false);
+    }
   };
 
   const handleProceedToPayment = async (e: React.FormEvent) => {
@@ -335,11 +383,37 @@ export default function SakuNotaLandingPage() {
     setSearchResult(null);
     setSearchError("");
 
-    const ordId = searchOrderId.trim();
-    const code = searchAccessCode.trim();
+    const ordId = searchOrderId.trim().toUpperCase();
+    const code = searchAccessCode.trim().toUpperCase();
 
     if (!ordId) {
-      setSearchError("Mohon masukkan Nomor Pesanan.");
+      setSearchError("Mohon masukkan Nomor Pesanan atau Kode Lisensi.");
+      return;
+    }
+
+    // Jika pengguna memasukkan Kode Lisensi langsung (misal SN-TEST-XXXX atau SN-XXXX-XXXX-XXXX) tanpa Nomor Pesanan
+    if (
+      ordId.startsWith("SN-TEST-") ||
+      ordId.startsWith("SN-TRIAL-") ||
+      (!ordId.startsWith("SN-202") && ordId.startsWith("SN-") && !code)
+    ) {
+      setDirectLicenseInput(ordId);
+      setStatusModalTab("direct_license");
+      setIsActivatingDirect(true);
+      try {
+        const actRes = await activateLicenseServer(ordId, "Perangkat Kasir Utama");
+        if (actRes.success) {
+          setDirectActivateSuccess(
+            `Lisensi "${ordId}" berhasil diaktifkan untuk "${actRes.businessName || "Toko Anda"}"! Silakan langsung buka kasir.`
+          );
+        } else {
+          setDirectActivateError(actRes.error || "Kode lisensi tidak valid atau sudah terpakai.");
+        }
+      } catch (err: any) {
+        setDirectActivateError("Koneksi gagal: " + (err.message || err));
+      } finally {
+        setIsActivatingDirect(false);
+      }
       return;
     }
 
@@ -375,7 +449,7 @@ export default function SakuNotaLandingPage() {
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white antialiased">
       
       {/* 1. Header / Navbar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-8 py-3.5 transition-all shadow-sm">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-blue-100 px-4 sm:px-8 py-3.5 transition-all shadow-xs">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           {/* Logo & Brand */}
           <Link href="/" className="flex items-center gap-3 group">
@@ -386,22 +460,31 @@ export default function SakuNotaLandingPage() {
               <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none">
                 SakuNota
               </span>
-              <span className="text-[10px] text-slate-500 font-semibold tracking-wider uppercase mt-0.5">
+              <span className="text-[10px] text-blue-600 font-bold tracking-wider uppercase mt-0.5">
                 Kasir Jalan Tanpa Internet
               </span>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-7 text-xs font-semibold text-slate-600">
+          <nav className="hidden md:flex items-center gap-6 text-xs font-bold text-slate-700">
             <a href="#fitur" className="hover:text-blue-600 transition-colors">Fitur</a>
             <a href="#jenis-usaha" className="hover:text-blue-600 transition-colors">Jenis Usaha</a>
             <a href="#harga" className="hover:text-blue-600 transition-colors">Harga</a>
             <Link href="/panduan" className="hover:text-blue-600 transition-colors">Panduan</Link>
+            <Link href="/tentang" className="hover:text-blue-600 transition-colors">Tentang Kami</Link>
           </nav>
 
-          {/* Action CTAs & Controls (Tanpa Toggle) */}
-          <div className="hidden sm:flex items-center gap-3">
+          {/* Action CTAs & Controls (Light Mode Only - No Dark Toggle) */}
+          <div className="hidden sm:flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => handleOpenLicenseModal("direct_license")}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all border border-blue-200 flex items-center gap-1.5"
+            >
+              <span>🔑</span>
+              <span>Aktivasi Lisensi</span>
+            </button>
             <Link
               href="/pos?demo=true"
               onClick={() => {
@@ -420,97 +503,138 @@ export default function SakuNotaLandingPage() {
             </button>
           </div>
 
-          {/* Mobile Hamburger Toggle */}
+          {/* Mobile Hamburger Button (High Contrast Light Blue) */}
           <div className="flex items-center gap-2 sm:hidden">
             <button
               type="button"
+              onClick={() => handleOpenLicenseModal("direct_license")}
+              className="px-2.5 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-extrabold text-[11px] flex items-center gap-1 shadow-xs active:scale-95"
+            >
+              <span>🔑</span>
+              <span>Aktivasi</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-blue-600 text-xs"
+              className="px-3 py-2 rounded-xl bg-blue-600 text-white font-black text-xs flex items-center gap-1.5 shadow-sm shadow-blue-600/25 active:scale-95"
               aria-label="Toggle menu"
             >
-              {mobileMenuOpen ? "✕" : "☰"}
+              <span>Menu</span>
+              <span>{mobileMenuOpen ? "✕" : "☰"}</span>
             </button>
           </div>
         </div>
 
-        {/* Mobile Modal Menu (Matching Image 2) */}
+        {/* Mobile Modal Menu (High Contrast Light Blue & Compact 4-Grid) */}
         {mobileMenuOpen && (
           <div 
             onClick={() => setMobileMenuOpen(false)}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm sm:hidden cursor-pointer animate-in fade-in duration-150"
+            className="fixed inset-0 z-50 flex items-start justify-center pt-16 p-4 bg-slate-900/50 backdrop-blur-xs sm:hidden cursor-pointer animate-in fade-in duration-150"
           >
             <div 
               onClick={(e) => e.stopPropagation()}
-              className="bg-white border border-slate-200 rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl cursor-default animate-in zoom-in-95 duration-150"
+              className="bg-white border-2 border-blue-200 rounded-3xl w-full max-w-sm p-5 space-y-4 shadow-2xl cursor-default animate-in zoom-in-95 duration-150"
             >
               {/* Header inside popup */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center justify-between pb-3 border-b border-blue-100">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-md shadow-blue-600/30">
                     SN
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none">
+                    <span className="font-black text-base tracking-tight text-slate-900 leading-none">
                       SakuNota
                     </span>
-                    <span className="text-[9px] text-slate-500 font-bold tracking-wider uppercase mt-1">
-                      KASIR JALAN TANPA INTERNET
+                    <span className="text-[10px] text-blue-600 font-bold tracking-wider uppercase mt-1">
+                      PT Pemuda Gaya Bebas
                     </span>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-800 text-xs font-bold flex items-center justify-center transition-colors"
+                  className="w-8 h-8 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-black flex items-center justify-center transition-colors"
                   aria-label="Tutup Menu"
                 >
                   ✕
                 </button>
               </div>
 
-              {/* 2x2 Grid Nav Links */}
-              <div className="grid grid-cols-2 gap-2.5 text-xs font-bold">
-                <a 
-                  href="#fitur" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="py-3 px-3 rounded-2xl bg-white border border-slate-200 text-slate-800 text-center hover:border-blue-600 hover:text-blue-600 transition-all shadow-xs active:scale-95"
-                >
-                  Fitur
-                </a>
-                <a 
-                  href="#jenis-usaha" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="py-3 px-3 rounded-2xl bg-white border border-slate-200 text-slate-800 text-center hover:border-blue-600 hover:text-blue-600 transition-all shadow-xs active:scale-95"
-                >
-                  Jenis Usaha
-                </a>
-                <a 
-                  href="#harga" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="py-3 px-3 rounded-2xl bg-white border border-slate-200 text-slate-800 text-center hover:border-blue-600 hover:text-blue-600 transition-all shadow-xs active:scale-95"
-                >
-                  Harga
-                </a>
-                <Link 
-                  href="/panduan" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="py-3 px-3 rounded-2xl bg-white border border-slate-200 text-slate-800 text-center hover:border-blue-600 hover:text-blue-600 transition-all shadow-xs active:scale-95"
-                >
-                  Panduan
-                </Link>
+              {/* Compact 4-Grid Nav Links */}
+              <div>
+                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-2">
+                  Menu Navigasi Cepat:
+                </span>
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <a 
+                    href="#fitur" 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
+                  >
+                    <span className="text-base">⚡</span>
+                    <span className="text-[11px] font-extrabold">Fitur</span>
+                  </a>
+                  <a 
+                    href="#jenis-usaha" 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
+                  >
+                    <span className="text-base">🏪</span>
+                    <span className="text-[11px] font-extrabold">Usaha</span>
+                  </a>
+                  <a 
+                    href="#harga" 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
+                  >
+                    <span className="text-base">🏷️</span>
+                    <span className="text-[11px] font-extrabold">Harga</span>
+                  </a>
+                  <Link 
+                    href="/panduan" 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
+                  >
+                    <span className="text-base">📖</span>
+                    <span className="text-[11px] font-extrabold">Panduan</span>
+                  </Link>
+                </div>
+
+                {/* Second Row: Tentang Kami & Aktivasi Lisensi */}
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <Link
+                    href="/tentang"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-2.5 px-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 font-extrabold text-xs flex items-center justify-center gap-1.5 hover:border-blue-500 hover:text-blue-600 transition-all"
+                  >
+                    <span>🏢</span>
+                    <span>Tentang Kami</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleOpenLicenseModal("direct_license");
+                    }}
+                    className="py-2.5 px-3 rounded-2xl bg-blue-50 border border-blue-300 text-blue-700 font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-blue-100 transition-all"
+                  >
+                    <span>🔑</span>
+                    <span>Aktivasi Lisensi</span>
+                  </button>
+                </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-col gap-2.5 pt-1">
+              <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
                 <Link
                   href="/pos?demo=true"
                   onClick={() => {
                     try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {}
                     setMobileMenuOpen(false);
                   }}
-                  className="w-full py-3 text-center rounded-2xl bg-white border border-slate-200 text-xs font-bold text-slate-800 hover:bg-slate-50 transition-all shadow-xs active:scale-95"
+                  className="w-full py-3 text-center rounded-2xl bg-slate-100 border border-slate-300 text-xs font-extrabold text-slate-900 hover:bg-slate-200 transition-all active:scale-95"
                 >
-                  Coba Kasir (Sandbox)
+                  🎮 Coba Kasir (Demo Sandbox)
                 </Link>
                 <button
                   type="button"
@@ -520,7 +644,7 @@ export default function SakuNotaLandingPage() {
                   }}
                   className="w-full py-3.5 text-center rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-600/30 transition-all active:scale-95"
                 >
-                  Beli SakuNota - Rp50.000
+                  🛒 Beli SakuNota - Rp50.000
                 </button>
               </div>
             </div>
@@ -528,21 +652,18 @@ export default function SakuNotaLandingPage() {
         )}
       </header>
 
-      {/* 2. Hero Section with Anti-Gravity Galaxy */}
-      <section className="relative pt-16 pb-20 px-4 sm:px-8 overflow-hidden bg-white min-h-[560px] flex items-center justify-center">
-        {/* Anti-Gravity Galaxy Cosmic Particle Background & Floating Badges */}
+      {/* 2. Hero Section with Galaxy Background (Without "Anti-Gravity Offline Engine" text) */}
+      <section className="relative pt-14 pb-16 px-4 sm:px-8 overflow-hidden bg-white min-h-[520px] flex items-center justify-center">
+        {/* Interactive Galaxy Background */}
         <AntiGravityGalaxy />
         
-        <div className="relative z-10 max-w-4xl mx-auto text-center space-y-7">
-          {/* Top Pill Slogan Badge with Anti-Gravity Accent */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50/90 backdrop-blur-md border border-blue-200 text-blue-700 text-xs font-bold shadow-xs hover:border-blue-400 transition-all">
+        <div className="relative z-10 max-w-4xl mx-auto text-center space-y-6">
+          {/* Top Pill Slogan Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50/95 backdrop-blur-md border border-blue-200 text-blue-700 text-xs font-extrabold shadow-xs">
             <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
             <span>Kasir Jalan Tanpa Internet</span>
-            <span className="text-slate-300">•</span>
-            <span className="text-[11px] font-extrabold text-blue-600 flex items-center gap-1">
-              <span>🌌</span>
-              <span>Anti-Gravity Offline Engine</span>
-            </span>
+            <span className="text-blue-300">•</span>
+            <span className="text-blue-800">Sekali Bayar Rp50.000</span>
           </div>
 
           {/* Main Headline */}
@@ -556,18 +677,18 @@ export default function SakuNotaLandingPage() {
           </div>
 
           {/* Description */}
-          <p className="max-w-2xl mx-auto text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
-            Catat pesanan makanan &amp; minuman, kelola meja, cetak struk Bluetooth, dan pantau omzet usaha dari satu aplikasi. Tanpa biaya bulanan.
+          <p className="max-w-2xl mx-auto text-sm sm:text-base text-slate-700 leading-relaxed font-medium">
+            Catat pesanan makanan dan minuman, kelola meja, cetak struk Bluetooth, dan pantau omzet usaha dari satu aplikasi. Tanpa biaya bulanan.
           </p>
 
           {/* Action CTAs */}
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-md mx-auto">
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-lg mx-auto">
             <Link
               href="/pos?demo=true"
               onClick={() => {
                 try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {}
               }}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 hover:text-blue-600 font-bold text-xs border border-slate-300 shadow-sm transition-all text-center flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-blue-50 text-slate-900 hover:text-blue-700 font-extrabold text-xs border-2 border-slate-300 hover:border-blue-300 shadow-xs transition-all text-center flex items-center justify-center gap-2"
             >
               <span>🎮</span>
               <span>Coba Sandbox Kasir</span>
@@ -583,15 +704,24 @@ export default function SakuNotaLandingPage() {
             </button>
           </div>
 
-          {/* Free Trial Closed Beta Secondary Link */}
-          <div className="pt-1">
+          {/* Direct License Activation & Trial Links */}
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-3 text-xs">
+            <button
+              type="button"
+              onClick={() => handleOpenLicenseModal("direct_license")}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-extrabold transition-all shadow-2xs"
+            >
+              <span>🔑</span>
+              <span>Sudah Punya Lisensi / Kode Tester? Aktifkan Langsung</span>
+              <span>→</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setIsBetaModalOpen(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-blue-600 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors"
             >
-              <span>Ingin coba di HP sendiri dulu?</span>
-              <span className="underline font-bold text-blue-600">Daftar Closed Beta (Free Trial 7 Hari)</span>
+              <span>Daftar Closed Beta (Free Trial 7 Hari)</span>
               <span>→</span>
             </button>
           </div>
@@ -599,64 +729,62 @@ export default function SakuNotaLandingPage() {
       </section>
 
       {/* 3. SakuNota POS Dashboard / Menu (Interactive Mini Demo Sandbox) */}
-      <section className="relative pb-24 px-4 sm:px-8 bg-slate-50/70">
+      <section className="relative pb-20 px-4 sm:px-8 bg-slate-50">
         <div className="max-w-4xl mx-auto">
           {/* Card Frame */}
-          <div className="rounded-3xl bg-white border border-slate-200 p-5 sm:p-8 shadow-xl shadow-slate-200/50 space-y-6">
+          <div className="rounded-3xl bg-white border border-blue-100 p-4 sm:p-8 shadow-xl shadow-blue-900/5 space-y-5">
             
             {/* Window Topbar / Headers */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-100">
+            <div className="flex items-center justify-between gap-3 pb-4 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-slate-300" />
-                  <div className="w-3 h-3 rounded-full bg-slate-300" />
-                  <div className="w-3 h-3 rounded-full bg-slate-300" />
+                  <div className="w-3 h-3 rounded-full bg-blue-200" />
+                  <div className="w-3 h-3 rounded-full bg-blue-300" />
+                  <div className="w-3 h-3 rounded-full bg-blue-500" />
                 </div>
                 <div className="h-4 w-px bg-slate-200 mx-1" />
-                <span className="text-xs font-bold text-slate-700">
-                  SakuNota Dashboard
+                <span className="text-xs font-extrabold text-slate-800">
+                  SakuNota Kasir Interaktif
                 </span>
               </div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-blue-50 border border-blue-200 text-[11px] font-bold text-blue-700 w-fit">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-50 border border-blue-200 text-[11px] font-extrabold text-blue-700">
                 <span>🍽️</span>
-                <span>Menu</span>
+                <span>Simulasi Menu</span>
               </div>
             </div>
 
             {/* Simulation Header */}
             <div className="space-y-1">
-              <h2 className="text-lg sm:text-xl font-black text-slate-900">
+              <h2 className="text-base sm:text-xl font-black text-slate-900">
                 Coba Kasir SakuNota Langsung di Sini
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500">
-                Pilih menu, tambahkan ke keranjang, dan lihat simulasi cetak struk nota fisik secara langsung.
+              <p className="text-xs text-slate-600">
+                Ketuk tombol tambah (+) pada menu di bawah dan lihat hasil cetak struk nota fisik secara langsung.
               </p>
             </div>
 
-            {/* Menu Items Grid */}
-            <div className="space-y-3">
-              <span className="text-xs font-extrabold text-slate-800 tracking-wider uppercase block">
-                Daftar Menu Pilihan:
+            {/* Menu Items Grid: Compact 2x2 on Mobile, 4-Grid on Desktop */}
+            <div className="space-y-2.5">
+              <span className="text-[11px] font-extrabold text-slate-700 tracking-wider uppercase block">
+                Daftar Menu Pilihan (4 Grid Ringkas):
               </span>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                 {sampleProducts.map((prod) => {
                   const qty = demoCart[prod.id] || 0;
                   return (
                     <div 
                       key={prod.id}
-                      className="p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-blue-300 transition-all flex flex-col justify-between gap-3"
+                      className="p-3 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-blue-400 transition-all flex flex-col justify-between gap-2.5"
                     >
                       <div>
-                        <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
-                          <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-semibold text-slate-600">
-                            {prod.cat}
-                          </span>
-                        </div>
-                        <h4 className="font-bold text-sm text-slate-900 leading-snug">
+                        <span className="inline-block px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-[10px] font-bold text-blue-700 mb-1">
+                          {prod.cat}
+                        </span>
+                        <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-snug line-clamp-2">
                           {prod.name}
                         </h4>
-                        <span className="text-xs font-extrabold text-blue-600 mt-1 block">
+                        <span className="text-xs font-black text-blue-600 mt-1 block">
                           Rp {prod.price.toLocaleString("id-ID")}
                         </span>
                       </div>
@@ -667,18 +795,18 @@ export default function SakuNotaLandingPage() {
                           type="button"
                           onClick={() => handleDemoQtyChange(prod.id, -1)}
                           disabled={qty === 0}
-                          className="w-7 h-7 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-30 text-slate-800 font-black text-xs flex items-center justify-center transition-colors"
+                          className="w-7 h-7 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-30 text-slate-900 font-black text-xs flex items-center justify-center transition-colors"
                           aria-label={`Kurang ${prod.name}`}
                         >
                           -
                         </button>
-                        <span className="text-xs font-extrabold text-slate-900">
-                          {qty} Porsi
+                        <span className="text-xs font-black text-slate-900">
+                          {qty}x
                         </span>
                         <button
                           type="button"
                           onClick={() => handleDemoQtyChange(prod.id, 1)}
-                          className="w-7 h-7 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-xs flex items-center justify-center transition-colors shadow-sm"
+                          className="w-7 h-7 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-xs flex items-center justify-center transition-colors shadow-xs"
                           aria-label={`Tambah ${prod.name}`}
                         >
                           +
@@ -691,17 +819,17 @@ export default function SakuNotaLandingPage() {
             </div>
 
             {/* Keranjang Pembeli Box */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-blue-50/50 border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                <span className="text-[10px] font-extrabold text-blue-700 uppercase tracking-wider block">
                   Keranjang Pembeli:
                 </span>
                 <div className="flex items-baseline gap-2 mt-0.5">
-                  <span className="text-sm font-bold text-slate-700">
+                  <span className="text-xs sm:text-sm font-extrabold text-slate-800">
                     {demoTotalCount} Porsi
                   </span>
                   <span className="text-slate-400">•</span>
-                  <span className="text-base font-black text-slate-900">
+                  <span className="text-sm sm:text-base font-black text-slate-900">
                     Total: Rp {demoTotalPrice.toLocaleString("id-ID")}
                   </span>
                 </div>
@@ -720,9 +848,9 @@ export default function SakuNotaLandingPage() {
         </div>
       </section>
 
-      {/* 4. Features Section */}
-      <section id="fitur" className="py-20 px-4 sm:px-8 border-t border-slate-200 bg-white">
-        <div className="max-w-5xl mx-auto space-y-12">
+      {/* 4. Features Section (Compact Grid on Mobile - No Horizontal Slide!) */}
+      <section id="fitur" className="py-16 sm:py-20 px-4 sm:px-8 border-t border-slate-200 bg-white">
+        <div className="max-w-5xl mx-auto space-y-8 sm:space-y-12">
           
           <div className="text-center space-y-2">
             <span className="text-xs font-extrabold text-blue-600 tracking-wider uppercase">
@@ -731,26 +859,47 @@ export default function SakuNotaLandingPage() {
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
               Fitur Lengkap Dirancang untuk Kecepatan
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
+            <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto">
               Semua yang dibutuhkan operasional kasir makanan dan minuman tanpa tombol berlebih yang membingungkan.
             </p>
           </div>
 
-          <div className="flex md:grid md:grid-cols-2 gap-6 overflow-x-auto md:overflow-visible pb-3 md:pb-0 snap-x snap-mandatory no-scrollbar">
+          {/* Mobile 4-Grid Icon Summary Bar */}
+          <div className="grid grid-cols-4 gap-2 sm:hidden">
+            <div className="p-2.5 rounded-2xl bg-blue-50 border border-blue-200 text-center">
+              <span className="text-lg block">🍽️</span>
+              <span className="text-[10px] font-extrabold text-blue-900 block mt-0.5 leading-tight">Kasir &amp; Meja</span>
+            </div>
+            <div className="p-2.5 rounded-2xl bg-blue-50 border border-blue-200 text-center">
+              <span className="text-lg block">🖨️</span>
+              <span className="text-[10px] font-extrabold text-blue-900 block mt-0.5 leading-tight">Cetak Struk</span>
+            </div>
+            <div className="p-2.5 rounded-2xl bg-blue-50 border border-blue-200 text-center">
+              <span className="text-lg block">📊</span>
+              <span className="text-[10px] font-extrabold text-blue-900 block mt-0.5 leading-tight">Rekap WA</span>
+            </div>
+            <div className="p-2.5 rounded-2xl bg-blue-50 border border-blue-200 text-center">
+              <span className="text-lg block">🛡️</span>
+              <span className="text-[10px] font-extrabold text-blue-900 block mt-0.5 leading-tight">100% Offline</span>
+            </div>
+          </div>
+
+          {/* 2x2 Grid on Mobile & Desktop (No Horizontal Scroll) */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-6">
             
             {/* Feature 1: Transaksi Fleksibel */}
-            <div className="min-w-[85vw] sm:min-w-[340px] md:min-w-0 snap-start shrink-0 md:shrink p-6 sm:p-7 rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all flex flex-col justify-between gap-6 group">
-              <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-                  <span>Transaksi Fleksibel</span>
+            <div className="p-4 sm:p-7 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between gap-3 sm:gap-6 group">
+              <div className="space-y-2.5 sm:space-y-4">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] sm:text-xs font-extrabold border border-blue-200">
+                  <span>🍽️ Transaksi Fleksibel</span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors">
+                <h3 className="text-xs sm:text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
                   Mode Kasir Cepat atau Denah Meja &amp; Open Bill
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  Atur menu makanan, minuman, tingkat kepedasan, hingga topping tambahan tanpa setup rumit. Sangat pas untuk warung makan cepat saji maupun restoran dengan sistem meja dan open bill.
+                <p className="text-[11px] sm:text-sm text-slate-600 leading-relaxed">
+                  Atur menu makanan, minuman, tingkat kepedasan, hingga topping tambahan. Pas untuk warung makan cepat saji maupun restoran dengan sistem meja.
                 </p>
-                <ul className="space-y-2 pt-1 text-xs text-slate-700">
+                <ul className="hidden sm:block space-y-2 pt-1 text-xs text-slate-700">
                   <li className="flex items-start gap-2">
                     <span className="text-blue-600 font-bold">✓</span>
                     <span>Mode kasir cepat untuk pesanan bungkus atau denah meja interaktif untuk restoran.</span>
@@ -761,26 +910,26 @@ export default function SakuNotaLandingPage() {
                   </li>
                 </ul>
               </div>
-              <div className="pt-2">
-                <span className="text-xs font-bold text-blue-600 group-hover:underline inline-flex items-center gap-1">
+              <div className="pt-1">
+                <span className="text-[11px] sm:text-xs font-extrabold text-blue-600 group-hover:underline inline-flex items-center gap-1">
                   Transaksi Fleksibel →
                 </span>
               </div>
             </div>
 
             {/* Feature 2: Cetak Struk */}
-            <div className="min-w-[85vw] sm:min-w-[340px] md:min-w-0 snap-start shrink-0 md:shrink p-6 sm:p-7 rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all flex flex-col justify-between gap-6 group">
-              <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-                  <span>Cetak Struk</span>
+            <div className="p-4 sm:p-7 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between gap-3 sm:gap-6 group">
+              <div className="space-y-2.5 sm:space-y-4">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] sm:text-xs font-extrabold border border-blue-200">
+                  <span>🖨️ Cetak Struk</span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors">
+                <h3 className="text-xs sm:text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
                   Cetak Struk Bluetooth Tanpa Internet
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  Komunikasi langsung via sinyal Bluetooth fisik ke printer thermal mini 58mm maupun 80mm tanpa butuh router Wi-Fi atau kuota data internet.
+                <p className="text-[11px] sm:text-sm text-slate-600 leading-relaxed">
+                  Terhubung langsung via Bluetooth ke printer thermal 58mm maupun 80mm tanpa butuh router Wi-Fi atau kuota internet.
                 </p>
-                <ul className="space-y-2 pt-1 text-xs text-slate-700">
+                <ul className="hidden sm:block space-y-2 pt-1 text-xs text-slate-700">
                   <li className="flex items-start gap-2">
                     <span className="text-blue-600 font-bold">✓</span>
                     <span>Koneksi instan ke printer thermal Bluetooth (Panda, VSC, Eppos, Zjiang, Kassen, dll).</span>
@@ -791,26 +940,26 @@ export default function SakuNotaLandingPage() {
                   </li>
                 </ul>
               </div>
-              <div className="pt-2">
-                <span className="text-xs font-bold text-blue-600 group-hover:underline inline-flex items-center gap-1">
+              <div className="pt-1">
+                <span className="text-[11px] sm:text-xs font-extrabold text-blue-600 group-hover:underline inline-flex items-center gap-1">
                   Cetak Struk →
                 </span>
               </div>
             </div>
 
             {/* Feature 3: Audit & Laporan */}
-            <div className="min-w-[85vw] sm:min-w-[340px] md:min-w-0 snap-start shrink-0 md:shrink p-6 sm:p-7 rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all flex flex-col justify-between gap-6 group">
-              <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-                  <span>Audit &amp; Laporan</span>
+            <div className="p-4 sm:p-7 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between gap-3 sm:gap-6 group">
+              <div className="space-y-2.5 sm:space-y-4">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] sm:text-xs font-extrabold border border-blue-200">
+                  <span>📊 Audit &amp; Laporan</span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors">
+                <h3 className="text-xs sm:text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
                   Rekap Omzet Harian &amp; Kirim Laporan ke WhatsApp
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  Hitung kas masuk-keluar secara akurat, pantau menu paling laris, dan kirim rekap laporan keuangan harian langsung ke WhatsApp pemilik usaha dengan sekali ketuk.
+                <p className="text-[11px] sm:text-sm text-slate-600 leading-relaxed">
+                  Hitung kas masuk-keluar secara akurat, pantau menu terlaris, dan kirim rekap harian langsung ke WhatsApp pemilik usaha.
                 </p>
-                <ul className="space-y-2 pt-1 text-xs text-slate-700">
+                <ul className="hidden sm:block space-y-2 pt-1 text-xs text-slate-700">
                   <li className="flex items-start gap-2">
                     <span className="text-blue-600 font-bold">✓</span>
                     <span>Hitung kas masuk dan keluar shift secara objektif dan akurat.</span>
@@ -821,26 +970,26 @@ export default function SakuNotaLandingPage() {
                   </li>
                 </ul>
               </div>
-              <div className="pt-2">
-                <span className="text-xs font-bold text-blue-600 group-hover:underline inline-flex items-center gap-1">
-                  Rekap Omzet Harian &amp; Kirim Laporan ke WhatsApp →
+              <div className="pt-1">
+                <span className="text-[11px] sm:text-xs font-extrabold text-blue-600 group-hover:underline inline-flex items-center gap-1">
+                  Rekap Omzet &amp; WA →
                 </span>
               </div>
             </div>
 
             {/* Feature 4: Privasi & Perangkat */}
-            <div className="min-w-[85vw] sm:min-w-[340px] md:min-w-0 snap-start shrink-0 md:shrink p-6 sm:p-7 rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all flex flex-col justify-between gap-6 group">
-              <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-                  <span>Privasi &amp; Perangkat</span>
+            <div className="p-4 sm:p-7 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between gap-3 sm:gap-6 group">
+              <div className="space-y-2.5 sm:space-y-4">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] sm:text-xs font-extrabold border border-blue-200">
+                  <span>🛡️ Privasi &amp; Backup</span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors">
+                <h3 className="text-xs sm:text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
                   100% Offline di Memori HP &amp; Cadangkan Mandiri
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  Seluruh program dan basis data tersimpan privat di perangkat Anda sendiri. Mudah dicadangkan ke file dan dipulihkan dengan cepat saat berganti perangkat HP baru.
+                <p className="text-[11px] sm:text-sm text-slate-600 leading-relaxed">
+                  Seluruh data tersimpan privat di perangkat Anda sendiri. Mudah dicadangkan ke file dan dipulihkan saat ganti HP baru.
                 </p>
-                <ul className="space-y-2 pt-1 text-xs text-slate-700">
+                <ul className="hidden sm:block space-y-2 pt-1 text-xs text-slate-700">
                   <li className="flex items-start gap-2">
                     <span className="text-blue-600 font-bold">✓</span>
                     <span>Buka kasir hanya dalam 1 detik tanpa menunggu loading server luar.</span>
@@ -851,9 +1000,9 @@ export default function SakuNotaLandingPage() {
                   </li>
                 </ul>
               </div>
-              <div className="pt-2">
-                <span className="text-xs font-bold text-blue-600 group-hover:underline inline-flex items-center gap-1">
-                  100% Offline di Memori HP &amp; Cadangkan Mandiri →
+              <div className="pt-1">
+                <span className="text-[11px] sm:text-xs font-extrabold text-blue-600 group-hover:underline inline-flex items-center gap-1">
+                  100% Offline &amp; Aman →
                 </span>
               </div>
             </div>
@@ -862,9 +1011,9 @@ export default function SakuNotaLandingPage() {
         </div>
       </section>
 
-      {/* 5. Jenis Usaha Section */}
-      <section id="jenis-usaha" className="py-20 px-4 sm:px-8 border-t border-slate-200 bg-slate-50/60">
-        <div className="max-w-5xl mx-auto space-y-12">
+      {/* 5. Jenis Usaha Section (Compact Grid on Mobile - No Horizontal Slide!) */}
+      <section id="jenis-usaha" className="py-16 sm:py-20 px-4 sm:px-8 border-t border-slate-200 bg-slate-50/70">
+        <div className="max-w-5xl mx-auto space-y-8 sm:space-y-10">
           
           <div className="text-center space-y-2">
             <span className="text-xs font-extrabold text-blue-600 tracking-wider uppercase">
@@ -873,61 +1022,62 @@ export default function SakuNotaLandingPage() {
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
               Cocok untuk Berbagai Usaha Kuliner Anda
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
+            <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto">
               SakuNota menyesuaikan alur kerja kasir secara otomatis tanpa perlu setup rumit.
             </p>
           </div>
 
-          <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto sm:overflow-visible pb-3 sm:pb-0 snap-x snap-mandatory no-scrollbar">
+          {/* Compact 2x2 on Mobile, 4-Grid on Desktop (No Horizontal Slide) */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             
             {/* 1. Warung Makan */}
-            <div className="min-w-[260px] sm:min-w-0 snap-start shrink-0 sm:shrink p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all space-y-2.5">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-lg font-black">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all space-y-2">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-base sm:text-lg font-black">
                 🍛
               </div>
-              <h3 className="font-extrabold text-sm text-slate-900 leading-snug">
+              <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-snug">
                 Warung Makan &amp; Kuliner Harian
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Langsung bayar cepat, hitung uang tunai &amp; kembalian otomatis tanpa ribet pilih nomor meja.
+              <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed">
+                Langsung bayar cepat, hitung uang tunai dan kembalian otomatis tanpa ribet pilih nomor meja.
               </p>
             </div>
 
             {/* 2. Rumah Makan & Restoran */}
-            <div className="min-w-[260px] sm:min-w-0 snap-start shrink-0 sm:shrink p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all space-y-2.5">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-lg font-black">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all space-y-2">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-base sm:text-lg font-black">
                 🍽️
               </div>
-              <h3 className="font-extrabold text-sm text-slate-900 leading-snug">
-                Rumah Makan &amp; Restoran (Denah Meja &amp; Open Bill)
+              <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-snug">
+                Rumah Makan &amp; Restoran (Meja &amp; Open Bill)
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Pelanggan duduk santai duluan, tambah pesanan berkala, dan bayar split bill saat selesai santap.
+              <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed">
+                Pelanggan duduk santai duluan, tambah pesanan berkala, dan bayar split bill saat selesai makan.
               </p>
             </div>
 
             {/* 3. Kafe & Kedai Minuman */}
-            <div className="min-w-[260px] sm:min-w-0 snap-start shrink-0 sm:shrink p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all space-y-2.5">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-lg font-black">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all space-y-2">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-base sm:text-lg font-black">
                 ☕
               </div>
-              <h3 className="font-extrabold text-sm text-slate-900 leading-snug">
-                Kafe &amp; Kedai Minuman (Varian Rasa &amp; Topping)
+              <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-snug">
+                Kafe &amp; Kedai Minuman (Varian &amp; Topping)
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed">
                 Pilihan topping tambahan, tingkat kemanisan, pergantian shift barista, dan kirim rekap WhatsApp.
               </p>
             </div>
 
             {/* 4. Booth Jajanan */}
-            <div className="min-w-[260px] sm:min-w-0 snap-start shrink-0 sm:shrink p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all space-y-2.5">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-lg font-black">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all space-y-2">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-base sm:text-lg font-black">
                 🥡
               </div>
-              <h3 className="font-extrabold text-sm text-slate-900 leading-snug">
-                Booth Jajanan &amp; Street Food (Ringan &amp; Portabel)
+              <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-snug">
+                Booth Jajanan &amp; Street Food (Ringan)
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed">
                 Cepat dan hemat daya baterai. Siap diajak jualan di bazar, food court, maupun gerobak jalanan.
               </p>
             </div>
@@ -937,7 +1087,7 @@ export default function SakuNotaLandingPage() {
       </section>
 
       {/* 6. Pricing Section */}
-      <section id="harga" className="py-20 px-4 sm:px-8 border-t border-slate-200 bg-white">
+      <section id="harga" className="py-16 sm:py-20 px-4 sm:px-8 border-t border-slate-200 bg-white">
         <div className="max-w-5xl mx-auto space-y-10">
           
           <div className="text-center space-y-2">
@@ -947,7 +1097,7 @@ export default function SakuNotaLandingPage() {
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
               Satu Harga Sekali Bayar &amp; Siap Dipasang di HP
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500">
+            <p className="text-xs sm:text-sm text-slate-600">
               Tanpa langganan bulanan. Tanpa potongan komisi penjualan.
             </p>
           </div>
@@ -965,14 +1115,14 @@ export default function SakuNotaLandingPage() {
                     <span>🔥</span>
                     <span>Promo Peluncuran</span>
                   </div>
-                  <span className="text-[11px] font-bold text-slate-500">
+                  <span className="text-[11px] font-bold text-slate-600">
                     Lisensi 1 Perangkat
                   </span>
                 </div>
 
                 <div className="space-y-1">
                   <h3 className="text-xl font-black text-slate-900 tracking-tight">SakuNota</h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-600">
                     Sekali bayar untuk 1 perangkat kasir aktif selamanya.
                   </p>
                 </div>
@@ -1032,13 +1182,20 @@ export default function SakuNotaLandingPage() {
                   <span>→</span>
                 </button>
 
-                <div className="text-center">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-1 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenLicenseModal("direct_license")}
+                    className="text-blue-600 hover:text-blue-800 underline font-extrabold transition-colors"
+                  >
+                    🔑 Sudah Punya Kode Lisensi? Aktifkan
+                  </button>
                   <button
                     type="button"
                     onClick={() => setIsBetaModalOpen(true)}
-                    className="text-[11px] text-slate-500 hover:text-blue-600 underline font-semibold transition-colors"
+                    className="text-slate-600 hover:text-blue-600 underline font-semibold transition-colors"
                   >
-                    Coba gratis dulu lewat Program Closed Beta (7 Hari)
+                    Coba Gratis 7 Hari (Beta)
                   </button>
                 </div>
               </div>
@@ -1046,22 +1203,22 @@ export default function SakuNotaLandingPage() {
             </div>
 
             {/* Card 2: Aplikasi Lain (Comparison Card Side-by-Side) */}
-            <div className="rounded-3xl bg-slate-50/80 border border-slate-200 p-6 sm:p-8 flex flex-col justify-between relative space-y-6">
+            <div className="rounded-3xl bg-slate-50 border border-slate-200 p-6 sm:p-8 flex flex-col justify-between relative space-y-6">
               
               <div className="space-y-6">
                 {/* Badge & Title */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-200/70 text-slate-700 text-xs font-bold">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-200/80 text-slate-800 text-xs font-bold">
                     <span>Aplikasi Lain</span>
                   </div>
-                  <span className="text-[11px] font-medium text-slate-500">
+                  <span className="text-[11px] font-semibold text-slate-600">
                     Sistem Langganan
                   </span>
                 </div>
 
                 <div className="space-y-1">
                   <h3 className="text-xl font-bold text-slate-800 tracking-tight">Aplikasi Lain</h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-600">
                     Model sewa software berbasis server cloud pihak ketiga.
                   </p>
                 </div>
@@ -1070,17 +1227,17 @@ export default function SakuNotaLandingPage() {
                 <div className="space-y-1">
                   <div className="flex items-baseline gap-1.5">
                     <span className="text-3xl sm:text-4xl font-extrabold text-slate-700 tracking-tight">
-                      Rp150rb – Rp350rb
+                      Rp150rb - Rp350rb
                     </span>
-                    <span className="text-xs text-slate-500 font-semibold">/ bulan</span>
+                    <span className="text-xs text-slate-600 font-semibold">/ bulan</span>
                   </div>
-                  <span className="text-[11px] text-slate-500 block">
-                    Beban rutin ~Rp1.800.000 – Rp4.200.000 per tahun
+                  <span className="text-[11px] text-slate-600 block">
+                    Beban rutin ~Rp1.800.000 - Rp4.200.000 per tahun
                   </span>
                 </div>
 
                 {/* Drawbacks Checklist */}
-                <div className="pt-2 border-t border-slate-200 space-y-2.5 text-xs text-slate-600">
+                <div className="pt-2 border-t border-slate-200 space-y-2.5 text-xs text-slate-700">
                   <div className="flex items-start gap-2.5">
                     <span className="text-rose-500 font-bold text-sm leading-none">✕</span>
                     <span>Wajib terhubung internet terus (transaksi macet saat offline)</span>
@@ -1106,7 +1263,7 @@ export default function SakuNotaLandingPage() {
 
               {/* Bottom Info Note */}
               <div className="pt-4">
-                <div className="p-3.5 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-600 leading-relaxed text-center font-medium">
+                <div className="p-3.5 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-700 leading-relaxed text-center font-medium">
                   💡 Dengan beralih ke SakuNota sekali bayar, Anda menghemat jutaan rupiah setiap tahun dan memiliki kedaulatan data 100%.
                 </div>
               </div>
@@ -1118,71 +1275,80 @@ export default function SakuNotaLandingPage() {
         </div>
       </section>
 
-      {/* 7. Resources (Install Guide) */}
-      <section id="panduan" className="py-20 px-4 sm:px-8 border-t border-slate-200 bg-slate-50/60">
-        <div className="max-w-4xl mx-auto space-y-10">
+      {/* 7. Resources (Install Guide - Compact 3-Grid on Mobile, No Horizontal Slide!) */}
+      <section id="panduan" className="py-16 sm:py-20 px-4 sm:px-8 border-t border-slate-200 bg-slate-50/70">
+        <div className="max-w-4xl mx-auto space-y-8 sm:space-y-10">
           
           <div className="text-center space-y-2">
             <span className="text-xs font-extrabold text-blue-600 tracking-wider uppercase">
-              Resources
+              Panduan Ringkas
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
               Pasang SakuNota ke Layar Utama HP
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
+            <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto">
               Buka kasir secepat kilat langsung dari layar utama ponsel Anda tanpa harus mengetik alamat website berulang kali.
             </p>
           </div>
 
-          <div className="flex md:grid md:grid-cols-3 gap-4 overflow-x-auto md:overflow-visible pb-3 md:pb-0 snap-x snap-mandatory no-scrollbar">
+          {/* 3-Column Grid even on Mobile so no sliding is needed */}
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
             
-            <div className="min-w-[240px] md:min-w-0 snap-start shrink-0 md:shrink p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-black text-sm flex items-center justify-center">
+            <div className="p-3.5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2 sm:space-y-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-600 text-white font-black text-xs sm:text-sm flex items-center justify-center">
                 1
               </div>
-              <h4 className="font-extrabold text-sm text-slate-900">Buka Website</h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Buka website SakuNota lewat Google Chrome (Android) atau Safari (iPhone).
+              <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-snug">Buka Website</h4>
+              <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed">
+                Buka SakuNota lewat Chrome (Android) atau Safari (iPhone).
               </p>
             </div>
 
-            <div className="min-w-[240px] md:min-w-0 snap-start shrink-0 md:shrink p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-black text-sm flex items-center justify-center">
+            <div className="p-3.5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2 sm:space-y-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-600 text-white font-black text-xs sm:text-sm flex items-center justify-center">
                 2
               </div>
-              <h4 className="font-extrabold text-sm text-slate-900">Menu Browser</h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Ketuk menu tiga titik (⋮) di Chrome atau tombol Bagikan di Safari.
+              <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-snug">Menu Browser</h4>
+              <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed">
+                Ketuk titik tiga (⋮) di Chrome atau tombol Bagikan di Safari.
               </p>
             </div>
 
-            <div className="min-w-[240px] md:min-w-0 snap-start shrink-0 md:shrink p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-black text-sm flex items-center justify-center">
+            <div className="p-3.5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2 sm:space-y-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-600 text-white font-black text-xs sm:text-sm flex items-center justify-center">
                 3
               </div>
-              <h4 className="font-extrabold text-sm text-slate-900">Tambahkan ke Layar</h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Pilih &quot;Tambahkan ke Layar Utama&quot; dan konfirmasi instalasi.
+              <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-snug">Pasang ke Layar</h4>
+              <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed">
+                Pilih &quot;Tambahkan ke Layar Utama&quot; agar ikon tampil di HP.
               </p>
             </div>
 
           </div>
 
-          <div className="text-center pt-2">
+          <div className="text-center pt-1 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/panduan"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white hover:bg-slate-50 text-blue-600 font-extrabold text-xs border border-slate-300 shadow-sm transition-all"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-sm transition-all"
             >
-              <span>Selengkapnya</span>
+              <span>📖 Buka Pusat Panduan Lengkap</span>
               <span>→</span>
             </Link>
+            <button
+              type="button"
+              onClick={() => handleOpenLicenseModal("direct_license")}
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white hover:bg-blue-50 text-blue-700 font-extrabold text-xs border border-blue-200 shadow-xs transition-all"
+            >
+              <span>🔑 Aktivasi Kode Lisensi</span>
+              <span>→</span>
+            </button>
           </div>
 
         </div>
       </section>
 
       {/* 8. Common Questions (FAQ) */}
-      <section className="py-20 px-4 sm:px-8 border-t border-slate-200 bg-white">
+      <section id="tanya-jawab-utama" className="py-16 sm:py-20 px-4 sm:px-8 border-t border-slate-200 bg-white">
         <div className="max-w-3xl mx-auto space-y-10">
           
           <div className="text-center space-y-2">
@@ -1192,28 +1358,32 @@ export default function SakuNotaLandingPage() {
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
               Pertanyaan yang Sering Diajukan
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500">
-              Temukan jawaban atas pertanyaan seputar kasir SakuNota.
+            <p className="text-xs sm:text-sm text-slate-600">
+              Temukan jawaban jelas atas pertanyaan seputar kasir SakuNota.
             </p>
           </div>
 
           <div className="space-y-3">
             {[
               {
-                q: "Apakah benar-benar bisa dipakai tanpa koneksi internet?",
-                a: "Ya, 100% bisa. SakuNota bekerja langsung di memori HP Anda. Saat kuota habis, mati lampu, atau sinyal provider hilang total, kasir tetap melayani pembeli dan mencetak struk tanpa macet sedikit pun.",
+                q: "Untuk apa aplikasi SakuNota?",
+                a: "SakuNota adalah aplikasi kasir (Point of Sale) untuk warung makan, kafe, restoran, dan kedai kuliner agar pencatatan pesanan, pengelolaan meja, cetak struk Bluetooth, dan rekap omzet harian berjalan rapi tanpa biaya langganan bulanan.",
               },
               {
-                q: "Apakah ada biaya langganan bulanan atau potongan komisi?",
-                a: "Tidak ada biaya bulanan sama sekali. Cukup satu kali bayar Rp50.000 untuk 1 perangkat kasir aktif selamanya. Tidak ada komisi penjualan dan tidak ada iklan.",
+                q: "Apakah benar-benar bisa dipakai tanpa internet?",
+                a: "Ya, 100% bisa dipakai tanpa koneksi internet. SakuNota bekerja langsung di memori HP Anda. Saat kuota habis, mati lampu, atau sinyal hilang total, kasir tetap melayani pembeli dan mencetak struk tanpa macet.",
               },
               {
-                q: "Printer struk Bluetooth apa saja yang kompatibel?",
-                a: "Mendukung seluruh printer thermal Bluetooth mini standar (58mm maupun 80mm) yang banyak dijual di pasaran seperti merek Panda, VSC, Eppos, Zjiang, Kassen, dan lainnya tanpa instalasi driver rumit.",
+                q: "Bagaimana cara mengaktifkan Lisensi SakuNota atau Lisensi Tester?",
+                a: "Sangat mudah! Anda tidak perlu memasukkan Nomor Pesanan atau Kode Akses jika sudah memegang Kode Lisensi (misal SN-XXXX-XXXX-XXXX atau SN-TEST-XXXX). Cukup klik tombol '🔑 Aktivasi Lisensi' di bagian atas halaman ini atau langsung buka halaman Kasir (/pos), tempel kode lisensi Anda, lalu klik Aktifkan.",
               },
               {
-                q: "Bagaimana jika kasir berganti HP baru? Apakah data aman?",
-                a: "Seluruh data transaksi dan produk tersimpan privat di perangkat Anda sendiri. Anda cukup membuka menu 'Cadangkan Data', simpan file cadangan, lalu buka SakuNota di HP baru dan pilih 'Pulihkan Data'. Seluruh menu dan omzet kembali utuh.",
+                q: "Berapa harga SakuNota?",
+                a: "Harga promo peluncuran hanya Rp50.000 (harga normal Rp99.000) sekali bayar untuk 1 perangkat kasir aktif selamanya. Tidak ada biaya bulanan dan tidak ada potongan komisi penjualan.",
+              },
+              {
+                q: "Bagaimana cara memasangnya di HP?",
+                a: "Buka sakunota.my.id melalui browser Chrome (Android) atau Safari (iPhone), ketuk menu pojok kanan atas lalu pilih 'Tambahkan ke Layar Utama' (Add to Home Screen). Ikon aplikasi SakuNota akan langsung muncul di layar HP Anda dan siap dijalankan secara offline.",
               },
             ].map((faq, idx) => (
               <div 
@@ -1223,15 +1393,15 @@ export default function SakuNotaLandingPage() {
                 <button
                   type="button"
                   onClick={() => toggleFaq(idx)}
-                  className="w-full p-5 text-left flex items-center justify-between gap-4 font-bold text-sm text-slate-900 hover:text-blue-600 transition-colors"
+                  className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 font-extrabold text-xs sm:text-sm text-slate-900 hover:text-blue-600 transition-colors"
                 >
                   <span>{faq.q}</span>
-                  <span className="text-slate-400 font-mono text-base">
+                  <span className="text-blue-600 font-mono text-base font-black">
                     {activeFaq === idx ? "−" : "+"}
                   </span>
                 </button>
                 {activeFaq === idx && (
-                  <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-200/80 animate-in fade-in duration-150">
+                  <div className="px-4 sm:px-5 pb-4 sm:pb-5 pt-2 text-xs sm:text-sm text-slate-700 leading-relaxed border-t border-slate-200/80 animate-in fade-in duration-150">
                     {faq.a}
                   </div>
                 )}
@@ -1241,7 +1411,7 @@ export default function SakuNotaLandingPage() {
 
           {/* Need further assistance footer note */}
           <div className="text-center pt-4 space-y-1 text-xs">
-            <span className="text-slate-500 block">Butuh bantuan lebih lanjut?</span>
+            <span className="text-slate-600 block">Butuh bantuan lebih lanjut?</span>
             <a
               href={`https://wa.me/${SUPPORT_WHATSAPP}`}
               target="_blank"
@@ -1287,7 +1457,7 @@ export default function SakuNotaLandingPage() {
             Kelola kasir usaha kuliner Anda lebih cepat dan tenang tanpa khawatir internet mati.
           </p>
 
-          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-md mx-auto">
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-lg mx-auto">
             <button
               type="button"
               onClick={handleOpenBuyModal}
@@ -1297,16 +1467,16 @@ export default function SakuNotaLandingPage() {
             </button>
             <button
               type="button"
-              onClick={() => setIsBetaModalOpen(true)}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 font-bold text-xs border border-slate-300 shadow-sm transition-all"
+              onClick={() => handleOpenLicenseModal("direct_license")}
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-blue-50 text-blue-700 font-extrabold text-xs border border-blue-200 shadow-xs transition-all"
             >
-              Daftar Closed Beta (7 Hari)
+              🔑 Aktivasi Kode Lisensi / Tester
             </button>
           </div>
         </div>
       </section>
 
-      {/* 11. Footer (Tanpa Stay Updated) */}
+      {/* 11. Footer (Under PT Pemuda Gaya Bebas) */}
       <footer className="mt-auto bg-white border-t border-slate-200 px-4 sm:px-8 py-14 text-xs text-slate-600">
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10">
           
@@ -1316,25 +1486,29 @@ export default function SakuNotaLandingPage() {
               <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-md shadow-blue-600/20">
                 SN
               </div>
-              <span className="font-extrabold text-base text-slate-900">SakuNota</span>
+              <div>
+                <span className="font-extrabold text-base text-slate-900 block leading-none">SakuNota</span>
+                <span className="text-[10px] font-bold text-slate-500">di bawah naungan PT Pemuda Gaya Bebas</span>
+              </div>
             </div>
             <p className="text-blue-600 font-bold text-xs">
               Kasir Jalan Tanpa Internet
             </p>
-            <p className="text-slate-500 text-[11px] leading-relaxed max-w-sm">
-              Aplikasi kasir offline yang dirancang khusus untuk usaha kuliner dan F&amp;B di Indonesia.
+            <p className="text-slate-600 text-[11px] leading-relaxed max-w-sm">
+              Aplikasi kasir offline yang dirancang khusus untuk usaha kuliner dan F&amp;B di Indonesia. Dikelola resmi oleh <strong>PT Pemuda Gaya Bebas</strong>.
             </p>
           </div>
 
           {/* Col 2: Product */}
           <div className="space-y-3">
             <span className="text-slate-900 font-extrabold text-xs uppercase tracking-wider block">
-              Produk
+              Produk &amp; Perusahaan
             </span>
-            <ul className="space-y-2 text-xs">
-              <li><a href="#fitur" className="hover:text-blue-600 transition-colors">Fitur</a></li>
+            <ul className="space-y-2 text-xs font-medium">
+              <li><a href="#fitur" className="hover:text-blue-600 transition-colors">Fitur Kasir</a></li>
               <li><a href="#jenis-usaha" className="hover:text-blue-600 transition-colors">Jenis Usaha</a></li>
-              <li><a href="#harga" className="hover:text-blue-600 transition-colors">Harga</a></li>
+              <li><a href="#harga" className="hover:text-blue-600 transition-colors">Harga Lisensi</a></li>
+              <li><Link href="/tentang" className="hover:text-blue-600 transition-colors font-bold text-blue-600">Tentang Kami (PT Pemuda Gaya Bebas)</Link></li>
               <li><Link href="/pos?demo=true" className="hover:text-blue-600 transition-colors">Coba Sandbox Kasir</Link></li>
             </ul>
           </div>
@@ -1342,17 +1516,26 @@ export default function SakuNotaLandingPage() {
           {/* Col 3: Support */}
           <div className="space-y-3">
             <span className="text-slate-900 font-extrabold text-xs uppercase tracking-wider block">
-              Bantuan &amp; Legal
+              Bantuan &amp; Lisensi
             </span>
-            <ul className="space-y-2 text-xs">
-              <li><Link href="/panduan" className="hover:text-blue-600 transition-colors">Buku Panduan</Link></li>
+            <ul className="space-y-2 text-xs font-medium">
+              <li><Link href="/panduan" className="hover:text-blue-600 transition-colors">Buku Panduan Pengguna</Link></li>
               <li>
                 <button
                   type="button"
-                  onClick={() => setIsCheckStatusModalOpen(true)}
+                  onClick={() => handleOpenLicenseModal("direct_license")}
+                  className="hover:text-blue-600 transition-colors text-left font-bold text-blue-600"
+                >
+                  🔑 Aktivasi Kode Lisensi / Tester
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleOpenLicenseModal("order_lookup")}
                   className="hover:text-blue-600 transition-colors text-left"
                 >
-                  Status Lisensi
+                  Cek Status Lisensi / Pesanan
                 </button>
               </li>
               <li>
@@ -1362,7 +1545,7 @@ export default function SakuNotaLandingPage() {
                   rel="noopener noreferrer"
                   className="hover:text-blue-600 transition-colors"
                 >
-                  Bantuan WhatsApp
+                  Bantuan WhatsApp Resmi
                 </a>
               </li>
             </ul>
@@ -1371,13 +1554,14 @@ export default function SakuNotaLandingPage() {
         </div>
 
         {/* Bottom Bar: Copyright, Privacy, Terms */}
-        <div className="max-w-6xl mx-auto mt-12 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
+        <div className="max-w-6xl mx-auto mt-12 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-600">
           <div>
-            © 2026 SakuNota. Hak cipta dilindungi.
+            © 2026 SakuNota - <strong>PT Pemuda Gaya Bebas</strong>. Hak cipta dilindungi.
           </div>
-          <div className="flex items-center gap-6">
-            <Link href="/privacy" className="hover:text-slate-800 transition-colors">Kebijakan Privasi</Link>
-            <Link href="/terms" className="hover:text-slate-800 transition-colors">Syarat &amp; Ketentuan</Link>
+          <div className="flex items-center gap-6 font-semibold">
+            <Link href="/tentang" className="hover:text-blue-600 transition-colors">Tentang Kami</Link>
+            <Link href="/privacy" className="hover:text-blue-600 transition-colors">Kebijakan Privasi</Link>
+            <Link href="/terms" className="hover:text-blue-600 transition-colors">Syarat &amp; Ketentuan</Link>
           </div>
         </div>
       </footer>
@@ -1395,15 +1579,15 @@ export default function SakuNotaLandingPage() {
             <div className="text-center space-y-1 pb-3 border-b-2 border-dashed border-slate-300">
               <h3 className="font-black text-sm tracking-widest uppercase">SAKUNOTA</h3>
               <p className="text-[10px] text-slate-600">KASIR JALAN TANPA INTERNET</p>
-              <p className="text-[9px] text-slate-400">Jl. Kuliner No. 1, Indonesia</p>
+              <p className="text-[9px] text-slate-500">PT Pemuda Gaya Bebas</p>
             </div>
 
             <div className="space-y-1.5 text-[11px]">
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-slate-700">
                 <span>Nota: #SN-DEMO-01</span>
                 <span>Meja 04</span>
               </div>
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-slate-700">
                 <span>Kasir: Kasir 1</span>
                 <span>{new Date().toLocaleDateString("id-ID")}</span>
               </div>
@@ -1429,11 +1613,11 @@ export default function SakuNotaLandingPage() {
                 <span>TOTAL:</span>
                 <span>Rp {demoTotalPrice.toLocaleString("id-ID")}</span>
               </div>
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-slate-700">
                 <span>BAYAR TUNAI:</span>
                 <span>Rp 50.000</span>
               </div>
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-slate-700">
                 <span>KEMBALIAN:</span>
                 <span>Rp {Math.max(0, 50000 - demoTotalPrice).toLocaleString("id-ID")}</span>
               </div>
@@ -1472,14 +1656,14 @@ export default function SakuNotaLandingPage() {
                   <span>🚀 PROGRAM CLOSED BETA</span>
                 </div>
                 <h3 className="font-black text-xl text-slate-900">Uji Coba 7 Hari SakuNota</h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-600">
                   Daftarkan usaha Anda untuk mendapatkan lisensi uji coba gratis selama 7 hari tanpa komitmen.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsBetaModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 text-xs font-black transition-colors flex items-center justify-center"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-xs font-black transition-colors flex items-center justify-center"
               >
                 ✕
               </button>
@@ -1497,7 +1681,7 @@ export default function SakuNotaLandingPage() {
                   </p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs space-y-2 text-slate-600">
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs space-y-2 text-slate-700">
                   <div className="flex justify-between">
                     <span>Status Pendaftaran:</span>
                     <span className="font-bold text-blue-600">Menunggu Persetujuan Owner</span>
@@ -1590,7 +1774,7 @@ export default function SakuNotaLandingPage() {
                     placeholder="0812xxxxxxxx"
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-blue-600 focus:bg-white transition-colors"
                   />
-                  <span className="text-[10px] text-slate-500 block mt-1">
+                  <span className="text-[10px] text-slate-600 block mt-1">
                     Nomor ini digunakan untuk mengirimkan lisensi trial dan verifikasi aktivasi kasir.
                   </span>
                 </div>
@@ -1600,7 +1784,7 @@ export default function SakuNotaLandingPage() {
                   <div className="font-bold flex items-center gap-1.5 text-blue-900">
                     <span>🛡️</span> Jaminan Keamanan Data Toko
                   </div>
-                  <p className="leading-relaxed opacity-90 text-slate-600">
+                  <p className="leading-relaxed text-slate-700">
                     Semua transaksi, menu, dan rekap shift selama uji coba tersimpan utuh di perangkat Anda dan dapat diekspor kapan pun.
                   </p>
                 </div>
@@ -1666,7 +1850,7 @@ export default function SakuNotaLandingPage() {
               <button
                 type="button"
                 onClick={() => setIsBuyModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 text-sm flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-sm flex items-center justify-center transition-colors"
               >
                 ✕
               </button>
@@ -1759,7 +1943,7 @@ export default function SakuNotaLandingPage() {
                 {/* Summary box */}
                 <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
                   <div>
-                    <span className="text-slate-500 block text-[10px]">Total Pembayaran Promo</span>
+                    <span className="text-slate-600 block text-[10px]">Total Pembayaran Promo</span>
                     <strong className="text-blue-600 font-black text-sm">
                       Rp50.000
                     </strong>
@@ -1813,7 +1997,7 @@ export default function SakuNotaLandingPage() {
                     </span>
                   </div>
 
-                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                  <p className="text-[11px] text-slate-700 leading-relaxed">
                     Bayar instan dengan scan QRIS (GoPay, OVO, Dana, BCA Mobile) atau transfer Virtual Account. Lisensi langsung terbit otomatis setelah bayar.
                   </p>
 
@@ -1829,7 +2013,7 @@ export default function SakuNotaLandingPage() {
 
                 <div className="relative flex py-1 items-center">
                   <div className="flex-grow border-t border-slate-200"></div>
-                  <span className="flex-shrink mx-3 text-[10px] font-bold text-slate-400 uppercase">Atau Transfer Bank Manual</span>
+                  <span className="flex-shrink mx-3 text-[10px] font-bold text-slate-500 uppercase">Atau Transfer Bank Manual</span>
                   <div className="flex-grow border-t border-slate-200"></div>
                 </div>
 
@@ -1845,7 +2029,7 @@ export default function SakuNotaLandingPage() {
                   </div>
 
                   <div className="space-y-1 bg-white p-3 rounded-xl border border-slate-200">
-                    <span className="text-[10px] text-slate-500 block font-bold uppercase">Nomor Rekening:</span>
+                    <span className="text-[10px] text-slate-600 block font-bold uppercase">Nomor Rekening:</span>
                     <div className="flex items-center justify-between">
                       <strong className="text-lg font-mono font-black text-slate-900 select-all">
                         8030 554 912
@@ -1861,18 +2045,18 @@ export default function SakuNotaLandingPage() {
                         Salin No Rek
                       </button>
                     </div>
-                    <span className="text-[11px] text-slate-600 block">Atas Nama: <strong>{PAYMENT_ACCOUNT_NAME}</strong></span>
+                    <span className="text-[11px] text-slate-700 block">Atas Nama: <strong>{PAYMENT_ACCOUNT_NAME}</strong></span>
                   </div>
 
                   <div className="flex justify-between items-center text-xs pt-1">
-                    <span className="text-slate-600">Nominal Transfer:</span>
+                    <span className="text-slate-700">Nominal Transfer:</span>
                     <strong className="text-base font-black text-slate-900">
                       Rp 50.000
                     </strong>
                   </div>
 
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-600">Nomor Pesanan (Berita Transfer):</span>
+                    <span className="text-slate-700">Nomor Pesanan (Berita Transfer):</span>
                     <strong className="font-mono font-bold text-blue-600">
                       {currentOrderId}
                     </strong>
@@ -1946,10 +2130,10 @@ export default function SakuNotaLandingPage() {
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-slate-200 bg-blue-50 -mx-4 px-4 py-2">
                     <div>
-                      <span className="text-[10px] text-slate-500 block uppercase font-bold">Kode Akses Rahasia Pembeli:</span>
+                      <span className="text-[10px] text-slate-600 block uppercase font-bold">Kode Akses Rahasia Pembeli:</span>
                       <strong className="font-mono font-black text-blue-600 text-sm select-all">{currentAccessCode}</strong>
                     </div>
-                    <span className="text-[9px] text-slate-500 max-w-[170px] text-right font-medium">
+                    <span className="text-[9px] text-slate-600 max-w-[170px] text-right font-medium">
                       Simpan kode ini untuk mengecek status pesanan secara privat
                     </span>
                   </div>
@@ -1991,7 +2175,7 @@ export default function SakuNotaLandingPage() {
                   <button
                     type="button"
                     onClick={() => setIsBuyModalOpen(false)}
-                    className="w-full py-2.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors"
+                    className="w-full py-2.5 text-xs font-bold text-slate-600 hover:text-slate-900 transition-colors"
                   >
                     Simpan &amp; Tutup Halaman
                   </button>
@@ -2023,7 +2207,7 @@ export default function SakuNotaLandingPage() {
                   {/* Secret Access Code */}
                   <div className="flex justify-between items-center pb-2 border-b border-slate-200 bg-blue-50 -mx-4 px-4 py-2">
                     <div>
-                      <span className="text-[10px] text-slate-500 block uppercase font-bold">Kode Akses Rahasia Pembeli:</span>
+                      <span className="text-[10px] text-slate-600 block uppercase font-bold">Kode Akses Rahasia Pembeli:</span>
                       <strong className="font-mono font-black text-blue-600 text-sm select-all">
                         {currentAccessCode || createdOrder?.accessCode}
                       </strong>
@@ -2032,13 +2216,13 @@ export default function SakuNotaLandingPage() {
 
                   {/* License Key Display */}
                   <div className="space-y-1.5 pt-1">
-                    <span className="text-[10px] text-slate-500 block uppercase font-bold">Nomor Lisensi SakuNota:</span>
+                    <span className="text-[10px] text-slate-600 block uppercase font-bold">Nomor Lisensi SakuNota:</span>
                     {createdOrder?.licenseKey ? (
                       <div className="p-3 rounded-xl bg-white border border-blue-500 text-center font-mono font-black text-base text-blue-600 select-all tracking-wider">
                         {createdOrder.licenseKey}
                       </div>
                     ) : (
-                      <div className="p-3 rounded-xl bg-white border border-slate-200 text-center text-xs text-slate-500">
+                      <div className="p-3 rounded-xl bg-white border border-slate-200 text-center text-xs text-slate-600">
                         Sedang menyinkronkan nomor lisensi...
                         <button
                           type="button"
@@ -2073,7 +2257,7 @@ export default function SakuNotaLandingPage() {
 
                   {/* Device Binding Status */}
                   <div className="pt-2 border-t border-slate-200">
-                    <span className="text-[10px] text-slate-500 block uppercase font-bold mb-1">Status Perangkat Kasir:</span>
+                    <span className="text-[10px] text-slate-600 block uppercase font-bold mb-1">Status Perangkat Kasir:</span>
                     {createdOrder?.boundDeviceId ? (
                       <div className="flex items-center gap-2 text-blue-700 font-bold text-xs bg-blue-50 p-2.5 rounded-xl border border-blue-200">
                         <span>🟢</span>
@@ -2134,7 +2318,7 @@ export default function SakuNotaLandingPage() {
                   <Link
                     href="/panduan"
                     target="_blank"
-                    className="block text-center text-[11px] text-slate-500 hover:text-blue-600 font-semibold pt-1 underline"
+                    className="block text-center text-[11px] text-slate-600 hover:text-blue-600 font-semibold pt-1 underline"
                   >
                     📖 Baca Panduan Aktivasi &amp; Pemasangan di HP
                   </Link>
@@ -2142,7 +2326,7 @@ export default function SakuNotaLandingPage() {
                   <button
                     type="button"
                     onClick={() => setIsBuyModalOpen(false)}
-                    className="w-full py-2 text-xs font-bold text-slate-400 hover:text-slate-700 transition-colors pt-2"
+                    className="w-full py-2 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors pt-2"
                   >
                     Selesai &amp; Tutup Jendela
                   </button>
@@ -2153,7 +2337,7 @@ export default function SakuNotaLandingPage() {
         </div>
       )}
 
-      {/* MODAL 4: Check Order / License Status */}
+      {/* MODAL 4: Direct License Activation (Tester / Official) & Order Status Check */}
       {isCheckStatusModalOpen && (
         <div 
           onClick={() => setIsCheckStatusModalOpen(false)}
@@ -2161,203 +2345,305 @@ export default function SakuNotaLandingPage() {
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl cursor-default animate-in zoom-in-95 duration-150"
+            className="bg-white border-2 border-blue-200 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl cursor-default animate-in zoom-in-95 duration-150"
           >
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">🔍</span>
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-base shadow-sm">
+                  🔑
+                </div>
                 <div>
-                  <h3 className="font-black text-sm text-slate-900">Cek Status Pesanan &amp; Lisensi</h3>
-                  <span className="text-[10px] text-slate-500 block">Akses privat khusus pemilik pesanan</span>
+                  <h3 className="font-black text-sm text-slate-900">Aktivasi Lisensi &amp; Cek Pesanan</h3>
+                  <span className="text-[10px] text-slate-600 block">Aktifkan Kode Lisensi / Tester atau cek status transfer</span>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsCheckStatusModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 text-xs flex items-center justify-center font-bold"
+                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-xs flex items-center justify-center font-black"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSearchOrder} className="space-y-3">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Nomor Pesanan <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="SN-2026-XXXX"
-                  value={searchOrderId}
-                  onChange={(e) => setSearchOrderId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:bg-white outline-none font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Kode Akses Rahasia Pembeli <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="KOD-XXXX"
-                  value={searchAccessCode}
-                  onChange={(e) => setSearchAccessCode(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:bg-white outline-none font-mono uppercase"
-                />
-                <span className="text-[10px] text-slate-500 block mt-1">
-                  Kode rahasia diberikan saat Anda melakukan checkout atau transfer.
-                </span>
-              </div>
-
-              {searchError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-semibold">
-                  ⚠️ {searchError}
-                </div>
-              )}
-
+            {/* 2-Tab Switcher */}
+            <div className="grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-slate-100 border border-slate-200">
               <button
-                type="submit"
-                disabled={isSearchingOrder}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50"
+                type="button"
+                onClick={() => setStatusModalTab("direct_license")}
+                className={`py-2.5 px-2 rounded-xl text-[11px] font-extrabold transition-all ${
+                  statusModalTab === "direct_license"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-700 hover:text-blue-600"
+                }`}
               >
-                {isSearchingOrder ? "Memeriksa Status..." : "Periksa Status & Tampilkan Lisensi →"}
+                🔑 Pakai Kode Lisensi
               </button>
-            </form>
+              <button
+                type="button"
+                onClick={() => setStatusModalTab("order_lookup")}
+                className={`py-2.5 px-2 rounded-xl text-[11px] font-extrabold transition-all ${
+                  statusModalTab === "order_lookup"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-700 hover:text-blue-600"
+                }`}
+              >
+                🧾 Cek Nomor Pesanan
+              </button>
+            </div>
 
-            {/* Hasil Pencarian Terverifikasi */}
-            {searchAttempted && searchResult && (
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 text-xs animate-in fade-in duration-150">
-                <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                  <div>
-                    <strong className="text-slate-900 block">{searchResult.businessName}</strong>
-                    <span className="text-[10px] text-slate-500 font-mono">{searchResult.orderId}</span>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                    searchResult.status === "lunas_lisensi_terbit"
-                      ? "bg-blue-50 text-blue-700 border border-blue-200"
-                      : "bg-amber-50 text-amber-700 border border-amber-200"
-                  }`}>
-                    {searchResult.status === "lunas_lisensi_terbit" ? "Lunas & Aktif" : "Menunggu Verifikasi"}
-                  </span>
+            {/* TAB 1: LANGSUNG AKTIFKAN DENGAN KODE LISENSI / TESTER (TANPA NOMOR PESANAN & TANPA KODE AKSES) */}
+            {statusModalTab === "direct_license" && (
+              <div className="space-y-4">
+                <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-[11px] text-blue-900 leading-relaxed">
+                  <strong>💡 Punya Lisensi Tester atau Kode Lisensi Resmi?</strong><br />
+                  Masukkan langsung kode lisensi Anda di bawah ini (tidak perlu Nomor Pesanan dan tidak perlu Kode Akses Rahasia).
                 </div>
 
-                {searchResult.status === "lunas_lisensi_terbit" && searchResult.licenseKey ? (
-                  <div className="space-y-3 pt-1">
-                    <span className="text-[10px] text-slate-500 font-bold block uppercase">KODE LISENSI RESMI ANDA:</span>
-                    <div className="p-3 rounded-xl bg-white border border-blue-400 text-center font-mono font-black text-sm text-blue-600 select-all tracking-wider">
-                      {searchResult.licenseKey}
+                <form onSubmit={handleDirectActivateLicense} className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-extrabold text-slate-800 mb-1">
+                      Kode Lisensi SakuNota / Tester <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: SN-TEST-XXXX atau SN-XXXX-XXXX-XXXX"
+                      value={directLicenseInput}
+                      onChange={(e) => setDirectLicenseInput(e.target.value.toUpperCase())}
+                      className="w-full px-3.5 py-3 rounded-xl bg-slate-50 border-2 border-blue-200 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:bg-white outline-none font-mono font-bold uppercase tracking-wider"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Nama HP / Perangkat Kasir (Opsional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: HP Kasir Utama"
+                      value={directDeviceName}
+                      onChange={(e) => setDirectDeviceName(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:bg-white outline-none"
+                    />
+                  </div>
+
+                  {directActivateError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+                      ⚠️ {directActivateError}
                     </div>
+                  )}
 
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (searchResult.licenseKey) {
-                            navigator.clipboard.writeText(searchResult.licenseKey);
-                            setCopiedLicense(true);
-                            setTimeout(() => setCopiedLicense(false), 2000);
-                          }
-                        }}
-                        className="flex-1 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors flex items-center justify-center gap-1.5"
-                      >
-                        <span>{copiedLicense ? "✓ Tersalin!" : "📋 Salin Lisensi"}</span>
-                      </button>
-                    </div>
-
-                    {/* Device Binding Status */}
-                    <div className="p-2.5 rounded-xl bg-white border border-slate-200">
-                      <span className="text-[10px] text-slate-500 block uppercase font-bold mb-1">Status Perangkat Kasir:</span>
-                      {searchResult.boundDeviceId ? (
-                        <div className="text-blue-700 font-bold text-xs flex items-center gap-1.5">
-                          <span>🟢</span>
-                          <span>Terikat di: {searchResult.deviceName || searchResult.boundDeviceId}</span>
-                        </div>
-                      ) : (
-                        <div className="text-[11px] text-slate-600">
-                          <span className="text-slate-900 font-bold block">Belum Terikat ke Perangkat</span>
-                          <span>Lisensi ini belum digunakan di HP mana pun. Aktifkan di HP kasir yang Anda inginkan.</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Activate on this device if not bound */}
-                    {!searchResult.boundDeviceId && !isActivatedHere && (
-                      <button
-                        type="button"
-                        disabled={isActivatingHere}
-                        onClick={() => handleActivateOnThisDevice(searchResult.licenseKey!)}
-                        className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
-                      >
-                        <span>🚀</span>
-                        <span>{isActivatingHere ? "Mengaktifkan..." : "Aktifkan di Perangkat Ini"}</span>
-                      </button>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <a
-                        href="#panduan"
-                        onClick={() => setIsCheckStatusModalOpen(false)}
-                        className="py-2 px-3 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-700 hover:text-slate-900 text-center transition-colors"
-                      >
-                        📱 Pasang di HP
-                      </a>
+                  {directActivateSuccess && (
+                    <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs space-y-3">
+                      <div className="font-extrabold flex items-center gap-1.5">
+                        <span>✅</span>
+                        <span>{directActivateSuccess}</span>
+                      </div>
                       <Link
                         href="/pos"
-                        className="py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black text-center shadow-sm"
+                        className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md"
                       >
-                        Buka Kasir →
+                        <span>🏪</span>
+                        <span>Buka Kasir SakuNota Sekarang →</span>
                       </Link>
                     </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isActivatingDirect}
+                    className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md shadow-blue-600/25 active:scale-95 disabled:opacity-50"
+                  >
+                    {isActivatingDirect ? "Memverifikasi & Mengaktifkan..." : "🚀 Aktifkan Lisensi di Perangkat Ini →"}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* TAB 2: CEK STATUS PESANAN (BAGI YANG BARU TRANSFER) */}
+            {statusModalTab === "order_lookup" && (
+              <div className="space-y-4">
+                <form onSubmit={handleSearchOrder} className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Nomor Pesanan <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="SN-2026-XXXX"
+                      value={searchOrderId}
+                      onChange={(e) => setSearchOrderId(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:bg-white outline-none font-mono"
+                    />
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="p-3 rounded-xl bg-white border border-slate-200 text-slate-600 text-[11px] leading-relaxed space-y-1">
-                      <strong className="text-slate-800 block font-bold">Sedang Menunggu Verifikasi Pembayaran</strong>
-                      <p>
-                        Jika Anda membayar otomatis via Midtrans, tekan tombol sinkronisasi di bawah untuk memeriksa status secara langsung.
-                      </p>
-                      <p>
-                        Jika Anda membayar transfer BCA manual, Tim SakuNota akan mencocokkan mutasi rekening sebelum lisensi terbit.
-                      </p>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Kode Akses Rahasia Pembeli <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="KOD-XXXX"
+                      value={searchAccessCode}
+                      onChange={(e) => setSearchAccessCode(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:bg-white outline-none font-mono uppercase"
+                    />
+                    <span className="text-[10px] text-slate-600 block mt-1">
+                      Kode rahasia diberikan saat checkout. Jika Anda sudah punya Kode Lisensi / Tester, pilih tab <strong>🔑 Pakai Kode Lisensi</strong> di atas.
+                    </span>
+                  </div>
+
+                  {searchError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-semibold">
+                      ⚠️ {searchError}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isSearchingOrder}
+                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50"
+                  >
+                    {isSearchingOrder ? "Memeriksa Status..." : "Periksa Status & Tampilkan Lisensi →"}
+                  </button>
+                </form>
+
+                {/* Hasil Pencarian Terverifikasi */}
+                {searchAttempted && searchResult && (
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 text-xs animate-in fade-in duration-150">
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+                      <div>
+                        <strong className="text-slate-900 block">{searchResult.businessName}</strong>
+                        <span className="text-[10px] text-slate-600 font-mono">{searchResult.orderId}</span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                        searchResult.status === "lunas_lisensi_terbit"
+                          ? "bg-blue-50 text-blue-700 border border-blue-200"
+                          : "bg-amber-50 text-amber-700 border border-amber-200"
+                      }`}>
+                        {searchResult.status === "lunas_lisensi_terbit" ? "Lunas & Aktif" : "Menunggu Verifikasi"}
+                      </span>
                     </div>
 
-                    <button
-                      type="button"
-                      disabled={isSearchingOrder}
-                      onClick={async () => {
-                        setIsSearchingOrder(true);
-                        setSearchError("");
-                        try {
-                          const res = await checkOrderStatusServer(searchResult.orderId, searchResult.accessCode);
-                          if (res.success && res.order) {
-                            setSearchResult(res.order);
-                          } else {
-                            setSearchError(res.error || "Gagal menyinkronkan status pesanan.");
-                          }
-                        } catch (e: any) {
-                          setSearchError("Koneksi gagal: " + e.message);
-                        } finally {
-                          setIsSearchingOrder(false);
-                        }
-                      }}
-                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
-                    >
-                      <span>🔄</span>
-                      <span>{isSearchingOrder ? "Menyinkronkan..." : "Sinkronkan Status Pembayaran"}</span>
-                    </button>
+                    {searchResult.status === "lunas_lisensi_terbit" && searchResult.licenseKey ? (
+                      <div className="space-y-3 pt-1">
+                        <span className="text-[10px] text-slate-600 font-bold block uppercase">KODE LISENSI RESMI ANDA:</span>
+                        <div className="p-3 rounded-xl bg-white border border-blue-400 text-center font-mono font-black text-sm text-blue-600 select-all tracking-wider">
+                          {searchResult.licenseKey}
+                        </div>
 
-                    <a
-                      href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20sudah%20transfer%20untuk%20pesanan%20${searchResult.orderId}%20(${searchResult.businessName}).%20Kode%20akses:%20${searchResult.accessCode}.%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold rounded-xl border border-blue-200 transition-all flex items-center justify-center gap-1.5"
-                    >
-                      <span>💬</span>
-                      <span>Konfirmasi via WhatsApp SakuNota</span>
-                    </a>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (searchResult.licenseKey) {
+                                navigator.clipboard.writeText(searchResult.licenseKey);
+                                setCopiedLicense(true);
+                                setTimeout(() => setCopiedLicense(false), 2000);
+                              }
+                            }}
+                            className="flex-1 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <span>{copiedLicense ? "✓ Tersalin!" : "📋 Salin Lisensi"}</span>
+                          </button>
+                        </div>
+
+                        {/* Device Binding Status */}
+                        <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                          <span className="text-[10px] text-slate-600 block uppercase font-bold mb-1">Status Perangkat Kasir:</span>
+                          {searchResult.boundDeviceId ? (
+                            <div className="text-blue-700 font-bold text-xs flex items-center gap-1.5">
+                              <span>🟢</span>
+                              <span>Terikat di: {searchResult.deviceName || searchResult.boundDeviceId}</span>
+                            </div>
+                          ) : (
+                            <div className="text-[11px] text-slate-600">
+                              <span className="text-slate-900 font-bold block">Belum Terikat ke Perangkat</span>
+                              <span>Lisensi ini belum digunakan di HP mana pun. Aktifkan di HP kasir yang Anda inginkan.</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Activate on this device if not bound */}
+                        {!searchResult.boundDeviceId && !isActivatedHere && (
+                          <button
+                            type="button"
+                            disabled={isActivatingHere}
+                            onClick={() => handleActivateOnThisDevice(searchResult.licenseKey!)}
+                            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                          >
+                            <span>🚀</span>
+                            <span>{isActivatingHere ? "Mengaktifkan..." : "Aktifkan di Perangkat Ini"}</span>
+                          </button>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <a
+                            href="#panduan"
+                            onClick={() => setIsCheckStatusModalOpen(false)}
+                            className="py-2 px-3 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-700 hover:text-slate-900 text-center transition-colors"
+                          >
+                            📱 Pasang di HP
+                          </a>
+                          <Link
+                            href="/pos"
+                            className="py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black text-center shadow-sm"
+                          >
+                            Buka Kasir →
+                          </Link>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="p-3 rounded-xl bg-white border border-slate-200 text-slate-600 text-[11px] leading-relaxed space-y-1">
+                          <strong className="text-slate-800 block font-bold">Sedang Menunggu Verifikasi Pembayaran</strong>
+                          <p>
+                            Jika Anda membayar otomatis via Midtrans, tekan tombol sinkronisasi di bawah untuk memeriksa status secara langsung.
+                          </p>
+                          <p>
+                            Jika Anda membayar transfer BCA manual, Tim SakuNota akan mencocokkan mutasi rekening sebelum lisensi terbit.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={isSearchingOrder}
+                          onClick={async () => {
+                            setIsSearchingOrder(true);
+                            setSearchError("");
+                            try {
+                              const res = await checkOrderStatusServer(searchResult.orderId, searchResult.accessCode);
+                              if (res.success && res.order) {
+                                setSearchResult(res.order);
+                              } else {
+                                setSearchError(res.error || "Gagal menyinkronkan status pesanan.");
+                              }
+                            } catch (e: any) {
+                              setSearchError("Koneksi gagal: " + e.message);
+                            } finally {
+                              setIsSearchingOrder(false);
+                            }
+                          }}
+                          className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                        >
+                          <span>🔄</span>
+                          <span>{isSearchingOrder ? "Menyinkronkan..." : "Sinkronkan Status Pembayaran"}</span>
+                        </button>
+
+                        <a
+                          href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20sudah%20transfer%20untuk%20pesanan%20${searchResult.orderId}%20(${searchResult.businessName}).%20Kode%20akses:%20${searchResult.accessCode}.%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold rounded-xl border border-blue-200 transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <span>💬</span>
+                          <span>Konfirmasi via WhatsApp SakuNota</span>
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
