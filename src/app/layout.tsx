@@ -61,13 +61,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{
             __html: `
               if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
+                function registerSW() {
                   navigator.serviceWorker.register('/sw.js').then(function(reg) {
                     console.log('[SakuNota] Service Worker registered, scope:', reg.scope);
                   }).catch(function(err) {
                     console.warn('[SakuNota] SW registration error:', err);
                   });
-                });
+                }
+                if (document.readyState === 'complete') {
+                  registerSW();
+                } else {
+                  window.addEventListener('load', registerSW);
+                }
               }
             `,
           }}

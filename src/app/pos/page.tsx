@@ -608,6 +608,49 @@ export default function POSPage() {
           removeListener = handle;
         }).catch(() => {});
       }
+
+      const handleEscapeKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          if (unsavedConfirm?.isOpen) {
+            setUnsavedConfirm(null);
+          } else if (receiptData) {
+            closeReceipt();
+          } else if (blindCloseResult) {
+            setBlindCloseResult(null);
+          } else if (isSplitBillModalOpen) {
+            handleCloseSplitBill();
+          } else if (isPaymentModalOpen) {
+            handleClosePaymentModal();
+          } else if (activeModItem) {
+            handleCloseModifiers();
+          } else if (activeVariantGroup) {
+            setActiveVariantGroup(null);
+          } else if (isRefundModalOpen) {
+            setIsRefundModalOpen(false);
+          } else if (isDiscountModalOpen) {
+            handleCloseDiscountModal();
+          } else if (isCashMovementModalOpen) {
+            handleCloseCashMovement();
+          } else if (isOpenShiftModalOpen) {
+            handleCloseOpenShift();
+          } else if (isCloseShiftModalOpen) {
+            handleCloseCloseShift();
+          } else if (isMobileCartOpen) {
+            closeMobileCart();
+          } else if (isOnboardingOpen) {
+            setIsOnboardingOpen(false);
+          }
+        }
+      };
+      window.addEventListener('keydown', handleEscapeKey);
+      return () => {
+        window.removeEventListener('keydown', handleEscapeKey);
+        try {
+          if (removeListener && typeof removeListener.remove === 'function') {
+            removeListener.remove();
+          }
+        } catch (_) {}
+      };
     } catch (_) {}
 
     return () => {
@@ -2258,8 +2301,8 @@ export default function POSPage() {
             <span>Anda sedang mencoba demo interaktif. Transaksi ini simulasi di browser Anda.</span>
           </div>
           <div className="flex items-center gap-3 mt-1 sm:mt-0 font-bold">
-            <Link href="/?beta=register" className="text-amber-900 underline font-bold hover:text-amber-950">Daftar Beta 7 Hari</Link>
-            <Link href="/?beli=true" className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded-lg text-[11px] shadow-sm">Beli Rp65.000</Link>
+            <Link href="/?beta=register" target="_blank" rel="noopener noreferrer" className="text-amber-900 underline font-bold hover:text-amber-950">Daftar Beta 7 Hari</Link>
+            <Link href="/?beli=true" target="_blank" rel="noopener noreferrer" className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded-lg text-[11px] shadow-sm">Beli Rp65.000</Link>
             <button type="button" onClick={handleExitDemo} className="text-slate-600 hover:text-slate-900 underline text-[11px] font-semibold">Keluar Demo</button>
           </div>
         </div>
@@ -3229,26 +3272,6 @@ export default function POSPage() {
         <div className="hidden lg:flex flex-col w-80 xl:w-96 bg-card border-l border-line shadow-2xl z-20 shrink-0">
           {renderCartInner(false)}
         </div>
-
-        {/* Mobile Bottom Sheet Cart */}
-        {isMobileCartOpen && (
-          <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
-            <div 
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
-              onClick={closeMobileCart}
-              aria-label="Tutup keranjang"
-            />
-            <div 
-              className="relative bg-surface rounded-t-3xl landscape:rounded-none shadow-2xl flex flex-col max-h-[88vh] landscape:max-h-[100dvh] landscape:h-[100dvh] w-full animate-in slide-in-from-bottom-2 duration-200 transition-transform ease-out overflow-hidden"
-              style={{
-                transform: cartSheetDragY > 0 ? `translateY(${cartSheetDragY}px)` : undefined,
-                touchAction: 'pan-y'
-              }}
-            >
-              {renderCartInner(true)}
-            </div>
-          </div>
-        )}
       </div>
       </div>
 
@@ -4479,6 +4502,16 @@ export default function POSPage() {
             className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="flex justify-end -mt-2 -mr-2 mb-1">
+              <button
+                type="button"
+                aria-label="Tutup"
+                onClick={() => setUnsavedConfirm(null)}
+                className="text-muted hover:text-fg p-1.5 rounded-lg text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
             <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
               ⚠️
             </div>
@@ -4491,10 +4524,11 @@ export default function POSPage() {
             <div className="flex space-x-2">
               <button
                 type="button"
+                aria-label="Batal"
                 onClick={() => setUnsavedConfirm(null)}
                 className="flex-1 py-2.5 bg-line hover:bg-slate-600 text-fg rounded-xl text-xs font-bold transition-colors"
               >
-                Lanjut Mengisi
+                Batal
               </button>
               <button
                 type="button"

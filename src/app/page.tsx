@@ -1254,7 +1254,7 @@ export default function SakuNotaLandingPage() {
       <section className="py-8 border-y border-slate-200 bg-white overflow-hidden select-none">
         <div className="max-w-5xl mx-auto text-center mb-4">
           <span className="text-[11px] font-extrabold tracking-widest text-slate-500 uppercase">
-            Built for businesses that demand excellence
+            Dirancang untuk Usaha Kuliner yang Mengutamakan Kecepatan
           </span>
         </div>
 

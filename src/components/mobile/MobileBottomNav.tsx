@@ -36,7 +36,7 @@ export default function MobileBottomNav({
             key={tab.id}
             type="button"
             onClick={() => onTabChange(tab.id)}
-            className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all relative ${
+            className={`flex flex-col items-center justify-center min-h-[48px] py-1.5 rounded-xl text-[10px] font-bold transition-all relative ${
               isActive
                 ? "text-accent-text font-black scale-105"
                 : "text-muted hover:text-fg"
