@@ -100,7 +100,7 @@ export default function TermsOfServicePage() {
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
         <div className="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>© 2026 SakuNota. Hak cipta dilindungi.</span>
+          <span>© 2026 SakuNota - PT Pemuda Gaya Bebas. Hak cipta dilindungi.</span>
           <div className="flex gap-4 font-semibold">
             <Link href="/tentang" className="hover:text-blue-600">Tentang Kami</Link>
             <Link href="/privacy" className="hover:text-blue-600">Kebijakan Privasi</Link>

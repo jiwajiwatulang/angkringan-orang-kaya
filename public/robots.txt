@@ -1,0 +1,10 @@
+# SakuNota - Kasir Jalan Tanpa Internet
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /owner
+Disallow: /owner/
+Disallow: /api/
+
+Sitemap: https://sakunota.my.id/sitemap.xml

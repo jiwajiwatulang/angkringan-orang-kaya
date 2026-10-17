@@ -129,9 +129,10 @@ export default function POSPage() {
         typeof navigator !== 'undefined' && navigator.userAgent.includes('Mobile') ? 'HP Kasir' : 'Desktop Kasir'
       );
       if (res.success) {
-        setActivationNotice({ type: 'success', message: 'Aktivasi berhasil! Memuat kasir...' });
+        setActivationNotice({ type: 'success', message: '🎉 Aktivasi berhasil! Menyiapkan panduan pengaturan toko Anda...' });
         const refreshed = await checkCashierAccess(true);
         setAccessStatus(refreshed);
+        setIsOnboardingOpen(true);
       } else {
         setActivationNotice({ type: 'error', message: res.error || 'Aktivasi gagal. Periksa nomor lisensi Anda.' });
       }
@@ -2312,11 +2313,12 @@ export default function POSPage() {
       {accessStatus.isDemo && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex flex-wrap items-center justify-between text-xs text-amber-950 font-medium shrink-0 z-40">
           <div className="flex items-center gap-2">
-            <span className="font-black bg-amber-500 text-white px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase shadow-xs">DEMO SANDBOX</span>
-            <span>Anda sedang mencoba mode simulasi kasir. Seluruh data transaksi di sini adalah simulasi lokal.</span>
+            <span className="font-black bg-amber-500 text-white px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase shadow-xs">🎮 SIMULASI DEMO</span>
+            <span>Mode Demo Terbatas: Data hanya disimpan sementara di sesi browser (Temporary Memory) dan di-reset saat keluar. Untuk penyimpanan permanen di memori HP, aktifkan Masa Coba (Trial) atau Lisensi Resmi.</span>
           </div>
-          <div className="flex items-center gap-3 mt-1 sm:mt-0 font-bold">
+          <div className="flex items-center gap-2 mt-1 sm:mt-0 font-bold">
             <button type="button" onClick={handleExitDemo} className="text-amber-900 hover:text-amber-950 font-bold text-xs px-2.5 py-1 rounded-lg bg-amber-200/60 hover:bg-amber-200 transition-colors">← Keluar Demo</button>
+            <Link href="/?beli=true" className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1 rounded-lg shadow-xs">Beli Lisensi Rp50.000 →</Link>
           </div>
         </div>
       )}
