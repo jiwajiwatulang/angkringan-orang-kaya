@@ -42,4 +42,9 @@ next-env.d.ts
 .test-profile*
 data/*.db*
 
+# scratch and dumps
+*dump*.json
+*backup*.json
+
+
 

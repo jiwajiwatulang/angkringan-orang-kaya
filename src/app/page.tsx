@@ -719,7 +719,7 @@ export default function SakuNotaLandingPage() {
           
           <div className="text-center space-y-2">
             <span className="text-xs font-extrabold text-blue-600 tracking-wider uppercase">
-              Features
+              Fitur Unggulan
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
               Fitur Lengkap Dirancang untuk Kecepatan
@@ -935,7 +935,7 @@ export default function SakuNotaLandingPage() {
           
           <div className="text-center space-y-2">
             <span className="text-xs font-extrabold text-blue-600 tracking-wider uppercase">
-              Pricing
+              Harga Lisensi
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
               Satu Harga Sekali Bayar &amp; Siap Dipasang di HP
@@ -1180,13 +1180,13 @@ export default function SakuNotaLandingPage() {
           
           <div className="text-center space-y-2">
             <span className="text-xs font-extrabold text-blue-600 tracking-wider uppercase">
-              Common Questions
+              Tanya Jawab (FAQ)
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
               Pertanyaan yang Sering Diajukan
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
-              Find answers to frequently asked questions.
+              Temukan jawaban atas pertanyaan seputar kasir SakuNota.
             </p>
           </div>
 
@@ -1274,10 +1274,10 @@ export default function SakuNotaLandingPage() {
       <section className="py-20 px-4 sm:px-8 bg-gradient-to-b from-blue-50/70 to-slate-50 border-b border-slate-200 text-center">
         <div className="max-w-3xl mx-auto space-y-6">
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            Ready to Get Started?
+            Siap Mulai Menggunakan SakuNota?
           </h2>
           <p className="text-sm sm:text-base text-slate-600 max-w-md mx-auto">
-            Join businesses using SakuNota
+            Kelola kasir usaha kuliner Anda lebih cepat dan tenang tanpa khawatir internet mati.
           </p>
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-md mx-auto">
@@ -1322,7 +1322,7 @@ export default function SakuNotaLandingPage() {
           {/* Col 2: Product */}
           <div className="space-y-3">
             <span className="text-slate-900 font-extrabold text-xs uppercase tracking-wider block">
-              Product
+              Produk
             </span>
             <ul className="space-y-2 text-xs">
               <li><a href="#fitur" className="hover:text-blue-600 transition-colors">Fitur</a></li>
