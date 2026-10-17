@@ -519,7 +519,7 @@ export default function SakuNotaLandingPage() {
                   }}
                   className="w-full py-3.5 text-center rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-600/30 transition-all active:scale-95"
                 >
-                  Beli SakuNota - Rp65.000
+                  Beli SakuNota - Rp50.000
                 </button>
               </div>
             </div>
@@ -572,7 +572,7 @@ export default function SakuNotaLandingPage() {
               onClick={handleOpenBuyModal}
               className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-lg shadow-blue-600/25 transition-all active:scale-95 text-center flex items-center justify-center gap-2"
             >
-              <span>Beli SakuNota - Rp65.000</span>
+              <span>Beli SakuNota - Rp50.000</span>
               <span>→</span>
             </button>
           </div>
@@ -978,7 +978,7 @@ export default function SakuNotaLandingPage() {
                       Rp99.000
                     </span>
                     <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
-                      Rp65.000
+                      Rp50.000
                     </span>
                   </div>
                   <span className="text-[11px] text-blue-600 font-bold block">
@@ -1199,7 +1199,7 @@ export default function SakuNotaLandingPage() {
               },
               {
                 q: "Apakah ada biaya langganan bulanan atau potongan komisi?",
-                a: "Tidak ada biaya bulanan sama sekali. Cukup satu kali bayar Rp65.000 untuk 1 perangkat kasir aktif selamanya. Tidak ada komisi penjualan dan tidak ada iklan.",
+                a: "Tidak ada biaya bulanan sama sekali. Cukup satu kali bayar Rp50.000 untuk 1 perangkat kasir aktif selamanya. Tidak ada komisi penjualan dan tidak ada iklan.",
               },
               {
                 q: "Printer struk Bluetooth apa saja yang kompatibel?",
@@ -1287,7 +1287,7 @@ export default function SakuNotaLandingPage() {
               onClick={handleOpenBuyModal}
               className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-lg shadow-blue-600/30 transition-all active:scale-95"
             >
-              Beli SakuNota - Rp65.000
+              Beli SakuNota - Rp50.000
             </button>
             <button
               type="button"
@@ -1627,7 +1627,7 @@ export default function SakuNotaLandingPage() {
                       }}
                       className="text-[11px] text-slate-600 hover:text-blue-600 font-bold underline"
                     >
-                      Ingin langsung beli lisensi permanen tanpa batas hari? Beli Rp65.000 →
+                      Ingin langsung beli lisensi permanen tanpa batas hari? Beli Rp50.000 →
                     </button>
                   </div>
                 </div>
@@ -1755,7 +1755,7 @@ export default function SakuNotaLandingPage() {
                   <div>
                     <span className="text-slate-500 block text-[10px]">Total Pembayaran Promo</span>
                     <strong className="text-blue-600 font-black text-sm">
-                      Rp65.000
+                      Rp50.000
                     </strong>
                   </div>
                   <span className="text-[10px] text-slate-400 line-through">Rp99.000</span>
@@ -1817,7 +1817,7 @@ export default function SakuNotaLandingPage() {
                     disabled={isInitiatingSnap}
                     className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-lg shadow-blue-600/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    <span>{isInitiatingSnap ? "Membuka Gerbang Midtrans..." : "Bayar Otomatis Rp65.000 via Midtrans →"}</span>
+                    <span>{isInitiatingSnap ? "Membuka Gerbang Midtrans..." : "Bayar Otomatis Rp50.000 via Midtrans →"}</span>
                   </button>
                 </div>
 
@@ -1861,7 +1861,7 @@ export default function SakuNotaLandingPage() {
                   <div className="flex justify-between items-center text-xs pt-1">
                     <span className="text-slate-600">Nominal Transfer:</span>
                     <strong className="text-base font-black text-slate-900">
-                      Rp 65.000
+                      Rp 50.000
                     </strong>
                   </div>
 
@@ -1959,7 +1959,7 @@ export default function SakuNotaLandingPage() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-600">Nominal:</span>
-                    <strong className="text-slate-900 font-black">Rp 65.000</strong>
+                    <strong className="text-slate-900 font-black">Rp 50.000</strong>
                   </div>
                 </div>
 
@@ -1974,7 +1974,7 @@ export default function SakuNotaLandingPage() {
 
                 <div className="pt-2 flex flex-col gap-2">
                   <a
-                    href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20sudah%20transfer%20Rp65.000%20untuk%20pesanan%20${currentOrderId}%20(${businessName}).%20Kode%20akses:%20${currentAccessCode}.%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
+                    href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20sudah%20transfer%20Rp50.000%20untuk%20pesanan%20${currentOrderId}%20(${businessName}).%20Kode%20akses:%20${currentAccessCode}.%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"

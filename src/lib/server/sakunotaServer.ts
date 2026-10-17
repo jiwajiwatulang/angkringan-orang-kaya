@@ -359,7 +359,7 @@ export async function createCustomerOrder(
     businessName: (data.businessName || "").trim(),
     whatsapp: (data.whatsapp || "").trim(),
     email: data.email?.trim() || undefined,
-    amount: 65000,
+    amount: 50000,
     paymentMethod: "Transfer Bank BCA",
     bankAccount: "8030 554 912 a.n. SakuNota Official",
     transferProofName: "bukti_transfer_pembeli.jpg",

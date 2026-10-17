@@ -2261,7 +2261,7 @@ export default function POSPage() {
               href="/?beli=true"
               className="bg-blue-600 hover:bg-blue-500 text-white font-bold p-3.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-900/30"
             >
-              <span>💳</span> Beli Lisensi Resmi (Rp65.000)
+              <span>💳</span> Beli Lisensi Resmi (Rp50.000)
             </Link>
             <button
               type="button"
@@ -2320,7 +2320,7 @@ export default function POSPage() {
             <span>Sisa waktu: <strong>{accessStatus.daysRemaining ?? 7} hari</strong> ({accessStatus.hoursRemaining ?? 168} jam). Usaha: <strong>{accessStatus.businessName}</strong></span>
           </div>
           <Link href="/?beli=true" className="mt-1 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded-lg text-[11px] shadow-sm">
-            Upgrade Permanen Rp65.000 →
+            Upgrade Permanen Rp50.000 →
           </Link>
         </div>
       )}

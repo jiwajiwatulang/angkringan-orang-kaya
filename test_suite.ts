@@ -1013,7 +1013,7 @@ async function runTestSuite() {
       businessName: 'Warung Kopi Seniman',
       whatsapp: '081234567890',
       email: 'iwan@sakunota.my.id',
-      amount: 65000,
+      amount: 50000,
       paymentMethod: 'Midtrans Otomatis (QRIS / E-Wallet / VA)',
       bankAccount: 'Midtrans Official Gateway',
       status: 'menunggu_verifikasi' as const,

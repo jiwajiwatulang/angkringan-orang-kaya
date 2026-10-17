@@ -8,7 +8,7 @@
 
 * **Pak CEO (Anda):**
   * **Kedudukan:** Pemilik Tunggal & Pemegang Saham Pengendali.
-  * **Wewenang:** Menentukan arah visi produk, menyetujui rilis ke publik (*Go/No-Go Launch*), menetapkan harga lisensi (Rp65.000), dan menerima laporan eksekutif.
+  * **Wewenang:** Menentukan arah visi produk, menyetujui rilis ke publik (*Go/No-Go Launch*), menetapkan harga lisensi (Rp50.000), dan menerima laporan eksekutif.
   * **Aktivitas:** Mengarahkan tim, mengecek hasil di HP/Desktop, santai memantau lewat shortcut Desktop.
 
 * **General Manager / GM (Asisten Utama AI):**

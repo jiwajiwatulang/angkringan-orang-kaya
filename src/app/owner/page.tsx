@@ -292,7 +292,7 @@ export default function SakuNotaOwnerDashboardPage() {
 
   const handleConvertBetaToPaid = async (regId: string) => {
     if (!ownerToken) return;
-    if (!confirm("Konversi pendaftar beta ini menjadi Lisensi Berbayar Permanen (Rp65.000)? Perangkat dan data lokal kasir tetap utuh tanpa reset.")) return;
+    if (!confirm("Konversi pendaftar beta ini menjadi Lisensi Berbayar Permanen (Rp50.000)? Perangkat dan data lokal kasir tetap utuh tanpa reset.")) return;
     try {
       const res = await convertBetaTrialToPaidServer(ownerToken, regId);
       if (res.success) {
@@ -995,7 +995,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                       <div className="text-right">
                         <span className="text-xs text-muted block">Total Tagihan:</span>
                         <strong className="text-base font-black text-emerald-600 dark:text-emerald-400">
-                          Rp {(o.amount || 65000).toLocaleString("id-ID")}
+                          Rp {(o.amount || 50000).toLocaleString("id-ID")}
                         </strong>
                       </div>
                     </div>
@@ -1412,7 +1412,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                                   onClick={() => handleConvertBetaToPaid(b.registrationId || String(b.id))}
                                   className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
                                 >
-                                  <span>💎</span> Konversi Berbayar (Rp65rb)
+                                  <span>💎</span> Konversi Berbayar (Rp50rb)
                                 </button>
                               )}
 

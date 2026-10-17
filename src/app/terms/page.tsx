@@ -44,7 +44,7 @@ export default function TermsOfServicePage() {
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h2 className="text-base font-black text-slate-900">1. Lisensi Sekali Bayar Selamanya</h2>
             <p className="text-slate-600">
-              SakuNota menyediakan lisensi aplikasi kasir dengan model <strong>sekali bayar seharga Rp65.000</strong> untuk satu perangkat kasir aktif seumur hidup.
+              SakuNota menyediakan lisensi aplikasi kasir dengan model <strong>sekali bayar seharga Rp50.000</strong> untuk satu perangkat kasir aktif seumur hidup.
             </p>
             <p className="text-slate-600">
               Pengguna <strong>tidak dikenakan biaya langganan bulanan, biaya tahunan, maupun potongan komisi penjualan apa pun</strong>. Seluruh omzet dari penjualan usaha Anda 100% bersih menjadi hak milik Anda.

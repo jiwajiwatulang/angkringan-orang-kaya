@@ -55,7 +55,7 @@ export default function SakuNotaPanduanPage() {
           <div className="bg-surface border border-line rounded-2xl p-4 space-y-3">
             <h4 className="font-extrabold text-sm text-fg">Langkah 3: Alur Aktivasi Lisensi Resmi di HP Kasir</h4>
             <p>
-              Setelah melakukan pembelian lisensi (Rp65.000 satu kali bayar untuk 1 perangkat), Anda menerima Nomor Lisensi (format: <code className="text-accent-text font-mono font-bold">SN-XXXX-XXXX-XXXX</code>).
+              Setelah melakukan pembelian lisensi (Rp50.000 satu kali bayar untuk 1 perangkat), Anda menerima Nomor Lisensi (format: <code className="text-accent-text font-mono font-bold">SN-XXXX-XXXX-XXXX</code>).
             </p>
             <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed space-y-1">
               <strong>Aturan 1 Lisensi = 1 Perangkat Kasir Aktif:</strong>
@@ -454,7 +454,7 @@ export default function SakuNotaPanduanPage() {
             <ul className="list-disc list-inside space-y-1.5 pl-1">
               <li><strong>Proteksi Waktu Perangkat:</strong> Sistem kasir offline dilengkapi dengan pendeteksi jam mundur (monotonic clock watermark). Memundurkan kalender HP secara sengaja akan mengunci kasir untuk mencegah kecurangan.</li>
               <li><strong>Pindah Perangkat:</strong> Jika HP kasir rusak saat masa trial, hubungi Owner via WhatsApp untuk melepas ikatan perangkat lama (unbind device).</li>
-              <li><strong>Upgrade ke Lisensi Permanen (Rp65.000):</strong> Kapan pun Anda memutuskan membeli lisensi resmi permanen, Anda cukup memasukkan kode lisensi baru. Seluruh data katalog menu dan laporan toko langsung berlanjut tanpa perlu direset atau dibuat ulang.</li>
+              <li><strong>Upgrade ke Lisensi Permanen (Rp50.000):</strong> Kapan pun Anda memutuskan membeli lisensi resmi permanen, Anda cukup memasukkan kode lisensi baru. Seluruh data katalog menu dan laporan toko langsung berlanjut tanpa perlu direset atau dibuat ulang.</li>
             </ul>
           </div>
         </div>

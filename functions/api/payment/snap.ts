@@ -76,7 +76,7 @@ export async function onRequestPost(context: any) {
           id: "SAKUNOTA-LIFETIME-PROMO",
           price: order.amount,
           quantity: 1,
-          name: "SakuNota POS Kasir Lifetime (Promo)",
+          name: "SakuNota Kasir Lifetime (Promo)",
         },
       ],
       callbacks: {

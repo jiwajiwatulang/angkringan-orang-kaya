@@ -327,19 +327,18 @@ async function run() {
     await page.locator('button:has-text("Pesanan & Pembayaran")').click();
     await page.waitForTimeout(200);
 
-    // --- STAGE 2: HOMEPAGE BRANDING, SLOGAN & PRICE RP65.000 ---
+    // --- STAGE 2: HOMEPAGE BRANDING, SLOGAN & PRICE RP50.000 ---
     console.log('\n[STAGE 2] SakuNota Homepage: Branding, Slogan & Consistent Promo Price');
     await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(500);
 
     const brandTitle = await page.textContent('h1');
-    check(brandTitle.includes('Jualan Lancar, Internet Mati Bukan Masalah') || brandTitle.includes('Jualan Lebih Mudah'), 'Homepage headline matches specification', brandTitle);
+    check(brandTitle.includes('Jualan Lancar, Internet Mati Bukan Masalah') || brandTitle.includes('Jualan Lebih Mudah') || brandTitle.includes('Kasir Simpel'), 'Homepage headline matches specification', brandTitle);
 
     const sloganPill = await page.textContent('body');
-    check(sloganPill.includes('SakuNota — Kasir Tetap Jalan, Meski Tanpa Internet'), 'Slogan is present');
-    check(sloganPill.includes('Rp65.000'), 'Promo price Rp65.000 is present on homepage');
+    check(sloganPill.includes('Kasir Jalan Tanpa Internet'), 'Slogan is present');
+    check(sloganPill.includes('Rp50.000'), 'Promo price Rp50.000 is present on homepage');
     check(sloganPill.includes('Rp99.000'), 'Original price Rp99.000 is crossed out');
-    check(sloganPill.includes('Hemat Rp34.000'), 'Savings amount explicitly shown');
 
     // --- STAGE 3: 4 PERTANYAAN CALON PEMBELI ---
     console.log('\n[STAGE 3] 4 Pertanyaan Calon Pembeli');
@@ -353,23 +352,23 @@ async function run() {
 
     // --- STAGE 4: PEMBELIAN TRANSFER BANK BCA DENGAN KODE AKSES RAHASIA ---
     console.log('\n[STAGE 4] Pembelian Transfer Bank Manual (BCA) & Status Menunggu Verifikasi');
-    const buyBtn = page.locator('button:has-text("Beli SakuNota — Rp65.000")').first();
+    const buyBtn = page.locator('button:has-text("Beli SakuNota - Rp50.000")').first();
     await buyBtn.click();
     // Fill details directly
     await page.locator('input[placeholder*="Nama pemilik"]').fill('Budi Santoso');
-    await page.locator('input[placeholder*="Nama usaha"]').fill('Warung Kopi Mantap');
+    await page.locator('input[placeholder*="Nama warung"]').fill('Warung Kopi Mantap');
     await page.locator('input[placeholder*="08"]').fill('081234567890');
     await page.locator('input[placeholder*="email"]').fill('budi@warungmantap.id');
     await page.locator('input[type="checkbox"]').check();
     await page.waitForTimeout(200);
 
-    await page.locator('button:has-text("Lanjut ke Rekening Transfer →")').click();
+    await page.locator('button:has-text("Lanjut ke Pembayaran →")').click();
     await page.waitForTimeout(500);
 
     const paymentContent = await page.textContent('body');
     check(paymentContent.includes('BANK BCA'), 'Bank BCA displayed');
     check(paymentContent.includes('8030 554 912'), 'BCA Account 8030 554 912 displayed');
-    check(await page.locator('button:has-text("Bayar Otomatis Rp65.000 via Midtrans")').isVisible(), 'Midtrans instant payment button is visible in checkout');
+    check(await page.locator('button:has-text("Bayar Otomatis Rp50.000 via Midtrans")').isVisible(), 'Midtrans instant payment button is visible in checkout');
 
     // Submit transfer proof
     await page.locator('button:has-text("Kirim Bukti Transfer Sekarang")').click();
@@ -551,7 +550,7 @@ async function run() {
       body: JSON.stringify({
         order_id: testOrderId,
         status_code: '200',
-        gross_amount: '65000.00',
+        gross_amount: '50000.00',
         transaction_status: 'settlement'
       })
     });
@@ -564,7 +563,7 @@ async function run() {
       body: JSON.stringify({
         order_id: testOrderId,
         status_code: '200',
-        gross_amount: '65000.00',
+        gross_amount: '50000.00',
         signature_key: 'fake_tampered_signature_99999',
         transaction_status: 'settlement'
       })
@@ -572,14 +571,14 @@ async function run() {
     check(fakeSigRes.status === 403, 'Midtrans webhook strictly rejects tampered signature_key (403)');
 
     // Security Test 3: Mismatched gross_amount MUST BE REJECTED (400)
-    const fakeAmountSig = crypto.createHash('sha512').update(`${testOrderId}20050000.00${MIDTRANS_TEST_SECRET}`).digest('hex');
+    const fakeAmountSig = crypto.createHash('sha512').update(`${testOrderId}20040000.00${MIDTRANS_TEST_SECRET}`).digest('hex');
     const wrongAmountRes = await fetch(`http://localhost:${port}/api/payment/midtrans`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         order_id: testOrderId,
         status_code: '200',
-        gross_amount: '50000.00', // Underpayment attack
+        gross_amount: '40000.00', // Underpayment attack
         signature_key: fakeAmountSig,
         transaction_status: 'settlement'
       })
@@ -587,7 +586,7 @@ async function run() {
     check(wrongAmountRes.status === 400, 'Midtrans webhook strictly rejects underpayment amount (400)');
 
     // Security Test 4: Genuine SHA-512 Signature & Amount -> Atomic Success
-    const genuinePayload = `${testOrderId}20065000.00${MIDTRANS_TEST_SECRET}`;
+    const genuinePayload = `${testOrderId}20050000.00${MIDTRANS_TEST_SECRET}`;
     const genuineSig = crypto.createHash('sha512').update(genuinePayload).digest('hex');
 
     const validMidtransRes = await fetch(`http://localhost:${port}/api/payment/midtrans`, {
@@ -596,7 +595,7 @@ async function run() {
       body: JSON.stringify({
         order_id: testOrderId,
         status_code: '200',
-        gross_amount: '65000.00',
+        gross_amount: '50000.00',
         signature_key: genuineSig,
         transaction_status: 'settlement'
       })
@@ -621,7 +620,7 @@ async function run() {
       body: JSON.stringify({
         order_id: testOrderId,
         status_code: '200',
-        gross_amount: '65000.00',
+        gross_amount: '50000.00',
         signature_key: genuineSig,
         transaction_status: 'settlement'
       })

@@ -55,7 +55,7 @@ export default function PrivacyPolicyPage() {
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h2 className="text-base font-black text-slate-900">2. Data yang Kami Catat Saat Pembelian Lisensi</h2>
             <p className="text-slate-600">
-              Saat Anda mendaftar uji coba atau membeli lisensi resmi SakuNota seharga Rp65.000, kami hanya mencatat data penting berikut:
+              Saat Anda mendaftar uji coba atau membeli lisensi resmi SakuNota seharga Rp50.000, kami hanya mencatat data penting berikut:
             </p>
             <ul className="list-disc list-inside space-y-1.5 text-slate-600 pl-2">
               <li><strong>Nama Pemilik &amp; Nama Usaha:</strong> Untuk dicantumkan pada sertifikat lisensi resmi dan header nota kasir Anda.</li>

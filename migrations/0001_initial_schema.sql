@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS CustomerOrders (
   businessName TEXT NOT NULL,
   whatsapp TEXT NOT NULL,
   email TEXT,
-  amount INTEGER NOT NULL DEFAULT 65000,
+  amount INTEGER NOT NULL DEFAULT 50000,
   paymentMethod TEXT NOT NULL DEFAULT 'Transfer Bank BCA',
   bankAccount TEXT NOT NULL DEFAULT '8030 554 912 a.n. SakuNota Official',
   transferProofName TEXT,

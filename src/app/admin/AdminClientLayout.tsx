@@ -584,7 +584,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 href="/?beli=true"
                 className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] shadow-sm transition-all"
               >
-                Beli Lisensi Rp65.000
+                Beli Lisensi Rp50.000
               </Link>
             </div>
           </div>
