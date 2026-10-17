@@ -88,8 +88,12 @@ export default function PengaturanTentangPage() {
 
       {/* Main Branding Card */}
       <div className="p-6 sm:p-8 rounded-3xl bg-surface border border-line shadow-sm space-y-6 text-center">
-        <div className="w-16 h-16 rounded-3xl bg-accent text-white flex items-center justify-center text-3xl font-black mx-auto shadow-lg shadow-accent/20">
-          🧾
+        <div className="w-16 h-16 rounded-3xl bg-white border border-blue-200 flex items-center justify-center p-2.5 mx-auto shadow-lg shadow-blue-500/10">
+          <img
+            src="/logo-sakunota.png"
+            alt="SakuNota"
+            className="w-full h-full object-contain"
+          />
         </div>
 
         <div className="space-y-1">

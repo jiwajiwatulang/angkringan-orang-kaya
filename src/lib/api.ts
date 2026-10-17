@@ -1,5 +1,6 @@
 import { db, MenuItem, Order, OrderItem, Payment, SelectedModifier, PaymentProof } from './dexie';
 import initialData from './initialData.json';
+import { getStoreSettings } from './settings';
 
 export function getDefaultModifiersForCategory(kategori: string, nama: string) {
   const cat = (kategori || '').toLowerCase();
@@ -134,16 +135,93 @@ export async function getMenus() {
   return menus;
 }
 
+export async function clearAllMenus() {
+  await db.table('menuItems').clear();
+  return 0;
+}
+
+export async function resetStoreTables(count: number, prefix: string = 'Meja ') {
+  await db.table('tables').clear();
+  if (count > 0) {
+    const toInsert = Array.from({ length: count }).map((_, i) => ({
+      nomor: `${prefix}${i + 1}`,
+      status: 'kosong'
+    }));
+    await db.table('tables').bulkAdd(toInsert);
+  }
+}
+
 export async function seedDemoMenus(type: string = 'angkringan') {
-  const menusToInsert = initialData.menus.map(m => ({
-    sku: `SKU-${m.urutan.toString().padStart(3, '0')}`,
+  await db.table('menuItems').clear();
+
+  let rawList: any[] = [];
+
+  if (type === 'kafe') {
+    rawList = [
+      { nama: "Espresso Single", harga: 15000, kategori: "Kopi", urutan: 1 },
+      { nama: "Americano (Ice)", harga: 20000, kategori: "Kopi", urutan: 2 },
+      { nama: "Americano (Hot)", harga: 18000, kategori: "Kopi", urutan: 3 },
+      { nama: "Caffe Latte", harga: 24000, kategori: "Kopi", urutan: 4 },
+      { nama: "Caramel Macchiato", harga: 28000, kategori: "Kopi", urutan: 5 },
+      { nama: "Matcha Latte", harga: 25000, kategori: "Non-Kopi", urutan: 6 },
+      { nama: "Chocolate Frappe", harga: 26000, kategori: "Non-Kopi", urutan: 7 },
+      { nama: "Butter Croissant", harga: 22000, kategori: "Pastry & Bakery", urutan: 8 },
+      { nama: "Kaya Toast", harga: 18000, kategori: "Pastry & Bakery", urutan: 9 },
+      { nama: "French Fries Truffle", harga: 24000, kategori: "Camilan", urutan: 10 },
+      { nama: "Red Velvet Cake", harga: 28000, kategori: "Pastry & Bakery", urutan: 11 },
+    ];
+  } else if (type === 'warung') {
+    rawList = [
+      { nama: "Nasi Goreng Spesial", harga: 22000, kategori: "Makanan", urutan: 1 },
+      { nama: "Paket Ayam Bakar Madu", harga: 28000, kategori: "Makanan", urutan: 2 },
+      { nama: "Paket Ayam Goreng Lengkuas", harga: 26000, kategori: "Makanan", urutan: 3 },
+      { nama: "Paket Bebek Goreng Kremes", harga: 35000, kategori: "Makanan", urutan: 4 },
+      { nama: "Cah Kangkung Terasi", harga: 14000, kategori: "Sayuran", urutan: 5 },
+      { nama: "Tempe Mendoan (4 pcs)", harga: 12000, kategori: "Lauk & Pelengkap", urutan: 6 },
+      { nama: "Tahu Goreng Kering", harga: 10000, kategori: "Lauk & Pelengkap", urutan: 7 },
+      { nama: "Es Teh Manis Segar", harga: 5000, kategori: "Minuman", urutan: 8 },
+      { nama: "Es Jeruk Peras Asli", harga: 8000, kategori: "Minuman", urutan: 9 },
+      { nama: "Jus Alpukat Kental", harga: 15000, kategori: "Minuman", urutan: 10 },
+    ];
+  } else if (type === 'retail') {
+    rawList = [
+      { nama: "Beras Premium Ramos 5kg", harga: 75000, kategori: "Sembako", urutan: 1 },
+      { nama: "Minyak Goreng Pouch 2L", harga: 36000, kategori: "Sembako", urutan: 2 },
+      { nama: "Gula Pasir Kristal 1kg", harga: 17500, kategori: "Sembako", urutan: 3 },
+      { nama: "Telur Ayam Negeri 1kg", harga: 28000, kategori: "Sembako", urutan: 4 },
+      { nama: "Kopi Bubuk Robusta 250g", harga: 18000, kategori: "Minuman Kemasan", urutan: 5 },
+      { nama: "Mie Goreng Instan", harga: 3500, kategori: "Makanan Instan", urutan: 6 },
+      { nama: "Air Mineral Botol 600ml", harga: 4000, kategori: "Minuman Kemasan", urutan: 7 },
+      { nama: "Sabun Mandi Cair 450ml", harga: 22000, kategori: "Perlengkapan Rumah", urutan: 8 },
+    ];
+  } else {
+    // Default angkringan
+    rawList = initialData.menus && initialData.menus.length > 0
+      ? initialData.menus
+      : [
+          { nama: "Nasi Kucing Bandeng", harga: 4000, kategori: "Makanan", urutan: 1 },
+          { nama: "Nasi Kucing Sambel Teri", harga: 4000, kategori: "Makanan", urutan: 2 },
+          { nama: "Sate Usus Bakar", harga: 3000, kategori: "Sate-satean", urutan: 3 },
+          { nama: "Sate Kulit Ayam", harga: 3500, kategori: "Sate-satean", urutan: 4 },
+          { nama: "Sate Telur Puyuh", harga: 4000, kategori: "Sate-satean", urutan: 5 },
+          { nama: "Tempe Mendoan Hangat", harga: 2500, kategori: "Gorengan", urutan: 6 },
+          { nama: "Tahu Bacem Goreng", harga: 2500, kategori: "Gorengan", urutan: 7 },
+          { nama: "Wedang Jahe Susu", harga: 7000, kategori: "Minuman", urutan: 8 },
+          { nama: "Es Teh Manis Jumbo", harga: 4000, kategori: "Minuman", urutan: 9 },
+          { nama: "Es Jeruk Peras", harga: 6000, kategori: "Minuman", urutan: 10 },
+        ];
+  }
+
+  const menusToInsert = rawList.map((m, idx) => ({
+    sku: `SKU-${(idx + 1).toString().padStart(3, '0')}`,
     nama: m.nama,
-    harga: m.harga,
-    kategori: m.kategori,
-    isSoldOut: m.isSoldOut,
-    urutan: m.urutan,
-    modifiers: (m as any).modifiers || getDefaultModifiersForCategory(m.kategori, m.nama)
+    harga: Number(m.harga) || 5000,
+    kategori: m.kategori || "Umum",
+    isSoldOut: Boolean(m.isSoldOut),
+    urutan: idx + 1,
+    modifiers: (m as any).modifiers || getDefaultModifiersForCategory(m.kategori || "Umum", m.nama)
   }));
+
   await db.table('menuItems').bulkAdd(menusToInsert);
   return menusToInsert.length;
 }
@@ -220,14 +298,15 @@ let isInitializingTables = false;
 
 export async function getTables() {
   let tables = await db.table('tables').toArray();
+  const settings = getStoreSettings();
   
-  // Auto init 15 tables if empty
-  if (tables.length === 0 && !isInitializingTables) {
+  // Auto init 10 tables ONLY on fresh initial install before onboarding
+  if (tables.length === 0 && !isInitializingTables && !settings.onboardingCompleted && settings.serviceMode !== 'quick') {
     isInitializingTables = true;
     try {
       const count = await db.table('tables').count();
       if (count === 0) {
-        const defaultTables = Array.from({length: 15}).map((_, i) => ({
+        const defaultTables = Array.from({length: 10}).map((_, i) => ({
           nomor: `Meja ${i+1}`,
           status: 'kosong'
         }));

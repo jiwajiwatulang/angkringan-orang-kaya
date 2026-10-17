@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { StoreSettings, updateStoreSettings } from "@/lib/settings";
-import { seedDemoMenus, bulkCreateTables } from "@/lib/api";
+import { seedDemoMenus, clearAllMenus, resetStoreTables } from "@/lib/api";
 
 interface OnboardingWizardProps {
   isOpen: boolean;
@@ -35,18 +35,19 @@ export default function OnboardingWizard({
         storeAddress: storeAddress.trim(),
         storePhone: storePhone.trim(),
         businessType: businessType,
+        serviceMode: tableCount > 0 ? "resto" : "quick",
         onboardingCompleted: true,
       });
 
       // 2. Setup menu berdasarkan pilihan pengguna
       if (menuSetupChoice === "demo") {
         await seedDemoMenus(businessType);
+      } else {
+        await clearAllMenus();
       }
 
-      // 3. Setup meja jika tableCount > 0
-      if (tableCount > 0) {
-        await bulkCreateTables({ prefix: "Meja ", startNum: 1, count: tableCount });
-      }
+      // 3. Setup meja berdasarkan jumlah yang dipilih (0 = tanpa meja / mode quick)
+      await resetStoreTables(tableCount);
 
       onComplete();
     } catch (err) {
@@ -63,8 +64,12 @@ export default function OnboardingWizard({
         {/* Header Onboarding */}
         <div className="px-6 py-4 bg-gradient-to-r from-accent to-accent text-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-card/20 backdrop-blur-sm flex items-center justify-center font-black text-sm">
-              SN
+            <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-xs shrink-0">
+              <img
+                src="/logo-sakunota.png"
+                alt="SakuNota"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <h2 className="text-base font-black leading-tight">Mulai Menggunakan SakuNota</h2>

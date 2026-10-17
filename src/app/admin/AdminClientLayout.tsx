@@ -593,10 +593,12 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             {/* Mobile Brand indicator */}
             <div className="flex items-center gap-2 md:hidden">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-md shadow-blue-500/20">
-                SN
-              </div>
-              <span className="text-sm font-black text-fg">Admin</span>
+              <img
+                src="/logo-sakunota.png"
+                alt="SakuNota"
+                className="h-7 w-auto object-contain"
+              />
+              <span className="text-[11px] font-black px-2 py-0.5 rounded-md bg-blue-100 text-blue-800">Admin</span>
             </div>
 
             {/* Store Name / Demo pill */}
