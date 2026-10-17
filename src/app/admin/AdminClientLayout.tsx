@@ -12,12 +12,13 @@ import { createAdminSession, verifyAdminSession, destroyAdminSession } from "@/l
 import { db } from "@/lib/dexie";
 
 const navItems = [
+  { href: "/pos", label: "Kasir & Menu", icon: "☕" },
+  { href: "/admin/meja", label: "Kelola Meja", icon: "🍽️" },
+  { href: "/admin/transaksi", label: "Riwayat Transaksi", icon: "🧾" },
+  { href: "/admin/shift", label: "Shift & Kas Laci", icon: "💼" },
+  { href: "/admin/menu", label: "Katalog & Stok", icon: "📦" },
+  { href: "/admin/pengaturan", label: "Pengaturan POS", icon: "⚙️" },
   { href: "/admin", label: "Dashboard", icon: "📊" },
-  { href: "/admin/menu", label: "Kelola Menu", icon: "🍽️" },
-  { href: "/admin/meja", label: "Kelola Meja", icon: "🪑" },
-  { href: "/admin/transaksi", label: "Transaksi", icon: "🧾" },
-  { href: "/admin/shift", label: "Shift Kasir", icon: "💼" },
-  { href: "/admin/pengaturan", label: "Pengaturan", icon: "⚙️" },
 ];
 
 function AdminShell({ children }: { children: React.ReactNode }) {
@@ -519,7 +520,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={isDemo && item.href === "/pos" ? "/pos?demo=true" : item.href}
                 className={`flex items-center gap-3.5 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
                   active
                     ? "bg-accent text-white shadow-lg shadow-accent/20"
@@ -739,7 +740,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               >
                 <span className="text-xl">⚙️</span>
                 <div className="flex-1">
-                  <div className="font-bold text-sm">Pengaturan Toko</div>
+                  <div className="font-bold text-sm">Pengaturan POS</div>
                   <div className="text-[10px] text-muted">Profil, Printer Bluetooth, Pajak, PIN, & Backup</div>
                 </div>
                 <span>→</span>

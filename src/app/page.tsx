@@ -126,8 +126,9 @@ export default function SakuNotaLandingPage() {
   const [isSearchingOrder, setIsSearchingOrder] = useState(false);
   const [copiedLicense, setCopiedLicense] = useState(false);
 
-  // Load Midtrans Snap Script on demand from dynamic server configuration
+  // Load Midtrans Snap Script on demand when user opens Buy Modal
   useEffect(() => {
+    if (!isBuyModalOpen) return;
     const snapScriptId = "midtrans-snap-js";
     if (document.getElementById(snapScriptId)) return;
 
@@ -145,7 +146,7 @@ export default function SakuNotaLandingPage() {
       .catch(() => {
         // Handled silently when offline
       });
-  }, []);
+  }, [isBuyModalOpen]);
 
   // Escape key listener to close modals
   useEffect(() => {

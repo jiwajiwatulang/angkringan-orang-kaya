@@ -26,14 +26,19 @@ self.addEventListener('install', (event) => {
       const urls = manifest.allUrls;
       let cachedCount = 0;
 
-      // Unduh setiap file dan simpan ke CacheStorage
+      // 1. Simpan manifest itu sendiri ke cache terlebih dahulu
+      await cache.put('/offline-manifest.json', new Response(JSON.stringify(manifest), {
+        headers: { 'Content-Type': 'application/json' }
+      }));
+
+      // 2. Prioritaskan unduh dan cache rute utama HTML & manifest
+      const routes = Array.isArray(manifest.routes) ? manifest.routes : [];
       await Promise.all(
-        urls.map(async (url) => {
+        routes.map(async (url) => {
           try {
             const res = await fetch(url, { cache: 'no-cache' });
             if (res.ok) {
               await cache.put(url, res.clone());
-              // Untuk rute tanpa ekstensi (misal /pos, /admin), simpan juga alias .html
               if (!url.includes('.') && url !== '/') {
                 await cache.put(`${url}.html`, res.clone());
               }
@@ -42,22 +47,34 @@ self.addEventListener('install', (event) => {
                 await cache.put('/index.html', res.clone());
               }
               cachedCount++;
-            } else {
-              console.warn(`[SW] Precache non-200 dilewati: ${url} (HTTP ${res.status})`);
             }
           } catch (fetchErr) {
-            console.warn(`[SW] Gagal mengunduh aset: ${url}`, fetchErr);
+            console.warn(`[SW] Gagal mengunduh rute: ${url}`, fetchErr);
           }
         })
       );
 
+      // 3. Unduh sisa aset statis (JS chunks, CSS, gambar) dalam batch paralel terkontrol
+      const otherUrls = urls.filter((u) => !routes.includes(u));
+      const batchSize = 20;
+      for (let i = 0; i < otherUrls.length; i += batchSize) {
+        const batch = otherUrls.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map(async (url) => {
+            try {
+              const res = await fetch(url, { cache: 'no-cache' });
+              if (res.ok) {
+                await cache.put(url, res.clone());
+                cachedCount++;
+              }
+            } catch (fetchErr) {
+              console.warn(`[SW] Gagal mengunduh aset: ${url}`, fetchErr);
+            }
+          })
+        );
+      }
+
       console.log(`[SW] Precache selesai: ${cachedCount}/${urls.length} tersimpan di ${CACHE_NAME}`);
-
-      // Simpan manifest itu sendiri ke cache
-      await cache.put('/offline-manifest.json', new Response(JSON.stringify(manifest), {
-        headers: { 'Content-Type': 'application/json' }
-      }));
-
       await self.skipWaiting();
     })()
   );
