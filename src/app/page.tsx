@@ -452,18 +452,12 @@ export default function SakuNotaLandingPage() {
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-blue-100 px-4 sm:px-8 py-3.5 transition-all shadow-xs">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           {/* Logo & Brand */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm tracking-tight shadow-md shadow-blue-600/30 group-hover:scale-105 transition-transform">
-              SN
-            </div>
-            <div className="flex flex-col">
-              <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none">
-                SakuNota
-              </span>
-              <span className="text-[10px] text-blue-600 font-bold tracking-wider uppercase mt-0.5">
-                Kasir Jalan Tanpa Internet
-              </span>
-            </div>
+          <Link href="/" className="flex items-center gap-2 group" title="SakuNota - Kasir Jalan Tanpa Internet">
+            <img
+              src="/logo-sakunota.png"
+              alt="SakuNota - Kasir Jalan Tanpa Internet"
+              className="h-8 sm:h-9 w-auto object-contain group-hover:scale-105 transition-transform"
+            />
           </Link>
 
           {/* Desktop Navigation */}
@@ -537,18 +531,12 @@ export default function SakuNotaLandingPage() {
             >
               {/* Header inside popup */}
               <div className="flex items-center justify-between pb-3 border-b border-blue-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-md shadow-blue-600/30">
-                    SN
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-black text-base tracking-tight text-slate-900 leading-none">
-                      SakuNota
-                    </span>
-                    <span className="text-[10px] text-blue-600 font-bold tracking-wider uppercase mt-1">
-                      PT Pemuda Gaya Bebas
-                    </span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <img
+                    src="/logo-sakunota.png"
+                    alt="SakuNota - PT Pemuda Gaya Bebas"
+                    className="h-8 w-auto object-contain"
+                  />
                 </div>
                 <button
                   type="button"
@@ -1482,14 +1470,13 @@ export default function SakuNotaLandingPage() {
           
           {/* Col 1: Brand Info */}
           <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-md shadow-blue-600/20">
-                SN
-              </div>
-              <div>
-                <span className="font-extrabold text-base text-slate-900 block leading-none">SakuNota</span>
-                <span className="text-[10px] font-bold text-slate-500">di bawah naungan PT Pemuda Gaya Bebas</span>
-              </div>
+            <div className="flex flex-col gap-1">
+              <img
+                src="/logo-sakunota.png"
+                alt="SakuNota - PT Pemuda Gaya Bebas"
+                className="h-8 w-auto object-contain self-start"
+              />
+              <span className="text-[10px] font-bold text-slate-500">di bawah naungan PT Pemuda Gaya Bebas</span>
             </div>
             <p className="text-blue-600 font-bold text-xs">
               Kasir Jalan Tanpa Internet

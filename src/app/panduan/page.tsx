@@ -227,9 +227,11 @@ export default function PanduanPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-8 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-blue-600/25 group-hover:scale-105 transition-transform">
-                SN
-              </div>
+              <img
+                src="/icons/icon-mark.png"
+                alt="SakuNota"
+                className="w-8 h-8 object-contain group-hover:scale-105 transition-transform"
+              />
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-extrabold text-sm sm:text-base text-slate-900 leading-none">

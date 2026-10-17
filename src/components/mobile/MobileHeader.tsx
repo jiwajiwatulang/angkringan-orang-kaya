@@ -33,9 +33,11 @@ export default function MobileHeader({
             className="w-8 h-8 rounded-xl object-contain bg-card border border-line p-0.5"
           />
         ) : (
-          <div className="w-8 h-8 rounded-xl bg-accent text-white flex items-center justify-center font-black text-xs shadow-md shadow-accent/20">
-            SN
-          </div>
+          <img
+            src="/icon.png"
+            alt="SakuNota"
+            className="w-8 h-8 rounded-xl object-contain shadow-md shadow-accent/20"
+          />
         )}
         <div className="flex flex-col">
           <span className="text-sm font-black text-fg leading-tight truncate max-w-[140px] sm:max-w-[200px]">

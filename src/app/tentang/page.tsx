@@ -10,18 +10,12 @@ export default function TentangSakuNotaPage() {
       {/* 1. Top Navigation Bar (Consistent Light Mode) */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-blue-100 px-4 sm:px-8 py-3.5 shadow-xs">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-md shadow-blue-600/25">
-              SN
-            </div>
-            <div className="flex flex-col">
-              <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none">
-                SakuNota
-              </span>
-              <span className="text-[10px] text-blue-600 font-bold tracking-wider uppercase mt-0.5">
-                PT Pemuda Gaya Bebas
-              </span>
-            </div>
+          <Link href="/" className="flex items-center gap-2 group" title="SakuNota - PT Pemuda Gaya Bebas">
+            <img
+              src="/logo-sakunota.png"
+              alt="SakuNota - PT Pemuda Gaya Bebas"
+              className="h-8 sm:h-9 w-auto object-contain group-hover:scale-105 transition-transform"
+            />
           </Link>
 
           <nav className="hidden md:flex items-center gap-6 text-xs font-bold text-slate-600">

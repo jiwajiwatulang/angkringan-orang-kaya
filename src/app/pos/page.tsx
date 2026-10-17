@@ -2855,9 +2855,11 @@ export default function POSPage() {
               className="w-10 h-10 rounded-xl object-contain bg-surface border border-line shadow-sm flex-shrink-0 p-0.5"
             />
           ) : (
-            <div className="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center font-black text-sm shadow-md shadow-accent/30 flex-shrink-0">
-              SN
-            </div>
+            <img
+              src="/icon.png"
+              alt="SakuNota"
+              className="w-10 h-10 rounded-xl object-contain shadow-md shadow-accent/20 flex-shrink-0"
+            />
           )}
           <div className="min-w-0">
             <h1 className="text-sm md:text-base font-black text-fg leading-tight truncate">

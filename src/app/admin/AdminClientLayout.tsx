@@ -12,13 +12,13 @@ import { createAdminSession, verifyAdminSession, destroyAdminSession } from "@/l
 import { db } from "@/lib/dexie";
 
 const navItems = [
-  { href: "/pos", label: "Kasir & Menu", icon: "☕" },
-  { href: "/admin/meja", label: "Kelola Meja", icon: "🍽️" },
-  { href: "/admin/transaksi", label: "Riwayat Transaksi", icon: "🧾" },
-  { href: "/admin/shift", label: "Shift & Kas Laci", icon: "💼" },
-  { href: "/admin/menu", label: "Katalog & Stok", icon: "📦" },
-  { href: "/admin/pengaturan", label: "Pengaturan POS", icon: "⚙️" },
-  { href: "/admin", label: "Dashboard", icon: "📊" },
+  { href: "/pos", label: "Kasir & Menu", icon: "/icons/icon-kasir.png" },
+  { href: "/admin/meja", label: "Kelola Meja", icon: "/icons/icon-meja.png" },
+  { href: "/admin/transaksi", label: "Riwayat Transaksi", icon: "/icons/icon-transaksi.png" },
+  { href: "/admin/shift", label: "Shift & Kas Laci", icon: "/icons/icon-shift.png" },
+  { href: "/admin/menu", label: "Katalog & Stok", icon: "/icons/icon-katalog.png" },
+  { href: "/admin/pengaturan", label: "Pengaturan POS", icon: "/icons/icon-pengaturan.png" },
+  { href: "/admin", label: "Dashboard", icon: "/icons/icon-dashboard.png" },
 ];
 
 function AdminShell({ children }: { children: React.ReactNode }) {
@@ -504,20 +504,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       {/* --- DESKTOP & TABLET SIDEBAR --- */}
       <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-surface border-r border-line shrink-0 select-none">
         {/* Brand */}
-        <div className="p-5 border-b border-line flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center font-black text-lg shadow-md shadow-accent/20">
-              SN
-            </div>
-            <div>
-              <h1 className="text-base font-black tracking-tight text-fg leading-none">
-                SakuNota
-              </h1>
-              <span className="text-[10px] font-bold tracking-wider text-accent-text uppercase">
-                Admin Backoffice
-              </span>
-            </div>
-          </div>
+        <div className="p-4 border-b border-line flex items-center justify-between">
+          <Link href="/admin" className="flex items-center gap-2.5">
+            <img
+              src="/logo-sakunota.png"
+              alt="SakuNota - Admin Backoffice"
+              className="h-8 w-auto object-contain"
+            />
+          </Link>
         </div>
 
         {/* Navigation Links */}
@@ -534,7 +528,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                     : " text-muted hover:bg-card/60 hover:text-fg"
                 }`}
               >
-                <span className="text-lg">{item.icon}</span>
+                {item.icon.startsWith("/") ? (
+                  <img src={item.icon} alt={item.label} className="w-5 h-5 object-contain shrink-0" />
+                ) : (
+                  <span className="text-lg">{item.icon}</span>
+                )}
                 <span className="text-sm font-bold">{item.label}</span>
               </Link>
             );
