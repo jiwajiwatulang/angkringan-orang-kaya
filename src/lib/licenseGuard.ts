@@ -47,6 +47,11 @@ export async function checkCashierAccess(forceOnlineCheck: boolean = false): Pro
     (typeof sessionStorage !== "undefined" && sessionStorage.getItem("sakunota_demo_mode") === "true");
 
   if (isDemo) {
+    if (typeof sessionStorage !== "undefined") {
+      try {
+        sessionStorage.setItem("sakunota_demo_mode", "true");
+      } catch (_) {}
+    }
     return {
       isValid: true,
       isDemo: true,

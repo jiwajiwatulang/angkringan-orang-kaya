@@ -1,7 +1,7 @@
 // SakuNota POS — Service Worker v2.6.0
 // Resilient Offline-First Precache, CSS Fallback, & Multi-Route Isolation
 
-const CACHE_NAME = 'sakunota-pos-v2.6.0-1792204513423';
+const CACHE_NAME = 'sakunota-pos-v2.6.0-1792206714590';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -54,28 +54,27 @@ self.addEventListener('install', (event) => {
         })
       );
 
-      // 3. Unduh sisa aset statis (JS chunks, CSS, gambar) dalam batch paralel terkontrol
-      const otherUrls = urls.filter((u) => !routes.includes(u));
-      const batchSize = 20;
-      for (let i = 0; i < otherUrls.length; i += batchSize) {
-        const batch = otherUrls.slice(i, i + batchSize);
-        await Promise.all(
-          batch.map(async (url) => {
-            try {
-              const res = await fetch(url, { cache: 'no-cache' });
-              if (res.ok) {
-                await cache.put(url, res.clone());
-                cachedCount++;
-              }
-            } catch (fetchErr) {
-              console.warn(`[SW] Gagal mengunduh aset: ${url}`, fetchErr);
-            }
-          })
-        );
-      }
-
-      console.log(`[SW] Precache selesai: ${cachedCount}/${urls.length} tersimpan di ${CACHE_NAME}`);
+      // Panggil skipWaiting agar SW langsung aktif dan siap offline dalam < 1 detik!
       await self.skipWaiting();
+
+      // 3. Unduh sisa aset statis di background tanpa menahan aktivasi Service Worker
+      const otherUrls = urls.filter((u) => !routes.includes(u));
+      (async () => {
+        const batchSize = 25;
+        for (let i = 0; i < otherUrls.length; i += batchSize) {
+          const batch = otherUrls.slice(i, i + batchSize);
+          await Promise.all(
+            batch.map(async (url) => {
+              try {
+                const res = await fetch(url, { cache: 'no-cache' });
+                if (res.ok) {
+                  await cache.put(url, res.clone());
+                }
+              } catch (_) {}
+            })
+          );
+        }
+      })();
     })()
   );
 });

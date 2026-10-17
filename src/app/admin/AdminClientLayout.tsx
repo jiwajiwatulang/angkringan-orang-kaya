@@ -41,13 +41,20 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         sessionStorage.getItem("sakunota_demo_mode") === "true" ||
         window.location.search.includes("demo=true");
       setIsDemo(demoFlag);
+      if (demoFlag) {
+        setIsAuthenticated(true);
+      }
     }
-  }, []);
+  }, [setIsAuthenticated]);
 
   // Auth verification menggunakan sesi kriptografis aman (IndexedDB + sessionStorage)
   useEffect(() => {
     verifyAdminSession().then((isValid) => {
-      setIsAuthenticated(isValid);
+      const isDemoMode =
+        typeof window !== "undefined" &&
+        (sessionStorage.getItem("sakunota_demo_mode") === "true" ||
+          window.location.search.includes("demo=true"));
+      setIsAuthenticated(isValid || isDemoMode);
     });
   }, [setIsAuthenticated]);
 
@@ -520,7 +527,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             return (
               <Link
                 key={item.href}
-                href={isDemo && item.href === "/pos" ? "/pos?demo=true" : item.href}
+                href={isDemo ? `${item.href}${item.href.includes('?') ? '&' : '?'}demo=true` : item.href}
                 className={`flex items-center gap-3.5 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
                   active
                     ? "bg-accent text-white shadow-lg shadow-accent/20"

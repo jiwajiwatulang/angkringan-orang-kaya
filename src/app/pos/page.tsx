@@ -818,6 +818,11 @@ export default function POSPage() {
   };
 
   useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("demo=true")) {
+      try {
+        sessionStorage.setItem("sakunota_demo_mode", "true");
+      } catch (_) {}
+    }
     async function initAccess() {
       setIsAccessChecking(true);
       try {
@@ -2965,28 +2970,28 @@ export default function POSPage() {
               </button>
             )}
             <Link
-              href="/admin/transaksi"
+              href={accessStatus.isDemo ? "/admin/transaksi?demo=true" : "/admin/transaksi"}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
             >
               <span className="text-sm">🧾</span>
               <span>Riwayat Transaksi</span>
             </Link>
             <Link
-              href="/admin/shift"
+              href={accessStatus.isDemo ? "/admin/shift?demo=true" : "/admin/shift"}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
             >
               <span className="text-sm">💼</span>
               <span>Shift & Kas Laci</span>
             </Link>
             <Link
-              href="/admin/menu"
+              href={accessStatus.isDemo ? "/admin/menu?demo=true" : "/admin/menu"}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
             >
               <span className="text-sm">📦</span>
               <span>Katalog & Stok</span>
             </Link>
             <Link
-              href="/admin/pengaturan"
+              href={accessStatus.isDemo ? "/admin/pengaturan?demo=true" : "/admin/pengaturan"}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
             >
               <span className="text-sm">⚙️</span>
