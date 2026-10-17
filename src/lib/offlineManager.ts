@@ -1,5 +1,5 @@
 /**
- * SakuNota POS — Offline Readiness & Storage Persistence Manager
+ * SakuNota POS - Offline Readiness & Storage Persistence Manager
  * 
  * Verifikasi atomis dan ketat terhadap integritas seluruh aset offline (manifest-based),
  * memastikan tidak ada klaim "Offline Ready" palsu sebelum setiap aset diverifikasi,

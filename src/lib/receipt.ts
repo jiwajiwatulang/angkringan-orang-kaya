@@ -102,7 +102,7 @@ export function generateEscPosReceipt(
 
   // 1. Header Struk
   if (mode === 'all') {
-    txt += center(cfg.storeName || "SAKUNOTA POS");
+    txt += center(cfg.storeName || "SAKUNOTA");
     if (cfg.storeAddress) {
       const addrLines = wrapText(cfg.storeAddress, width);
       addrLines.forEach(l => { txt += center(l); });
@@ -262,7 +262,7 @@ export function generateEscPosReceipt(
 
     // Watermark Promosi SakuNota
     if (cfg.enableWatermark) {
-      txt += "\n" + center("[ SakuNota POS - Solusi Kasir UMKM ]");
+      txt += "\n" + center("[ SakuNota - Solusi Kasir UMKM ]");
     }
 
     const isDemoReceipt = receipt.isDemo || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sakunota_demo_mode') === 'true');
@@ -298,7 +298,7 @@ export function generatePartialPaymentReceipt(order: any, payment: any, settings
   };
 
   let txt = "";
-  txt += center(cfg.storeName || "SAKUNOTA POS");
+  txt += center(cfg.storeName || "SAKUNOTA");
   if (cfg.storeAddress) txt += center(cfg.storeAddress);
   if (cfg.storePhone) txt += center(`Telp: ${cfg.storePhone}`);
   txt += doubleDivider;
@@ -344,7 +344,7 @@ export function generatePartialPaymentReceipt(order: any, payment: any, settings
   }
 
   if (cfg.enableWatermark) {
-    txt += "\n" + center("[ SakuNota POS - Solusi Kasir UMKM ]");
+    txt += "\n" + center("[ SakuNota - Solusi Kasir UMKM ]");
   }
 
   txt += "\n\n\n";
@@ -374,7 +374,7 @@ export function generateZReportReceipt(stats: any, settings?: StoreSettings): st
 
   let txt = "";
 
-  txt += center(cfg.storeName || "SAKUNOTA POS");
+  txt += center(cfg.storeName || "SAKUNOTA");
   txt += center("*** LAPORAN TUTUP SHIFT (Z-REPORT) ***");
   txt += doubleDivider;
 
@@ -422,7 +422,7 @@ export function generateZReportReceipt(stats: any, settings?: StoreSettings): st
   txt += center(`( ${stats.operatorName || "Kasir"} )`);
 
   if (cfg.enableWatermark) {
-    txt += "\n" + center("[ SakuNota POS - Solusi Kasir UMKM ]");
+    txt += "\n" + center("[ SakuNota - Solusi Kasir UMKM ]");
   }
 
   txt += "\n\n\n";
@@ -447,7 +447,7 @@ export function generateReceiptHtml(
   const orderIdLabel = receipt.orderId ? `A-${receipt.orderId}` : receipt.id ? `A-${receipt.id}` : "-";
   const tableOrType = receipt.tableName ? receipt.tableName : `[${receipt.orderType || 'Dine-in'}]`;
 
-  let titleHeader = cfg.storeName || "SAKUNOTA POS";
+  let titleHeader = cfg.storeName || "SAKUNOTA";
   if (mode === 'food') titleHeader = "DAPUR (KITCHEN)";
   if (mode === 'drink') titleHeader = "BAR (MINUMAN)";
 
@@ -657,7 +657,7 @@ export function generateReceiptHtml(
         ` : ''}
 
         ${cfg.receiptFooter ? `<div class="footer-text">${cfg.receiptFooter}</div>` : ''}
-        ${cfg.enableWatermark ? `<div class="watermark">[ SakuNota POS - Solusi Kasir UMKM ]</div>` : ''}
+        ${cfg.enableWatermark ? `<div class="watermark">[ SakuNota - Solusi Kasir UMKM ]</div>` : ''}
       ` : `
         <div class="divider"></div>
         <div class="center bold" style="font-size: 11px; margin-top: 4px;">*** SELESAI TIKET ***</div>
@@ -705,7 +705,7 @@ export function generateZReportHtml(stats: any, settings?: StoreSettings): strin
       </style>
     </head>
     <body>
-      <div class="center bold" style="font-size: 14px;">${cfg.storeName || "SAKUNOTA POS"}</div>
+      <div class="center bold" style="font-size: 14px;">${cfg.storeName || "SAKUNOTA"}</div>
       <div class="center bold" style="font-size: 11px;">LAPORAN TUTUP SHIFT (Z-REPORT)</div>
       <div class="double-divider"></div>
 
@@ -739,7 +739,7 @@ export function generateZReportHtml(stats: any, settings?: StoreSettings): strin
       <div style="height: 36px;"></div>
       <div class="center bold">( ${stats.operatorName || 'Kasir'} )</div>
 
-      ${cfg.enableWatermark ? `<div class="center" style="font-size: 9px; margin-top: 10px; color: #444;">[ SakuNota POS - Solusi Kasir UMKM ]</div>` : ''}
+      ${cfg.enableWatermark ? `<div class="center" style="font-size: 9px; margin-top: 10px; color: #444;">[ SakuNota - Solusi Kasir UMKM ]</div>` : ''}
     </body>
     </html>
   `;
@@ -762,7 +762,7 @@ export function generateTestReceiptData(settings?: StoreSettings) {
     tableName: "Meja Tes #01",
     orderType: "Dine-in",
     paymentMethod: "Tunai",
-    operatorName: "Admin POS",
+    operatorName: "Kasir SakuNota",
     notes: "Uji format pembungkusan teks panjang & kalkulasi",
     items: [
       {

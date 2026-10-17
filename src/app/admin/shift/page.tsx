@@ -279,7 +279,7 @@ export default function AdminShiftPage() {
                     <div className="p-2.5 rounded-2xl bg-card/40">
                       <span className="text-[10px] text-muted block font-semibold">Uang Fisik Kasir</span>
                       <span className="font-black text-accent-text">
-                        {shift.actualCash !== undefined ? `Rp ${shift.actualCash.toLocaleString("id-ID")}` : "—"}
+                        {shift.actualCash !== undefined ? `Rp ${shift.actualCash.toLocaleString("id-ID")}` : "-"}
                       </span>
                     </div>
                   </div>

@@ -58,7 +58,7 @@ export function isTableManagementEnabled(settings: StoreSettings): boolean {
 }
 
 export const DEFAULT_SETTINGS: StoreSettings = {
-  storeName: "SakuNota POS",
+  storeName: "SakuNota",
   storeAddress: "Kasir Jalan Tanpa Internet",
   storePhone: "",
   receiptFooter: "Terima Kasih atas Kunjungan Anda\nSilakan Datang Kembali",

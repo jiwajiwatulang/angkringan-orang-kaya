@@ -446,7 +446,7 @@ export default function PengaturanPrinterPage() {
                       <img src={storeSettings.storeLogo} alt="Logo" className="max-h-12 max-w-[100px] object-contain" />
                     </div>
                   )}
-                  <h4 className="font-black text-sm uppercase">{storeSettings.storeName || "SAKUNOTA POS"}</h4>
+                  <h4 className="font-black text-sm uppercase">{storeSettings.storeName || "SAKUNOTA"}</h4>
                   {storeSettings.storeAddress && (
                     <p className="text-[10px] leading-tight text-neutral-700 mt-0.5">{storeSettings.storeAddress}</p>
                   )}
@@ -541,7 +541,7 @@ export default function PengaturanPrinterPage() {
                 )}
                 {storeSettings.enableWatermark && (
                   <p className="text-[9px] text-center mt-1 text-neutral-500">
-                    [ SakuNota POS - Solusi Kasir UMKM ]
+                    [ SakuNota - Solusi Kasir UMKM ]
                   </p>
                 )}
               </div>

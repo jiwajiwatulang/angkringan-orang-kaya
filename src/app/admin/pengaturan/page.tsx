@@ -106,7 +106,7 @@ export default function AdminPengaturanHubPage() {
               🏪
             </span>
             <div>
-              <h3 className="font-black text-sm text-fg">SakuNota — Kasir Tetap Jalan, Meski Tanpa Internet</h3>
+              <h3 className="font-black text-sm text-fg">SakuNota - Kasir Tetap Jalan, Meski Tanpa Internet</h3>
               <p className="text-xs text-muted">Aplikasi kasir praktis tanpa biaya bulanan. Solusi mandiri untuk UMKM.</p>
             </div>
           </div>

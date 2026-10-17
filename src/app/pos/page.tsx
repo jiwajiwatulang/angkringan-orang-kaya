@@ -317,7 +317,8 @@ export default function POSPage() {
   const [activeVariantGroup, setActiveVariantGroup] = useState<any>(null);
 
   useEffect(() => {
-    document.documentElement.classList.add('dark');
+    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add('light');
     if (typeof window !== 'undefined') {
       if (window.location.search.includes('view=menu') || window.location.search.includes('tab=menu')) {
         setView('menu');
@@ -2303,12 +2304,10 @@ export default function POSPage() {
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex flex-wrap items-center justify-between text-xs text-amber-950 font-medium shrink-0 z-40">
           <div className="flex items-center gap-2">
             <span className="font-black bg-amber-500 text-white px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase shadow-xs">DEMO SANDBOX</span>
-            <span>Anda sedang mencoba demo interaktif. Transaksi ini simulasi di browser Anda.</span>
+            <span>Anda sedang mencoba mode simulasi kasir. Seluruh data transaksi di sini adalah simulasi lokal.</span>
           </div>
           <div className="flex items-center gap-3 mt-1 sm:mt-0 font-bold">
-            <Link href="/?beta=register" target="_blank" rel="noopener noreferrer" className="text-amber-900 underline font-bold hover:text-amber-950">Daftar Beta 7 Hari</Link>
-            <Link href="/?beli=true" target="_blank" rel="noopener noreferrer" className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded-lg text-[11px] shadow-sm">Beli Rp65.000</Link>
-            <button type="button" onClick={handleExitDemo} className="text-slate-600 hover:text-slate-900 underline text-[11px] font-semibold">Keluar Demo</button>
+            <button type="button" onClick={handleExitDemo} className="text-amber-900 hover:text-amber-950 font-bold text-xs px-2.5 py-1 rounded-lg bg-amber-200/60 hover:bg-amber-200 transition-colors">← Keluar Demo</button>
           </div>
         </div>
       )}
@@ -2770,7 +2769,7 @@ export default function POSPage() {
                   ) : printMode === 'all' ? (
                     <>
                       <div className="whitespace-pre-line">{storeSettings.receiptFooter}</div>
-                      {storeSettings.enableWatermark && <p className="mt-2 text-[9px] text-gray-400">[ SakuNota POS ]</p>}
+                      {storeSettings.enableWatermark && <p className="mt-2 text-[9px] text-gray-400">[ SakuNota ]</p>}
                     </>
                   ) : (
                     <p>--- BATAS PESANAN ---</p>

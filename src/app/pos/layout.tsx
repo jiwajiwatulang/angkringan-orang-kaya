@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Kasir SakuNota — Jalan Tanpa Internet",
+  title: "Kasir SakuNota - Jalan Tanpa Internet",
   robots: {
     index: false,
     follow: false,

@@ -1118,7 +1118,7 @@ export default function AdminTransaksiPage() {
               {/* Thermal Slip Simulation */}
               <div className="font-mono text-[11px] leading-tight space-y-2 bg-card/40 p-3.5 rounded-2xl border border-line">
                 <div className="text-center font-bold text-xs pb-1 border-b border-dashed border-line">
-                  {storeSettings.storeName || "SakuNota POS"}
+                  {storeSettings.storeName || "SakuNota"}
                 </div>
                 <div className="text-muted text-[10px]">
                   Nota: #{receiptData.id} • {receiptData.tableName || receiptData.orderType}

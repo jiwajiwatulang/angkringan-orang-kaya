@@ -1734,7 +1734,7 @@ export async function exportAllData() {
 
   return {
     version: 3,
-    appName: 'SakuNota POS',
+    appName: 'SakuNota',
     exportedAt: new Date().toISOString(),
     integrity,
     settings,

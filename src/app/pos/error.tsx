@@ -92,7 +92,7 @@ export default function PosError({
       </div>
 
       <div className="text-center text-[11px] text-slate-500 py-2">
-        SakuNota POS • Kasir Pintar Offline
+        SakuNota • Kasir Offline
       </div>
     </div>
   );

@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "SakuNota — Kasir Jalan Tanpa Internet",
+  title: "SakuNota - Kasir Jalan Tanpa Internet",
   description: "Aplikasi kasir offline pintar untuk usaha kuliner (kafe, restoran, angkringan, warung makan, kedai kopi). Catat pesanan, kelola meja, cetak struk Bluetooth fisik, dan pantau omzet tanpa kuota internet.",
   manifest: "/manifest.json",
   appleWebApp: {

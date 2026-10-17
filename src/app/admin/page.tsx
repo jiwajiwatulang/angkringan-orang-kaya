@@ -173,7 +173,7 @@ export default function AdminDashboardPage() {
     };
     const periodLabel = periodLabels[waPeriod] || "HARI INI";
 
-    let msg = `LAPORAN PENJUALAN — SAKUNOTA\n`;
+    let msg = `LAPORAN PENJUALAN - SAKUNOTA\n`;
     msg += `${dateFormatted}\n`;
     msg += `${store}\n\n`;
     msg += `RINGKASAN ${periodLabel}\n`;
@@ -185,7 +185,7 @@ export default function AdminDashboardPage() {
     if (periodTopItems.length > 0) {
       msg += `MENU TERLARIS\n`;
       periodTopItems.forEach(([name, qty], idx) => {
-        msg += `${idx + 1}. ${name} — ${qty} porsi\n`;
+        msg += `${idx + 1}. ${name} - ${qty} porsi\n`;
       });
       msg += `\n`;
     }

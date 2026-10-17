@@ -45,7 +45,7 @@ export default function PrivacyPolicyPage() {
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h2 className="text-base font-black text-slate-900">1. Data Usaha 100% Milik Anda Sendiri</h2>
             <p className="text-slate-600">
-              SakuNota sangat menghormati privasi dan rahasia dapur usaha Anda. Seluruh catatan jualan—termasuk daftar menu, harga makanan, pesanan pembeli, meja, catatan shift, dan riwayat omzet kasir—<strong>tersimpan aman langsung di memori HP atau komputer kasir Anda sendiri</strong>.
+              SakuNota sangat menghormati privasi dan rahasia dapur usaha Anda. Seluruh catatan jualan - termasuk daftar menu, harga makanan, pesanan pembeli, meja, catatan shift, dan riwayat omzet kasir - <strong>tersimpan aman langsung di memori HP atau komputer kasir Anda sendiri</strong>.
             </p>
             <p className="text-slate-600">
               Data transaksi harian Anda <strong>tidak pernah kami intip, tidak disimpan di server luar, dan tidak dijual ke pihak mana pun</strong>. Anda memiliki kebebasan penuh untuk mencadangkan (backup) data ke file HP Anda kapan saja.

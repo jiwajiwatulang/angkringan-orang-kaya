@@ -27,7 +27,7 @@ html.dark,
 }
 
 /*
- * SakuNota theme design tokens — single source of truth.
+ * SakuNota theme design tokens - single source of truth.
  * Supports dynamic Light and Dark mode switching via CSS variables.
  */
 @theme {

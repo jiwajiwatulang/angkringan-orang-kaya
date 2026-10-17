@@ -1,0 +1,316 @@
+{
+  "base": "https://angkringan-orang-kaya.ranutarde.workers.dev",
+  "at": "2026-10-17T03:50:09.922Z",
+  "findings": [
+    {
+      "level": "OK",
+      "area": "header",
+      "msg": "tidak ada header Content-Security-Policy pada beranda"
+    },
+    {
+      "level": "OK",
+      "area": "halaman /",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "halaman /",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "halaman /panduan",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "halaman /panduan",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "halaman /privacy",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "halaman /privacy",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "halaman /terms",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "halaman /terms",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "link internal",
+      "msg": "6 link internal diperiksa"
+    },
+    {
+      "level": "OK",
+      "area": "panduan",
+      "msg": "semua bab 1–12 diperiksa"
+    },
+    {
+      "level": "OK",
+      "area": "panduan",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "kasir desktop",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "alur pesan",
+      "msg": "isi layar berubah setelah menambah item"
+    },
+    {
+      "level": "OK",
+      "area": "tab Kasir & Menu",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "tab Kasir & Menu",
+      "msg": "6 tombol unik diklik (daftar hitam tombol berbahaya dilewati)"
+    },
+    {
+      "level": "OK",
+      "area": "tab Kasir & Menu",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "tab Kelola Meja",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "tab Kelola Meja",
+      "msg": "5 tombol unik diklik (daftar hitam tombol berbahaya dilewati)"
+    },
+    {
+      "level": "OK",
+      "area": "tab Kelola Meja",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "tab Riwayat Transaksi",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "tab Riwayat Transaksi",
+      "msg": "2 tombol unik diklik (daftar hitam tombol berbahaya dilewati)"
+    },
+    {
+      "level": "OK",
+      "area": "tab Riwayat Transaksi",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "tab Shift & Kas Laci",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "tab Shift & Kas Laci",
+      "msg": "2 tombol unik diklik (daftar hitam tombol berbahaya dilewati)"
+    },
+    {
+      "level": "OK",
+      "area": "tab Shift & Kas Laci",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "tab Katalog & Stok",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "tab Katalog & Stok",
+      "msg": "17 tombol unik diklik (daftar hitam tombol berbahaya dilewati)"
+    },
+    {
+      "level": "OK",
+      "area": "tab Katalog & Stok",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "tab Pengaturan POS",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "tab Pengaturan POS",
+      "msg": "0 tombol unik diklik (daftar hitam tombol berbahaya dilewati)"
+    },
+    {
+      "level": "OK",
+      "area": "tab Pengaturan POS",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "HP /",
+      "msg": "tidak ada scroll horizontal"
+    },
+    {
+      "level": "WARN",
+      "area": "HP /",
+      "msg": "18 tombol/link lebih kecil dari 32px (sulit disentuh di HP)"
+    },
+    {
+      "level": "OK",
+      "area": "HP /",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "HP /",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "HP /panduan",
+      "msg": "tidak ada scroll horizontal"
+    },
+    {
+      "level": "WARN",
+      "area": "HP /panduan",
+      "msg": "3 tombol/link lebih kecil dari 32px (sulit disentuh di HP)"
+    },
+    {
+      "level": "OK",
+      "area": "HP /panduan",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "HP /panduan",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "HP /privacy",
+      "msg": "tidak ada scroll horizontal"
+    },
+    {
+      "level": "WARN",
+      "area": "HP /privacy",
+      "msg": "3 tombol/link lebih kecil dari 32px (sulit disentuh di HP)"
+    },
+    {
+      "level": "OK",
+      "area": "HP /privacy",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "HP /privacy",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "HP /terms",
+      "msg": "tidak ada scroll horizontal"
+    },
+    {
+      "level": "WARN",
+      "area": "HP /terms",
+      "msg": "3 tombol/link lebih kecil dari 32px (sulit disentuh di HP)"
+    },
+    {
+      "level": "OK",
+      "area": "HP /terms",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "HP /terms",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "HP /pos?demo=true",
+      "msg": "tidak ada scroll horizontal"
+    },
+    {
+      "level": "WARN",
+      "area": "HP /pos?demo=true",
+      "msg": "10 tombol/link lebih kecil dari 32px (sulit disentuh di HP)"
+    },
+    {
+      "level": "OK",
+      "area": "HP /pos?demo=true",
+      "msg": "teks bersih dari placeholder/sisa template"
+    },
+    {
+      "level": "OK",
+      "area": "HP /pos?demo=true",
+      "msg": "16 tombol unik diklik (daftar hitam tombol berbahaya dilewati)"
+    },
+    {
+      "level": "OK",
+      "area": "HP /pos?demo=true",
+      "msg": "tidak ada error console / request gagal / HTTP 4xx-5xx"
+    },
+    {
+      "level": "OK",
+      "area": "offline",
+      "msg": "Service Worker aktif"
+    },
+    {
+      "level": "OK",
+      "area": "offline",
+      "msg": "/pos?demo=true tetap terbuka saat offline"
+    },
+    {
+      "level": "OK",
+      "area": "offline",
+      "msg": "/panduan tetap terbuka saat offline"
+    },
+    {
+      "level": "OK",
+      "area": "offline",
+      "msg": "menambah item saat offline berhasil"
+    },
+    {
+      "level": "OK",
+      "area": "keamanan",
+      "msg": "/api/owner/orders tanpa login → 401"
+    },
+    {
+      "level": "OK",
+      "area": "keamanan",
+      "msg": "/api/owner/licenses tanpa login → 401"
+    },
+    {
+      "level": "OK",
+      "area": "keamanan",
+      "msg": "/api/owner/tester-license tanpa login → 401"
+    },
+    {
+      "level": "OK",
+      "area": "keamanan",
+      "msg": "/api/owner/beta tanpa login → 401"
+    },
+    {
+      "level": "OK",
+      "area": "keamanan",
+      "msg": "/api/owner/metrics tanpa login → 401"
+    }
+  ]
+}

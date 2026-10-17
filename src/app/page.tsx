@@ -519,7 +519,7 @@ export default function SakuNotaLandingPage() {
                   }}
                   className="w-full py-3.5 text-center rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-600/30 transition-all active:scale-95"
                 >
-                  Beli SakuNota — Rp65.000
+                  Beli SakuNota - Rp65.000
                 </button>
               </div>
             </div>
@@ -572,7 +572,7 @@ export default function SakuNotaLandingPage() {
               onClick={handleOpenBuyModal}
               className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-lg shadow-blue-600/25 transition-all active:scale-95 text-center flex items-center justify-center gap-2"
             >
-              <span>Beli SakuNota — Rp65.000</span>
+              <span>Beli SakuNota - Rp65.000</span>
               <span>→</span>
             </button>
           </div>
@@ -1287,7 +1287,7 @@ export default function SakuNotaLandingPage() {
               onClick={handleOpenBuyModal}
               className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-lg shadow-blue-600/30 transition-all active:scale-95"
             >
-              Beli SakuNota — Rp65.000
+              Beli SakuNota - Rp65.000
             </button>
             <button
               type="button"

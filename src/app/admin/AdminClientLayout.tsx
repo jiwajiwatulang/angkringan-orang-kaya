@@ -608,7 +608,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 : "bg-blue-50 border border-blue-200 text-blue-700"
             }`}>
               <span>{isDemo ? "🎮" : "🏪"}</span>
-              <span>{isDemo ? "Mode Demo Admin (Simulasi)" : (storeSettings.storeName || "SakuNota POS")}</span>
+              <span>{isDemo ? "Mode Demo Admin (Simulasi)" : (storeSettings.storeName || "SakuNota")}</span>
             </div>
           </div>
 

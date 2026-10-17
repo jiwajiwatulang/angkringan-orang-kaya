@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import AdminClientLayout from "./AdminClientLayout";
 
 export const metadata: Metadata = {
-  title: "Admin Kasir — SakuNota",
+  title: "Admin Kasir - SakuNota",
   robots: {
     index: false,
     follow: false,
