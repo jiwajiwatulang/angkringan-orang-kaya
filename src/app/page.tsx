@@ -14,6 +14,7 @@ import {
   PAYMENT_ACCOUNT_NAME,
   PAYMENT_ACCOUNT_NUMBER,
 } from "@/lib/config";
+import AntiGravityGalaxy from "@/components/AntiGravityGalaxy";
 
 export default function SakuNotaLandingPage() {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -527,16 +528,21 @@ export default function SakuNotaLandingPage() {
         )}
       </header>
 
-      {/* 2. Hero Section */}
-      <section className="relative pt-16 pb-20 px-4 sm:px-8 overflow-hidden bg-white">
-        {/* Subtle royal blue soft glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-80 bg-blue-100/50 blur-[100px] pointer-events-none rounded-full" />
+      {/* 2. Hero Section with Anti-Gravity Galaxy */}
+      <section className="relative pt-16 pb-20 px-4 sm:px-8 overflow-hidden bg-white min-h-[560px] flex items-center justify-center">
+        {/* Anti-Gravity Galaxy Cosmic Particle Background & Floating Badges */}
+        <AntiGravityGalaxy />
         
-        <div className="relative max-w-4xl mx-auto text-center space-y-7">
-          {/* Top Pill Slogan Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold shadow-sm">
+        <div className="relative z-10 max-w-4xl mx-auto text-center space-y-7">
+          {/* Top Pill Slogan Badge with Anti-Gravity Accent */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50/90 backdrop-blur-md border border-blue-200 text-blue-700 text-xs font-bold shadow-xs hover:border-blue-400 transition-all">
             <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
             <span>Kasir Jalan Tanpa Internet</span>
+            <span className="text-slate-300">•</span>
+            <span className="text-[11px] font-extrabold text-blue-600 flex items-center gap-1">
+              <span>🌌</span>
+              <span>Anti-Gravity Offline Engine</span>
+            </span>
           </div>
 
           {/* Main Headline */}
