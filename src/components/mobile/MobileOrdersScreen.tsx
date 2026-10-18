@@ -88,8 +88,8 @@ export default function MobileOrdersScreen({
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       isPaid
-                        ? "bg-blue-50 text-blue-700 border border-blue-200"
-                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                        : "bg-amber-50 text-amber-950 border border-amber-300"
                     }`}
                   >
                     {isPaid ? "Lunas" : "Belum Bayar"}

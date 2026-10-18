@@ -289,15 +289,15 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
 
-            <div className="p-3 bg-amber-950/40 border border-amber-900/60 rounded-xl text-left text-xs text-amber-200 mb-5 space-y-1">
+            <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-left text-xs text-amber-950 mb-5 space-y-1">
               <p className="font-bold"> Perhatian Penting:</p>
-              <p className="text-[11px] text-amber-300/90 leading-relaxed">
+              <p className="text-[11px] text-amber-900 leading-relaxed font-medium">
                 Catat kode ini di buku catatan atau simpan di chat WhatsApp pribadi Anda. Kode ini <strong>tidak disimpan dalam bentuk teks</strong> di aplikasi dan tidak disertakan dalam file cadangan demi privasi.
               </p>
             </div>
 
             {/* Checkbox Konfirmasi */}
-            <label className="flex items-start gap-2.5 text-left text-xs text-slate-300 font-bold mb-5 cursor-pointer">
+            <label className="flex items-start gap-2.5 text-left text-xs text-fg font-bold mb-5 cursor-pointer">
               <input
                 type="checkbox"
                 checked={acknowledgedCode}

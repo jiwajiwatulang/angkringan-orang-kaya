@@ -496,7 +496,7 @@ export default function AdminTransaksiPage() {
             <button
               type="button"
               onClick={() => handleBulkExport('xlsx')}
-              className="px-3 py-2 bg-accent/40 text-accent-text border border-accent/40 hover:bg-accent/15 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
+              className="px-3 py-2 bg-blue-50 text-blue-900 border border-blue-200 hover:bg-blue-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
             >
               <span><LineIcon name="export" /></span>
               <span>Export Excel</span>
@@ -505,7 +505,7 @@ export default function AdminTransaksiPage() {
             <button
               type="button"
               onClick={() => setIsHistoricalModalOpen(true)}
-              className="px-3 py-2 bg-accent/40 text-accent-text border border-accent/40 hover:bg-accent/15 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
+              className="px-3 py-2 bg-blue-50 text-blue-900 border border-blue-200 hover:bg-blue-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
             >
               <span><LineIcon name="import" /></span>
               <span>Import Historis</span>
@@ -514,7 +514,7 @@ export default function AdminTransaksiPage() {
             <button
               type="button"
               onClick={() => setIsBulkProofModalOpen(true)}
-              className="px-3 py-2 bg-amber-950/40 text-amber-300 border border-amber-800 hover:bg-amber-500/15 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
+              className="px-3 py-2 bg-amber-50 text-amber-950 border border-amber-300 hover:bg-amber-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
             >
               <span><LineIcon name="camera" /></span>
               <span>Bulk Bukti Bayar</span>
@@ -543,7 +543,7 @@ export default function AdminTransaksiPage() {
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
+              className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-fg outline-none"
             >
               <option value="all"> Semua Waktu</option>
               <option value="today"> Hari Ini</option>
@@ -557,7 +557,7 @@ export default function AdminTransaksiPage() {
             <select
               value={paymentFilter}
               onChange={(e) => setPaymentFilter(e.target.value)}
-              className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
+              className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-fg outline-none"
             >
               <option value="Semua"> Semua Pembayaran</option>
               <option value="Cash"> Tunai (Cash)</option>
@@ -571,7 +571,7 @@ export default function AdminTransaksiPage() {
             <select
               value={verificationFilter}
               onChange={(e) => setVerificationFilter(e.target.value)}
-              className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
+              className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-fg outline-none"
             >
               <option value="Semua"> Semua Status Verifikasi</option>
               <option value="terverifikasi">Terverifikasi</option>
@@ -585,7 +585,7 @@ export default function AdminTransaksiPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
+              className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-fg outline-none"
             >
               <option value="waktu_desc"> Waktu (Terbaru)</option>
               <option value="waktu_asc"> Waktu (Terlama)</option>
@@ -599,7 +599,7 @@ export default function AdminTransaksiPage() {
             <select
               value={itemsPerPage}
               onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
+              className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-fg outline-none"
             >
               <option value={15}> 15 Nota / Hal</option>
               <option value={30}> 30 Nota / Hal</option>
@@ -631,35 +631,35 @@ export default function AdminTransaksiPage() {
 
       {/* --- STICKY BULK ACTION BAR JIKA ADA NOTA TERPILIH --- */}
       {selectedOrderIds.length > 0 && (
-        <div className="sticky top-16 z-20 bg-accent text-white p-3 sm:p-4 rounded-2xl shadow-xl flex items-center justify-between gap-3 animate-in slide-in-from-top-2 duration-200">
+        <div className="sticky top-16 z-20 bg-slate-900 text-white p-3 sm:p-4 rounded-2xl shadow-xl flex items-center justify-between gap-3 animate-in slide-in-from-top-2 duration-200 border border-slate-800">
           <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-lg bg-card/20 flex items-center justify-center font-black text-xs">
+            <span className="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center font-black text-xs text-white">
               {selectedOrderIds.length}
             </span>
-            <span className="text-xs font-black">Nota Terpilih</span>
+            <span className="text-xs font-black text-white">Nota Terpilih</span>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleBulkReprint}
-              className="px-3 py-1.5 bg-card text-accent-text hover:bg-accent/10 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95"
+              className="px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
             >
-              <span><LineIcon name="printer" /></span>
+              <span className="text-white"><LineIcon name="printer" /></span>
               <span>Cetak Terpilih</span>
             </button>
             <button
               type="button"
               onClick={() => handleBulkExport('xlsx')}
-              className="px-3 py-1.5 bg-accent text-white hover:bg-accent-hover rounded-xl text-xs font-bold transition-all flex items-center gap-1"
+              className="px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
             >
-              <span><LineIcon name="export" /></span>
+              <span className="text-white"><LineIcon name="export" /></span>
               <span>Export (.xlsx)</span>
             </button>
             <button
               type="button"
               onClick={() => setSelectedOrderIds([])}
-              className="px-2.5 py-1.5 text-blue-200 hover:text-white text-xs font-semibold"
+              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-colors"
             >
               Batal
             </button>
@@ -798,7 +798,7 @@ export default function AdminTransaksiPage() {
                           </span>
                         </td>
                         <td className="py-3.5 px-3">
-                          <span className="px-2.5 py-1 rounded-lg bg-card border border-line text-[11px] font-bold text-slate-300 inline-block">
+                          <span className="px-2.5 py-1 rounded-lg bg-card border border-line text-[11px] font-bold text-fg inline-block shadow-2xs">
                             {order.paymentMethod || "Cash"}
                           </span>
                         </td>
@@ -820,12 +820,12 @@ export default function AdminTransaksiPage() {
                                 </button>
                               ) : null}
                               <span
-                                className={`text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                                className={`text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 border ${
                                   vStatus === "terverifikasi"
-                                    ? "bg-accent/60 text-accent-text"
+                                    ? "bg-blue-100 text-blue-900 border-blue-200"
                                     : vStatus === "menunggu_verifikasi"
-                                    ? "bg-amber-950/60 text-amber-300 animate-pulse"
-                                    : "bg-rose-50 text-rose-700"
+                                    ? "bg-amber-100 text-amber-950 border-amber-300 animate-pulse"
+                                    : "bg-rose-50 text-rose-700 border-rose-200"
                                 }`}
                               >
                                 <span><LineIcon name={vStatus === "terverifikasi" ? "success" : vStatus === "menunggu_verifikasi" ? "waiting" : "warning"} /></span>
@@ -849,12 +849,12 @@ export default function AdminTransaksiPage() {
                         </td>
                         <td className="py-3.5 px-3">
                           <span
-                            className={`text-[10px] font-black px-2.5 py-0.5 rounded-full inline-block ${
+                            className={`text-[10px] font-black px-2.5 py-0.5 rounded-full inline-block border ${
                               isVoid
-                                ? "bg-rose-50 text-rose-700 line-through"
+                                ? "bg-rose-50 text-rose-700 border-rose-200 line-through"
                                 : order.status === "paid"
-                                ? "bg-accent/60 text-accent-text"
-                                : "bg-amber-950/60 text-amber-300"
+                                ? "bg-blue-100 text-blue-900 border-blue-200"
+                                : "bg-amber-100 text-amber-950 border-amber-300"
                             }`}
                           >
                             {isVoid ? "VOID" : order.status === "paid" ? "LUNAS" : "OPEN BILL"}
@@ -939,10 +939,10 @@ export default function AdminTransaksiPage() {
                         <span
                           className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
                             isVoid
-                              ? " bg-rose-50 text-rose-700 line-through"
+                              ? " bg-rose-50 text-rose-700 border border-rose-200 line-through"
                               : order.status === "paid"
-                              ? " bg-accent/60 text-accent-text"
-                              : " bg-amber-950/60 text-amber-300"
+                              ? " bg-emerald-50 text-emerald-800 border border-emerald-200"
+                              : " bg-amber-50 text-amber-950 border border-amber-300"
                           }`}
                         >
                           {isVoid ? "VOID" : order.status === "paid" ? "LUNAS" : "OPEN BILL"}
@@ -953,10 +953,10 @@ export default function AdminTransaksiPage() {
                           <span
                             className={`text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
                               vStatus === "terverifikasi"
-                                ? " bg-accent/60 text-accent-text"
+                                ? " bg-blue-50 text-blue-900 border border-blue-200"
                                 : vStatus === "menunggu_verifikasi"
-                                ? " bg-amber-950/60 text-amber-300 animate-pulse"
-                                : " bg-rose-50 text-rose-700"
+                                ? " bg-amber-50 text-amber-950 border border-amber-300 animate-pulse"
+                                : " bg-rose-50 text-rose-700 border border-rose-200"
                             }`}
                           >
                             <span><LineIcon name={vStatus === "terverifikasi" ? "success" : vStatus === "menunggu_verifikasi" ? "waiting" : "warning"} /></span>
@@ -971,7 +971,7 @@ export default function AdminTransaksiPage() {
                         )}
 
                         {order.isHistorical && (
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-accent/60 text-accent-text">
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-900 border border-blue-200">
                             Migrasi Historis
                           </span>
                         )}
@@ -1265,13 +1265,13 @@ export default function AdminTransaksiPage() {
                 <button
                   type="button"
                   onClick={() => handlePrint('food')}
-                  className="flex-1 py-2 bg-amber-950/40 hover:bg-amber-500/15 text-amber-300 rounded-xl text-[11px] font-bold"
+                  className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[11px] font-bold shadow-sm transition-colors"
                 > Struk Dapur
                 </button>
                 <button
                   type="button"
                   onClick={() => handlePrint('drink')}
-                  className="flex-1 py-2 bg-accent/40 hover:bg-accent/15 text-accent-text rounded-xl text-[11px] font-bold"
+                  className="flex-1 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl text-[11px] font-bold shadow-sm transition-colors"
                 > Struk Bar
                 </button>
               </div>
@@ -1359,14 +1359,14 @@ export default function AdminTransaksiPage() {
 
               {/* Upload File */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-fg mb-1.5">
                   Pilih File (.xlsx / .csv):
                 </label>
                 <input
                   type="file"
                   accept=".xlsx, .xls, .csv"
                   onChange={handleHistoricalFileChange}
-                  className="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold hover:file:bg-accent/15 file:bg-accent/60 file:text-accent-text"
+                  className="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold hover:file:opacity-90 file:bg-accent file:text-white"
                 />
               </div>
 
@@ -1401,7 +1401,7 @@ export default function AdminTransaksiPage() {
               <button
                 type="button"
                 onClick={() => setIsHistoricalModalOpen(false)}
-                className="flex-1 py-2.5 bg-card text-slate-300 rounded-xl text-xs font-bold"
+                className="flex-1 py-2.5 bg-card text-fg border border-line rounded-xl text-xs font-bold"
               >
                 Batal
               </button>
@@ -1448,7 +1448,7 @@ export default function AdminTransaksiPage() {
               </p>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-fg mb-1.5">
                   Pilih Banyak Gambar Bukti Bayar:
                 </label>
                 <input
@@ -1457,7 +1457,7 @@ export default function AdminTransaksiPage() {
                   accept="image/jpeg,image/png,image/webp"
                   onChange={handleBulkProofFilesChange}
                   disabled={isMatchingProofs}
-                  className="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold hover:file:bg-amber-500/15 file:bg-amber-950/60 file:text-amber-300"
+                  className="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold hover:file:opacity-90 file:bg-amber-600 file:text-white"
                 />
               </div>
 
@@ -1513,7 +1513,7 @@ export default function AdminTransaksiPage() {
               <button
                 type="button"
                 onClick={() => setIsBulkProofModalOpen(false)}
-                className="flex-1 py-2.5 bg-card text-slate-300 rounded-xl text-xs font-bold"
+                className="flex-1 py-2.5 bg-card text-fg border border-line rounded-xl text-xs font-bold"
               >
                 Batal
               </button>
@@ -1550,7 +1550,7 @@ export default function AdminTransaksiPage() {
 
             <form onSubmit={handleProcessVoidSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                <label className="block text-[11px] font-bold text-fg mb-1">
                   Alasan Pembatalan (Audit):
                 </label>
                 <input
@@ -1564,12 +1564,12 @@ export default function AdminTransaksiPage() {
               </div>
 
               {voidTargetOrder.paymentMethod === "Cash" && (
-                <div className="p-3 bg-amber-950/40 rounded-xl border border-amber-800/60 flex items-center justify-between">
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-300 flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-amber-200 block">
+                    <span className="text-xs font-bold text-amber-950 block">
                       Kembalikan Uang Kas?
                     </span>
-                    <span className="text-[10px] text-amber-400">
+                    <span className="text-[10px] text-amber-900 font-medium">
                       Mengurangi expected cash laci kasir
                     </span>
                   </div>
@@ -1583,7 +1583,7 @@ export default function AdminTransaksiPage() {
               )}
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                <label className="block text-[11px] font-bold text-fg mb-1">
                   PIN Otorisasi Admin:
                 </label>
                 <input
@@ -1608,7 +1608,7 @@ export default function AdminTransaksiPage() {
                 <button
                   type="button"
                   onClick={() => setVoidTargetOrder(null)}
-                  className="flex-1 py-2.5 bg-card text-slate-300 rounded-xl text-xs font-bold transition-colors"
+                  className="flex-1 py-2.5 bg-card text-fg border border-line rounded-xl text-xs font-bold transition-colors"
                 >
                   Batal
                 </button>

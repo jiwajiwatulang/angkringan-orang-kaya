@@ -399,7 +399,7 @@ export default function AdminMejaPage() {
                       setTableToEdit(table);
                       setTableEditName(table.nomor);
                     }}
-                    className="flex-1 py-1.5 bg-card hover:bg-line text-slate-300 rounded-xl text-[11px] font-bold transition-colors"
+                    className="flex-1 py-1.5 bg-card border border-line hover:bg-line text-fg rounded-xl text-[11px] font-bold transition-colors"
                   >
                     Ubah
                   </button>
@@ -418,15 +418,15 @@ export default function AdminMejaPage() {
 
       {/* --- FLOATING BULK TOOLBAR (WHEN TABLES SELECTED) --- */}
       {selectedTableIds.length > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-[460px] z-40 bg-card/95 backdrop-blur-md text-white p-3.5 rounded-2xl sm:rounded-3xl shadow-2xl border border-line/80 animate-in slide-in-from-bottom-5 duration-200 flex flex-col gap-2">
-          <div className="flex items-center justify-between border-b border-line/60 pb-2">
+        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-[460px] z-40 bg-card/95 backdrop-blur-md text-fg p-3.5 rounded-2xl sm:rounded-3xl shadow-2xl border border-line animate-in slide-in-from-bottom-5 duration-200 flex flex-col gap-2">
+          <div className="flex items-center justify-between border-b border-line pb-2">
             <span className="text-xs font-black text-accent-text flex items-center gap-1.5">
-              <span><LineIcon name="success" /></span>
+              <span className="text-accent-text"><LineIcon name="success" /></span>
               <span>{selectedTableIds.length} Meja Dipilih</span>
             </span>
             <button
               onClick={() => setSelectedTableIds([])}
-              className="text-[11px] text-muted hover:text-white font-bold transition-colors"
+              className="text-[11px] text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-lg font-bold transition-colors"
             >
               Batal Pilih ×
             </button>
@@ -440,9 +440,9 @@ export default function AdminMejaPage() {
                 setRenamePattern("Meja {N}");
                 setIsBulkRenameOpen(true);
               }}
-              className="flex-1 py-2 bg-slate-100 text-slate-800 hover:bg-slate-200 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              className="flex-1 py-2 bg-slate-100 text-slate-800 hover:bg-slate-200 border border-line rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
             >
-              <span><LineIcon name="edit" /></span>
+              <span className="text-slate-800"><LineIcon name="edit" /></span>
               <span>Rename Massal</span>
             </button>
 
@@ -450,9 +450,9 @@ export default function AdminMejaPage() {
             <button
               type="button"
               onClick={() => setIsBulkDeleteOpen(true)}
-              className="flex-1 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              className="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
             >
-              <span><LineIcon name="delete" /></span>
+              <span className="text-white"><LineIcon name="delete" /></span>
               <span>Hapus Terpilih</span>
             </button>
           </div>
@@ -537,7 +537,7 @@ export default function AdminMejaPage() {
                 <button
                   type="button"
                   onClick={() => setIsBulkCreateOpen(false)}
-                  className="flex-1 py-3 bg-card text-slate-300 rounded-xl text-xs font-bold"
+                  className="flex-1 py-3 bg-card text-fg border border-line rounded-xl text-xs font-bold hover:bg-line transition-colors"
                 >
                   Batal
                 </button>
@@ -600,7 +600,7 @@ export default function AdminMejaPage() {
                 <button
                   type="button"
                   onClick={() => setIsBulkRenameOpen(false)}
-                  className="flex-1 py-3 bg-card text-slate-300 rounded-xl text-xs font-bold"
+                  className="flex-1 py-3 bg-card text-fg border border-line rounded-xl text-xs font-bold hover:bg-line transition-colors"
                 >
                   Batal
                 </button>
@@ -671,7 +671,7 @@ export default function AdminMejaPage() {
 
             <form onSubmit={handleAddSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-fg mb-1">
                   Nama / Nomor Meja:
                 </label>
                 <input
@@ -689,7 +689,7 @@ export default function AdminMejaPage() {
                 <button
                   type="button"
                   onClick={handleCloseAdd}
-                  className="flex-1 py-3 bg-card text-slate-300 rounded-xl text-xs font-bold transition-colors"
+                  className="flex-1 py-3 bg-card text-fg border border-line rounded-xl text-xs font-bold hover:bg-line transition-colors"
                 >
                   Batal
                 </button>
@@ -724,7 +724,7 @@ export default function AdminMejaPage() {
 
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-fg mb-1">
                   Nama Meja:
                 </label>
                 <input
@@ -741,7 +741,7 @@ export default function AdminMejaPage() {
                 <button
                   type="button"
                   onClick={handleCloseEdit}
-                  className="flex-1 py-3 bg-card text-slate-300 rounded-xl text-xs font-bold transition-colors"
+                  className="flex-1 py-3 bg-card text-fg border border-line rounded-xl text-xs font-bold hover:bg-line transition-colors"
                 >
                   Batal
                 </button>
@@ -804,11 +804,11 @@ export default function AdminMejaPage() {
             className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
+            <div className="w-12 h-12 bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg mb-1">
               Batalkan Perubahan?
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed mb-5">
+            <p className="text-xs text-muted leading-relaxed mb-5">
               Input nama meja yang Anda ketik belum disimpan. Yakin ingin menutup?
             </p>
             <div className="flex space-x-2">
