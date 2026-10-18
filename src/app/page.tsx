@@ -476,7 +476,6 @@ export default function SakuNotaLandingPage() {
               onClick={() => handleOpenLicenseModal("direct_license")}
               className="px-3.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all border border-blue-200 flex items-center gap-1.5"
             >
-              <span>🔑</span>
               <span>Aktivasi Lisensi</span>
             </button>
             <Link
@@ -504,7 +503,6 @@ export default function SakuNotaLandingPage() {
               onClick={() => handleOpenLicenseModal("direct_license")}
               className="px-2.5 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-extrabold text-[11px] flex items-center gap-1 shadow-xs active:scale-95"
             >
-              <span>🔑</span>
               <span>Aktivasi</span>
             </button>
             <button
@@ -2363,7 +2361,7 @@ export default function SakuNotaLandingPage() {
                     : "text-slate-700 hover:text-blue-600"
                 }`}
               >
-                🔑 Pakai Kode Lisensi
+                Pakai Kode Lisensi
               </button>
               <button
                 type="button"
@@ -2374,7 +2372,7 @@ export default function SakuNotaLandingPage() {
                     : "text-slate-700 hover:text-blue-600"
                 }`}
               >
-                🧾 Cek Nomor Pesanan
+                Cek Status Pesanan
               </button>
             </div>
 
@@ -2382,7 +2380,7 @@ export default function SakuNotaLandingPage() {
             {statusModalTab === "direct_license" && (
               <div className="space-y-4">
                 <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-[11px] text-blue-900 leading-relaxed">
-                  <strong>💡 Punya Lisensi Tester atau Kode Lisensi Resmi?</strong><br />
+                  <strong>Punya Lisensi Tester atau Kode Lisensi Resmi?</strong><br />
                   Masukkan langsung kode lisensi Anda di bawah ini (tidak perlu Nomor Pesanan dan tidak perlu Kode Akses Rahasia).
                 </div>
 
@@ -2398,19 +2396,6 @@ export default function SakuNotaLandingPage() {
                       value={directLicenseInput}
                       onChange={(e) => setDirectLicenseInput(e.target.value.toUpperCase())}
                       className="w-full px-3.5 py-3 rounded-xl bg-slate-50 border-2 border-blue-200 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:bg-white outline-none font-mono font-bold uppercase tracking-wider"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Nama HP / Perangkat Kasir (Opsional)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: HP Kasir Utama"
-                      value={directDeviceName}
-                      onChange={(e) => setDirectDeviceName(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:bg-white outline-none"
                     />
                   </div>
 
@@ -2430,7 +2415,6 @@ export default function SakuNotaLandingPage() {
                         href="/pos"
                         className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md"
                       >
-                        <span>🏪</span>
                         <span>Buka Kasir SakuNota Sekarang →</span>
                       </Link>
                     </div>
@@ -2441,7 +2425,7 @@ export default function SakuNotaLandingPage() {
                     disabled={isActivatingDirect}
                     className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md shadow-blue-600/25 active:scale-95 disabled:opacity-50"
                   >
-                    {isActivatingDirect ? "Memverifikasi & Mengaktifkan..." : "🚀 Aktifkan Lisensi di Perangkat Ini →"}
+                    {isActivatingDirect ? "Memverifikasi & Mengaktifkan..." : "Aktifkan Lisensi di Perangkat Ini →"}
                   </button>
                 </form>
               </div>

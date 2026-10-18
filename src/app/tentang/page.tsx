@@ -2,7 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import { SUPPORT_WHATSAPP } from "@/lib/config";
 
 export default function TentangSakuNotaPage() {
   return (
@@ -47,7 +46,7 @@ export default function TentangSakuNotaPage() {
       {/* 2. Section: Where It All Began */}
       <section id="cerita" className="relative py-16 sm:py-24 px-4 sm:px-8 bg-white border-b border-slate-200">
         <div className="max-w-3xl mx-auto text-center space-y-6">
-          <span className="text-[11px] font-extrabold tracking-widest text-emerald-600 uppercase block">
+          <span className="text-[11px] font-extrabold tracking-widest text-blue-600 uppercase block">
             OUR STORY
           </span>
 
@@ -56,7 +55,7 @@ export default function TentangSakuNotaPage() {
           </h1>
 
           <div className="pt-2 text-left space-y-6 text-sm sm:text-base text-slate-700 leading-relaxed">
-            <h2 className="text-xl sm:text-2xl font-black text-emerald-800">
+            <h2 className="text-xl sm:text-2xl font-black text-blue-900">
               Finding the Gap
             </h2>
 
@@ -77,7 +76,7 @@ export default function TentangSakuNotaPage() {
             </p>
 
             <p className="font-bold text-slate-900">
-              Dari celah inilah SakuNota lahir. Sebuah perangkat lunak kasir mandiri yang mengembalikan kendali penuh ke tangan juragan warung—cukup sekali bayar Rp50.000 selamanya.
+              Dari celah inilah SakuNota lahir. Sebuah perangkat lunak kasir mandiri yang mengembalikan kendali penuh ke tangan juragan warung - cukup sekali bayar Rp50.000 selamanya.
             </p>
           </div>
         </div>
@@ -87,9 +86,6 @@ export default function TentangSakuNotaPage() {
       <section id="pilar" className="py-16 sm:py-24 px-4 sm:px-8 bg-slate-50 border-b border-slate-200">
         <div className="max-w-5xl mx-auto space-y-12">
           <div className="text-center space-y-2">
-            <span className="text-xs font-extrabold text-blue-600 uppercase tracking-widest block">
-              FILOSOFI REKAYASA SISTEM
-            </span>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900">
               Didesain untuk Realitas Warung Indonesia
             </h2>
@@ -118,7 +114,7 @@ export default function TentangSakuNotaPage() {
             {/* Card 2 */}
             <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm hover:border-blue-400 hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center font-black text-xl shadow-xs">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs">
                   📈
                 </div>
                 <h3 className="text-lg font-black text-slate-900">Built to Scale</h3>
@@ -126,7 +122,7 @@ export default function TentangSakuNotaPage() {
                   Mampu menampung ribuan riwayat transaksi dan katalog menu tanpa melambat, berkat penyimpanan IndexedDB lokal berkinerja tinggi langsung di memori HP Anda.
                 </p>
               </div>
-              <span className="text-[11px] font-extrabold text-emerald-600 uppercase tracking-wider block pt-2">
+              <span className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider block pt-2">
                 High Performance Local DB
               </span>
             </div>
@@ -134,7 +130,7 @@ export default function TentangSakuNotaPage() {
             {/* Card 3 */}
             <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm hover:border-blue-400 hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center font-black text-xl shadow-xs">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs">
                   👥
                 </div>
                 <h3 className="text-lg font-black text-slate-900">People Centered</h3>
@@ -142,7 +138,7 @@ export default function TentangSakuNotaPage() {
                   Tata letak antarmuka dirancang khusus untuk kasir, pelayan, dan juragan warung. Tombol sentuh besar, pencarian gesit, dan proses transaksi selesai dalam 3 sentuhan.
                 </p>
               </div>
-              <span className="text-[11px] font-extrabold text-indigo-600 uppercase tracking-wider block pt-2">
+              <span className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider block pt-2">
                 0-Hour Learning Curve
               </span>
             </div>
@@ -150,7 +146,7 @@ export default function TentangSakuNotaPage() {
             {/* Card 4 */}
             <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm hover:border-blue-400 hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 border border-cyan-200 flex items-center justify-center font-black text-xl shadow-xs">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs">
                   🛡️
                 </div>
                 <h3 className="text-lg font-black text-slate-900">Reliable by Design</h3>
@@ -158,7 +154,7 @@ export default function TentangSakuNotaPage() {
                   Kasir Anda tidak pernah menggantung karena masalah internet penyedia server. Semua kalkulasi diskon, pajak PBJT, dan nomor urut pesanan diproses lokal 100%.
                 </p>
               </div>
-              <span className="text-[11px] font-extrabold text-cyan-600 uppercase tracking-wider block pt-2">
+              <span className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider block pt-2">
                 100% Offline-First
               </span>
             </div>
@@ -166,7 +162,7 @@ export default function TentangSakuNotaPage() {
             {/* Card 5 */}
             <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm hover:border-blue-400 hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-black text-xl shadow-xs">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs">
                   ⚡
                 </div>
                 <h3 className="text-lg font-black text-slate-900">Fast, Reliable, Easy to Use</h3>
@@ -174,7 +170,7 @@ export default function TentangSakuNotaPage() {
                   Aplikasi sangat ringan dan dapat dipasang di layar utama Android atau iPhone layaknya aplikasi native tanpa memakan ruang memori yang besar.
                 </p>
               </div>
-              <span className="text-[11px] font-extrabold text-amber-600 uppercase tracking-wider block pt-2">
+              <span className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider block pt-2">
                 Progressive Web App (PWA)
               </span>
             </div>
@@ -182,7 +178,7 @@ export default function TentangSakuNotaPage() {
             {/* Card 6 */}
             <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm hover:border-blue-400 hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center font-black text-xl shadow-xs">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs">
                   🔄
                 </div>
                 <h3 className="text-lg font-black text-slate-900">Always Evolving</h3>
@@ -190,7 +186,7 @@ export default function TentangSakuNotaPage() {
                   SakuNota terus diperbarui berdasarkan masukan nyata dari komunitas pengguna kuliner di lapangan, tanpa pernah membebankan biaya tambahan kepada pembeli lisensi.
                 </p>
               </div>
-              <span className="text-[11px] font-extrabold text-rose-600 uppercase tracking-wider block pt-2">
+              <span className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider block pt-2">
                 Lifetime Value
               </span>
             </div>
@@ -222,27 +218,25 @@ export default function TentangSakuNotaPage() {
         </div>
       </section>
 
-      {/* 5. Section: The Team Behind SakuNota (Only Reza Rengga dari Pemuda Gaya Bebas) */}
+      {/* 5. Section: The Team Behind SakuNota (Only Reza Rengga - Founder) */}
       <section id="tim" className="py-20 sm:py-28 px-4 sm:px-8 bg-white border-b border-slate-200">
         <div className="max-w-4xl mx-auto text-center space-y-12">
-          <div className="space-y-2">
-            <span className="text-[11px] font-extrabold tracking-widest text-blue-600 uppercase block">
-              PENGEMBANG &amp; INISIATOR
-            </span>
+          <div>
             <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight">
               The team behind SakuNota
             </h2>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto">
-              SakuNota dibangun secara mandiri dengan dedikasi penuh untuk kemandirian teknologi usaha kecil di Indonesia.
-            </p>
           </div>
 
           {/* Single Founder Profile Card */}
           <div className="max-w-md mx-auto bg-slate-50 border-2 border-blue-200 rounded-3xl p-6 sm:p-8 shadow-lg shadow-blue-500/5 text-center space-y-5">
-            {/* Avatar / Badge */}
-            <div className="relative mx-auto w-28 h-28 rounded-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900 text-white flex items-center justify-center text-3xl font-black shadow-xl shadow-blue-600/25">
-              RR
-              <div className="absolute -bottom-2 -right-2 px-2.5 py-1 rounded-full bg-emerald-500 text-white text-[10px] font-black border-2 border-white shadow-xs">
+            {/* User Profile Photo */}
+            <div className="relative mx-auto w-32 h-32 rounded-3xl overflow-hidden shadow-xl shadow-blue-600/25 border-2 border-blue-200">
+              <img
+                src="/reza-rengga.jpg"
+                alt="Reza Rengga"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute bottom-2 right-2 px-2.5 py-1 rounded-full bg-blue-600 text-white text-[10px] font-black border-2 border-white shadow-xs">
                 Founder
               </div>
             </div>
@@ -252,28 +246,13 @@ export default function TentangSakuNotaPage() {
                 Reza Rengga
               </h3>
               <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">
-                Founder &amp; Lead Developer
+                Founder
               </p>
-              <div className="inline-block px-3 py-1 rounded-full bg-blue-100/70 border border-blue-200 text-blue-800 text-[11px] font-extrabold mt-1">
-                Pemuda Gaya Bebas
-              </div>
             </div>
 
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed text-left border-t border-slate-200 pt-4">
               &ldquo;Berangkat dari pengalaman melihat langsung rumit dan mahalnya biaya sewa aplikasi kasir di pasaran, saya mendedikasikan pengembangan SakuNota untuk menyediakan solusi kasir mandiri yang terjangkau, cepat, dan 100% jalan tanpa internet bagi seluruh kawan pedagang di Indonesia.&rdquo;
             </p>
-
-            <div className="pt-2 flex items-center justify-center gap-3">
-              <a
-                href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20Mas%20Reza%20Rengga,%20saya%20tertarik%20dengan%20SakuNota.`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
-              >
-                <span>💬</span>
-                <span>Kontak Mas Reza</span>
-              </a>
-            </div>
           </div>
         </div>
       </section>
@@ -314,7 +293,7 @@ export default function TentangSakuNotaPage() {
               alt="SakuNota"
               className="h-6 w-auto object-contain"
             />
-            <span>© 2026 <strong>SakuNota</strong>. Dikelola oleh Reza Rengga (Pemuda Gaya Bebas).</span>
+            <span>© 2026 <strong>SakuNota</strong>. Hak cipta dilindungi.</span>
           </div>
           <div className="flex items-center gap-5 font-semibold">
             <Link href="/" className="hover:text-blue-600">Beranda</Link>
