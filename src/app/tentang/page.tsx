@@ -31,7 +31,7 @@ export default function TentangSakuNotaPage() {
               href="/pos?demo=true"
               className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 border border-slate-200 transition-all"
             >
-              Coba Kasir
+              Coba Demo Kasir
             </Link>
             <Link
               href="/?beli=true"
