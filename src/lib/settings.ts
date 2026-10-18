@@ -46,7 +46,7 @@ export const BUSINESS_TYPES = [
   {
     id: "retail",
     title: "Toko & Retail",
-    description: "Barang, harga, dan stok penjualan tanpa meja.",
+    description: "Barcode, jumlah stok, barang masuk/keluar, dan stok opname tanpa meja.",
     defaultServiceMode: "quick" as const,
   },
 ] as const;
@@ -81,9 +81,10 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   storeLogo: "",
 };
 
-const STORAGE_KEY = "pos_store_settings";
+export const SETTINGS_STORAGE_KEY = db.name === 'SakuNotaDemoDB' ? 'sakunota_demo_store_settings' : 'pos_store_settings';
+const STORAGE_KEY = SETTINGS_STORAGE_KEY;
 const SETTINGS_EVENT = "sakunota:settings_updated";
-const BROADCAST_NAME = "sakunota_sync_channel";
+const BROADCAST_NAME = db.name === 'SakuNotaDemoDB' ? 'sakunota_demo_sync_channel' : 'sakunota_sync_channel';
 
 // In-memory cache for ultra-fast synchronous access during render
 let memoryCache: StoreSettings | null = null;

@@ -17,6 +17,7 @@ const navItems = [
   { href: "/admin/transaksi", label: "Riwayat Transaksi", icon: "/icons/icon-transaksi.png" },
   { href: "/admin/shift", label: "Shift & Kas Laci", icon: "/icons/icon-shift.png" },
   { href: "/admin/menu", label: "Katalog & Stok", icon: "/icons/icon-katalog.png" },
+  { href: "/admin/stok", label: "Stok & Opname", icon: "/icons/icon-katalog.png" },
   { href: "/admin/pengaturan", label: "Pengaturan POS", icon: "/icons/icon-pengaturan.png" },
   { href: "/admin", label: "Dashboard", icon: "/icons/icon-dashboard.png" },
 ];
@@ -30,6 +31,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const [pinError, setPinError] = useState("");
   const [isLainnyaOpen, setIsLainnyaOpen] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
   useEffect(() => {
     if (typeof document !== "undefined") {
@@ -49,13 +51,15 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   // Auth verification menggunakan sesi kriptografis aman (IndexedDB + sessionStorage)
   useEffect(() => {
+    const wantsDemo = window.location.search.includes('demo=true') || sessionStorage.getItem('sakunota_demo_mode') === 'true';
+    if (wantsDemo !== (db.name === 'SakuNotaDemoDB')) { window.location.reload(); return; }
     verifyAdminSession().then((isValid) => {
       const isDemoMode =
         typeof window !== "undefined" &&
         (sessionStorage.getItem("sakunota_demo_mode") === "true" ||
           window.location.search.includes("demo=true"));
       setIsAuthenticated(isValid || isDemoMode);
-    });
+    }).catch(() => setIsAuthenticated(false)).finally(() => setIsAuthReady(true));
   }, [setIsAuthenticated]);
 
   // Android Back button handler
@@ -231,6 +235,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   };
 
   // Unauthenticated: PIN Login / Pemulihan Pemilik / Konfigurasi Awal
+  if (!isAuthReady) return <div className="min-h-screen flex items-center justify-center bg-app text-muted" role="status">Menyiapkan Admin SakuNota…</div>;
   if (!isAuthenticated) {
     // 1. MODAL TAMPILKAN RECOVERY CODE BARU KEPADA PEMILIK
     if (revealedCode) {
@@ -516,7 +521,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
         {/* Navigation Links */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
+          {navItems.filter(item => item.href !== '/admin/meja' || storeSettings.serviceMode === 'resto').map((item) => {
             const active = isActiveLink(item.href);
             return (
               <Link
@@ -714,6 +719,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <h3 className="text-base font-black text-fg mb-3">Menu Lainnya</h3>
 
             <div className="grid grid-cols-1 gap-2 mb-4">
+              <Link href="/admin/stok" onClick={() => setIsLainnyaOpen(false)} className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-line text-fg">
+                <span className="text-xl">📦</span><div><div className="font-bold text-sm">Stok & Opname</div><div className="text-xs text-muted">Jumlah barang, barang masuk/keluar, dan hitungan fisik</div></div>
+              </Link>
               <Link
                 href="/admin/meja"
                 onClick={() => setIsLainnyaOpen(false)}

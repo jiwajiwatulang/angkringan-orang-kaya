@@ -1,5 +1,6 @@
 "use client";
 
+import { formatServerDate } from "@/lib/dateFormat";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
@@ -84,7 +85,7 @@ export default function SakuNotaOwnerDashboardPage() {
   const [deleteMessage, setDeleteMessage] = useState("");
   const [isDeletingOrder, setIsDeletingOrder] = useState(false);
   const [showDevDrawer, setShowDevDrawer] = useState(false);
-  const [downloadedSecrets, setDownloadedSecrets] = useState<Record<string, string> | null>(null);
+  const [downloadedSecrets, setDownloadedSecrets] = useState<Record<string, boolean> | null>(null);
   const [isLoadingSecrets, setIsLoadingSecrets] = useState(false);
   const [secretsError, setSecretsError] = useState("");
 
@@ -665,30 +666,8 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
         },
       });
       const data = await res.json();
-      if (data.success && data.secrets) {
-        setDownloadedSecrets(data.secrets);
-        // Download as .env file
-        const envLines = [
-          "# SAKUNOTA PRODUCTION ENVIRONMENT CONFIGURATION",
-          `# Exported by Owner on ${new Date().toISOString()}`,
-          "",
-          `MIDTRANS_SERVER_KEY="${data.secrets.MIDTRANS_SERVER_KEY}"`,
-          `MIDTRANS_CLIENT_KEY="${data.secrets.MIDTRANS_CLIENT_KEY}"`,
-          `MIDTRANS_MERCHANT_ID="${data.secrets.MIDTRANS_MERCHANT_ID}"`,
-          `SAKUNOTA_OWNER_USERNAME="${data.secrets.SAKUNOTA_OWNER_USERNAME}"`,
-          `SAKUNOTA_OWNER_PASSWORD="${data.secrets.SAKUNOTA_OWNER_PASSWORD}"`,
-          `SAKUNOTA_OWNER_JWT_SECRET="${data.secrets.SAKUNOTA_OWNER_JWT_SECRET}"`,
-          `SAKUNOTA_SERVER_SECRET="${data.secrets.SAKUNOTA_SERVER_SECRET}"`,
-          `SAKUNOTA_OWNER_SALT="${data.secrets.SAKUNOTA_OWNER_SALT}"`,
-        ].join("\n");
-
-        const blob = new Blob([envLines], { type: "text/plain" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "sakunota_secrets.env";
-        a.click();
-        URL.revokeObjectURL(url);
+      if (data.success && data.configured) {
+        setDownloadedSecrets(data.configured);
       } else {
         setSecretsError(data.error || "Gagal mengambil data secrets.");
       }
@@ -808,7 +787,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
               </span>
             </div>
             <span className="text-[10px] text-muted font-bold block mt-0.5">
-              Halo, Owner • Cloudflare Production Edge
+              Halo, Owner • Portal Pengelolaan Lisensi
             </span>
           </div>
         </div>
@@ -1050,7 +1029,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                           </span>
                         </div>
                         <span className="text-[11px] text-muted block mt-0.5">
-                          Dibuat: {o.createdAt} {o.verifiedAt ? `• Diverifikasi: ${o.verifiedAt}` : ""}
+                          Dibuat: {formatServerDate(o.createdAt)} {o.verifiedAt ? `• Diverifikasi: ${formatServerDate(o.verifiedAt)}` : ""}
                         </span>
                       </div>
 
@@ -1369,7 +1348,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                                   {b.whatsapp}
                                 </a>
                               </span>
-                              <span>Daftar: {new Date(b.registeredAt || (b as any).createdAt || Date.now()).toLocaleDateString("id-ID")}</span>
+                              <span>Daftar: {formatServerDate(b.registeredAt || b.createdAt)}</span>
                             </div>
                           </div>
 
@@ -1980,10 +1959,10 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h4 className="font-black text-xs text-fg uppercase tracking-wider">
-                    Cadangan Kredensial Cloudflare & Midtrans (.env)
+                    Status Konfigurasi Cloudflare & Midtrans
                   </h4>
                   <p className="text-[11px] text-muted mt-0.5">
-                    Ambil dan unduh file kredensial rahasia (MIDTRANS_*, SAKUNOTA_OWNER_*, SAKUNOTA_SERVER_SECRET) untuk migrasi server.
+                    Periksa kelengkapan konfigurasi server. Kelola nilai rahasia langsung melalui dashboard Cloudflare.
                   </p>
                 </div>
                 <button
@@ -1992,7 +1971,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                   onClick={handleFetchSecrets}
                   className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow transition-all shrink-0 active:scale-95 disabled:opacity-50"
                 >
-                  {isLoadingSecrets ? "Mengunduh..." : "Unduh Kredensial (.env)"}
+                  {isLoadingSecrets ? "Memeriksa..." : "Periksa Konfigurasi"}
                 </button>
               </div>
 
@@ -2004,17 +1983,17 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
               {downloadedSecrets && (
                 <div className="mt-3 p-3 bg-surface border border-line rounded-xl space-y-2">
-                  <span className="text-[10px] font-bold text-muted uppercase block">Pratinjau Kredensial Server:</span>
+                  <span className="text-[10px] font-bold text-muted uppercase block">Kelengkapan Konfigurasi Server:</span>
                   <div className="font-mono text-[11px] text-fg space-y-1 overflow-x-auto p-2 bg-card rounded-lg select-all">
                     {Object.entries(downloadedSecrets).map(([k, v]) => (
                       <div key={k} className="flex gap-2">
                         <span className="text-purple-400">{k}=</span>
-                        <span className="text-emerald-400">"{v ? `${v.substring(0, 8)}...${v.substring(v.length - 4)}` : '(kosong)'}"</span>
+                        <span className="text-emerald-400">"{v ? "Tersedia" : "Belum dikonfigurasi"}"</span>
                       </div>
                     ))}
                   </div>
                   <p className="text-[10px] text-emerald-500 font-bold">
-                    ✓ File sakunota_secrets.env telah berhasil diunduh ke komputer Anda.
+                    Nilai kredensial tidak dikirim ke browser.
                   </p>
                 </div>
               )}

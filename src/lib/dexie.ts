@@ -24,6 +24,10 @@ export interface MenuItem {
   isSoldOut: boolean;
   urutan: number;
   modifiers?: ModifierGroup[]; // Add-on & modifier menu
+  trackStock?: boolean;
+  stockQty?: number;
+  minimumStock?: number;
+  stockUnit?: string;
 }
 
 export interface Table {
@@ -164,7 +168,10 @@ export interface CashMovement {
   timestamp: string;
 }
 
-const db = new Dexie('AngkringanDB');
+// Demo activity never reads or overwrites a merchant's real database.
+const demoDatabase = typeof window !== 'undefined' &&
+  (new URLSearchParams(window.location.search).get('demo') === 'true' || sessionStorage.getItem('sakunota_demo_mode') === 'true');
+const db = new Dexie(demoDatabase ? 'SakuNotaDemoDB' : 'AngkringanDB');
 db.version(5).stores({
   menuItems: '++id, nama, kategori, isSoldOut, urutan',
   tables: '++id, nomor, status',
@@ -238,6 +245,11 @@ db.version(8).stores({
   shifts: '++id, status, startTime, operatorName',
   cashMovements: '++id, shiftId, type, timestamp',
   settings: 'key'
+});
+
+// Additive migration: existing products keep their current availability until stock is enabled.
+db.version(9).stores({
+  inventoryMovements: '++id, menuItemId, orderId, type, timestamp',
 });
 
 export { db };

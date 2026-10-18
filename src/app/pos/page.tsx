@@ -28,6 +28,7 @@ import { checkCashierAccess, CashierAccessStatus } from '@/lib/licenseGuard';
 import { activateLicenseServer } from '@/lib/ordersClient';
 import { setupHardwareBarcodeScanner, playScannerBeep } from '@/lib/barcodeScanner';
 import BarcodeCameraModal from '@/components/BarcodeCameraModal';
+import { db } from '@/lib/dexie';
 
 type MenuItem = { id: number; sku?: string; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; modifiers?: any[]; };
 type CartItem = MenuItem & { qty: number; selectedModifiers?: { groupName: string; optionName: string; harga: number }[]; itemKey?: string };
@@ -49,6 +50,8 @@ export default function POSPage() {
   const [isCloseShiftModalOpen, setIsCloseShiftModalOpen] = useState(false);
   const [isCashMovementModalOpen, setIsCashMovementModalOpen] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const paymentInFlight = useRef(false);
+  const paymentAttempt = useRef<{ signature: string; key: string } | null>(null);
   // --- MODIFIERS & TRUE BLIND CLOSE STATES ---
   const [activeModItem, setActiveModItem] = useState<any>(null);
   const [selectedModOptions, setSelectedModOptions] = useState<Record<string, any[]>>({});
@@ -150,33 +153,15 @@ export default function POSPage() {
   };
 
   const handleStartDemo = async () => {
-    if (typeof window !== 'undefined') {
-      try {
-        sessionStorage.setItem('sakunota_demo_mode', 'true');
-        const url = new URL(window.location.href);
-        url.searchParams.set('demo', 'true');
-        window.history.replaceState({}, '', url.toString());
-      } catch (_) {}
-    }
-    setAccessStatus({
-      isValid: true,
-      isDemo: true,
-      status: 'trial_active',
-      businessName: 'Demo Warung SakuNota',
-      daysRemaining: 7,
-      hoursRemaining: 168,
-    });
-    setIsLoading(true);
-    try {
-      await resetDemoSandbox();
-    } catch (_) {}
-    await loadData();
+    sessionStorage.setItem('sakunota_demo_mode', 'true');
+    window.location.assign('/pos?demo=true');
   };
 
   const handleExitDemo = async () => {
     if (typeof window !== 'undefined') {
       try {
         sessionStorage.removeItem('sakunota_demo_mode');
+        sessionStorage.removeItem('sakunota_demo_initialized');
         const url = new URL(window.location.href);
         url.searchParams.delete('demo');
         window.history.replaceState({}, '', url.toString());
@@ -837,6 +822,8 @@ export default function POSPage() {
         sessionStorage.setItem("sakunota_demo_mode", "true");
       } catch (_) {}
     }
+    const wantsDemo = window.location.search.includes('demo=true') || sessionStorage.getItem('sakunota_demo_mode') === 'true';
+    if (wantsDemo !== (db.name === 'SakuNotaDemoDB')) { window.location.reload(); return; }
     async function initAccess() {
       setIsAccessChecking(true);
       try {
@@ -844,7 +831,10 @@ export default function POSPage() {
         setAccessStatus(res);
         if (res.isDemo) {
           try {
-            await resetDemoSandbox();
+            if (!sessionStorage.getItem('sakunota_demo_initialized')) {
+              await resetDemoSandbox();
+              sessionStorage.setItem('sakunota_demo_initialized', 'true');
+            }
           } catch (_) {}
         }
       } catch (e) {
@@ -1495,7 +1485,7 @@ export default function POSPage() {
   };
 
   const processPayment = async (isDraftOnly = false, status = 'paid') => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || paymentInFlight.current) return;
 
     if (status === 'paid' && paymentMethod === 'Cash') {
       const tendered = Number(cashTendered) || 0;
@@ -1506,7 +1496,8 @@ export default function POSPage() {
     }
 
     const effectiveName = customerName.trim() || (selectedTableObj ? `Meja ${selectedTableObj.nomor.replace(/^Meja\s*/i, '')}` : "Tamu");
-    
+    paymentInFlight.current = true;
+    setIsProcessingPayment(true);
     try {
       const { createOrder, updateOrder } = await import('@/lib/api');
       
@@ -1520,7 +1511,9 @@ export default function POSPage() {
         if (existingOrder) targetOrderId = existingOrder.id;
       }
 
-      const idempotencyKey = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+      const signature = JSON.stringify({ items: cart, totalPrice, status, editingOrderId, selectedTable, paymentMethod, cashTendered });
+      if (paymentAttempt.current?.signature !== signature) paymentAttempt.current = { signature, key: crypto.randomUUID() };
+      const idempotencyKey = paymentAttempt.current.key;
       const payload: any = {
         idempotencyKey,
         items: finalItems,
@@ -1534,13 +1527,14 @@ export default function POSPage() {
         customerName: effectiveName,
         customerPhone: "",
         paymentMethod,
+        cashTendered: paymentMethod === 'Cash' ? Number(cashTendered) : undefined,
+        change: paymentMethod === 'Cash' ? Math.max(0, Number(cashTendered) - finalTotal) : 0,
         orderType,
         notes,
         tableId: orderType === "Dine-in" && selectedTable ? parseInt(selectedTable) : null,
         status: status,
         proof: checkoutProof && paymentMethod !== 'Cash' ? checkoutProof : undefined
       };
-      setCheckoutProof(null);
 
       let resultId;
 
@@ -1585,6 +1579,8 @@ export default function POSPage() {
       }
 
       // Sync table status
+      paymentAttempt.current = null;
+      setCheckoutProof(null);
       if (payload.tableId) {
         const { setTableStatus } = await import('@/lib/api');
         await setTableStatus(payload.tableId, status === 'paid' ? 'lunas' : 'open');
@@ -1654,6 +1650,9 @@ export default function POSPage() {
       return { id: resultId };
     } catch (err: any) {
       alert("Error: " + err.message);
+    } finally {
+      paymentInFlight.current = false;
+      setIsProcessingPayment(false);
     }
   };
 
@@ -2959,7 +2958,6 @@ export default function POSPage() {
               <span className="w-2 h-2 rounded-full bg-accent animate-pulse shrink-0"></span>
               <span className="font-bold text-accent-text truncate max-w-[80px] md:max-w-none">{activeShift.operatorName}</span>
               <span className="hidden md:inline text-muted">|</span>
-              <span className="hidden md:inline font-bold text-accent-text">Rp {(currentShiftStats?.expectedCash || activeShift.startingCash || 0).toLocaleString('id-ID')}</span>
               <button 
                 type="button"
                 onClick={() => setIsCashMovementModalOpen(true)}
@@ -3695,19 +3693,7 @@ export default function POSPage() {
                 />
               </div>
 
-              {countedPhysicalCash !== "" && (
-                <div className="p-3 rounded-xl border flex justify-between items-center text-xs font-bold" style={{
-                  backgroundColor: Number(countedPhysicalCash) === currentShiftStats.expectedCash ? '#eff6ff' : Number(countedPhysicalCash) < currentShiftStats.expectedCash ? '#fef2f2' : '#eff6ff',
-                  borderColor: Number(countedPhysicalCash) === currentShiftStats.expectedCash ? '#bfdbfe' : Number(countedPhysicalCash) < currentShiftStats.expectedCash ? '#fecaca' : '#bfdbfe',
-                }}>
-                  <span>Status Selisih Kas:</span>
-                  <span className="text-sm font-black" style={{
-                    color: Number(countedPhysicalCash) === currentShiftStats.expectedCash ? '#1d4ed8' : Number(countedPhysicalCash) < currentShiftStats.expectedCash ? '#991b1b' : '#1e40af',
-                  }}>
-                    {Number(countedPhysicalCash) === currentShiftStats.expectedCash ? '✓ COCOK / PAS (Rp 0)' : Number(countedPhysicalCash) < currentShiftStats.expectedCash ? 'KURANG (-Rp ' + (currentShiftStats.expectedCash - Number(countedPhysicalCash)).toLocaleString('id-ID') + ')' : 'LEBIH (+Rp ' + (Number(countedPhysicalCash) - currentShiftStats.expectedCash).toLocaleString('id-ID') + ')'}
-                  </span>
-                </div>
-              )}
+              <p className="text-xs text-muted">Selisih kas ditampilkan setelah penutupan tersimpan.</p>
 
               <div>
                 <label className="block text-xs font-bold text-muted mb-1">Catatan Penutupan (Opsional):</label>

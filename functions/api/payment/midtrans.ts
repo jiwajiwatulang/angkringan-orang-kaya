@@ -76,8 +76,8 @@ export async function onRequestPost(context: any) {
     }
 
     // Strict validation: gross_amount must strictly match order amount
-    const parsedAmount = Math.round(Number(gross_amount));
-    if (parsedAmount !== order.amount) {
+    const parsedAmount = Number(gross_amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount !== order.amount) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -103,12 +103,7 @@ export async function onRequestPost(context: any) {
       }
 
       const licenseKey = generateGenuineLicenseKey(order_id);
-      const verifiedAt = new Date().toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const verifiedAt = new Date().toISOString();
 
       // ATOMIC TRANSACTION: update CustomerOrders AND insert into Licenses in a single D1 batch
       const stmtOrder = db.prepare(`
@@ -118,7 +113,7 @@ export async function onRequestPost(context: any) {
       `).bind(licenseKey, verifiedAt, order_id);
 
       const stmtLicense = db.prepare(`
-        INSERT OR REPLACE INTO Licenses (
+        INSERT OR IGNORE INTO Licenses (
           licenseKey, orderId, businessName, issuedAt, signature
         ) VALUES (?, ?, ?, ?, ?)
       `).bind(licenseKey, order_id, order.businessName, verifiedAt, signLicenseKey(licenseKey));
@@ -138,7 +133,7 @@ export async function onRequestPost(context: any) {
 
     // Handle cancellation / expiration
     if (["cancel", "deny", "expire"].includes(transaction_status)) {
-      await db.prepare(`UPDATE CustomerOrders SET status = 'batal' WHERE orderId = ?`).bind(order_id).run();
+      await db.prepare(`UPDATE CustomerOrders SET status = 'batal' WHERE orderId = ? AND status != 'lunas_lisensi_terbit'`).bind(order_id).run();
       return new Response(JSON.stringify({ success: true, message: `Status pesanan diubah ke ${transaction_status}` }), {
         status: 200,
         headers: { "Content-Type": "application/json" },

@@ -127,13 +127,13 @@ export async function checkCashierAccess(forceOnlineCheck: boolean = false): Pro
 
   // --- Offline Evaluation ---
   // If user has a commercial paid license: Lifetime access offline
-  if (cachedType === "berbayar") {
+  if ((cachedType === "berbayar" || (cachedType === "tester" && !cachedExpiresAt)) && token) {
     return {
       isValid: true,
       isDemo: false,
-      status: "paid_active",
+      status: cachedType === 'tester' ? 'tester_active' : 'paid_active',
       licenseKey,
-      licenseType: "berbayar",
+      licenseType: cachedType,
       businessName: cachedBusinessName,
       expiresAt: null,
     };
@@ -154,7 +154,7 @@ export async function checkCashierAccess(forceOnlineCheck: boolean = false): Pro
   }
 
   // If trial or tester: check expiration timestamp
-  if (cachedExpiresAt) {
+  if (cachedExpiresAt && token && Number.isFinite(new Date(cachedExpiresAt).getTime())) {
     const expTime = new Date(cachedExpiresAt).getTime();
     const now = Date.now();
     if (now >= expTime) {
@@ -189,15 +189,14 @@ export async function checkCashierAccess(forceOnlineCheck: boolean = false): Pro
     };
   }
 
-  // If no expiresAt recorded for trial
+  // Missing/invalid activation metadata cannot start a fresh trial on every launch.
   return {
-    isValid: true,
+    isValid: false,
     isDemo: false,
-    status: "trial_active",
+    status: "unregistered",
     licenseKey,
     licenseType: "trial",
     businessName: cachedBusinessName,
-    daysRemaining: 7,
-    hoursRemaining: 168,
+    error: "Data aktivasi belum lengkap. Sambungkan internet dan aktifkan kembali lisensi pada perangkat ini.",
   };
 }

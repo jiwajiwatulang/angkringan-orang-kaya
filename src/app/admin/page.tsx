@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/dexie";
+import { selectDashboardOrders, buildSalesSeries } from "@/lib/dashboardMetrics";
 import { useAdmin } from "./AdminContext";
 import { getOrders, getActiveShift, getShiftLiveStats } from "@/lib/api";
 
@@ -45,77 +48,11 @@ export default function AdminDashboardPage() {
     loadDashboardData();
   }, []);
 
-  // Dates reference
-  const now = new Date();
-  const todayStr = now.toISOString().split("T")[0];
+  const orderRevision = useLiveQuery(() => db.table("orders").toArray(), []);
+  const paymentRevision = useLiveQuery(() => db.table("payments").toArray(), []);
+  useEffect(() => { let current = true; getOrders().then(data => { if (current) setOrders(data); }); return () => { current = false; }; }, [orderRevision, paymentRevision]);
 
-  // Helper date generators
-  const getSubDays = (days: number) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() - days);
-    return d.toISOString().split("T")[0];
-  };
-
-  const yesterdayStr = getSubDays(1);
-  const d7AgoStr = getSubDays(6);
-  const d14AgoStr = getSubDays(13);
-  const d30AgoStr = getSubDays(29);
-  const d60AgoStr = getSubDays(59);
-  const thisMonthStr = todayStr.substring(0, 7);
-
-  // Period filtering & Previous Period Calculation (Shopify Delta %)
-  const { currentOrders, previousOrders } = useMemo(() => {
-    const valid = orders.filter((o) => o.status !== "void");
-
-    if (timeRange === "today") {
-      return {
-        currentOrders: valid.filter((o) => (o.created_at || o.createdAt || "").startsWith(todayStr)),
-        previousOrders: valid.filter((o) => (o.created_at || o.createdAt || "").startsWith(yesterdayStr)),
-      };
-    }
-
-    if (timeRange === "yesterday") {
-      const d2AgoStr = getSubDays(2);
-      return {
-        currentOrders: valid.filter((o) => (o.created_at || o.createdAt || "").startsWith(yesterdayStr)),
-        previousOrders: valid.filter((o) => (o.created_at || o.createdAt || "").startsWith(d2AgoStr)),
-      };
-    }
-
-    if (timeRange === "7days") {
-      return {
-        currentOrders: valid.filter((o) => {
-          const d = (o.created_at || o.createdAt || "").split("T")[0];
-          return d >= d7AgoStr && d <= todayStr;
-        }),
-        previousOrders: valid.filter((o) => {
-          const d = (o.created_at || o.createdAt || "").split("T")[0];
-          return d >= d14AgoStr && d < d7AgoStr;
-        }),
-      };
-    }
-
-    if (timeRange === "30days") {
-      return {
-        currentOrders: valid.filter((o) => {
-          const d = (o.created_at || o.createdAt || "").split("T")[0];
-          return d >= d30AgoStr && d <= todayStr;
-        }),
-        previousOrders: valid.filter((o) => {
-          const d = (o.created_at || o.createdAt || "").split("T")[0];
-          return d >= d60AgoStr && d < d30AgoStr;
-        }),
-      };
-    }
-
-    // thisMonth
-    const lastMonthD = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthStr = lastMonthD.toISOString().substring(0, 7);
-    return {
-      currentOrders: valid.filter((o) => (o.created_at || o.createdAt || "").startsWith(thisMonthStr)),
-      previousOrders: valid.filter((o) => (o.created_at || o.createdAt || "").startsWith(lastMonthStr)),
-    };
-  }, [orders, timeRange, todayStr, yesterdayStr, d7AgoStr, d14AgoStr, d30AgoStr, d60AgoStr, thisMonthStr]);
+  const { currentOrders, previousOrders } = selectDashboardOrders(orders, timeRange);
 
   // Current Metrics
   const currentGrossSales = currentOrders.reduce((sum, o) => sum + (o.total || 0), 0);
@@ -143,49 +80,7 @@ export default function AdminDashboardPage() {
   const deltaAov = calcDelta(currentAov, prevAov);
   const deltaUnits = calcDelta(currentUnitsSold, prevUnitsSold);
 
-  // Shopify-Style Time Series Chart Points
-  const chartPoints = useMemo(() => {
-    if (timeRange === "today" || timeRange === "yesterday") {
-      const targetDate = timeRange === "today" ? todayStr : yesterdayStr;
-      const hours = [8, 10, 12, 14, 16, 18, 20, 22];
-      return hours.map((h) => {
-        const hStart = `${String(h).padStart(2, "0")}:00`;
-        const hEnd = `${String(h + 2).padStart(2, "0")}:00`;
-        const matching = currentOrders.filter((o) => {
-          const time = (o.created_at || o.createdAt || "").split("T")[1] || "";
-          const hour = parseInt(time.split(":")[0], 10);
-          return hour >= h && hour < h + 2;
-        });
-        const omzet = matching.reduce((s, o) => s + (o.total || 0), 0);
-        return {
-          label: `${hStart}`,
-          sublabel: `${hStart} - ${hEnd}`,
-          omzet,
-          count: matching.length,
-        };
-      });
-    }
-
-    const dayCount = timeRange === "7days" ? 7 : timeRange === "30days" ? 30 : 15;
-    return Array.from({ length: dayCount }, (_, i) => {
-      const d = new Date(now);
-      d.setDate(d.getDate() - (dayCount - 1 - i));
-      const dateStr = d.toISOString().split("T")[0];
-      const dayName = d.toLocaleDateString("id-ID", { weekday: "short" });
-      const dayDate = d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
-      const matching = currentOrders.filter((o) => {
-        const oDate = (o.created_at || o.createdAt || "").split("T")[0];
-        return oDate === dateStr;
-      });
-      const omzet = matching.reduce((s, o) => s + (o.total || 0), 0);
-      return {
-        label: dayName,
-        sublabel: dayDate,
-        omzet,
-        count: matching.length,
-      };
-    });
-  }, [timeRange, currentOrders, todayStr, yesterdayStr]);
+  const chartPoints = buildSalesSeries(currentOrders, timeRange);
 
   const maxChartOmzet = Math.max(...chartPoints.map((p) => p.omzet), 50000);
   const chartCeiling = maxChartOmzet > 0 ? Math.ceil(maxChartOmzet * 1.15) : 100000;
@@ -238,12 +133,12 @@ export default function AdminDashboardPage() {
     };
 
     currentOrders.forEach((o) => {
-      const pm = (o.paymentMethod || o.metodePembayaran || "Cash").trim();
-      let key = "Cash";
-      if (pm.toLowerCase().includes("qris")) key = "QRIS";
-      else if (pm.toLowerCase().includes("transfer")) key = "Transfer";
-      map[key].total += o.total || 0;
-      map[key].count += 1;
+      const payments = o.payments?.length ? o.payments.filter((p: any) => p.status === 'completed') : [{ paymentMethod: o.paymentMethod || 'Cash', amount: o.total }];
+      payments.forEach((p: any) => {
+        const method = String(p.paymentMethod || 'Cash').toLowerCase();
+        const key = method.includes('qris') ? 'QRIS' : method.includes('transfer') ? 'Transfer' : 'Cash';
+        map[key].total += p.amount || 0; map[key].count += 1;
+      });
     });
 
     const total = currentGrossSales || 1;
@@ -284,7 +179,7 @@ export default function AdminDashboardPage() {
 
   const generateWaReportMessage = () => {
     const store = storeSettings.storeName || "SakuNota";
-    const dateFormatted = now.toLocaleDateString("id-ID", {
+    const dateFormatted = new Date().toLocaleDateString("id-ID", {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -301,7 +196,7 @@ export default function AdminDashboardPage() {
     if (topProducts.length > 0) {
       msg += `*MENU PALING LARIS*\n`;
       topProducts.forEach((p, i) => {
-        msg += `${i + 1}. ${p.name} (${p.qty} porsi) - Rp ${p.revenue.toLocaleString("id-ID")}\n`;
+        msg += `${i + 1}. ${p.name} (${p.qty} unit) - Rp ${p.revenue.toLocaleString("id-ID")}\n`;
       });
       msg += `\n`;
     }
@@ -326,17 +221,17 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="business-dashboard space-y-6 animate-in fade-in duration-200">
       {/* 1. Header with Store Identity, Shopify-style Period Selector, and Quick Actions */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-line">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-black text-fg tracking-tight">
-              Ringkasan Penjualan &amp; Traffic
+              Dashboard usaha
             </h2>
           </div>
           <p className="text-xs text-muted mt-0.5">
-            {storeSettings.storeName || "SakuNota"} • Pantau tren omzet, rata-rata transaksi, dan menu terlaris secara real-time.
+            {storeSettings.storeName || "SakuNota"} • Transaksi lunas, tren penjualan, dan produk terlaris pada perangkat toko ini.
           </p>
         </div>
 
@@ -399,7 +294,7 @@ export default function AdminDashboardPage() {
             </span>
           </div>
           <div>
-            <div className="text-xl sm:text-2xl font-black text-fg truncate">
+            <div className="text-lg sm:text-2xl font-black text-fg break-words tabular-nums">
               Rp {currentGrossSales.toLocaleString("id-ID")}
             </div>
             <span className="text-[10px] text-muted block mt-0.5">
@@ -422,7 +317,7 @@ export default function AdminDashboardPage() {
             </span>
           </div>
           <div>
-            <div className="text-xl sm:text-2xl font-black text-fg truncate">
+            <div className="text-lg sm:text-2xl font-black text-fg break-words tabular-nums">
               {currentOrderCount} <span className="text-xs font-semibold text-muted">transaksi</span>
             </div>
             <span className="text-[10px] text-muted block mt-0.5">
@@ -445,7 +340,7 @@ export default function AdminDashboardPage() {
             </span>
           </div>
           <div>
-            <div className="text-xl sm:text-2xl font-black text-fg truncate">
+            <div className="text-lg sm:text-2xl font-black text-fg break-words tabular-nums">
               Rp {currentAov.toLocaleString("id-ID")}
             </div>
             <span className="text-[10px] text-muted block mt-0.5">
@@ -457,7 +352,7 @@ export default function AdminDashboardPage() {
         {/* Metric 4: Total Units Sold */}
         <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted">Total Porsi Terjual</span>
+            <span className="text-xs font-bold text-muted">Unit terjual</span>
             <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 ${
               deltaUnits >= 0
                 ? "bg-emerald-100 text-emerald-800"
@@ -469,10 +364,10 @@ export default function AdminDashboardPage() {
           </div>
           <div>
             <div className="text-xl sm:text-2xl font-black text-fg truncate">
-              {currentUnitsSold} <span className="text-xs font-semibold text-muted">porsi</span>
+              {currentUnitsSold} <span className="text-xs font-semibold text-muted">unit</span>
             </div>
             <span className="text-[10px] text-muted block mt-0.5">
-              vs {prevUnitsSold} porsi lalu
+              vs {prevUnitsSold} unit lalu
             </span>
           </div>
         </div>
@@ -484,10 +379,10 @@ export default function AdminDashboardPage() {
           <div>
             <h3 className="text-base font-black text-fg flex items-center gap-2">
               <span>📈</span>
-              <span>Dinamika Penjualan Seiring Waktu (Sales Over Time)</span>
+              <span>Tren penjualan</span>
             </h3>
             <p className="text-xs text-muted mt-0.5">
-              Visualisasi kurva omzet berkelanjutan dengan gradien halus &amp; detil per interval
+              Penjualan lunas per interval • sentuh titik grafik untuk melihat detail
             </p>
           </div>
 
@@ -674,7 +569,7 @@ export default function AdminDashboardPage() {
                 <span>🏆</span>
                 <span>5 Menu Terlaris (Top Products)</span>
               </h4>
-              <p className="text-xs text-muted mt-0.5">Produk dengan perputaran porsi tertinggi</p>
+              <p className="text-xs text-muted mt-0.5">Produk dengan perputaran unit tertinggi</p>
             </div>
             <Link
               href="/admin/menu"
@@ -687,7 +582,7 @@ export default function AdminDashboardPage() {
           <div className="space-y-3 pt-1">
             {topProducts.length === 0 ? (
               <div className="py-8 text-center text-muted text-xs">
-                Belum ada data porsi terjual pada rentang waktu ini.
+                Belum ada data unit terjual pada rentang waktu ini.
               </div>
             ) : (
               topProducts.map((p, idx) => {
@@ -713,7 +608,7 @@ export default function AdminDashboardPage() {
 
                     <div className="text-right shrink-0">
                       <span className="font-black text-fg text-sm block">
-                        {p.qty} <span className="text-[10px] font-normal text-muted">porsi</span>
+                        {p.qty} <span className="text-[10px] font-normal text-muted">unit</span>
                       </span>
                       <div className="w-20 h-1.5 bg-line rounded-full overflow-hidden mt-1 ml-auto">
                         <div

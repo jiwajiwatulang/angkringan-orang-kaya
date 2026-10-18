@@ -101,6 +101,7 @@ export function setupHardwareBarcodeScanner(
 
   let buffer = "";
   let lastKeyTime = 0;
+  let resetTimer: ReturnType<typeof setTimeout> | undefined;
   const SCANNER_MAX_INTERVAL_MS = 60; // Scanners send chars in < 30ms intervals
   const MIN_BARCODE_LENGTH = 3;
 
@@ -114,6 +115,13 @@ export function setupHardwareBarcodeScanner(
       (target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
         target.isContentEditable);
+
+    // Form editing must never trigger a sale or intercept its Enter key.
+    if (isInsideInput && !target?.dataset.barcodeTarget) {
+      buffer = ''; lastKeyTime = 0;
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) { buffer = ''; return; }
 
     // If Enter key is pressed, check if buffer contains a barcode
     if (e.key === "Enter") {
@@ -156,7 +164,8 @@ export function setupHardwareBarcodeScanner(
     }
 
     // Safety timeout to clear stale buffers if enter was never pressed
-    setTimeout(() => {
+    clearTimeout(resetTimer);
+    resetTimer = setTimeout(() => {
       if (Date.now() - lastKeyTime > 300 && buffer.length > 0) {
         buffer = "";
       }
@@ -165,6 +174,7 @@ export function setupHardwareBarcodeScanner(
 
   window.addEventListener("keydown", handleKeyDown, true);
   return () => {
+    clearTimeout(resetTimer);
     window.removeEventListener("keydown", handleKeyDown, true);
   };
 }

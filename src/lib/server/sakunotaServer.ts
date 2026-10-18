@@ -114,7 +114,8 @@ export function signLicenseKey(licenseKey: string): string {
 }
 
 export function generateGenuineLicenseKey(orderId: string): string {
-  const hash = crypto.createHmac("sha256", getServerSecret()).update(`order:${orderId}:${Date.now()}`).digest("hex");
+  // Same order always produces the same key, including concurrent gateway retries.
+  const hash = crypto.createHmac("sha256", getServerSecret()).update(`order:${orderId}`).digest("hex");
   const p1 = hash.slice(0, 4).toUpperCase();
   const p2 = hash.slice(4, 8).toUpperCase();
   const p3 = hash.slice(8, 12).toUpperCase();
@@ -278,11 +279,7 @@ export async function authenticateOwner(
   const isUserValid = usernameInput.trim().toLowerCase() === ownerUser.toLowerCase();
   const inputHash = hashPassword(passwordInput);
 
-  const candidatePasswords = Array.from(new Set([
-    ownerPass.trim(),
-    "SakuNota45",
-    "Reza-SakuNota-2026!"
-  ]));
+  const candidatePasswords = [ownerPass];
 
   let isPassValid = false;
   for (const candidate of candidatePasswords) {
@@ -364,12 +361,7 @@ export async function createCustomerOrder(
     bankAccount: "8030 554 912 a.n. SakuNota Official",
     transferProofName: "bukti_transfer_pembeli.jpg",
     status: "menunggu_verifikasi",
-    createdAt: new Date().toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
+    createdAt: new Date().toISOString(),
   };
 
   await insertOrderD1(db, newOrder);
@@ -427,12 +419,7 @@ export async function syncMidtransOrderStatus(
 
     if (isSuccess) {
       const licenseKey = generateGenuineLicenseKey(orderId);
-      const verifiedAt = new Date().toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const verifiedAt = new Date().toISOString();
 
       // Update in D1 atomically
       const stmtOrder = db.prepare(`
@@ -442,7 +429,7 @@ export async function syncMidtransOrderStatus(
       `).bind(licenseKey, verifiedAt, orderId);
 
       const stmtLicense = db.prepare(`
-        INSERT OR REPLACE INTO Licenses (
+        INSERT OR IGNORE INTO Licenses (
           licenseKey, orderId, businessName, issuedAt, signature
         ) VALUES (?, ?, ?, ?, ?)
       `).bind(licenseKey, orderId, order.businessName, verifiedAt, signLicenseKey(licenseKey));
@@ -565,12 +552,7 @@ export async function verifyOrderAndIssueLicense(
   }
 
   const licenseKey = generateGenuineLicenseKey(orderId);
-  const verifiedAt = new Date().toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const verifiedAt = new Date().toISOString();
 
   // Atomic Batch Transaction in D1: order status update + license insert executed together
   const stmtOrder = db.prepare(`
@@ -580,7 +562,7 @@ export async function verifyOrderAndIssueLicense(
   `).bind(licenseKey, verifiedAt, orderId);
 
   const stmtLicense = db.prepare(`
-    INSERT OR REPLACE INTO Licenses (
+    INSERT OR IGNORE INTO Licenses (
       licenseKey, orderId, businessName, issuedAt, signature, licenseType
     ) VALUES (?, ?, ?, ?, ?, 'berbayar')
   `).bind(licenseKey, orderId, order.businessName, verifiedAt, signLicenseKey(licenseKey));
@@ -750,7 +732,7 @@ export async function activateLicenseOnDevice(
     const deviceName = data.deviceName || "Perangkat Kasir Beta";
     const activatedAt = betaReg.activatedAt || now;
     const durationDays = betaReg.durationDays || 7;
-    const expiresAt = betaReg.expiresAt || new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+    const expiresAt = betaReg.expiresAt || new Date(new Date(activatedAt).getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString();
 
     await bindBetaRegistrationToDeviceD1(db, key, devId, deviceName, activatedAt, expiresAt);
     const token = signDeviceActivation(key, devId, "trial", expiresAt);
@@ -938,11 +920,7 @@ export async function deleteOwnerTestOrder(
   if (passwordConfirm) {
     try {
       const inputHash = hashPassword(passwordConfirm);
-      const candidatePasswords = Array.from(new Set([
-        getOwnerPassword().trim(),
-        "SakuNota45",
-        "Reza-SakuNota-2026!"
-      ]));
+      const candidatePasswords = [getOwnerPassword()];
 
       let isPassValid = false;
       for (const candidate of candidatePasswords) {
@@ -1065,12 +1043,7 @@ export async function registerBetaAccount(
     status: "pending",
     notes: data.notes?.trim() || undefined,
     durationDays: 7,
-    registeredAt: new Date().toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
+    registeredAt: new Date().toISOString(),
   };
 
   await insertBetaRegistrationD1(db, reg);
@@ -1120,12 +1093,7 @@ export async function approveBetaRegistration(
   const reg = await getBetaRegistrationByIdD1(db, regId);
   if (!reg) return { success: false, error: "Pendaftaran beta tidak ditemukan." };
 
-  const approvedAt = new Date().toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const approvedAt = new Date().toISOString();
 
   const randPart1 = crypto.randomBytes(2).toString("hex").toUpperCase();
   const randPart2 = crypto.randomBytes(2).toString("hex").toUpperCase();
@@ -1244,12 +1212,7 @@ export async function convertBetaTrialToPaid(
   if (!reg) return { success: false, error: "Pendaftaran beta tidak ditemukan." };
 
   const commercialKey = generateGenuineLicenseKey(regId);
-  const verifiedAt = new Date().toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const verifiedAt = new Date().toISOString();
 
   const auditNote = `Dikonversi ke berbayar lisensi ${commercialKey} pada ${verifiedAt} oleh Owner`;
 
@@ -1261,7 +1224,7 @@ export async function convertBetaTrialToPaid(
   `).bind(auditNote, regId);
 
   const stmtLicense = db.prepare(`
-    INSERT OR REPLACE INTO Licenses (
+    INSERT OR IGNORE INTO Licenses (
       licenseKey, orderId, businessName, boundDeviceId, deviceName, issuedAt, activatedAt, signature, licenseType
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'berbayar')
   `).bind(

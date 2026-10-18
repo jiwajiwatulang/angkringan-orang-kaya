@@ -24,6 +24,9 @@ export async function onRequestPost(context: any) {
         error: res.error,
         activationToken: res.activationToken,
         activatedAt: res.activatedAt,
+        licenseType: res.licenseType,
+        businessName: res.businessName,
+        expiresAt: res.expiresAt,
       }),
       {
         status: res.status,

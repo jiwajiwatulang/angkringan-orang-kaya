@@ -14,7 +14,7 @@ import {
   PAYMENT_ACCOUNT_NAME,
   PAYMENT_ACCOUNT_NUMBER,
 } from "@/lib/config";
-import AntiGravityGalaxy from "@/components/AntiGravityGalaxy";
+
 
 export default function SakuNotaLandingPage() {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -333,7 +333,9 @@ export default function SakuNotaLandingPage() {
                 }
               } catch (_) {}
               setIsInitiatingSnap(false);
-              setCheckoutStep("success");
+              const confirmed = await checkOrderStatusServer(currentOrderId, currentAccessCode);
+              if (confirmed.success && confirmed.order) setCreatedOrder(confirmed.order);
+              setCheckoutStep(confirmed.order?.status === "lunas_lisensi_terbit" ? "success" : "waiting");
             },
             onPending: function () {
               setCheckoutStep("waiting");
@@ -478,15 +480,17 @@ export default function SakuNotaLandingPage() {
             >
               <span>Aktivasi Lisensi</span>
             </button>
-            <Link
+            <a
               href="/pos?demo=true"
-              onClick={() => {
+              onClick={(event) => {
+                event.preventDefault();
                 try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {}
+                window.location.assign("/pos?demo=true");
               }}
               className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-blue-600 hover:bg-slate-100 transition-all border border-slate-200"
             >
               Coba Kasir
-            </Link>
+            </a>
             <button
               type="button"
               onClick={handleOpenBuyModal}
@@ -610,16 +614,18 @@ export default function SakuNotaLandingPage() {
 
               {/* Action Buttons */}
               <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
-                <Link
+                <a
                   href="/pos?demo=true"
-                  onClick={() => {
-                    try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {}
+                  onClick={(event) => {
+                event.preventDefault();
+                try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {}
+                window.location.assign("/pos?demo=true");
                     setMobileMenuOpen(false);
                   }}
                   className="w-full py-3 text-center rounded-2xl bg-slate-100 border border-slate-300 text-xs font-extrabold text-slate-900 hover:bg-slate-200 transition-all active:scale-95"
                 >
                   Coba Demo Kasir
-                </Link>
+                </a>
                 <button
                   type="button"
                   onClick={() => {
@@ -639,7 +645,7 @@ export default function SakuNotaLandingPage() {
       {/* 2. Hero Section with Galaxy Background (Without "Anti-Gravity Offline Engine" text) */}
       <section className="relative pt-14 pb-16 px-4 sm:px-8 overflow-hidden bg-white min-h-[520px] flex items-center justify-center">
         {/* Interactive Galaxy Background */}
-        <AntiGravityGalaxy />
+        <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#eaf2ff_0%,#ffffff_65%)]" />
         
         <div className="relative z-10 max-w-4xl mx-auto text-center space-y-6">
           {/* Top Pill Slogan Badge */}
@@ -653,29 +659,31 @@ export default function SakuNotaLandingPage() {
           {/* Main Headline */}
           <div className="space-y-3">
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.15]">
-              Kasir Simpel, Tetap Offline.
+              Kasir untuk setiap usaha.
             </h1>
             <p className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-blue-600 tracking-tight">
-              Jualan Lancar, Internet Mati Bukan Masalah.
+              Jualan lancar, online maupun offline.
             </p>
           </div>
 
           {/* Description */}
           <p className="max-w-2xl mx-auto text-sm sm:text-base text-slate-700 leading-relaxed font-medium">
-            Catat pesanan makanan dan minuman, kelola meja, cetak struk Bluetooth, dan pantau omzet usaha dari satu aplikasi. Tanpa biaya bulanan.
+            Dari warung dan kafe sampai toko retail. Scan barcode, kelola stok, catat penjualan, dan baca perkembangan usaha dari satu aplikasi. Sekali bayar, tanpa langganan bulanan.
           </p>
 
           {/* Action CTAs */}
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-lg mx-auto">
-            <Link
+            <a
               href="/pos?demo=true"
-              onClick={() => {
+              onClick={(event) => {
+                event.preventDefault();
                 try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {}
+                window.location.assign("/pos?demo=true");
               }}
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-blue-50 text-slate-900 hover:text-blue-700 font-extrabold text-xs border-2 border-slate-300 hover:border-blue-300 shadow-xs transition-all text-center flex items-center justify-center gap-2"
             >
               <span>Coba Demo Kasir</span>
-            </Link>
+            </a>
 
             <button
               type="button"
@@ -1486,7 +1494,7 @@ export default function SakuNotaLandingPage() {
               <li><a href="#jenis-usaha" className="hover:text-blue-600 transition-colors">Jenis Usaha</a></li>
               <li><a href="#harga" className="hover:text-blue-600 transition-colors">Harga Lisensi</a></li>
               <li><Link href="/tentang" className="hover:text-blue-600 transition-colors font-bold text-blue-600">Tentang Kami</Link></li>
-              <li><Link href="/pos?demo=true" className="hover:text-blue-600 transition-colors">Coba Demo Kasir</Link></li>
+              <li><a href="/pos?demo=true" className="hover:text-blue-600 transition-colors">Coba Demo Kasir</a></li>
             </ul>
           </div>
 
@@ -1677,16 +1685,18 @@ export default function SakuNotaLandingPage() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                  <Link
+                  <a
                     href="/pos?demo=true"
-                    onClick={() => {
-                      try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {}
+                    onClick={(event) => {
+                event.preventDefault();
+                try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {}
+                window.location.assign("/pos?demo=true");
                       setIsBetaModalOpen(false);
                     }}
                     className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-md text-center"
                   >
                     Coba Demo Kasir Sekarang →
-                  </Link>
+                  </a>
                   <button
                     type="button"
                     onClick={() => setIsBetaModalOpen(false)}

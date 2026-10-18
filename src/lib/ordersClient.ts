@@ -228,7 +228,7 @@ export async function verifyOwnerOrderServer(
 export async function activateLicenseServer(
   licenseKey: string,
   deviceName: string = "Perangkat Kasir"
-): Promise<{ success: boolean; error?: string; status?: number }> {
+): Promise<{ success: boolean; error?: string; status?: number; businessName?: string }> {
   const deviceId = getLocalDeviceId();
 
   try {
@@ -249,12 +249,17 @@ export async function activateLicenseServer(
     }
 
     if (res.ok && json.success) {
+      if (!json.activationToken) return { success: false, error: 'Server tidak mengirim token aktivasi. Coba kembali saat online.' };
       if (typeof window !== "undefined") {
         localStorage.setItem("sakunota_license_key", licenseKey);
         localStorage.setItem("sakunota_license_activated", "true");
-        localStorage.setItem("sakunota_activation_token", json.activationToken || "verified_device");
+        localStorage.setItem("sakunota_activation_token", json.activationToken);
+        localStorage.setItem("sakunota_license_type", json.licenseType || 'berbayar');
+        localStorage.setItem("sakunota_business_name", json.businessName || 'Usaha Saya');
+        if (json.expiresAt) localStorage.setItem("sakunota_trial_expires_at", json.expiresAt);
+        else localStorage.removeItem("sakunota_trial_expires_at");
       }
-      return { success: true, status: 200 };
+      return { success: true, status: 200, businessName: json.businessName };
     }
 
     return { success: false, error: json.error || "Gagal mengaktifkan lisensi.", status: res.status };

@@ -67,20 +67,6 @@ export default function MobileMoreScreen({
           </span>
         </div>
 
-        {activeShift && (
-          <div className="bg-blue-50/60 rounded-xl p-2.5 border border-blue-200 flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-700">Kas di Laci:</span>
-            <span className="text-sm font-black text-blue-700">
-              Rp{" "}
-              {(
-                currentShiftStats?.expectedCash ||
-                activeShift?.startingCash ||
-                0
-              ).toLocaleString("id-ID")}
-            </span>
-          </div>
-        )}
-
         <div className="grid grid-cols-2 gap-2">
           {activeShift ? (
             <>

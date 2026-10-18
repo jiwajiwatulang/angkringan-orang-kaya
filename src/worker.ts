@@ -80,6 +80,10 @@ export default {
 
     // 2. Handle /api/ routes
     if (pathname.startsWith("/api/")) {
+      // Internal service overloads used by local tests are never an HTTP auth bypass.
+      if (pathname.startsWith('/api/owner/') && pathname !== '/api/owner/login' && !/^Bearer\s+\S+\s*$/i.test(request.headers.get('Authorization') || '')) {
+        return withCors(Response.json({ success: false, error: 'Sesi Owner diperlukan. Silakan login terlebih dahulu.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } }));
+      }
       const context = {
         request,
         env,

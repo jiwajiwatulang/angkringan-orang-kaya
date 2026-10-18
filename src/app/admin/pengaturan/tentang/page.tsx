@@ -29,10 +29,10 @@ export default function PengaturanTentangPage() {
       if (res.success) {
         setOfflineStatusMsg("✅ Kasir 100% siap digunakan tanpa internet.");
       } else {
-        setOfflineStatusMsg("ℹ️ Sebagian berkas sedang disiapkan. Kasir tetap dapat digunakan.");
+        setOfflineStatusMsg(`Belum siap offline: ${res.failed.length + res.missingAfterDownload.length} berkas gagal atau belum tersimpan. Sambungkan internet dan coba lagi.`);
       }
     } catch {
-      setOfflineStatusMsg("✅ Data kasir tersimpan aman di memori perangkat.");
+      setOfflineStatusMsg("Persiapan offline gagal. Periksa koneksi dan ruang penyimpanan, lalu coba lagi.");
     } finally {
       setIsPreparingOffline(false);
     }

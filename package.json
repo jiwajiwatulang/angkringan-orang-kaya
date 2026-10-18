@@ -7,7 +7,11 @@
     "build": "next build && node scripts/generate_offline_manifest.mjs",
     "start": "next start -H 0.0.0.0",
     "lint": "eslint",
-    "test": "tsx test_suite.ts"
+    "test": "tsx test_suite.ts",
+    "test:stability": "tsx --test tests/stability.test.ts tests/offline-worker.test.ts",
+    "test:offline": "tsx test_offline_readiness.ts",
+    "typecheck": "tsc --noEmit",
+    "preview:local": "tsx scripts/preview-local.ts"
   },
   "dependencies": {
     "@ascentio-it/capacitor-bluetooth-serial": "^8.0.1",

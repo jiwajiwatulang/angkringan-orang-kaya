@@ -11,7 +11,7 @@ html.dark,
   --app-bg: #F8FAFC;             /* Light: clean slate-50 / soft ice-blue background */
   --surface-bg: #FFFFFF;         /* Light: pure white surface/sidebar/header */
   --card-bg: #FFFFFF;            /* Light: pure white cards */
-  --line-color: #DBEAFE;         /* Light Blue-100 / Slate-200 crisp border */
+  --line-color: #E2E8F0;         /* Neutral borders keep dense operational screens calm. */
   --fg-color: #0F172A;           /* Light: slate-900 crisp dark text */
   --muted-color: #475569;        /* Light: slate-600 high-visibility secondary text */
   --accent-text-color: #2563EB;  /* Light: royal blue text (accessible) */
@@ -51,6 +51,11 @@ body {
   font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
 }
+
+.business-dashboard .rounded-3xl { border-radius: 14px; }
+.business-dashboard .font-black { font-weight: 700; }
+.business-dashboard svg { min-height: 260px; }
+.business-dashboard > div:first-child { border-bottom: 0; padding-bottom: 4px; }
 
 /* High-contrast safeguard: ensure any legacy dark-mode pale text classes remain crisp & readable in Light Mode */
 .text-slate-300 {

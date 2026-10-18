@@ -104,7 +104,7 @@ export async function auditOfflineReadiness(): Promise<OfflineDiagnostics> {
   if ('caches' in window) {
     try {
       const keys = await caches.keys();
-      const currentCacheKey = keys.find(k => k.startsWith('sakunota-pos-')) || keys[0];
+      const currentCacheKey = keys.filter(k => k.startsWith('sakunota-pos-')).at(-1) || keys[0];
       
       if (currentCacheKey) {
         const cache = await caches.open(currentCacheKey);
@@ -183,8 +183,8 @@ export async function downloadAllOfflineAssets(
 
     result.total = urls.length;
 
-    const keys = await caches.keys();
-    const currentKey = keys.find(k => k.startsWith('sakunota-pos-')) || 'sakunota-pos-v2.5.0';
+    const currentKey = manifest.version;
+    if (!currentKey?.startsWith("sakunota-pos-")) throw new Error("Versi cache tidak valid");
     const cache = await caches.open(currentKey);
 
     // Simpan salinan manifest ke cache

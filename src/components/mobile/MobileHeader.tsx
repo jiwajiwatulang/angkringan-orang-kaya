@@ -59,7 +59,7 @@ export default function MobileHeader({
             title="Catat Kas Masuk / Keluar"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-            <span>Kas Rp {(currentShiftStats?.expectedCash || activeShift.startingCash || 0).toLocaleString('id-ID')}</span>
+            <span>Shift aktif</span>
           </button>
         ) : (
           <button

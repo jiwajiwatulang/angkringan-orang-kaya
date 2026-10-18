@@ -45,6 +45,10 @@ data/*.db*
 # scratch and dumps
 *dump*.json
 *backup*.json
+/.deck-build/
+/.chart-data-*/
+/audit-output/*.log
+/audit-output/ui-*.jpg
 
 
 

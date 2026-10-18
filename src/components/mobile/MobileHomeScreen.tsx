@@ -67,7 +67,7 @@ export default function MobileHomeScreen({
   const occupiedTables = (tableData || []).filter((t) => t && (t.status === "terisi" || t.status === "open")).length;
   const totalTables = (tableData || []).length;
   const todayOrdersCount = (activeOrders || []).length;
-  const expectedCash = currentShiftStats?.expectedCash || activeShift?.startingCash || 0;
+
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-28 select-none">
@@ -80,7 +80,7 @@ export default function MobileHomeScreen({
               {activeShift ? `Shift Aktif • ${activeShift.operatorName}` : "Shift Kasir Tutup"}
             </span>
             <span className="text-[11px] text-muted block truncate">
-              {activeShift ? `Kas di Laci: Rp ${expectedCash.toLocaleString("id-ID")}` : "Buka shift untuk mulai mencatat arus kas"}
+              {activeShift ? "Hitung kas fisik saat tutup shift" : "Buka shift untuk mulai mencatat arus kas"}
             </span>
           </div>
         </div>

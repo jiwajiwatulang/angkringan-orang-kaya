@@ -147,6 +147,10 @@ export function createD1NodeAdapter(dbFilePath?: string): D1Database {
     }
 
     async all<T = unknown>(): Promise<D1Result<T>> {
+      return this.allSync<T>();
+    }
+
+    allSync<T = unknown>(): D1Result<T> {
       const stmt = sqlite.prepare(this.query);
       const rows = stmt.all(...this.params) as T[];
       return { results: rows || [], success: true, meta: {} };
@@ -159,9 +163,16 @@ export function createD1NodeAdapter(dbFilePath?: string): D1Database {
     },
     async batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]> {
       const results: D1Result<T>[] = [];
-      for (const s of statements) {
-        const res = await s.all<T>();
-        results.push(res);
+      sqlite.exec('BEGIN');
+      try {
+        for (const s of statements) {
+          if (!(s instanceof NodeD1Statement)) throw new Error('Statement does not belong to this local D1 adapter.');
+          results.push(s.allSync<T>());
+        }
+        sqlite.exec('COMMIT');
+      } catch (error) {
+        sqlite.exec('ROLLBACK');
+        throw error;
       }
       return results;
     },
