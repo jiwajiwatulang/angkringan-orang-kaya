@@ -26,8 +26,10 @@ import MobileBottomNav, { MobileTab } from '@/components/mobile/MobileBottomNav'
 import MobileFloatingCartBar from '@/components/mobile/MobileFloatingCartBar';
 import { checkCashierAccess, CashierAccessStatus } from '@/lib/licenseGuard';
 import { activateLicenseServer } from '@/lib/ordersClient';
+import { setupHardwareBarcodeScanner, playScannerBeep } from '@/lib/barcodeScanner';
+import BarcodeCameraModal from '@/components/BarcodeCameraModal';
 
-type MenuItem = { id: number; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; modifiers?: any[]; };
+type MenuItem = { id: number; sku?: string; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; modifiers?: any[]; };
 type CartItem = MenuItem & { qty: number; selectedModifiers?: { groupName: string; optionName: string; harga: number }[]; itemKey?: string };
 
 export default function POSPage() {
@@ -79,6 +81,10 @@ export default function POSPage() {
   const [refundTargetPayment, setRefundTargetPayment] = useState<any>(null);
   const [refundPinInput, setRefundPinInput] = useState<string>("");
   const [refundReasonInput, setRefundReasonInput] = useState<string>("");
+
+  // --- BARCODE SCANNER STATES ---
+  const [isBarcodeScanOpen, setIsBarcodeScanOpen] = useState(false);
+  const [barcodeScanToast, setBarcodeScanToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Form states for Cash Movement
   const [cashMovementType, setCashMovementType] = useState<'in' | 'out'>('out');
@@ -1410,6 +1416,43 @@ export default function POSPage() {
       }];
     });
   };
+
+  const handleBarcodeScanned = (scannedCode: string) => {
+    const clean = (scannedCode || '').trim();
+    if (!clean) return;
+
+    // Cari produk di menuData berdasarkan SKU atau ID
+    const matched = menuData.find((m: MenuItem) => {
+      const matchSku = m.sku && m.sku.toLowerCase() === clean.toLowerCase();
+      const matchId = m.id && String(m.id) === clean;
+      return matchSku || matchId;
+    });
+
+    if (matched) {
+      if (matched.isSoldOut) {
+        playScannerBeep('error');
+        setBarcodeScanToast({ message: `Menu "${matched.nama}" sedang HABIS!`, type: 'error' });
+        setTimeout(() => setBarcodeScanToast(null), 3500);
+        return;
+      }
+
+      playScannerBeep('success');
+      addToCart(matched);
+      setBarcodeScanToast({ message: `+1 "${matched.nama}" masuk keranjang`, type: 'success' });
+      setTimeout(() => setBarcodeScanToast(null), 3000);
+    } else {
+      playScannerBeep('error');
+      setBarcodeScanToast({ message: `Barcode "${clean}" tidak ditemukan di daftar menu!`, type: 'error' });
+      setTimeout(() => setBarcodeScanToast(null), 4000);
+    }
+  };
+
+  useEffect(() => {
+    const cleanup = setupHardwareBarcodeScanner((code) => {
+      handleBarcodeScanned(code);
+    });
+    return cleanup;
+  }, [menuData]);
 
   const updateQty = (keyOrId: string | number, delta: number) => {
     setCart(prev => prev.map(item => {
@@ -3143,20 +3186,29 @@ export default function POSPage() {
                         </button>
                       ))}
                     </div>
-                    <input 
-                      type="text" 
-                      placeholder="Cari menu makanan atau minuman..." 
-                      value={searchQuery} 
-                      onChange={e => setSearchQuery(e.target.value)} 
-                      className="w-full bg-card border border-line rounded-xl p-3 text-sm text-fg focus:border-accent outline-none transition-colors shadow-sm" 
-                    />
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        placeholder="Cari menu makanan, minuman, atau kode barcode..." 
+                        value={searchQuery} 
+                        onChange={e => setSearchQuery(e.target.value)} 
+                        className="flex-1 bg-card border border-line rounded-xl p-3 text-sm text-fg focus:border-accent outline-none transition-colors shadow-sm" 
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setIsBarcodeScanOpen(true)}
+                        className="px-4 py-3 rounded-xl bg-card border border-line hover:border-accent text-fg hover:text-accent-text font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0"
+                        title="Pindai Barcode Produk (Kamera / Barcode Gun)"
+                      >
+                        Pindai Barcode
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-6">
                   {paginatedMenu.length === 0 ? (
                     <div className="h-64 flex flex-col items-center justify-center text-center p-8 bg-card rounded-2xl border border-line">
-                      <span className="text-4xl mb-2">🔍</span>
                       <p className="text-sm font-bold text-fg">Tidak ada menu yang sesuai</p>
                       <p className="text-xs text-muted mt-1">Coba kata kunci lain atau pilih kategori Semua.</p>
                     </div>
@@ -3344,6 +3396,7 @@ export default function POSPage() {
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
               onAddToCart={(item) => addToCart(item)}
+              onOpenBarcodeScan={() => setIsBarcodeScanOpen(true)}
             />
           )}
 
@@ -4538,7 +4591,7 @@ export default function POSPage() {
               </button>
             </div>
             <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
-              ⚠️
+              !
             </div>
             <h3 className="text-base font-black text-fg mb-1">
               {unsavedConfirm.title || "Perubahan Belum Disimpan"}
@@ -4581,6 +4634,29 @@ export default function POSPage() {
         }}
         currentSettings={storeSettings}
       />
+
+      {/* Barcode Camera Scanner Modal */}
+      <BarcodeCameraModal
+        isOpen={isBarcodeScanOpen}
+        onClose={() => setIsBarcodeScanOpen(false)}
+        onScan={handleBarcodeScanned}
+        title="Pindai Barcode Kasir"
+      />
+
+      {/* Barcode Scan Floating Toast Notification */}
+      {barcodeScanToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[110] animate-bounce-short pointer-events-none">
+          <div
+            className={`px-4 py-2.5 rounded-2xl text-xs font-black shadow-xl border backdrop-blur-md flex items-center gap-2 ${
+              barcodeScanToast.type === 'success'
+                ? 'bg-emerald-900/90 border-emerald-500 text-emerald-100 shadow-emerald-950/40'
+                : 'bg-rose-900/90 border-rose-500 text-rose-100 shadow-rose-950/40'
+            }`}
+          >
+            <span>{barcodeScanToast.message}</span>
+          </div>
+        </div>
+      )}
 
     </div>
     </>

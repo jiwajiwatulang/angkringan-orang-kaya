@@ -24,6 +24,7 @@ import {
 } from "@/lib/excelUtils";
 import { App } from "@capacitor/app";
 import { ModifierGroup, ModifierOption } from "@/lib/dexie";
+import BarcodeCameraModal from "@/components/BarcodeCameraModal";
 
 type MenuItem = {
   id: number;
@@ -82,6 +83,7 @@ export default function AdminMenuPage() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingMenu, setEditingMenu] = useState<MenuItem | null>(null);
   const [formSku, setFormSku] = useState("");
+  const [isBarcodeScanOpen, setIsBarcodeScanOpen] = useState(false);
   const [formNama, setFormNama] = useState("");
   const [formHarga, setFormHarga] = useState("");
   const [formKategori, setFormKategori] = useState("Lauk");
@@ -1785,20 +1787,38 @@ export default function AdminMenuPage() {
                 )}
               </div>
 
-              {/* SKU / Kode Menu */}
+              {/* SKU / Kode Barcode */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Kode Menu / SKU (opsional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Kosongkan jika tidak ada kode khusus"
-                  value={formSku}
-                  onChange={(e) => setFormSku(e.target.value)}
-                  className="w-full bg-card border border-line rounded-xl p-3 text-xs font-mono text-fg outline-none focus:border-accent"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-300">
+                    Kode Barcode / SKU (opsional)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsBarcodeScanOpen(true)}
+                    className="text-[11px] font-bold text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    Pindai Barcode
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Contoh: 8992761136014 atau SKU-001"
+                    value={formSku}
+                    onChange={(e) => setFormSku(e.target.value)}
+                    className="flex-1 bg-card border border-line rounded-xl p-3 text-xs font-mono text-fg outline-none focus:border-accent"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsBarcodeScanOpen(true)}
+                    className="px-3.5 py-2.5 rounded-xl bg-card border border-line hover:border-accent text-fg font-bold text-xs transition-colors shrink-0"
+                  >
+                    Scan
+                  </button>
+                </div>
                 <p className="text-[10px] text-muted mt-1">
-                  Jika kosong, sistem menggunakan ID internal. Tidak perlu membuat SKU otomatis.
+                  Dapat dipindai langsung dengan barcode scanner fisik atau kamera HP saat transaksi di kasir.
                 </p>
               </div>
 
@@ -2223,6 +2243,17 @@ export default function AdminMenuPage() {
           </div>
         </div>
       )}
+
+      {/* Barcode Camera Scanner Modal */}
+      <BarcodeCameraModal
+        isOpen={isBarcodeScanOpen}
+        onClose={() => setIsBarcodeScanOpen(false)}
+        onScan={(scannedCode) => {
+          setFormSku(scannedCode);
+          showToast(`Barcode terdeteksi: ${scannedCode}`, "success");
+        }}
+        title="Pindai Barcode Menu"
+      />
     </div>
   );
 }

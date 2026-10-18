@@ -21,6 +21,7 @@ interface MobileCatalogScreenProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
   onAddToCart: (item: MenuItem) => void;
+  onOpenBarcodeScan?: () => void;
 }
 
 export default function MobileCatalogScreen({
@@ -31,6 +32,7 @@ export default function MobileCatalogScreen({
   searchQuery,
   onSearchChange,
   onAddToCart,
+  onOpenBarcodeScan,
 }: MobileCatalogScreenProps) {
   const [gridCols, setGridCols] = useState<2 | 4>(2);
 
@@ -114,25 +116,37 @@ export default function MobileCatalogScreen({
           </div>
         </div>
 
-        {/* 2. Search Input */}
-        <div className="relative mb-2.5">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">
-            🔍
-          </span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Cari nama makanan atau minuman..."
-            className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-colors"
-          />
-          {searchQuery && (
+        {/* 2. Search Input & Barcode Button */}
+        <div className="flex gap-1.5 mb-2.5">
+          <div className="relative flex-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-mono font-bold">
+              /
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Cari menu atau ketik barcode..."
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-7 pr-8 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-colors"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => onSearchChange("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 text-xs font-bold"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {onOpenBarcodeScan && (
             <button
               type="button"
-              onClick={() => onSearchChange("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 text-xs font-bold"
+              onClick={onOpenBarcodeScan}
+              className="px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 rounded-xl text-xs font-black transition-colors shrink-0 flex items-center justify-center shadow-2xs"
+              title="Pindai Barcode Produk"
             >
-              ✕
+              Scan
             </button>
           )}
         </div>
