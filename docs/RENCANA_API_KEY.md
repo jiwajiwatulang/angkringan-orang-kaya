@@ -23,3 +23,26 @@ Saran awal: bila ada kebutuhan integrasi nyata, mulai dengan laporan baca saja. 
 ## Batas saat ini
 
 Belum ada endpoint penerbitan key, key aktif, unggahan data merchant, atau sinkronisasi antarperangkat. Owner tetap menggunakan Cloudflare/D1 untuk bisnis lisensi. Waiter Floor versi awal berbagi IndexedDB dengan kasir pada perangkat/browser yang sama.
+
+## Gambaran konkret: laporan ke spreadsheet
+
+Contoh halaman yang direncanakan pada integrasi opsional pemilik toko:
+
+```text
+Integrasi → Buat akses aplikasi
+Nama: Spreadsheet Omzet Toko
+Izin: Baca ringkasan penjualan saja
+Masa berlaku: 30 hari
+[Buat API key]
+
+Key: sn_live_CONTOH_SAJA
+[Salin]  [Cabut akses]
+```
+
+Contoh alur: kasir mencatat transaksi lokal → owner menyetujui pengiriman ringkasan harian → snapshot disimpan pada layanan integrasi → spreadsheet mengambil ringkasan memakai key tersebut. Key laporan tidak bisa menambah produk, mengubah stok, menerima pembayaran atau membaca data toko lain.
+
+Contoh respons yang direncanakan: tanggal, jumlah transaksi, omzet, serta waktu sinkronisasi terakhir. Jika kasir offline, laporan cloud tetap menampilkan snapshot terakhir beserta waktu pembaruannya, bukan mengaku sebagai data langsung.
+
+Pemilik toko perlu identitas cloud/otorisasi kepemilikan yang diverifikasi untuk membuat dan mencabut key. PIN Admin lokal saja tidak cukup sebagai autentikasi API internet. Akun integrasi merchant ini berbeda dari portal `/owner` milik pengelola SakuNota.
+
+Alternatif paling ringan bila hanya perlu laporan berkala: ekspor CSV/Excel tanpa API key. API key baru berguna jika aplikasi lain memang perlu mengambil data secara otomatis.

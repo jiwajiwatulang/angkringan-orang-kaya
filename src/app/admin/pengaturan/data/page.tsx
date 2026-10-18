@@ -1,4 +1,5 @@
 "use client";
+import LockIcon from "@/components/LockIcon";
 import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -602,7 +603,7 @@ export default function PengaturanDataPage() {
             {/* Keamanan & Privasi Data */}
             <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 space-y-1">
               <div className="flex items-center gap-2 text-amber-300 font-black text-xs">
-                <span>🔒 Keamanan & Privasi Data</span>
+                <span><LockIcon /> Keamanan & Privasi Data</span>
               </div>
               <p className="text-[11px] text-amber-200/90 leading-relaxed">
                 File cadangan berisi data keuangan, riwayat penjualan, dan nama pelanggan usaha Anda. Simpan file hanya di tempat pribadi (seperti chat WhatsApp ke nomor Anda sendiri atau Google Drive pribadi). <strong>Jangan bagikan file ini ke grup publik atau pihak yang tidak berwenang.</strong>

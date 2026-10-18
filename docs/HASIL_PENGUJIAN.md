@@ -91,3 +91,11 @@ Preview Owner menggunakan akun dummy `preview-owner` dengan sandi `Preview-Local
 - Uji UI lokal ukuran HP: tombol panduan awal tidak muncul pada demo; shift dibuka; pelayan ditugaskan Meja 1; pesanan Air mineral dengan varian dan catatan berhasil masuk sebagai pesanan #8. URL /pos dan /admin dialihkan ke /waiter saat sesi aktif. PIN salah ditolak; PIN demo yang benar kembali ke kasir.
 - Waiter Floor versi ini berbagi database/browser dengan kasir. Akun staf cloud dan HP pelayan terpisah belum tersedia. Lihat WAITER_FLOOR.md untuk batas operasional.
 - API key hanya berupa rencana; tidak ada key atau endpoint integrasi baru yang diaktifkan.
+
+## Katalog dan persediaan terpadu
+
+- Produk dan Persediaan & Opname berbagi halaman /admin/menu. Tautan /admin/stok lama tetap mengarah ke tab persediaan, termasuk query demo.
+- Uji UI lokal: perpindahan kedua tab berhasil, Waiter Floor berada tepat di bawah Shift, dan menu stok terpisah tidak muncul.
+- Server pratinjau port 4373 dihentikan setelah prosesnya diverifikasi; probe HTTP memastikan server tidak tersedia. Perpindahan Produk ke Persediaan & Opname tetap berhasil tanpa jaringan.
+- Ikon lock menggunakan gambar nomor 35 dari aset pengguna, dioptimalkan menjadi WebP 128px (sekitar 2 KB). Gambar sumber tidak diubah.
+- Perubahan akses karyawan dan API key masih berupa rencana; tidak ada hak akses baru atau endpoint integrasi yang diaktifkan.

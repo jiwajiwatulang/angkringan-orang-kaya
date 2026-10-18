@@ -1,4 +1,5 @@
 import React from 'react';
+import LockIcon from './LockIcon';
 
 const paths: Record<string, string> = {
   cashier: 'M3 8h14v10H3zM17 9h4v5h-4M2 21h17M6 2v3M11 2v3',
@@ -18,5 +19,6 @@ const paths: Record<string, string> = {
 };
 
 export default function LineIcon({ name, className = 'w-5 h-5' }: { name: string; className?: string }) {
+  if (name === 'lock') return <LockIcon className={className} />;
   return <svg aria-hidden="true" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={paths[name] || paths.info} /></svg>;
 }

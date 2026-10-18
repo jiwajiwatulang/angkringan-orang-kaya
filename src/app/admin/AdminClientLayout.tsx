@@ -1,4 +1,5 @@
 "use client";
+import LockIcon from "@/components/LockIcon";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -13,13 +14,12 @@ import { createAdminSession, verifyAdminSession, destroyAdminSession } from "@/l
 import { db } from "@/lib/dexie";
 
 const navItems = [
-  { href: "/admin/pelayan", label: "Waiter Floor", icon: "tables" },
   { href: "/pos", label: "Kasir & Menu", icon: "cashier" },
   { href: "/admin/meja", label: "Kelola Meja", icon: "tables" },
   { href: "/admin/transaksi", label: "Riwayat Transaksi", icon: "receipt" },
   { href: "/admin/shift", label: "Shift & Kas Laci", icon: "shift" },
+  { href: "/admin/pelayan", label: "Waiter Floor", icon: "tables" },
   { href: "/admin/menu", label: "Katalog & Stok", icon: "catalog" },
-  { href: "/admin/stok", label: "Stok & Opname", icon: "catalog" },
   { href: "/admin/pengaturan", label: "Pengaturan POS", icon: "settings" },
   { href: "/admin", label: "Dashboard", icon: "chart" },
 ];
@@ -313,7 +313,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen bg-app flex flex-col items-center justify-center p-4">
         <div className=" bg-surface rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-line text-center animate-in zoom-in-95 duration-200">
           <div className="w-16 h-16 rounded-2xl bg-accent/60 text-accent-text flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-sm">
-            🔒
+            <LockIcon />
           </div>
 
           <h2 className="text-2xl font-black text-fg">
@@ -622,7 +622,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         {isDefaultPin && (
           <div className=" bg-amber-950/50 border-b border-amber-900/60 px-4 py-2.5 flex items-center justify-between text-xs text-amber-200">
             <div className="flex items-center gap-2">
-              <span className="text-base">🔒</span>
+              <span className="text-base"><LockIcon /></span>
               <span>
                 <strong>Pemberitahuan Keamanan:</strong> Anda masih menggunakan PIN bawaan sistem. Disarankan segera mengganti PIN pribadi Anda.
               </span>
@@ -708,8 +708,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <h3 className="text-base font-black text-fg mb-3">Menu Lainnya</h3>
 
             <div className="grid grid-cols-1 gap-2 mb-4">
-              <Link href="/admin/stok" onClick={() => setIsLainnyaOpen(false)} className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-line text-fg">
-                <span className="text-xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 12v3h4v-3" /></svg></span><div><div className="font-bold text-sm">Stok & Opname</div><div className="text-xs text-muted">Jumlah barang, barang masuk/keluar, dan hitungan fisik</div></div>
+              <Link href="/admin/menu?tab=stock" onClick={() => setIsLainnyaOpen(false)} className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-line text-fg">
+                <span className="text-xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 12v3h4v-3" /></svg></span><div><div className="font-bold text-sm">Katalog &amp; Stok</div><div className="text-xs text-muted">Produk, persediaan, dan opname</div></div>
               </Link>
               <Link
                 href="/admin/meja"

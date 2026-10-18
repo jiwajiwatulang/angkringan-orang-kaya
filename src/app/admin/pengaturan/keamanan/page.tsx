@@ -1,4 +1,5 @@
 "use client";
+import LockIcon from "@/components/LockIcon";
 import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
@@ -150,7 +151,7 @@ export default function PengaturanKeamananPage() {
           <span>← Kembali ke Pengaturan</span>
         </Link>
         <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
-          <span>🔒</span>
+          <span><LockIcon /></span>
           <span>Keamanan & PIN Admin</span>
         </h2>
         <p className="text-xs text-muted mt-0.5">

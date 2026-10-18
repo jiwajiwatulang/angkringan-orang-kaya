@@ -2,6 +2,7 @@
 import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from 'next/navigation';
 import { useAdmin } from "../AdminContext";
 import {
   getMenus,
@@ -26,6 +27,7 @@ import {
 import { App } from "@capacitor/app";
 import { ModifierGroup, ModifierOption } from "@/lib/dexie";
 import BarcodeCameraModal from "@/components/BarcodeCameraModal";
+import InventoryPanel from "@/components/InventoryPanel";
 
 type MenuItem = {
   id: number;
@@ -37,7 +39,7 @@ type MenuItem = {
   modifiers?: ModifierGroup[];
 };
 
-export default function AdminMenuPage() {
+function CatalogPanel() {
   const { showToast } = useAdmin();
   const [menus, setMenus] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -666,7 +668,7 @@ export default function AdminMenuPage() {
         <div>
           <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
             
-            <span>Kelola Menu & Stok</span>
+            <span>Produk</span>
           </h2>
           <p className="text-xs text-muted mt-0.5">
             Total {menus.length} menu terdaftar di sistem SakuNota.
@@ -2239,4 +2241,28 @@ export default function AdminMenuPage() {
       />
     </div>
   );
+}
+
+function CatalogWorkspace() {
+  const params = useSearchParams();
+  const tab = params.get('tab') === 'stock' ? 'stock' : 'catalog';
+  function selectTab(next: 'catalog' | 'stock') {
+    const url = new URL(window.location.href);
+    if (next === 'stock') url.searchParams.set('tab', 'stock'); else url.searchParams.delete('tab');
+    // Next copies its history state and updates useSearchParams without a network navigation.
+    window.history.replaceState(null, '', url.pathname + url.search);
+  }
+  return <main className="space-y-5">
+    <h1 className="text-2xl font-bold tracking-tight">Katalog &amp; Stok</h1>
+    <div role="tablist" aria-label="Katalog dan persediaan" className="flex gap-2 border-b border-line pb-3">
+      {([{ id: 'catalog', label: 'Produk' }, { id: 'stock', label: 'Persediaan & Opname' }] as const).map(item => <button key={item.id} id={'catalog-tab-' + item.id} role="tab" aria-selected={tab === item.id} aria-controls="catalog-panel" onClick={() => selectTab(item.id)} className={'rounded-xl px-4 py-2.5 text-sm font-semibold ' + (tab === item.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 border border-line')}>{item.label}</button>)}
+    </div>
+    <section id="catalog-panel" role="tabpanel" aria-labelledby={'catalog-tab-' + (tab || 'catalog')}>
+      {tab === 'stock' ? <InventoryPanel embedded /> : <CatalogPanel />}
+    </section>
+  </main>;
+}
+
+export default function AdminMenuPage() {
+  return <React.Suspense fallback={<p role="status" className="text-sm text-muted">Memuat katalog…</p>}><CatalogWorkspace /></React.Suspense>;
 }

@@ -1,4 +1,5 @@
 "use client";
+import LockIcon from "@/components/LockIcon";
 import LineIcon from "@/components/LineIcon";
 
 import { useState, useEffect, useRef } from "react";
@@ -3659,7 +3660,7 @@ export default function POSPage() {
 
             {/* Petunjuk Blind Close */}
             <div className=" bg-accent/40 p-4 rounded-2xl border border-accent/40 mb-5">
-              <p className="text-xs font-bold text-accent-text mb-1">🔒 Prosedur Blind Close:</p>
+              <p className="text-xs font-bold text-accent-text mb-1"><LockIcon /> Prosedur Blind Close:</p>
               <p className="text-xs text-accent-text leading-relaxed">
                 Silakan hitung seluruh uang fisik (kertas & koin) yang ada di laci kasir saat ini. Angka sistem sengaja disembunyikan agar hasil penghitungan murni objektif.
               </p>
