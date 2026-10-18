@@ -32,7 +32,6 @@ import {
   unbindBetaTrialServer,
   convertBetaTrialToPaidServer,
 } from "@/lib/ordersClient";
-import { SUPPORT_WHATSAPP } from "@/lib/config";
 
 export default function SakuNotaOwnerDashboardPage() {
   // Authentication State
@@ -45,7 +44,7 @@ export default function SakuNotaOwnerDashboardPage() {
 
   // Dashboard Tabs & Data State
   const [activeTab, setActiveTab] = useState<
-    "orders" | "beta" | "summary" | "customers" | "devices" | "tester" | "support" | "settings"
+    "orders" | "beta" | "summary" | "customers" | "devices" | "tester" | "settings"
   >("orders");
   const [orderFilter, setOrderFilter] = useState<"semua" | "menunggu" | "berhasil" | "gagal" | "kedaluwarsa" | "dikembalikan" | "arsip">("semua");
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
@@ -827,7 +826,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                 : "bg-surface text-muted hover:text-fg border border-line"
             }`}
           >
-            📋 Pesanan & Pembayaran ({orders.length})
+            Pesanan & Pembayaran ({orders.length})
           </button>
           <button
             type="button"
@@ -841,7 +840,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                 : "bg-surface text-muted hover:text-fg border border-line"
             }`}
           >
-            🚀 Pendaftar Beta ({betaRegistrations.filter((b) => b.status === "pending").length} baru)
+            Pendaftar Beta ({betaRegistrations.filter((b) => b.status === "pending").length} baru)
           </button>
           <button
             type="button"
@@ -852,7 +851,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                 : "bg-surface text-muted hover:text-fg border border-line"
             }`}
           >
-            👥 Pelanggan
+            Pelanggan
           </button>
           <button
             type="button"
@@ -866,7 +865,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                 : "bg-surface text-muted hover:text-fg border border-line"
             }`}
           >
-            📱 Lisensi & Perangkat
+            Lisensi & Perangkat
           </button>
           <button
             type="button"
@@ -880,18 +879,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                 : "bg-surface text-muted hover:text-fg border border-line"
             }`}
           >
-            🧪 Lisensi Tester ({testerLicenses.filter((t) => t.revoked === 0).length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("support")}
-            className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
-              activeTab === "support"
-                ? "bg-purple-600 text-white shadow-sm"
-                : "bg-surface text-muted hover:text-fg border border-line"
-            }`}
-          >
-            💬 Laporan Masalah
+            Lisensi Tester ({testerLicenses.filter((t) => t.revoked === 0).length})
           </button>
           <button
             type="button"
@@ -902,7 +890,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                 : "bg-surface text-muted hover:text-fg border border-line"
             }`}
           >
-            ⚙️ Pengaturan & Pemeliharaan
+            Pengaturan & Pemeliharaan
           </button>
         </div>
 
@@ -1882,32 +1870,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
           </div>
         )}
 
-        {/* TAB 5: LAPORAN MASALAH & DUKUNGAN */}
-        {activeTab === "support" && (
-          <div className="bg-surface rounded-3xl border border-line shadow-sm p-5 sm:p-6 space-y-4">
-            <div>
-              <h3 className="font-black text-base text-fg">Pusat Bantuan & Laporan Pengguna</h3>
-              <p className="text-xs text-muted">Daftar laporan kendala kasir dari pedagang.</p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-card border border-line space-y-3 text-xs">
-              <span className="text-[10px] text-muted font-bold uppercase block">Kontak Bantuan Resmi:</span>
-              <p className="text-muted leading-relaxed">
-                Pengguna yang mengalami kendala aktivasi lisensi atau pemindahan HP dapat menghubungi WhatsApp resmi SakuNota.
-              </p>
-              <a
-                href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20butuh%20bantuan%20terkait%20lisensi%20SakuNota`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-black hover:bg-emerald-700 transition-colors"
-              >
-                <span>💬 Buka WhatsApp Bantuan SakuNota</span>
-              </a>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 6: PENGATURAN & PEMELIHARAAN */}
+        {/* TAB 5: PENGATURAN & PEMELIHARAAN */}
         {activeTab === "settings" && (
           <div className="bg-surface rounded-3xl border border-line shadow-sm p-5 sm:p-6 space-y-6">
             <div>

@@ -119,7 +119,7 @@ export default function PengaturanTentangPage() {
             {accessStatus?.isDemo ? (
               <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-300">
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                Mode Demo Sandbox
+                Mode Demo Kasir
               </span>
             ) : accessStatus?.isValid ? (
               <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
@@ -139,7 +139,7 @@ export default function PengaturanTentangPage() {
             </span>
             <strong className="text-xs font-mono font-black text-blue-600 select-all block truncate">
               {accessStatus?.isDemo
-                ? "DEMO-SANDBOX-TRIAL"
+                ? "DEMO-KASIR-TRIAL"
                 : accessStatus?.licenseKey || "BELUM ADA LISENSI"}
             </strong>
           </div>
@@ -148,7 +148,7 @@ export default function PengaturanTentangPage() {
         {accessStatus?.isDemo ? (
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-left text-xs text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div>
-              <p className="font-bold">⚠️ Perangkat Berada dalam Mode Demo Sandbox</p>
+              <p className="font-bold">Perangkat Berada dalam Mode Demo Kasir</p>
               <p className="text-[11px] text-amber-800">
                 Semua data & transaksi adalah simulasi lokal di browser Anda.
               </p>

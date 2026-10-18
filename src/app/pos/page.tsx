@@ -167,13 +167,16 @@ export default function POSPage() {
     await loadData();
   };
 
-  const handleExitDemo = () => {
+  const handleExitDemo = async () => {
     if (typeof window !== 'undefined') {
       try {
         sessionStorage.removeItem('sakunota_demo_mode');
         const url = new URL(window.location.href);
         url.searchParams.delete('demo');
         window.history.replaceState({}, '', url.toString());
+      } catch (_) {}
+      try {
+        await resetDemoSandbox();
       } catch (_) {}
       window.location.href = '/';
     }
@@ -2222,12 +2225,9 @@ export default function POSPage() {
           {/* Quick Demo Access Box */}
           <div className="bg-blue-50/80 border border-blue-200 rounded-2xl p-4 sm:p-5 mb-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
             <div className="flex items-center gap-3.5 text-left">
-              <div className="w-11 h-11 rounded-xl bg-white border border-blue-200 text-blue-600 flex items-center justify-center text-2xl shrink-0 shadow-2xs">
-                🎮
-              </div>
               <div>
                 <h3 className="text-xs sm:text-sm font-black text-slate-900">Ingin Mencoba Simulasi Kasir Tanpa Lisensi?</h3>
-                <p className="text-xs text-slate-600 mt-0.5">Buka Demo Sandbox interaktif gratis untuk mencoba menu, meja, dan cetak struk.</p>
+                <p className="text-xs text-slate-600 mt-0.5">Buka Demo Kasir interaktif gratis untuk mencoba menu, meja, dan cetak struk.</p>
               </div>
             </div>
             <button
@@ -2317,28 +2317,15 @@ export default function POSPage() {
   return (
     <>
     <div id="main-app-container" className="flex flex-col h-screen font-sans relative bg-surface text-fg transition-colors duration-200 overflow-hidden">
-      {/* Demo Sandbox Alert Banner */}
+      {/* Demo Kasir Alert Banner */}
       {accessStatus.isDemo && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex flex-wrap items-center justify-between text-xs text-amber-950 font-medium shrink-0 z-40">
           <div className="flex items-center gap-2">
-            <span className="font-black bg-amber-500 text-white px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase shadow-xs">SIMULASI DEMO</span>
-            <span>Mode Demo Terbatas: Data hanya disimpan sementara di memori browser dan otomatis di-reset saat halaman dimuat ulang.</span>
+            <span className="font-black bg-amber-500 text-white px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase shadow-xs">DEMO KASIR</span>
+            <span>Mode Demo Kasir: Data hanya tersimpan sementara dan otomatis di-reset saat keluar. Untuk pemakaian permanen di memori HP, gunakan Trial atau Lisensi Resmi.</span>
           </div>
           <div className="flex items-center gap-2 mt-1 sm:mt-0 font-bold">
-            <button
-              type="button"
-              onClick={async () => {
-                setIsLoading(true);
-                try {
-                  await resetDemoSandbox();
-                } catch (_) {}
-                await loadData();
-              }}
-              className="text-amber-900 hover:text-amber-950 font-bold text-xs px-2.5 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300 transition-colors"
-            >
-              Reset Data Demo
-            </button>
-            <button type="button" onClick={handleExitDemo} className="text-amber-900 hover:text-amber-950 font-bold text-xs px-2.5 py-1 rounded-lg bg-amber-200/60 hover:bg-amber-200 transition-colors">← Keluar Demo</button>
+            <button type="button" onClick={handleExitDemo} className="text-amber-900 hover:text-amber-950 font-bold text-xs px-2.5 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300 transition-colors">Keluar Demo</button>
             <Link href="/?beli=true" className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1 rounded-lg shadow-xs">Beli Lisensi Rp50.000 →</Link>
           </div>
         </div>

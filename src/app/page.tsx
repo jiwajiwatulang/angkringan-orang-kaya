@@ -618,7 +618,7 @@ export default function SakuNotaLandingPage() {
                   }}
                   className="w-full py-3 text-center rounded-2xl bg-slate-100 border border-slate-300 text-xs font-extrabold text-slate-900 hover:bg-slate-200 transition-all active:scale-95"
                 >
-                  🎮 Coba Kasir (Demo Sandbox)
+                  Coba Demo Kasir
                 </Link>
                 <button
                   type="button"
@@ -628,7 +628,7 @@ export default function SakuNotaLandingPage() {
                   }}
                   className="w-full py-3.5 text-center rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-600/30 transition-all active:scale-95"
                 >
-                  🛒 Beli SakuNota - Rp50.000
+                  Beli SakuNota - Rp50.000
                 </button>
               </div>
             </div>
@@ -674,7 +674,7 @@ export default function SakuNotaLandingPage() {
               }}
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-blue-50 text-slate-900 hover:text-blue-700 font-extrabold text-xs border-2 border-slate-300 hover:border-blue-300 shadow-xs transition-all text-center flex items-center justify-center gap-2"
             >
-              <span>Coba Sandbox Kasir</span>
+              <span>Coba Demo Kasir</span>
             </Link>
 
             <button
@@ -710,7 +710,7 @@ export default function SakuNotaLandingPage() {
         </div>
       </section>
 
-      {/* 3. SakuNota POS Dashboard / Menu (Interactive Mini Demo Sandbox) */}
+      {/* 3. SakuNota POS Dashboard / Menu (Interactive Mini Demo Kasir) */}
       <section className="relative pb-20 px-4 sm:px-8 bg-slate-50">
         <div className="max-w-4xl mx-auto">
           {/* Card Frame */}
@@ -1488,7 +1488,7 @@ export default function SakuNotaLandingPage() {
               <li><a href="#jenis-usaha" className="hover:text-blue-600 transition-colors">Jenis Usaha</a></li>
               <li><a href="#harga" className="hover:text-blue-600 transition-colors">Harga Lisensi</a></li>
               <li><Link href="/tentang" className="hover:text-blue-600 transition-colors font-bold text-blue-600">Tentang Kami</Link></li>
-              <li><Link href="/pos?demo=true" className="hover:text-blue-600 transition-colors">Coba Sandbox Kasir</Link></li>
+              <li><Link href="/pos?demo=true" className="hover:text-blue-600 transition-colors">Coba Demo Kasir</Link></li>
             </ul>
           </div>
 
@@ -1675,7 +1675,7 @@ export default function SakuNotaLandingPage() {
                 </div>
 
                 <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 text-xs text-blue-800 leading-relaxed text-left">
-                  Tim SakuNota akan memverifikasi pendaftaran Anda dan mengirimkan nomor lisensi trial via WhatsApp. Anda bisa langsung mencoba kasir sandbox sambil menunggu!
+                  Tim SakuNota akan memverifikasi pendaftaran Anda dan mengirimkan nomor lisensi trial via WhatsApp. Anda bisa langsung mencoba demo kasir sambil menunggu!
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2 pt-2">
@@ -1687,7 +1687,7 @@ export default function SakuNotaLandingPage() {
                     }}
                     className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-md text-center"
                   >
-                    Coba Demo Sandbox Kasir Sekarang →
+                    Coba Demo Kasir Sekarang →
                   </Link>
                   <button
                     type="button"

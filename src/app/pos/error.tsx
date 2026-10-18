@@ -63,7 +63,7 @@ export default function PosError({
             onClick={() => reset()}
             className="w-full py-3.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
           >
-            <span>🔄</span> Muat Ulang Kasir
+            Muat Ulang Kasir
           </button>
 
           <button
@@ -71,7 +71,7 @@ export default function PosError({
             onClick={handleStartDemo}
             className="w-full py-3.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
           >
-            <span>🎮</span> Buka Demo Sandbox Kasir
+            Buka Demo Kasir
           </button>
 
           <button

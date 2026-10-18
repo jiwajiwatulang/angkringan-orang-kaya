@@ -267,7 +267,7 @@ export function generateEscPosReceipt(
 
     const isDemoReceipt = receipt.isDemo || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sakunota_demo_mode') === 'true');
     if (isDemoReceipt) {
-      txt += "\n" + center("*** STRUK SIMULASI DEMO SANDBOX ***");
+      txt += "\n" + center("*** STRUK SIMULASI DEMO KASIR ***");
       txt += center("BUKAN BUKTI TRANSAKSI RIIL");
     }
   }
@@ -651,7 +651,7 @@ export function generateReceiptHtml(
 
         ${receipt.isDemo || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sakunota_demo_mode') === 'true') ? `
           <div class="status-box" style="border: 1px dashed #b45309; background: #fffbeb; color: #92400e; font-size: 10px; margin: 4px 0;">
-            *** STRUK SIMULASI DEMO SANDBOX ***<br />
+            *** STRUK SIMULASI DEMO KASIR ***<br />
             <span style="font-size: 9px; font-weight: normal;">BUKAN BUKTI TRANSAKSI RIIL</span>
           </div>
         ` : ''}
