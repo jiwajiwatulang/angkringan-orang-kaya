@@ -1766,6 +1766,29 @@ export async function resetAllTransactions() {
   return true;
 }
 
+export async function resetDemoSandbox() {
+  await resetAllTransactions();
+  await db.table('menuItems').clear();
+  const menusToInsert = initialData.menus.map(m => ({
+    nama: m.nama,
+    harga: m.harga,
+    kategori: m.kategori,
+    isSoldOut: m.isSoldOut,
+    urutan: m.urutan,
+    modifiers: (m as any).modifiers || getDefaultModifiersForCategory(m.kategori, m.nama)
+  }));
+  await db.table('menuItems').bulkAdd(menusToInsert);
+  const tables = await db.table('tables').toArray();
+  if (tables.length === 0) {
+    await resetStoreTables(8, 'Meja ');
+  } else {
+    for (const t of tables) {
+      await db.table('tables').update(t.id, { status: 'kosong' });
+    }
+  }
+  return true;
+}
+
 // --- FITUR CADANGAN (BACKUP) & PEMULIHAN (RESTORE) ---
 
 export async function exportAllData() {

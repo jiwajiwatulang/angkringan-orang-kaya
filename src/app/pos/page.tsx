@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { getStoreSettings, loadStoreSettingsAsync, subscribeStoreSettings, StoreSettings, isTableManagementEnabled } from '@/lib/settings';
-import { getMenus, getTables, getOrders, getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement, recordPayment, refundPartialPayment, getOrderPayments, exportAllData, clearTable } from '@/lib/api';
+import { getMenus, getTables, getOrders, getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement, recordPayment, refundPartialPayment, getOrderPayments, exportAllData, clearTable, resetDemoSandbox } from '@/lib/api';
 import { 
   generateEscPosReceipt, 
   generatePartialPaymentReceipt, 
@@ -143,7 +143,7 @@ export default function POSPage() {
     }
   };
 
-  const handleStartDemo = () => {
+  const handleStartDemo = async () => {
     if (typeof window !== 'undefined') {
       try {
         sessionStorage.setItem('sakunota_demo_mode', 'true');
@@ -161,7 +161,10 @@ export default function POSPage() {
       hoursRemaining: 168,
     });
     setIsLoading(true);
-    loadData();
+    try {
+      await resetDemoSandbox();
+    } catch (_) {}
+    await loadData();
   };
 
   const handleExitDemo = () => {
@@ -830,15 +833,20 @@ export default function POSPage() {
       try {
         const res = await checkCashierAccess();
         setAccessStatus(res);
+        if (res.isDemo) {
+          try {
+            await resetDemoSandbox();
+          } catch (_) {}
+        }
       } catch (e) {
         console.error("Gagal memeriksa akses kasir:", e);
       } finally {
         setIsAccessChecking(false);
+        await loadData();
       }
     }
     initAccess();
 
-    loadData();
     const interval = setInterval(loadData, 5000);
 
     const handlePop = () => {
@@ -2313,10 +2321,23 @@ export default function POSPage() {
       {accessStatus.isDemo && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex flex-wrap items-center justify-between text-xs text-amber-950 font-medium shrink-0 z-40">
           <div className="flex items-center gap-2">
-            <span className="font-black bg-amber-500 text-white px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase shadow-xs">🎮 SIMULASI DEMO</span>
-            <span>Mode Demo Terbatas: Data hanya disimpan sementara di sesi browser (Temporary Memory) dan di-reset saat keluar. Untuk penyimpanan permanen di memori HP, aktifkan Masa Coba (Trial) atau Lisensi Resmi.</span>
+            <span className="font-black bg-amber-500 text-white px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase shadow-xs">SIMULASI DEMO</span>
+            <span>Mode Demo Terbatas: Data hanya disimpan sementara di memori browser dan otomatis di-reset saat halaman dimuat ulang.</span>
           </div>
           <div className="flex items-center gap-2 mt-1 sm:mt-0 font-bold">
+            <button
+              type="button"
+              onClick={async () => {
+                setIsLoading(true);
+                try {
+                  await resetDemoSandbox();
+                } catch (_) {}
+                await loadData();
+              }}
+              className="text-amber-900 hover:text-amber-950 font-bold text-xs px-2.5 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300 transition-colors"
+            >
+              Reset Data Demo
+            </button>
             <button type="button" onClick={handleExitDemo} className="text-amber-900 hover:text-amber-950 font-bold text-xs px-2.5 py-1 rounded-lg bg-amber-200/60 hover:bg-amber-200 transition-colors">← Keluar Demo</button>
             <Link href="/?beli=true" className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1 rounded-lg shadow-xs">Beli Lisensi Rp50.000 →</Link>
           </div>
