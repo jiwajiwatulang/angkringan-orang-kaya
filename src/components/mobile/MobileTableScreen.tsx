@@ -190,7 +190,7 @@ export default function MobileTableScreen({
                 onClick={() => setActiveSheetTable(null)}
                 className="w-8 h-8 rounded-full bg-line text-muted hover:text-fg flex items-center justify-center font-bold text-xs"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -227,7 +227,7 @@ export default function MobileTableScreen({
                       }}
                       className="py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl active:scale-95 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm"
                     >
-                      <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12h13M10 8c2-4 8-4 10 0l1 4H8zM2 3v6M5 3v6M2 6h3M3.5 9v12M8 16h13" /></svg></span>
+                      <span><LineIcon name="food" /></span>
                       <span>{isPaid ? "Detail Pesanan" : "Bayar / Edit"}</span>
                     </button>
 
@@ -240,7 +240,7 @@ export default function MobileTableScreen({
                         }}
                         className="py-3 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl active:scale-95 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm"
                       >
-                        <span>✓</span>
+                        <span><LineIcon name="success" /></span>
                         <span>Lepas Meja</span>
                       </button>
                     ) : (

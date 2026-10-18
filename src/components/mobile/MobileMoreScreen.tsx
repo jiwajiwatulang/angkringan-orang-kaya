@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React from "react";
 import Link from "next/link";
@@ -102,7 +103,7 @@ export default function MobileMoreScreen({
             href="/admin"
             className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
           >
-            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16M7 16v-4M12 16V5M17 16V9" /></svg></span>
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><LineIcon name="chart" /></span>
             <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
               Laporan Omzet
             </span>
@@ -112,7 +113,7 @@ export default function MobileMoreScreen({
             href="/admin/menu"
             className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
           >
-            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12h13M10 8c2-4 8-4 10 0l1 4H8zM2 3v6M5 3v6M2 6h3M3.5 9v12M8 16h13" /></svg></span>
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><LineIcon name="food" /></span>
             <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
               Kelola Menu
             </span>
@@ -122,7 +123,7 @@ export default function MobileMoreScreen({
             href="/admin/pengaturan/printer"
             className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
           >
-            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 8V3h10v5M7 17H3V8h18v9h-4M7 14h10v7H7zM17 11h1" /></svg></span>
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><LineIcon name="printer" /></span>
             <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
               Printer Struk
             </span>
@@ -132,7 +133,7 @@ export default function MobileMoreScreen({
             href="/admin/pengaturan/data"
             className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
           >
-            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span>
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><LineIcon name="backup" /></span>
             <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
               Backup Data
             </span>
@@ -142,7 +143,7 @@ export default function MobileMoreScreen({
             href="/admin/pengaturan"
             className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
           >
-            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3l1 4 4 1 2 4-3 3v4l-4 2-3-3-4 1-3-4 2-3-1-4 4-2zM14 12a2 2 0 1 0-4 0 2 2 0 0 0 4 0" /></svg></span>
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><LineIcon name="settings" /></span>
             <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
               Info Toko
             </span>
@@ -152,7 +153,7 @@ export default function MobileMoreScreen({
             href="/panduan"
             className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
           >
-            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v16M12 5C9 2 4 3 2 4v15c4-1 7-1 10 2 3-3 6-3 10-2V4c-2-1-7-2-10 1" /></svg></span>
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><LineIcon name="guide" /></span>
             <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
               Buku Panduan
             </span>
@@ -162,7 +163,7 @@ export default function MobileMoreScreen({
             href="/admin/pengaturan/tentang"
             className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
           >
-            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 10a4 4 0 1 0-4 4M10 14l-7 7M5 19l2 2M8 16l2 2" /></svg></span>
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><LineIcon name="pin" /></span>
             <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
               Status Lisensi
             </span>
@@ -172,7 +173,7 @@ export default function MobileMoreScreen({
             href="/tentang"
             className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 active:scale-95 transition-all flex flex-col items-center text-center gap-1 shadow-2xs"
           >
-            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" /></svg></span>
+            <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg"><LineIcon name="info" /></span>
             <span className="text-[10px] font-extrabold text-slate-900 leading-tight">
               Tentang Kami
             </span>
@@ -187,7 +188,7 @@ export default function MobileMoreScreen({
           onClick={onOpenOnboarding}
           className="w-full py-2.5 rounded-2xl bg-blue-50 border border-blue-200 text-xs font-extrabold text-blue-700 hover:bg-blue-100 active:scale-95 transition-all text-center flex items-center justify-center gap-2"
         >
-          <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 10-13h-7z" /></svg></span>
+          <span><LineIcon name="lightning" /></span>
           <span>Buka Panduan Persiapan Awal Toko</span>
         </button>
       </div>}

@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React from "react";
 import Link from "next/link";
@@ -98,9 +99,7 @@ export default function TentangSakuNotaPage() {
             {/* Card 1 */}
             <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm hover:border-blue-400 hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs">
-                  ⚡
-                </div>
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs"><LineIcon name="lightning" /></div>
                 <h3 className="text-lg font-black text-slate-900">Seamless Connect</h3>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                   Hubungkan kasir langsung ke printer thermal Bluetooth 58mm atau 80mm secara instan. Cetak nota transaksi dalam waktu kurang dari 0,5 detik tanpa ribet instalasi driver.
@@ -114,9 +113,7 @@ export default function TentangSakuNotaPage() {
             {/* Card 2 */}
             <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm hover:border-blue-400 hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs">
-                  📈
-                </div>
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs"><LineIcon name="chart" /></div>
                 <h3 className="text-lg font-black text-slate-900">Built to Scale</h3>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                   Mampu menampung ribuan riwayat transaksi dan katalog menu tanpa melambat, berkat penyimpanan IndexedDB lokal berkinerja tinggi langsung di memori HP Anda.
@@ -130,9 +127,7 @@ export default function TentangSakuNotaPage() {
             {/* Card 3 */}
             <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm hover:border-blue-400 hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs">
-                  👥
-                </div>
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs"><LineIcon name="table" /></div>
                 <h3 className="text-lg font-black text-slate-900">People Centered</h3>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                   Tata letak antarmuka dirancang khusus untuk kasir, pelayan, dan juragan warung. Tombol sentuh besar, pencarian gesit, dan proses transaksi selesai dalam 3 sentuhan.
@@ -146,9 +141,7 @@ export default function TentangSakuNotaPage() {
             {/* Card 4 */}
             <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm hover:border-blue-400 hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs">
-                  🛡️
-                </div>
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs"><LineIcon name="security" /></div>
                 <h3 className="text-lg font-black text-slate-900">Reliable by Design</h3>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                   Kasir Anda tidak pernah menggantung karena masalah internet penyedia server. Semua kalkulasi diskon, pajak PBJT, dan nomor urut pesanan diproses lokal 100%.
@@ -162,9 +155,7 @@ export default function TentangSakuNotaPage() {
             {/* Card 5 */}
             <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm hover:border-blue-400 hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs">
-                  ⚡
-                </div>
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs"><LineIcon name="lightning" /></div>
                 <h3 className="text-lg font-black text-slate-900">Fast, Reliable, Easy to Use</h3>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                   Aplikasi sangat ringan dan dapat dipasang di layar utama Android atau iPhone layaknya aplikasi native tanpa memakan ruang memori yang besar.
@@ -178,9 +169,7 @@ export default function TentangSakuNotaPage() {
             {/* Card 6 */}
             <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm hover:border-blue-400 hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs">
-                  🔄
-                </div>
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-xl shadow-xs"><LineIcon name="sync" /></div>
                 <h3 className="text-lg font-black text-slate-900">Always Evolving</h3>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                   SakuNota terus diperbarui berdasarkan masukan nyata dari komunitas pengguna kuliner di lapangan, tanpa pernah membebankan biaya tambahan kepada pembeli lisensi.

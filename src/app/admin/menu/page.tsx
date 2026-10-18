@@ -50,12 +50,12 @@ function CatalogPanel() {
   const getCategoryIcon = (category: string, name?: string) => {
     const c = (category || '').toLowerCase();
     const n = (name || '').toLowerCase();
-    if (c.includes('minum') || n.includes('teh') || n.includes('kopi') || n.includes('jeruk') || n.includes('wedang') || n.includes('susu') || n.includes('es ') || n.includes('lemon')) return <LineIcon name="cashier" className="w-6 h-6" />;
-    if (c.includes('nasi') || n.includes('nasi') || n.includes('ayam') || n.includes('bebek') || n.includes('mie') || n.includes('soto') || n.includes('bakso')) return <LineIcon name="cashier" className="w-6 h-6" />;
-    if (c.includes('sate') || n.includes('sate') || n.includes('sunduk')) return <LineIcon name="cashier" className="w-6 h-6" />;
-    if (c.includes('snack') || c.includes('gorengan') || n.includes('mendoan') || n.includes('tahu') || n.includes('tempe') || n.includes('pisang') || n.includes('bakwan')) return <LineIcon name="cashier" className="w-6 h-6" />;
-    if (c.includes('roti') || n.includes('roti') || n.includes('bakar')) return <LineIcon name="cashier" className="w-6 h-6" />;
-    return <LineIcon name="cashier" className="w-6 h-6" />;
+    if (c.includes('minum') || n.includes('teh') || n.includes('kopi') || n.includes('jeruk') || n.includes('wedang') || n.includes('susu') || n.includes('es ') || n.includes('lemon')) return <LineIcon name="drink" className="w-6 h-6" />;
+    if (c.includes('nasi') || n.includes('nasi') || n.includes('ayam') || n.includes('bebek') || n.includes('mie') || n.includes('soto') || n.includes('bakso')) return <LineIcon name="food" className="w-6 h-6" />;
+    if (c.includes('sate') || n.includes('sate') || n.includes('sunduk')) return <LineIcon name="skewers" className="w-6 h-6" />;
+    if (c.includes('snack') || c.includes('gorengan') || n.includes('mendoan') || n.includes('tahu') || n.includes('tempe') || n.includes('pisang') || n.includes('bakwan')) return <LineIcon name="snack" className="w-6 h-6" />;
+    if (c.includes('roti') || n.includes('roti') || n.includes('bakar')) return <LineIcon name="bread" className="w-6 h-6" />;
+    return <LineIcon name="catalog" className="w-6 h-6" />;
   };
 
   // Multi-select for Bulk Actions
@@ -684,7 +684,7 @@ function CatalogPanel() {
             className="px-3.5 py-2.5 bg-card hover:bg-line active:scale-95 text-fg font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-sm"
             title="Download seluruh daftar menu dalam file Excel"
           >
-            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span>
+            <span><LineIcon name="export" /></span>
             <span>Export Excel</span>
           </button>
 
@@ -699,7 +699,7 @@ function CatalogPanel() {
             className="px-3.5 py-2.5 bg-blue-50 hover:bg-blue-100 active:scale-95 text-accent-text font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all border border-blue-200"
             title="Import menu secara massal dari Excel atau CSV"
           >
-            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16M7 16v-4M12 16V5M17 16V9" /></svg></span>
+            <span><LineIcon name="import" /></span>
             <span>Import Excel / CSV</span>
           </button>
 
@@ -731,7 +731,7 @@ function CatalogPanel() {
               onClick={() => setSearchQuery("")}
               className="absolute right-3 top-2.5 text-xs text-muted hover:text-muted font-bold"
             >
-              ✕
+              ×
             </button>
           )}
         </div>
@@ -826,7 +826,7 @@ function CatalogPanel() {
                     viewMode === "table" ? "bg-accent text-white shadow-sm" : "text-muted hover:text-fg"
                   }`}
                 >
-                  <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
+                  <span><LineIcon name="receipt" /></span>
                   <span>Tabel</span>
                 </button>
                 <button
@@ -836,7 +836,7 @@ function CatalogPanel() {
                     viewMode === "grid" ? "bg-accent text-white shadow-sm" : "text-muted hover:text-fg"
                   }`}
                 >
-                  <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" /></svg></span>
+                  <span><LineIcon name="catalog" /></span>
                   <span>Grid</span>
                 </button>
               </div>
@@ -984,13 +984,13 @@ function CatalogPanel() {
                               onClick={() => handleOpenEdit(menu)}
                               className="w-8 h-8 rounded-xl bg-card hover:bg-line text-slate-300 flex items-center justify-center text-xs font-bold transition-colors"
                               title="Edit Menu"
-                            ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20l4-1 12-12-3-3L5 16zM14 7l3 3" /></svg></button>
+                            ><LineIcon name="edit" /></button>
                             <button
                               type="button"
                               onClick={() => setMenuToDelete(menu)}
                               className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 flex items-center justify-center text-xs font-bold transition-colors"
                               title="Hapus Menu"
-                            ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg></button>
+                            ><LineIcon name="delete" /></button>
                           </div>
                         </td>
                       </tr>
@@ -1089,13 +1089,13 @@ function CatalogPanel() {
                           onClick={() => handleOpenEdit(menu)}
                           className="w-8 h-8 rounded-xl bg-card hover:bg-line text-slate-300 flex items-center justify-center text-xs font-bold transition-colors"
                           title="Edit Menu"
-                        ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20l4-1 12-12-3-3L5 16zM14 7l3 3" /></svg></button>
+                        ><LineIcon name="edit" /></button>
                         <button
                           type="button"
                           onClick={() => setMenuToDelete(menu)}
                           className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 flex items-center justify-center text-xs font-bold transition-colors"
                           title="Hapus Menu"
-                        ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg></button>
+                        ><LineIcon name="delete" /></button>
                       </div>
                     </div>
                   </div>
@@ -1164,14 +1164,14 @@ function CatalogPanel() {
         <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-[500px] z-40 bg-card/95 backdrop-blur-md text-white p-3.5 rounded-2xl sm:rounded-3xl shadow-2xl border border-line/80 animate-in slide-in-from-bottom-5 duration-200 flex flex-col gap-2">
           <div className="flex items-center justify-between border-b border-line/60 pb-2">
             <span className="text-xs font-black text-accent-text flex items-center gap-1.5">
-              <span>✓</span>
+              <span><LineIcon name="success" /></span>
               <span>{selectedMenuIds.length} Menu Terpilih</span>
             </span>
             <button
               onClick={() => setSelectedMenuIds([])}
               className="text-[11px] text-muted hover:text-white font-bold transition-colors"
             >
-              Batal Pilih ✕
+              Batal Pilih ×
             </button>
           </div>
 
@@ -1185,7 +1185,7 @@ function CatalogPanel() {
               }}
               className="px-2.5 py-1.5 bg-slate-100 text-slate-800 hover:bg-slate-200 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
             >
-              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 5h20v14H2zM2 9h20M6 15h4" /></svg></span>
+              <span><LineIcon name="card" /></span>
               <span>Ubah Harga</span>
             </button>
 
@@ -1200,7 +1200,7 @@ function CatalogPanel() {
               }}
               className="px-2.5 py-1.5 bg-slate-100 text-slate-800 hover:bg-slate-200 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
             >
-              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
+              <span><LineIcon name="receipt" /></span>
               <span>Ubah Kategori</span>
             </button>
 
@@ -1210,7 +1210,7 @@ function CatalogPanel() {
               onClick={() => handleBulkToggleStock(false)}
               className="px-2.5 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
             >
-              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12a8 8 0 1 0-16 0 8 8 0 0 0 16 0M8 12l3 3 5-6" /></svg></span>
+              <span><LineIcon name="success" /></span>
               <span>Tersedia</span>
             </button>
 
@@ -1220,7 +1220,7 @@ function CatalogPanel() {
               onClick={() => handleBulkToggleStock(true)}
               className="px-2.5 py-1.5 bg-amber-800/80 hover:bg-amber-700 text-amber-200 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
             >
-              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12a8 8 0 1 0-16 0 8 8 0 0 0 16 0M8 12l3 3 5-6" /></svg></span>
+              <span><LineIcon name="success" /></span>
               <span>Habis</span>
             </button>
 
@@ -1230,7 +1230,7 @@ function CatalogPanel() {
               onClick={() => setIsBulkDeleteOpen(true)}
               className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all ml-auto"
             >
-              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg></span>
+              <span><LineIcon name="delete" /></span>
               <span>Hapus</span>
             </button>
           </div>
@@ -1466,7 +1466,7 @@ function CatalogPanel() {
                 onClick={() => setIsImportOpen(false)}
                 className="w-8 h-8 rounded-full bg-card text-muted hover:text-fg flex items-center justify-center text-sm font-bold"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -1482,7 +1482,7 @@ function CatalogPanel() {
                     onClick={() => downloadMenuTemplate("xlsx")}
                     className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                   >
-                    <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span>
+                    <span><LineIcon name="export" /></span>
                     <span>Download Template Excel (.xlsx)</span>
                   </button>
                   <button
@@ -1490,7 +1490,7 @@ function CatalogPanel() {
                     onClick={() => downloadMenuTemplate("csv")}
                     className="px-3 py-1.5 bg-slate-100 text-slate-800 hover:bg-slate-200 text-fg rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
                   >
-                    <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
+                    <span><LineIcon name="receipt" /></span>
                     <span>Download Template CSV</span>
                   </button>
                 </div>
@@ -1687,7 +1687,7 @@ function CatalogPanel() {
             <div className="flex justify-between items-start pb-3 border-b border-line">
               <div>
                 <h3 className="text-lg font-black text-fg flex items-center gap-2">
-                  <span>{editingMenu ? "✏️ Edit Menu" : "➕ Tambah Menu Baru"}</span>
+                  <span>{editingMenu ? " Edit Menu" : " Tambah Menu Baru"}</span>
                 </h3>
                 <p className="text-xs text-muted mt-0.5">
                   {editingMenu
@@ -1700,7 +1700,7 @@ function CatalogPanel() {
                 onClick={handleCloseSheet}
                 className="w-8 h-8 rounded-full bg-card hover:bg-line text-muted hover:text-fg flex items-center justify-center text-sm font-bold transition-colors"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -1830,12 +1830,12 @@ function CatalogPanel() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs flex items-center gap-1.5">
-                        <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12a8 8 0 1 0-16 0 8 8 0 0 0 16 0M8 12l3 3 5-6" /></svg></span>
+                        <span><LineIcon name="success" /></span>
                         <span>Tersedia</span>
                       </span>
                       {!formIsSoldOut && (
                         <span className="text-emerald-400 font-bold text-[10px] bg-emerald-900/60 px-1.5 py-0.5 rounded-md">
-                          ✓ Aktif
+                          Aktif
                         </span>
                       )}
                     </div>
@@ -1856,12 +1856,12 @@ function CatalogPanel() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs flex items-center gap-1.5">
-                        <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12a8 8 0 1 0-16 0 8 8 0 0 0 16 0M8 12l3 3 5-6" /></svg></span>
+                        <span><LineIcon name="success" /></span>
                         <span>Tidak Tersedia</span>
                       </span>
                       {formIsSoldOut && (
                         <span className="text-rose-400 font-bold text-[10px] bg-rose-900/60 px-1.5 py-0.5 rounded-md">
-                          ✓ Aktif
+                          Aktif
                         </span>
                       )}
                     </div>
@@ -1917,7 +1917,7 @@ function CatalogPanel() {
                               : "bg-surface border-line text-muted hover:text-fg"
                           }`}
                         >
-                          <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12h13M10 8c2-4 8-4 10 0l1 4H8zM2 3v6M5 3v6M2 6h3M3.5 9v12M8 16h13" /></svg></span>
+                          <span><LineIcon name="food" /></span>
                           <span>Tingkat Pedas</span>
                         </button>
 
@@ -1930,7 +1930,7 @@ function CatalogPanel() {
                               : "bg-surface border-line text-muted hover:text-fg"
                           }`}
                         >
-                          <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12h13M10 8c2-4 8-4 10 0l1 4H8zM2 3v6M5 3v6M2 6h3M3.5 9v12M8 16h13" /></svg></span>
+                          <span><LineIcon name="food" /></span>
                           <span>Tambah Lalapan (+2k)</span>
                         </button>
 
@@ -1943,7 +1943,7 @@ function CatalogPanel() {
                               : "bg-surface border-line text-muted hover:text-fg"
                           }`}
                         >
-                          <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12h13M10 8c2-4 8-4 10 0l1 4H8zM2 3v6M5 3v6M2 6h3M3.5 9v12M8 16h13" /></svg></span>
+                          <span><LineIcon name="food" /></span>
                           <span>Tingkat Manis</span>
                         </button>
 
@@ -1956,7 +1956,7 @@ function CatalogPanel() {
                               : "bg-surface border-line text-muted hover:text-fg"
                           }`}
                         >
-                          <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12h13M10 8c2-4 8-4 10 0l1 4H8zM2 3v6M5 3v6M2 6h3M3.5 9v12M8 16h13" /></svg></span>
+                          <span><LineIcon name="food" /></span>
                           <span>Es / Hangat</span>
                         </button>
                       </div>
@@ -2093,7 +2093,7 @@ function CatalogPanel() {
                                     className="w-7 h-7 rounded-lg bg-surface text-muted hover:text-rose-400 disabled:opacity-30 flex items-center justify-center text-xs font-bold"
                                     title="Hapus opsi ini"
                                   >
-                                    ✕
+                                    ×
                                   </button>
                                 </div>
                               ))}
@@ -2117,7 +2117,7 @@ function CatalogPanel() {
                       onClick={handleAddCustomGroup}
                       className="w-full py-2.5 bg-card hover:bg-line border border-dashed border-line text-xs font-bold text-fg rounded-2xl transition-all flex items-center justify-center gap-1.5"
                     >
-                      <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18M3 12h18" /></svg></span>
+                      <span><LineIcon name="add" /></span>
                       <span>Buat Grup Pilihan Baru (Kustom)</span>
                     </button>
                   </div>

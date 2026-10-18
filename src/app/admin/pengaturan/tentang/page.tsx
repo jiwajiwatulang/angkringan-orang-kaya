@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -27,7 +28,7 @@ export default function PengaturanTentangPage() {
     try {
       const res = await downloadAllOfflineAssets();
       if (res.success) {
-        setOfflineStatusMsg("✅ Kasir 100% siap digunakan tanpa internet.");
+        setOfflineStatusMsg(" Kasir 100% siap digunakan tanpa internet.");
       } else {
         setOfflineStatusMsg(`Belum siap offline: ${res.failed.length + res.missingAfterDownload.length} berkas gagal atau belum tersimpan. Sambungkan internet dan coba lagi.`);
       }
@@ -201,7 +202,7 @@ export default function PengaturanTentangPage() {
           className="p-4 rounded-2xl bg-surface border border-line hover:border-emerald-500 transition-colors flex items-center justify-between group"
         >
           <div className="flex items-center gap-3">
-            <span className="text-2xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg></span>
+            <span className="text-2xl"><LineIcon name="info" /></span>
             <div>
               <strong className="text-fg block group-hover:text-emerald-500 transition-colors">
                 Bantuan WhatsApp
@@ -217,7 +218,7 @@ export default function PengaturanTentangPage() {
           className="p-4 rounded-2xl bg-surface border border-line hover:border-accent transition-colors flex items-center justify-between group"
         >
           <div className="flex items-center gap-3">
-            <span className="text-2xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v16M12 5C9 2 4 3 2 4v15c4-1 7-1 10 2 3-3 6-3 10-2V4c-2-1-7-2-10 1" /></svg></span>
+            <span className="text-2xl"><LineIcon name="guide" /></span>
             <div>
               <strong className="text-fg block group-hover:text-accent transition-colors">
                 Buku Panduan
@@ -272,7 +273,7 @@ export default function PengaturanTentangPage() {
                 onClick={() => setIsPrivacyModalOpen(false)}
                 className="w-7 h-7 rounded-full bg-card hover:bg-line text-muted text-xs flex items-center justify-center font-bold"
               >
-                ✕
+                ×
               </button>
             </div>
             <div className="text-xs text-muted space-y-2 leading-relaxed">
@@ -316,7 +317,7 @@ export default function PengaturanTentangPage() {
                 onClick={() => setIsTermsModalOpen(false)}
                 className="w-7 h-7 rounded-full bg-card hover:bg-line text-muted text-xs flex items-center justify-center font-bold"
               >
-                ✕
+                ×
               </button>
             </div>
             <div className="text-xs text-muted space-y-2 leading-relaxed">

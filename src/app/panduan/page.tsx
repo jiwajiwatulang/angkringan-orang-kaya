@@ -314,7 +314,7 @@ export default function PanduanPage() {
                   onClick={() => setSearchQuery("")}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs font-bold"
                 >
-                  ✕
+                  ×
                 </button>
               )}
             </div>
@@ -427,7 +427,7 @@ export default function PanduanPage() {
                 className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold transition-colors"
                 title="Tutup"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -462,7 +462,7 @@ export default function PanduanPage() {
 
                     {article.tips && (
                       <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-start gap-2 text-[11px] text-emerald-800">
-                        <span className="font-bold">💡 Tips:</span>
+                        <span className="font-bold"> Tips:</span>
                         <span>{article.tips}</span>
                       </div>
                     )}

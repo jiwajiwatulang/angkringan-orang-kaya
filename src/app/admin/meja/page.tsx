@@ -289,7 +289,7 @@ export default function AdminMejaPage() {
             className="px-3.5 py-2.5 bg-blue-50 hover:bg-blue-100 active:scale-95 text-accent-text font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all border border-blue-200"
             title="Tambah banyak meja sekaligus (contoh: Meja 1 sampai 20)"
           >
-            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 10-13h-7z" /></svg></span>
+            <span><LineIcon name="lightning" /></span>
             <span>Tambah Massal</span>
           </button>
 
@@ -408,7 +408,7 @@ export default function AdminMejaPage() {
                     onClick={() => setTableToDelete(table)}
                     className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 flex items-center justify-center text-xs font-bold transition-colors shrink-0"
                     title="Hapus Meja"
-                  ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg></button>
+                  ><LineIcon name="delete" /></button>
                 </div>
               </div>
             );
@@ -421,14 +421,14 @@ export default function AdminMejaPage() {
         <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-[460px] z-40 bg-card/95 backdrop-blur-md text-white p-3.5 rounded-2xl sm:rounded-3xl shadow-2xl border border-line/80 animate-in slide-in-from-bottom-5 duration-200 flex flex-col gap-2">
           <div className="flex items-center justify-between border-b border-line/60 pb-2">
             <span className="text-xs font-black text-accent-text flex items-center gap-1.5">
-              <span>✓</span>
+              <span><LineIcon name="success" /></span>
               <span>{selectedTableIds.length} Meja Dipilih</span>
             </span>
             <button
               onClick={() => setSelectedTableIds([])}
               className="text-[11px] text-muted hover:text-white font-bold transition-colors"
             >
-              Batal Pilih ✕
+              Batal Pilih ×
             </button>
           </div>
 
@@ -442,7 +442,7 @@ export default function AdminMejaPage() {
               }}
               className="flex-1 py-2 bg-slate-100 text-slate-800 hover:bg-slate-200 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
             >
-              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20l4-1 12-12-3-3L5 16zM14 7l3 3" /></svg></span>
+              <span><LineIcon name="edit" /></span>
               <span>Rename Massal</span>
             </button>
 
@@ -452,7 +452,7 @@ export default function AdminMejaPage() {
               onClick={() => setIsBulkDeleteOpen(true)}
               className="flex-1 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
             >
-              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg></span>
+              <span><LineIcon name="delete" /></span>
               <span>Hapus Terpilih</span>
             </button>
           </div>

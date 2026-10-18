@@ -254,7 +254,7 @@ export default function PengaturanKeamananPage() {
             </p>
           </div>
           <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 shrink-0">
-            {storeSettings.recoveryCodeHash ? "✓ Aktif (SHA-256)" : "Belum Dibuat"}
+            {storeSettings.recoveryCodeHash ? "Aktif (SHA-256)" : "Belum Dibuat"}
           </span>
         </div>
 
@@ -342,7 +342,7 @@ export default function PengaturanKeamananPage() {
                 }}
                 className="px-4 py-2 rounded-xl bg-card border border-line text-xs font-bold text-fg hover:border-accent flex items-center gap-2 transition-all"
               >
-                <span>{codeCopied ? "✓ Berhasil Disalin" : " Salin Kode"}</span>
+                <span>{codeCopied ? "Berhasil Disalin" : " Salin Kode"}</span>
               </button>
             </div>
 

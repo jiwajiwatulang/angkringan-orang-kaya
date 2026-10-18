@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useRef, useState } from "react";
 import { compressPaymentProof, formatBytes } from "@/lib/imageUtils";
@@ -46,7 +47,7 @@ export default function PaymentProofUpload({
     <div className="mt-3 p-3.5 bg-surface/80 rounded-2xl border border-line">
       <div className="flex justify-between items-center mb-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-sm">🧾</span>
+          <span className="text-sm"><LineIcon name="receipt" /></span>
           <label className="text-xs font-bold text-slate-300">
             Bukti Pembayaran ({paymentMethod})
           </label>
@@ -83,7 +84,7 @@ export default function PaymentProofUpload({
 
       {isCompressing && (
         <div className="py-4 text-center">
-          <div className="inline-block animate-spin text-lg mb-1">⏳</div>
+          <div className="inline-block animate-spin text-lg mb-1"><LineIcon name="waiting" /></div>
           <p className="text-xs text-muted font-semibold animate-pulse">
             Mengompresi gambar bukti bayar...
           </p>
@@ -91,8 +92,7 @@ export default function PaymentProofUpload({
       )}
 
       {errorMessage && (
-        <div className="mb-2 p-2 bg-rose-950/40 text-rose-400 text-xs rounded-xl border border-rose-800">
-          ⚠️ {errorMessage}
+        <div className="mb-2 p-2 bg-rose-950/40 text-rose-400 text-xs rounded-xl border border-rose-800"><LineIcon name="warning" />{errorMessage}
         </div>
       )}
 
@@ -111,9 +111,7 @@ export default function PaymentProofUpload({
               alt={proof.fileName}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform"
             />
-            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
-              🔍
-            </div>
+            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs"><LineIcon name="search" /></div>
           </div>
 
           <div className="flex-1 min-w-0">
@@ -124,7 +122,7 @@ export default function PaymentProofUpload({
               Ukuran: {formatBytes(proof.fileSize)}
             </p>
             <span className="inline-block text-[9px] font-black text-accent-text mt-0.5">
-              ✓ Siap Disimpan
+              Siap Disimpan
             </span>
           </div>
 
@@ -155,7 +153,7 @@ export default function PaymentProofUpload({
               disabled={disabled}
               className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-card border border-line text-slate-300 hover:bg-line text-xs font-bold transition-all shadow-sm active:scale-95"
             >
-              <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h5l2-3h4l2 3h5v15H3zM16 13a4 4 0 1 0-8 0 4 4 0 0 0 8 0" /></svg></span>
+              <span className="text-base"><LineIcon name="camera" /></span>
               <span>Ambil Foto</span>
             </button>
             <button
@@ -164,7 +162,7 @@ export default function PaymentProofUpload({
               disabled={disabled}
               className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-card border border-line text-slate-300 hover:bg-line text-xs font-bold transition-all shadow-sm active:scale-95"
             >
-              <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h5l2-3h4l2 3h5v15H3zM16 13a4 4 0 1 0-8 0 4 4 0 0 0 8 0" /></svg></span>
+              <span className="text-base"><LineIcon name="camera" /></span>
               <span>Dari Galeri</span>
             </button>
           </div>
@@ -193,7 +191,7 @@ export default function PaymentProofUpload({
                 onClick={() => setIsZoomOpen(false)}
                 className="w-7 h-7 rounded-full bg-card text-slate-300 flex items-center justify-center font-bold text-xs"
               >
-                ✕
+                ×
               </button>
             </div>
             <div className="p-3 max-h-[70vh] overflow-auto flex items-center justify-center bg-app">

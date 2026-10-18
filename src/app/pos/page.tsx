@@ -141,7 +141,7 @@ export default function POSPage() {
         typeof navigator !== 'undefined' && navigator.userAgent.includes('Mobile') ? 'HP Kasir' : 'Desktop Kasir'
       );
       if (res.success) {
-        setActivationNotice({ type: 'success', message: '🎉 Aktivasi berhasil! Menyiapkan panduan pengaturan toko Anda...' });
+        setActivationNotice({ type: 'success', message: 'Aktivasi berhasil! Menyiapkan panduan pengaturan toko Anda...' });
         const refreshed = await checkCashierAccess(true);
         setAccessStatus(refreshed);
         setIsOnboardingOpen(canOpenStoreOnboarding(refreshed));
@@ -296,12 +296,12 @@ export default function POSPage() {
   const getCategoryIcon = (category: string, name?: string) => {
     const c = (category || '').toLowerCase();
     const n = (name || '').toLowerCase();
-    if (c.includes('minum') || n.includes('teh') || n.includes('kopi') || n.includes('jeruk') || n.includes('wedang') || n.includes('susu') || n.includes('es ') || n.includes('lemon')) return <LineIcon name="cashier" className="w-6 h-6" />;
-    if (c.includes('nasi') || n.includes('nasi') || n.includes('ayam') || n.includes('bebek') || n.includes('mie') || n.includes('soto') || n.includes('bakso')) return <LineIcon name="cashier" className="w-6 h-6" />;
-    if (c.includes('sate') || n.includes('sate') || n.includes('sunduk')) return <LineIcon name="cashier" className="w-6 h-6" />;
-    if (c.includes('snack') || c.includes('gorengan') || n.includes('mendoan') || n.includes('tahu') || n.includes('tempe') || n.includes('pisang') || n.includes('bakwan')) return <LineIcon name="cashier" className="w-6 h-6" />;
-    if (c.includes('roti') || n.includes('roti') || n.includes('bakar')) return <LineIcon name="cashier" className="w-6 h-6" />;
-    return <LineIcon name="cashier" className="w-6 h-6" />;
+    if (c.includes('minum') || n.includes('teh') || n.includes('kopi') || n.includes('jeruk') || n.includes('wedang') || n.includes('susu') || n.includes('es ') || n.includes('lemon')) return <LineIcon name="drink" className="w-6 h-6" />;
+    if (c.includes('nasi') || n.includes('nasi') || n.includes('ayam') || n.includes('bebek') || n.includes('mie') || n.includes('soto') || n.includes('bakso')) return <LineIcon name="food" className="w-6 h-6" />;
+    if (c.includes('sate') || n.includes('sate') || n.includes('sunduk')) return <LineIcon name="skewers" className="w-6 h-6" />;
+    if (c.includes('snack') || c.includes('gorengan') || n.includes('mendoan') || n.includes('tahu') || n.includes('tempe') || n.includes('pisang') || n.includes('bakwan')) return <LineIcon name="snack" className="w-6 h-6" />;
+    if (c.includes('roti') || n.includes('roti') || n.includes('bakar')) return <LineIcon name="bread" className="w-6 h-6" />;
+    return <LineIcon name="catalog" className="w-6 h-6" />;
   };
 
   // Payment & Modal State
@@ -1252,7 +1252,7 @@ export default function POSPage() {
       await loadData();
 
       if (res.isFullyPaid) {
-        alert("🎉 Selamat! Seluruh tagihan Nota #A-" + splitBillTargetOrder.id + " telah LUNAS.");
+        alert(" Selamat! Seluruh tagihan Nota #A-" + splitBillTargetOrder.id + " telah LUNAS.");
         setIsSplitBillModalOpen(false);
         setSplitBillTargetOrder(null);
         resetCart();
@@ -1821,7 +1821,7 @@ export default function POSPage() {
                     onClick={() => { handleClearTable(); setIsMobileCartOpen(false); }} 
                     className="w-full mt-4 py-3.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-extrabold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
                   >
-                    <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
+                    <span><LineIcon name="receipt" /></span>
                     <span>Kosongkan Meja (Lepas)</span>
                   </button>
                 </div>
@@ -1989,7 +1989,7 @@ export default function POSPage() {
                   aria-label="Tutup keranjang"
                   title="Tutup dan kembali ke daftar menu"
                 >
-                  ✕
+                  ×
                 </button>
               </div>
             </div>
@@ -2043,7 +2043,7 @@ export default function POSPage() {
                     onClick={() => { handleClearTable(); setIsMobileCartOpen(false); }} 
                     className="w-full mt-3 py-2.5 sm:py-3.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-extrabold text-xs sm:text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
                   >
-                    <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
+                    <span><LineIcon name="receipt" /></span>
                     <span>Kosongkan Meja (Lepas)</span>
                   </button>
                 </div>
@@ -2295,7 +2295,7 @@ export default function POSPage() {
                     onClick={handleExportBackupFromPos}
                     className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-bold px-4 py-2 rounded-xl text-xs transition-colors"
                   >
-                    <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span> Unduh Cadangan Data (.JSON)
+                    <span><LineIcon name="export" /></span> Unduh Cadangan Data (.JSON)
                   </button>
                   {backupSuccessNotice && (
                     <span className="text-xs text-emerald-700 font-bold">{backupSuccessNotice}</span>
@@ -2311,28 +2311,28 @@ export default function POSPage() {
               href="/?beli=true"
               className="bg-blue-600 hover:bg-blue-700 text-white font-black p-3 rounded-xl text-xs transition-colors flex flex-col items-center justify-center gap-1 shadow-xs"
             >
-              <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 5h20v14H2zM2 9h20M6 15h4" /></svg></span>
+              <span className="text-base"><LineIcon name="card" /></span>
               <span>Beli Lisensi Rp50rb</span>
             </Link>
             <Link
               href="/?beta=register"
               className="bg-white hover:bg-blue-50 border border-slate-200 text-slate-800 font-bold p-3 rounded-xl text-xs transition-colors flex flex-col items-center justify-center gap-1"
             >
-              <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20l4-1 12-12-3-3L5 16zM14 7l3 3" /></svg></span>
+              <span className="text-base"><LineIcon name="edit" /></span>
               <span>Trial 7 Hari</span>
             </Link>
             <Link
               href="/panduan"
               className="bg-white hover:bg-blue-50 border border-slate-200 text-slate-800 font-bold p-3 rounded-xl text-xs transition-colors flex flex-col items-center justify-center gap-1"
             >
-              <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v16M12 5C9 2 4 3 2 4v15c4-1 7-1 10 2 3-3 6-3 10-2V4c-2-1-7-2-10 1" /></svg></span>
+              <span className="text-base"><LineIcon name="guide" /></span>
               <span>Buku Panduan</span>
             </Link>
             <Link
               href="/tentang"
               className="bg-white hover:bg-blue-50 border border-slate-200 text-slate-800 font-bold p-3 rounded-xl text-xs transition-colors flex flex-col items-center justify-center gap-1"
             >
-              <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" /></svg></span>
+              <span className="text-base"><LineIcon name="demo" /></span>
               <span>Tentang Kami</span>
             </Link>
           </div>
@@ -2433,7 +2433,7 @@ export default function POSPage() {
                 onClick={handleClosePaymentModal}
                 className="w-9 h-9 rounded-full bg-line text-muted hover:text-fg flex items-center justify-center text-sm font-bold active:scale-90 transition-all"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -3008,7 +3008,7 @@ export default function POSPage() {
                   : 'text-muted hover:text-fg hover:bg-surface'
               }`}
             >
-              <span className="text-sm"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8h14v10H3zM17 9h4v5h-4M2 21h17M6 2v3M11 2v3" /></svg></span>
+              <span className="text-sm"><LineIcon name="cashier" /></span>
               <span>Kasir & Menu</span>
             </button>
             {isTableManagementEnabled(storeSettings) && (
@@ -3021,7 +3021,7 @@ export default function POSPage() {
                     : 'text-muted hover:text-fg hover:bg-surface'
                 }`}
               >
-                <span className="text-sm"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12h13M10 8c2-4 8-4 10 0l1 4H8zM2 3v6M5 3v6M2 6h3M3.5 9v12M8 16h13" /></svg></span>
+                <span className="text-sm"><LineIcon name="food" /></span>
                 <span>Kelola Meja</span>
               </button>
             )}
@@ -3029,28 +3029,28 @@ export default function POSPage() {
               href={accessStatus.isDemo ? "/admin/transaksi?demo=true" : "/admin/transaksi"}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
             >
-              <span className="text-sm"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
+              <span className="text-sm"><LineIcon name="receipt" /></span>
               <span>Riwayat Transaksi</span>
             </Link>
             <Link
               href={accessStatus.isDemo ? "/admin/shift?demo=true" : "/admin/shift"}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
             >
-              <span className="text-sm"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 12v3h4v-3" /></svg></span>
+              <span className="text-sm"><LineIcon name="shift" /></span>
               <span>Shift & Kas Laci</span>
             </Link>
             <Link
               href={accessStatus.isDemo ? "/admin/menu?demo=true" : "/admin/menu"}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
             >
-              <span className="text-sm"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 12v3h4v-3" /></svg></span>
+              <span className="text-sm"><LineIcon name="shift" /></span>
               <span>Katalog & Stok</span>
             </Link>
             <Link
               href={accessStatus.isDemo ? "/admin/pengaturan?demo=true" : "/admin/pengaturan"}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
             >
-              <span className="text-sm"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3l1 4 4 1 2 4-3 3v4l-4 2-3-3-4 1-3-4 2-3-1-4 4-2zM14 12a2 2 0 1 0-4 0 2 2 0 0 0 4 0" /></svg></span>
+              <span className="text-sm"><LineIcon name="settings" /></span>
               <span>Pengaturan POS</span>
             </Link>
           </div>
@@ -3765,7 +3765,7 @@ export default function POSPage() {
                 onClick={handleCloseModifiers}
                 className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 flex items-center justify-center text-sm font-black active:scale-90 transition-all shrink-0"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -3832,7 +3832,7 @@ export default function POSPage() {
                                 <span className={`w-4 h-4 rounded-md border flex items-center justify-center text-[10px] ${
                                   isChecked ? 'bg-blue-600 border-blue-600 text-white font-black' : 'border-slate-300 bg-white'
                                 }`}>
-                                  {isChecked ? '✓' : ''}
+                                  {isChecked && <LineIcon name="success" />}
                                 </span>
                                 <span className="text-xs font-bold text-slate-900">{opt.nama}</span>
                               </div>
@@ -3928,9 +3928,9 @@ export default function POSPage() {
             }`}>
               <p className="text-[11px] font-bold uppercase tracking-wider">Hasil Rekonsiliasi Kas Fisik</p>
               <p className="text-xl font-black mt-1">
-                {(blindCloseResult.cashDifference === 0 || blindCloseResult.difference === 0) && '🔵 COCOK / PAS (Rp 0)'}
-                {(blindCloseResult.cashDifference || blindCloseResult.difference || 0) > 0 && `🟡 LEBIH (+Rp ${(blindCloseResult.cashDifference || blindCloseResult.difference).toLocaleString('id-ID')})`}
-                {(blindCloseResult.cashDifference || blindCloseResult.difference || 0) < 0 && `🔴 KURANG (-Rp ${Math.abs(blindCloseResult.cashDifference || blindCloseResult.difference).toLocaleString('id-ID')})`}
+                {(blindCloseResult.cashDifference === 0 || blindCloseResult.difference === 0) && ' COCOK / PAS (Rp 0)'}
+                {(blindCloseResult.cashDifference || blindCloseResult.difference || 0) > 0 && ` LEBIH (+Rp ${(blindCloseResult.cashDifference || blindCloseResult.difference).toLocaleString('id-ID')})`}
+                {(blindCloseResult.cashDifference || blindCloseResult.difference || 0) < 0 && ` KURANG (-Rp ${Math.abs(blindCloseResult.cashDifference || blindCloseResult.difference).toLocaleString('id-ID')})`}
               </p>
             </div>
 
@@ -4023,8 +4023,7 @@ export default function POSPage() {
                 <span> Cadangkan Data Kasir (Unduh JSON)</span>
               </button>
               {backupSuccessNotice && (
-                <p className="text-[11px] font-bold text-center text-accent-text animate-in fade-in">
-                  ✓ {backupSuccessNotice}
+                <p className="text-[11px] font-bold text-center text-accent-text animate-in fade-in"><LineIcon name="success" />{backupSuccessNotice}
                 </p>
               )}
             </div>
@@ -4061,7 +4060,7 @@ export default function POSPage() {
                 onClick={handleCloseSplitBill}
                 className="w-8 h-8 rounded-full bg-line text-muted hover:text-fg flex items-center justify-center text-sm font-bold"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -4142,7 +4141,7 @@ export default function POSPage() {
 
                           {isFullyPaid ? (
                             <span className="text-[10px] font-bold text-accent-text bg-accent/60 px-2 py-1 rounded-lg">
-                              ✓ Lunas
+                              Lunas
                             </span>
                           ) : (
                             <div className="flex items-center gap-1.5 bg-surface p-1 rounded-lg border border-line">
@@ -4552,7 +4551,7 @@ export default function POSPage() {
                 onClick={() => setUnsavedConfirm(null)}
                 className="text-muted hover:text-fg p-1.5 rounded-lg text-sm font-bold"
               >
-                ✕
+                ×
               </button>
             </div>
             <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">

@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
@@ -188,10 +189,10 @@ export default function AdminDashboardPage() {
     let msg = `*RINGKASAN PENJUALAN SAKUNOTA*\n`;
     msg += `Toko: ${store}\n`;
     msg += `Tanggal: ${dateFormatted}\n\n`;
-    msg += `💰 *Omzet*: Rp ${currentGrossSales.toLocaleString("id-ID")}\n`;
-    msg += `🧾 *Transaksi Selesai*: ${currentOrderCount} nota\n`;
-    msg += `📦 *Porsi Terjual*: ${currentUnitsSold} item\n`;
-    msg += `📊 *Rata-rata Nota (AOV)*: Rp ${currentAov.toLocaleString("id-ID")}\n\n`;
+    msg += ` *Omzet*: Rp ${currentGrossSales.toLocaleString("id-ID")}\n`;
+    msg += ` *Transaksi Selesai*: ${currentOrderCount} nota\n`;
+    msg += ` *Porsi Terjual*: ${currentUnitsSold} item\n`;
+    msg += ` *Rata-rata Nota (AOV)*: Rp ${currentAov.toLocaleString("id-ID")}\n\n`;
 
     if (topProducts.length > 0) {
       msg += `*MENU PALING LARIS*\n`;
@@ -645,7 +646,7 @@ export default function AdminDashboardPage() {
                 onClick={() => setIsWaModalOpen(false)}
                 className="w-7 h-7 rounded-full bg-card text-muted hover:text-fg font-bold flex items-center justify-center text-xs"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -659,14 +660,14 @@ export default function AdminDashboardPage() {
                 onClick={handleCopyWaReport}
                 className="flex-1 py-2.5 rounded-xl border border-line bg-card hover:bg-line text-xs font-bold text-fg transition-colors"
               >
-                {copiedReport ? "✓ Tersalin!" : "Salin Teks"}
+                {copiedReport ? "Tersalin!" : "Salin Teks"}
               </button>
               <button
                 type="button"
                 onClick={handleOpenWhatsAppUrl}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5"
               >
-                <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg></span>
+                <span><LineIcon name="info" /></span>
                 <span>Buka WhatsApp</span>
               </button>
             </div>

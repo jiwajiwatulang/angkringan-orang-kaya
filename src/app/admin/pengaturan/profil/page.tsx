@@ -244,7 +244,7 @@ export default function PengaturanProfilPage() {
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-extrabold text-xs text-fg">{bt.title}</span>
-                        {isSelected && <span className="text-xs text-accent-text font-black">✓ Dipilih</span>}
+                        {isSelected && <span className="text-xs text-accent-text font-black">Dipilih</span>}
                       </div>
                       <span className="text-[11px] text-muted leading-tight">{bt.description}</span>
                     </button>

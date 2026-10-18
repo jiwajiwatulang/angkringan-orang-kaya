@@ -1,5 +1,17 @@
 # Hasil pemeriksaan ikon SakuNota
 
+## Paket aktif — 18 Oktober 2026
+
+Paket yang disetujui: `Pictures/SakuNota_53_Ikon/SakuNota_Icons_Per_Halaman`, 53 bentuk SVG versi `-hitam.svg`. Biru tidak digunakan. Bentuk asli dipertahankan; warna `#0F172A` dinormalisasi ke `currentColor` dalam satu sprite `public/icons/sakunota-icons.svg` agar menu aktif dan tombol berwarna dapat memakai putih. Gambar asli di folder pengguna tidak diubah.
+
+- Admin dan POS memakai komponen `LineIcon` yang sama, termasuk navigasi mobile, perangkat, kategori produk, dan aksi yang sudah berikon.
+- Gembok memakai `icon-gembok-lock`, bukan PNG nomor 35. Banner PIN menggunakan latar amber muda, teks amber gelap, gembok hitam, dan tombol biru.
+- Waiter Floor tetap di bawah Shift; memakai `icon-meja`. Katalog dan persediaan/opname tetap satu menu.
+- Emoji bawaan di UI, pesan aktivasi, notifikasi, panduan, data contoh, dan teks struk dihapus atau diganti ikon SVG. Nama/data yang dimasukkan pengguna tidak diubah.
+- Logo, animasi partikel pasif, fitur transaksi, API, dan penyimpanan tidak diganti. Paket disertakan dalam manifest offline melalui proses build yang sudah ada.
+
+## Arsip pemeriksaan paket lama
+
 Sumber: folder Pictures/Ikon Website SakuNota, 48 PNG bernomor. Semua telah diperiksa melalui lembar kontak.
 
 | Nomor | Bentuk | Penempatan yang cocok |
@@ -19,4 +31,4 @@ Sumber: folder Pictures/Ikon Website SakuNota, 48 PNG bernomor. Semua telah dipe
 
 Nomor 1 berupa lembar kumpulan ikon, bukan ikon tunggal. Nomor 14–20, 29–30 dan 43–44 merupakan variasi identitas/logo. Tidak perlu menaruh semua variasi pada navigasi.
 
-Hanya nomor 35 diterapkan pada pembaruan ini. Versi web dioptimalkan menjadi WebP 128px dengan padding berlebih dipangkas; gambar asli tidak diubah. Ikon lain tetap berupa pilihan agar perubahan tampilan tidak meluas tanpa keputusan desain.
+Pada pembaruan sebelumnya hanya nomor 35 diterapkan. Paket tersebut sekarang digantikan oleh paket aktif di atas.

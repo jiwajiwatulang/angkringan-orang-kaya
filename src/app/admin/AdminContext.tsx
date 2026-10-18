@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { getStoreSettings, loadStoreSettingsAsync, subscribeStoreSettings, StoreSettings } from "@/lib/settings";
@@ -98,11 +99,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
                 ? ' text-white bg-accent border-accent'
                 : t.type === 'error'
                 ? ' text-white bg-rose-950 border-rose-600'
-                : ' text-white bg-card border-line'
+                : ' text-fg bg-card border-line'
             }`}
           >
             <span className="text-lg">
-              {t.type === 'success' ? '✅' : t.type === 'error' ? '❌' : 'ℹ️'}
+              <LineIcon name={t.type === 'success' ? 'success' : t.type === 'error' ? 'error' : 'info'} />
             </span>
             <p className="text-xs font-semibold flex-1 leading-snug">{t.message}</p>
           </div>

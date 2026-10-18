@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState } from "react";
 import { StoreSettings, updateStoreSettings } from "@/lib/settings";
@@ -160,25 +161,25 @@ export default function OnboardingWizard({
                 {[
                   {
                     id: "angkringan",
-                    icon: "🍢",
+                    icon: "skewers",
                     title: "Angkringan & Street Food",
                     desc: "Cocok untuk gerobak, nasi kucing, sate-satean, dan wedangan santai.",
                   },
                   {
                     id: "kafe",
-                    icon: "☕",
+                    icon: "drink",
                     title: "Kafe & Kedai Kopi",
                     desc: "Mendukung modifier level gula, es batu, topping, dan nomor meja.",
                   },
                   {
                     id: "warung",
-                    icon: "🍛",
+                    icon: "food",
                     title: "Warung Makan & Restoran",
                     desc: "Dine-in meja lengkap, split bill antar pelanggan, dan takeaway cepat.",
                   },
                   {
                     id: "retail",
-                    icon: "🛍️",
+                    icon: "store",
                     title: "Retail UMKM / Toko Kelontong",
                     desc: "Transaksi cepat tanpa meja, kasir gesit dengan scan barcode/pencarian.",
                   },
@@ -193,12 +194,12 @@ export default function OnboardingWizard({
                         : " bg-card/60 border-line text-slate-300"
                     }`}
                   >
-                    <span className="text-2xl">{type.icon}</span>
+                    <span className="text-2xl"><LineIcon name={type.icon} className="w-6 h-6" /></span>
                     <div className="flex-1">
                       <div className="font-bold text-xs flex items-center justify-between">
                         <span>{type.title}</span>
                         {businessType === type.id && (
-                          <span className=" text-accent-text">✓ Terpilih</span>
+                          <span className=" text-accent-text">Terpilih</span>
                         )}
                       </div>
                       <div className="text-[11px] text-muted mt-0.5">
@@ -233,12 +234,12 @@ export default function OnboardingWizard({
                       : " bg-card/60 border-line"
                   }`}
                 >
-                  <span className="text-2xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 10-13h-7z" /></svg></span>
+                  <span className="text-2xl"><LineIcon name="lightning" /></span>
                   <div className="flex-1">
                     <div className="text-xs font-bold text-fg flex items-center justify-between">
                       <span>Gunakan Contoh Menu SakuNota</span>
                       {menuSetupChoice === "demo" && (
-                        <span className=" text-accent-text">✓</span>
+                        <span className=" text-accent-text"><LineIcon name="success" /></span>
                       )}
                     </div>
                     <p className="text-[11px] text-muted mt-1">
@@ -256,12 +257,12 @@ export default function OnboardingWizard({
                       : " bg-card/60 border-line"
                   }`}
                 >
-                  <span className="text-2xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
+                  <span className="text-2xl"><LineIcon name="receipt" /></span>
                   <div className="flex-1">
                     <div className="text-xs font-bold text-fg flex items-center justify-between">
                       <span>Mulai dari Bersih (Kosong / Import Excel)</span>
                       {menuSetupChoice === "clean" && (
-                        <span className=" text-accent-text">✓</span>
+                        <span className=" text-accent-text"><LineIcon name="success" /></span>
                       )}
                     </div>
                     <p className="text-[11px] text-muted mt-1">
@@ -311,7 +312,7 @@ export default function OnboardingWizard({
               </div>
 
               <div className="p-3 bg-accent/40 rounded-2xl border border-accent/40 text-accent-text text-xs">
-                🎉 Toko Anda siap dioperasikan secara offline! Printer Bluetooth dapat dihubungkan kapan saja melalui Pusat Pengaturan.
+                 Toko Anda siap dioperasikan secara offline! Printer Bluetooth dapat dihubungkan kapan saja melalui Pusat Pengaturan.
               </div>
             </div>
           )}

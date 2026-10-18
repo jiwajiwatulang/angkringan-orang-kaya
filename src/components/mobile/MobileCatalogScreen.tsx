@@ -50,7 +50,7 @@ export default function MobileCatalogScreen({
       n.includes("es ") ||
       n.includes("lemon")
     )
-      return <LineIcon name="cashier" className="w-6 h-6" />;
+      return <LineIcon name="drink" className="w-6 h-6" />;
     if (
       c.includes("nasi") ||
       n.includes("ayam") ||
@@ -59,9 +59,9 @@ export default function MobileCatalogScreen({
       n.includes("soto") ||
       n.includes("bakso")
     )
-      return <LineIcon name="cashier" className="w-6 h-6" />;
+      return <LineIcon name="food" className="w-6 h-6" />;
     if (c.includes("sate") || n.includes("sate") || n.includes("sunduk"))
-      return <LineIcon name="cashier" className="w-6 h-6" />;
+      return <LineIcon name="skewers" className="w-6 h-6" />;
     if (
       c.includes("snack") ||
       c.includes("gorengan") ||
@@ -70,8 +70,8 @@ export default function MobileCatalogScreen({
       n.includes("tempe") ||
       n.includes("pisang")
     )
-      return <LineIcon name="cashier" className="w-6 h-6" />;
-    return <LineIcon name="cashier" className="w-6 h-6" />;
+      return <LineIcon name="snack" className="w-6 h-6" />;
+    return <LineIcon name="catalog" className="w-6 h-6" />;
   };
 
   const filteredMenu = menuData.filter((item) => {
@@ -136,7 +136,7 @@ export default function MobileCatalogScreen({
                 onClick={() => onSearchChange("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 text-xs font-bold"
               >
-                ✕
+                ×
               </button>
             )}
           </div>

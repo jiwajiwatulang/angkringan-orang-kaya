@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import { formatServerDate } from "@/lib/dateFormat";
 import React, { useState, useEffect } from "react";
@@ -249,7 +250,7 @@ export default function SakuNotaOwnerDashboardPage() {
     }
     const cleanPhone = reg.whatsapp.replace(/[^0-9]/g, "");
     const formattedPhone = cleanPhone.startsWith("0") ? "62" + cleanPhone.slice(1) : cleanPhone;
-    const message = `Halo ${reg.ownerName}, pendaftaran Closed Beta SakuNota untuk "${reg.businessName}" telah DISETUJUI! 🎉\n\nNomor Lisensi Uji Coba 7 Hari Anda:\n👉 *${reg.licenseKey}*\n\nCara Aktivasi di HP Kasir:\n1. Buka https://angkringan-orang-kaya.ranutarde.workers.dev/pos\n2. Masukkan nomor lisensi di atas lalu tekan "Aktifkan Perangkat".\n3. SakuNota siap dipakai berjualan secara offline tanpa internet!\n\nPanduan Pemasangan & Pemakaian:\nhttps://angkringan-orang-kaya.ranutarde.workers.dev/panduan\n\nJika butuh bantuan teknis, silakan balas pesan WhatsApp ini. Selamat mencoba!`;
+    const message = `Halo ${reg.ownerName}, pendaftaran Closed Beta SakuNota untuk "${reg.businessName}" telah DISETUJUI! \n\nNomor Lisensi Uji Coba 7 Hari Anda:\n *${reg.licenseKey}*\n\nCara Aktivasi di HP Kasir:\n1. Buka https://angkringan-orang-kaya.ranutarde.workers.dev/pos\n2. Masukkan nomor lisensi di atas lalu tekan "Aktifkan Perangkat".\n3. SakuNota siap dipakai berjualan secara offline tanpa internet!\n\nPanduan Pemasangan & Pemakaian:\nhttps://angkringan-orang-kaya.ranutarde.workers.dev/panduan\n\nJika butuh bantuan teknis, silakan balas pesan WhatsApp ini. Selamat mencoba!`;
 
     navigator.clipboard.writeText(message);
     setToastMsg("Teks undangan disalin ke clipboard!");
@@ -382,13 +383,13 @@ export default function SakuNotaOwnerDashboardPage() {
   // Owner action: Verify money arrival & issue genuine license via Server API
   const handleVerifyAndIssueLicense = async (orderId: string) => {
     if (!ownerToken) {
-      showToast("❌ Sesi Anda tidak valid. Silakan login kembali.");
+      showToast("Sesi Anda tidak valid. Silakan login kembali.");
       return;
     }
 
     const res = await verifyOwnerOrderServer(ownerToken, orderId);
     if (res.success && res.licenseKey) {
-      showToast(`✅ Pembayaran pesanan ${orderId} diverifikasi & Lisensi ${res.licenseKey} diterbitkan!`);
+      showToast(`Pembayaran pesanan ${orderId} diverifikasi & Lisensi ${res.licenseKey} diterbitkan!`);
       setOrders((prev) =>
         prev.map((o) =>
           o.orderId === orderId
@@ -409,25 +410,25 @@ export default function SakuNotaOwnerDashboardPage() {
       await loadOrders(ownerToken, true);
       await loadLicenses(ownerToken);
     } else {
-      showToast(`❌ ${res.error || "Gagal menerbitkan lisensi."}`);
+      showToast(` ${res.error || "Gagal menerbitkan lisensi."}`);
     }
   };
 
   // Owner action: Sync status live with Midtrans API
   const handleSyncMidtrans = async (orderId: string) => {
     if (!ownerToken) return;
-    showToast(`🔄 Memeriksa status pesanan ${orderId} di Midtrans...`);
+    showToast(`Memeriksa status pesanan ${orderId} di Midtrans...`);
     const res = await syncOwnerMidtransServer(ownerToken, orderId);
     if (res.success) {
       if (res.updated) {
-        showToast(`🎉 Pembayaran ${orderId} terverifikasi di Midtrans! Lisensi telah terbit.`);
+        showToast(`Pembayaran ${orderId} terverifikasi di Midtrans! Lisensi telah terbit.`);
       } else {
-        showToast(`ℹ️ Status Midtrans untuk ${orderId}: ${res.order?.status || "Belum ada pembayaran settlement"}.`);
+        showToast(`Status Midtrans untuk ${orderId}: ${res.order?.status || "Belum ada pembayaran settlement"}.`);
       }
       await loadOrders(ownerToken, true);
       await loadLicenses(ownerToken);
     } else {
-      showToast(`❌ ${res.error || "Gagal sinkronisasi dengan Midtrans."}`);
+      showToast(` ${res.error || "Gagal sinkronisasi dengan Midtrans."}`);
     }
   };
 
@@ -448,7 +449,7 @@ Langkah Pasang & Aktivasi di HP:
 Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
     navigator.clipboard.writeText(msg);
-    showToast("📋 Pesan lisensi WhatsApp berhasil disalin!");
+    showToast("Pesan lisensi WhatsApp berhasil disalin!");
   };
 
   const getWhatsAppLicenseUrl = (o: CustomerOrder) => {
@@ -477,11 +478,11 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
     const res = await cancelOwnerOrderServer(ownerToken, orderId);
     if (res.success) {
-      showToast(`✅ Pesanan ${orderId} berhasil dibatalkan.`);
+      showToast(`Pesanan ${orderId} berhasil dibatalkan.`);
       setOrders((prev) => prev.map((o) => (o.orderId === orderId ? { ...o, status: "batal" } : o)));
       await loadOrders(ownerToken, true);
     } else {
-      showToast(`❌ ${res.error || "Gagal membatalkan pesanan."}`);
+      showToast(` ${res.error || "Gagal membatalkan pesanan."}`);
     }
   };
 
@@ -490,11 +491,11 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
     if (!ownerToken) return;
     const res = await archiveOwnerOrderServer(ownerToken, orderId);
     if (res.success) {
-      showToast(`📁 Pesanan uji ${orderId} berhasil diarsipkan.`);
+      showToast(`Pesanan uji ${orderId} berhasil diarsipkan.`);
       setOrders((prev) => prev.map((o) => (o.orderId === orderId ? { ...o, status: "arsip_uji" as any } : o)));
       await loadOrders(ownerToken, true);
     } else {
-      showToast(`❌ ${res.error || "Gagal mengarsipkan pesanan."}`);
+      showToast(` ${res.error || "Gagal mengarsipkan pesanan."}`);
     }
   };
 
@@ -505,14 +506,14 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
     const res = await unbindOwnerLicenseServer(ownerToken, licenseKey);
     if (res.success) {
-      showToast(`✅ Perangkat pada lisensi ${licenseKey} berhasil dilepas.`);
+      showToast(`Perangkat pada lisensi ${licenseKey} berhasil dilepas.`);
       setLicenses((prev) =>
         prev.map((l) => (l.licenseKey === licenseKey ? { ...l, boundDeviceId: null, deviceName: null } : l))
       );
       await loadOrders(ownerToken, true);
       await loadLicenses(ownerToken);
     } else {
-      showToast(`❌ ${res.error || "Gagal melepas perangkat."}`);
+      showToast(` ${res.error || "Gagal melepas perangkat."}`);
     }
   };
 
@@ -523,13 +524,13 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
     const res = await revokeOwnerLicenseServer(ownerToken, licenseKey);
     if (res.success) {
-      showToast(`🚫 Lisensi ${licenseKey} berhasil dicabut.`);
+      showToast(`Lisensi ${licenseKey} berhasil dicabut.`);
       setLicenses((prev) =>
         prev.map((l) => (l.licenseKey === licenseKey ? { ...l, revoked: 1 } : l))
       );
       await loadLicenses(ownerToken);
     } else {
-      showToast(`❌ ${res.error || "Gagal mencabut lisensi."}`);
+      showToast(` ${res.error || "Gagal mencabut lisensi."}`);
     }
   };
 
@@ -538,7 +539,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
     e.preventDefault();
     if (!ownerToken) return;
     if (!testerRecipient.trim() || !testerWhatsapp.trim()) {
-      showToast("❌ Nama penerima dan nomor WhatsApp wajib diisi.");
+      showToast("Nama penerima dan nomor WhatsApp wajib diisi.");
       return;
     }
 
@@ -551,7 +552,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
     });
 
     if (res.success && res.testerLicense) {
-      showToast(`✅ Lisensi tester ${res.testerLicense.licenseKey} berhasil diterbitkan!`);
+      showToast(`Lisensi tester ${res.testerLicense.licenseKey} berhasil diterbitkan!`);
       const newLic = res.testerLicense;
       setTesterLicenses((prev) => [newLic, ...prev.filter((t) => t.licenseKey !== newLic.licenseKey)]);
       setTesterRecipient("");
@@ -559,7 +560,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
       setTesterNotes("");
       await loadTesterLicenses(ownerToken);
     } else {
-      showToast(`❌ ${res.error || "Gagal menerbitkan lisensi tester."}`);
+      showToast(` ${res.error || "Gagal menerbitkan lisensi tester."}`);
     }
     setIsCreatingTester(false);
   };
@@ -569,13 +570,13 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
     if (!ownerToken) return;
     const res = await unbindTesterLicenseServer(ownerToken, licenseKey);
     if (res.success) {
-      showToast(`✅ Perangkat pada lisensi ${licenseKey} berhasil dilepas.`);
+      showToast(`Perangkat pada lisensi ${licenseKey} berhasil dilepas.`);
       setTesterLicenses((prev) =>
         prev.map((t) => (t.licenseKey === licenseKey ? { ...t, boundDeviceId: null, deviceName: null } : t))
       );
       await loadTesterLicenses(ownerToken);
     } else {
-      showToast(`❌ ${res.error || "Gagal melepas perangkat."}`);
+      showToast(` ${res.error || "Gagal melepas perangkat."}`);
     }
   };
 
@@ -584,13 +585,13 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
     if (!ownerToken) return;
     const res = await revokeTesterLicenseServer(ownerToken, licenseKey);
     if (res.success) {
-      showToast(`✅ Lisensi ${licenseKey} berhasil dicabut.`);
+      showToast(`Lisensi ${licenseKey} berhasil dicabut.`);
       setTesterLicenses((prev) =>
         prev.map((t) => (t.licenseKey === licenseKey ? { ...t, revoked: 1 } : t))
       );
       await loadTesterLicenses(ownerToken);
     } else {
-      showToast(`❌ ${res.error || "Gagal mencabut lisensi."}`);
+      showToast(` ${res.error || "Gagal mencabut lisensi."}`);
     }
   };
 
@@ -601,12 +602,12 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
     setDeleteMessage("");
 
     if (!deleteTargetOrderId.trim() || !deleteAuditNote.trim()) {
-      setDeleteMessage("❌ Nomor pesanan dan catatan audit wajib diisi.");
+      setDeleteMessage("Nomor pesanan dan catatan audit wajib diisi.");
       return;
     }
 
     if (!deletePasswordConfirm.trim()) {
-      setDeleteMessage("❌ Konfirmasi sandi Owner wajib diisi.");
+      setDeleteMessage("Konfirmasi sandi Owner wajib diisi.");
       return;
     }
 
@@ -618,13 +619,13 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
       deletePasswordConfirm.trim()
     );
     if (res.success) {
-      setDeleteMessage(`✅ Data uji coba ${deleteTargetOrderId} berhasil dibersihkan dengan aman.`);
+      setDeleteMessage(`Data uji coba ${deleteTargetOrderId} berhasil dibersihkan dengan aman.`);
       setDeleteTargetOrderId("");
       setDeleteAuditNote("");
       setDeletePasswordConfirm("");
       await loadOrders(ownerToken);
     } else {
-      setDeleteMessage(`❌ ${res.error || "Gagal menghapus data pengujian."}`);
+      setDeleteMessage(` ${res.error || "Gagal menghapus data pengujian."}`);
     }
     setIsDeletingOrder(false);
   };
@@ -799,7 +800,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
             disabled={isLoadingOrders}
             className="p-2 bg-card hover:bg-line text-xs font-bold text-fg rounded-xl border border-line transition-colors"
             title="Segarkan Data"
-          ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></button>
+          ><LineIcon name="receipt" /></button>
           <button
             type="button"
             onClick={handleLogout}
@@ -816,7 +817,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
         {loadError && (
           <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <span>⚠️</span>
+              <span><LineIcon name="warning" /></span>
               <span>{loadError}</span>
             </div>
             <button
@@ -984,7 +985,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
             {/* Empty State */}
             {filteredOrders.length === 0 ? (
               <div className="py-16 px-4 text-center space-y-2.5 bg-card/40 rounded-2xl border border-line/60">
-                <div className="text-4xl">📋</div>
+                <div className="text-4xl"><LineIcon name="receipt" /></div>
                 <h4 className="text-sm font-black text-fg">Belum ada pesanan</h4>
                 <p className="text-xs text-muted max-w-sm mx-auto leading-relaxed">
                   Pesanan akan muncul setelah pelanggan benar-benar melakukan pembelian. Tidak ada data contoh fiktif.
@@ -1004,7 +1005,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                             {o.orderId}
                           </strong>
                           <span className="text-[10px] font-bold text-muted px-2 py-0.5 rounded-md bg-surface border border-line">
-                            {o.paymentMethod?.includes("BCA") ? "🏦 Transfer BCA" : "⚡ Midtrans Otomatis"}
+                            {o.paymentMethod?.includes("BCA") ? " Transfer BCA" : " Midtrans Otomatis"}
                           </span>
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
@@ -1056,7 +1057,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
-                        ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg>{o.whatsapp}
+                        ><LineIcon name="info" />{o.whatsapp}
                         </a>
                       </div>
                     </div>
@@ -1074,7 +1075,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                               type="button"
                               onClick={() => {
                                 navigator.clipboard.writeText(o.licenseKey || "");
-                                showToast("📋 Nomor lisensi berhasil disalin!");
+                                showToast("Nomor lisensi berhasil disalin!");
                               }}
                               className="text-[11px] font-bold text-muted hover:text-fg px-1.5 py-0.5 rounded border border-line bg-card"
                             >
@@ -1087,11 +1088,11 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                             Status Perangkat:{" "}
                             {o.boundDeviceId ? (
                               <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                                🟢 Terikat di {o.deviceName || "Perangkat Kasir"} ({o.boundDeviceId})
+                                 Terikat di {o.deviceName || "Perangkat Kasir"} ({o.boundDeviceId})
                               </span>
                             ) : (
                               <span className="text-amber-600 dark:text-amber-400 font-bold">
-                                🟡 Belum Diaktifkan di HP Kasir
+                                 Belum Diaktifkan di HP Kasir
                               </span>
                             )}
                           </div>
@@ -1122,20 +1123,20 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                               onClick={() => handleVerifyAndIssueLicense(o.orderId)}
                               className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md transition-all active:scale-95 flex items-center gap-1.5"
                             >
-                              <span>✓</span>
+                              <span><LineIcon name="success" /></span>
                               <span>Verifikasi Mutasi BCA & Terbitkan Lisensi</span>
                             </button>
                           ) : (
                             <div className="flex items-center gap-2">
                               <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800">
-                                ⚡ Verifikasi Otomatis Midtrans
+                                 Verifikasi Otomatis Midtrans
                               </span>
                               <button
                                 type="button"
                                 onClick={() => handleSyncMidtrans(o.orderId)}
                                 className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
                               >
-                                <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
+                                <span><LineIcon name="receipt" /></span>
                                 <span>Cek Status Midtrans Live</span>
                               </button>
                             </div>
@@ -1145,15 +1146,14 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
                       {o.status === "lunas_lisensi_terbit" && (
                         <>
-                          <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-black">
-                            ✓ {o.paymentMethod?.includes("BCA") ? "Lunas (Transfer BCA)" : "Lunas (Midtrans Otomatis)"}
+                          <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-black"><LineIcon name="success" />{o.paymentMethod?.includes("BCA") ? "Lunas (Transfer BCA)" : "Lunas (Midtrans Otomatis)"}
                           </span>
                           <button
                             type="button"
                             onClick={() => handleCopyLicenseMessage(o)}
                             className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 text-purple-700 dark:text-purple-300 text-xs font-bold border border-purple-300 dark:border-purple-800 transition-colors flex items-center gap-1.5"
                           >
-                            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
+                            <span><LineIcon name="receipt" /></span>
                             <span>Salin Pesan Lisensi</span>
                           </button>
                           <a
@@ -1162,7 +1162,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                             rel="noopener noreferrer"
                             className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
                           >
-                            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg></span>
+                            <span><LineIcon name="info" /></span>
                             <span>Kirim via WhatsApp</span>
                           </a>
                         </>
@@ -1241,7 +1241,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                   onClick={() => setBetaSearch("")}
                   className="absolute right-3 top-2.5 text-xs text-muted hover:text-fg font-bold"
                 >
-                  ✕
+                  ×
                 </button>
               )}
             </div>
@@ -1251,7 +1251,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
               <div className="py-12 text-center text-xs text-muted">Memuat data pendaftar beta...</div>
             ) : betaRegistrations.length === 0 ? (
               <div className="py-14 px-4 text-center space-y-2.5 bg-card/40 rounded-2xl border border-line/60">
-                <div className="text-3xl">🚀</div>
+                <div className="text-3xl"><LineIcon name="lightning" /></div>
                 <h4 className="text-sm font-black text-fg">Belum Ada Pendaftar Closed Beta</h4>
                 <p className="text-xs text-muted max-w-sm mx-auto leading-relaxed">
                   Pendaftar dari form pendaftaran website akan otomatis masuk ke sini untuk Anda evaluasi dan setujui.
@@ -1367,7 +1367,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                         {/* Device Info */}
                         <div className="text-[11px] bg-surface p-3 rounded-xl border border-line/60 flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span>📱 Perangkat Kasir:</span>
+                            <span> Perangkat Kasir:</span>
                             {b.boundDeviceId ? (
                               <span className="font-semibold text-fg">
                                 {b.deviceName || "Perangkat Kasir"} ({b.boundDeviceId.slice(0, 10)}...)
@@ -1446,7 +1446,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                                   onClick={() => handleConvertBetaToPaid(b.registrationId || String(b.id))}
                                   className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
                                 >
-                                  <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 10-13h-7z" /></svg></span> Konversi Berbayar (Rp50rb)
+                                  <span><LineIcon name="lightning" /></span> Konversi Berbayar (Rp50rb)
                                 </button>
                               )}
 
@@ -1476,7 +1476,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                       onClick={() => setExtendTarget(null)}
                       className="text-muted hover:text-fg text-xs font-bold"
                     >
-                      ✕
+                      ×
                     </button>
                   </div>
                   <p className="text-xs text-muted leading-relaxed">
@@ -1550,7 +1550,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
             {orders.filter((o) => o.status === "lunas_lisensi_terbit").length === 0 ? (
               <div className="py-14 px-4 text-center space-y-2 bg-card/40 rounded-2xl border border-line/60">
-                <div className="text-3xl">👥</div>
+                <div className="text-3xl"><LineIcon name="table" /></div>
                 <p className="text-xs font-bold text-fg">Belum Ada Pelanggan Terdaftar</p>
                 <p className="text-xs text-muted">Daftar pelanggan akan tercatat otomatis saat ada pesanan yang lunas.</p>
               </div>
@@ -1580,7 +1580,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
-                            ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg>{o.whatsapp}
+                            ><LineIcon name="info" />{o.whatsapp}
                             </a>
                           </td>
                           <td className="py-3 px-3 font-mono font-bold text-fg select-all">
@@ -1617,7 +1617,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
             {/* Informative Migration Callout for Owner */}
             <div className="p-4 sm:p-5 rounded-2xl bg-card border border-purple-500/30 space-y-2 text-xs">
               <div className="flex items-center gap-2">
-                <span className="text-base">📱</span>
+                <span className="text-base"><LineIcon name="store" /></span>
                 <strong className="text-fg font-black">
                   Panduan Pindah HP: Lisensi dan Data Usaha adalah Dua Hal Berbeda
                 </strong>
@@ -1634,7 +1634,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
             {/* Licenses List */}
             {licenses.length === 0 && orders.filter((o) => o.status === "lunas_lisensi_terbit").length === 0 ? (
               <div className="py-12 text-center space-y-2 bg-card/40 rounded-2xl border border-line/60">
-                <span className="text-3xl">📱</span>
+                <span className="text-3xl"><LineIcon name="store" /></span>
                 <p className="text-xs font-bold text-fg">Belum Ada Lisensi Komersial Terdaftar</p>
                 <p className="text-xs text-muted">Lisensi komersial akan tercatat otomatis saat pesanan pembeli diverifikasi.</p>
               </div>
@@ -1699,7 +1699,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                           type="button"
                           onClick={() => {
                             navigator.clipboard.writeText(l.licenseKey);
-                            showToast(`📋 Lisensi ${l.licenseKey} berhasil disalin!`);
+                            showToast(`Lisensi ${l.licenseKey} berhasil disalin!`);
                           }}
                           className="px-3 py-1.5 rounded-xl bg-card hover:bg-line text-xs font-bold text-fg border border-line transition-colors"
                         >
@@ -1823,7 +1823,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
               {testerLicenses.length === 0 ? (
                 <div className="py-10 text-center space-y-2 bg-card/40 rounded-2xl border border-line/60">
-                  <span className="text-2xl">🧪</span>
+                  <span className="text-2xl"><LineIcon name="demo" /></span>
                   <p className="text-xs text-muted">Belum ada lisensi tester yang diterbitkan.</p>
                 </div>
               ) : (
@@ -1856,7 +1856,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                           </div>
 
                           <div className="text-xs text-muted flex flex-wrap gap-x-4 gap-y-1 pt-0.5">
-                            <span>WA: <a href={`https://wa.me/62${t.whatsapp.replace(/^0/, "")}`} target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg>{t.whatsapp}</a></span>
+                            <span>WA: <a href={`https://wa.me/62${t.whatsapp.replace(/^0/, "")}`} target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"><LineIcon name="info" />{t.whatsapp}</a></span>
                             {t.expiresAt && <span>Kedaluwarsa: {new Date(t.expiresAt).toLocaleDateString("id-ID")}</span>}
                             <span>Terbit: {new Date(t.createdAt).toLocaleDateString("id-ID")}</span>
                             {t.notes && <span>Catatan: <em>{t.notes}</em></span>}
@@ -1878,7 +1878,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                             type="button"
                             onClick={() => {
                               navigator.clipboard.writeText(t.licenseKey);
-                              showToast(`📋 Lisensi ${t.licenseKey} berhasil disalin!`);
+                              showToast(`Lisensi ${t.licenseKey} berhasil disalin!`);
                             }}
                             className="px-3 py-1.5 rounded-xl bg-card hover:bg-line text-xs font-bold text-fg border border-line transition-colors"
                           >
@@ -1998,7 +1998,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
               {deleteMessage && (
                 <div className={`p-3 rounded-xl text-xs font-bold ${
-                  deleteMessage.startsWith("✅") ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30" : "bg-rose-500/10 text-rose-600 border border-rose-500/30"
+                  deleteMessage.trimStart().startsWith("Data uji coba") ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30" : "bg-rose-500/10 text-rose-600 border border-rose-500/30"
                 }`}>
                   {deleteMessage}
                 </div>

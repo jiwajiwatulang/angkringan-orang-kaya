@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -113,7 +114,7 @@ export default function InstallGuideSection({
       {/* Header Info */}
       <div className="text-center max-w-2xl mx-auto space-y-2">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 text-xs font-bold border border-blue-200 dark:border-blue-800">
-          <span>📱</span>
+          <span><LineIcon name="store" /></span>
           <span>Aplikasi Kasir di Layar Utama HP</span>
         </div>
         <h2 className="text-xl sm:text-2xl font-black text-fg tracking-tight">
@@ -128,7 +129,7 @@ export default function InstallGuideSection({
       <div className="max-w-xl mx-auto">
         {isInstalled ? (
           <div className="flex items-center justify-center gap-3 p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm font-semibold shadow-sm">
-            <span className="text-lg">✅</span>
+            <span className="text-lg"><LineIcon name="success" /></span>
             <span>SakuNota sudah terpasang di HP ini. Buka langsung melalui ikon di layar utama.</span>
           </div>
         ) : deferredPrompt ? (
@@ -150,14 +151,14 @@ export default function InstallGuideSection({
           </div>
         ) : (
           <div className="p-3 bg-surface border border-line rounded-2xl text-center text-xs text-muted flex items-center justify-center gap-2">
-            <span>ℹ️</span>
+            <span><LineIcon name="info" /></span>
             <span>Untuk memasang di perangkat Anda, ikuti langkah mudah pada tab <strong>Android</strong> atau <strong>iPhone</strong> di bawah.</span>
           </div>
         )}
 
         {installSuccess && (
           <div className="mt-3 p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700 rounded-xl text-center text-xs text-emerald-800 dark:text-emerald-200 font-bold">
-            🎉 Pemasangan berhasil! Cari ikon <strong>SakuNota</strong> di layar utama ponsel Anda.
+             Pemasangan berhasil! Cari ikon <strong>SakuNota</strong> di layar utama ponsel Anda.
           </div>
         )}
       </div>
@@ -320,7 +321,7 @@ export default function InstallGuideSection({
       <div className="max-w-xl mx-auto bg-surface border border-line rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-sm">
         <div className="flex items-center justify-between gap-2 border-b border-line pb-2.5">
           <div className="flex items-center gap-2">
-            <span className="text-base">⚡</span>
+            <span className="text-base"><LineIcon name="lightning" /></span>
             <h3 className="text-xs sm:text-sm font-extrabold text-fg">
               Pemeriksaan Kesiapan Tanpa Internet (Offline)
             </h3>
@@ -331,7 +332,7 @@ export default function InstallGuideSection({
             disabled={isAuditing}
             className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
           >
-            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
+            <span><LineIcon name="receipt" /></span>
             <span>{isAuditing ? "Memeriksa..." : "Periksa Ulang"}</span>
           </button>
         </div>
@@ -340,7 +341,7 @@ export default function InstallGuideSection({
           offlineStatus.isFullyPrecached ? (
             <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl space-y-1 text-emerald-800 dark:text-emerald-300 text-xs">
               <div className="font-extrabold flex items-center gap-1.5">
-                <span>✅</span>
+                <span><LineIcon name="success" /></span>
                 <span>Kasir Siap Digunakan Tanpa Internet</span>
               </div>
               <p className="text-[11px] text-emerald-700 dark:text-emerald-400 leading-relaxed">
@@ -350,7 +351,7 @@ export default function InstallGuideSection({
           ) : (
             <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl space-y-2 text-amber-900 dark:text-amber-200 text-xs">
               <div className="font-extrabold flex items-center gap-1.5">
-                <span>⏳</span>
+                <span><LineIcon name="waiting" /></span>
                 <span>Sebagian Berkas Kasir Sedang Disimpan</span>
               </div>
               <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
@@ -387,7 +388,7 @@ export default function InstallGuideSection({
         <div className="bg-surface border border-line rounded-2xl p-4 space-y-3 text-xs text-muted leading-relaxed">
           <div>
             <strong className="block text-fg font-bold mb-1">
-              ❓ Mengapa pilihan &ldquo;Instal&rdquo; atau &ldquo;Tambahkan ke Layar Utama&rdquo; tidak muncul?
+               Mengapa pilihan &ldquo;Instal&rdquo; atau &ldquo;Tambahkan ke Layar Utama&rdquo; tidak muncul?
             </strong>
             <p>
               • <strong>Di Android:</strong> Pastikan Anda membuka link melalui aplikasi <strong>Google Chrome</strong> resmi, bukan dari peramban bawaan dalam chat WhatsApp/Instagram, dan bukan dalam tab Penyamaran (Incognito). Jika Anda mengklik link dari WhatsApp, ketuk ikon titik tiga di pojok kanan atas chat lalu pilih &ldquo;Buka di Chrome&rdquo;.<br />
@@ -397,7 +398,7 @@ export default function InstallGuideSection({
 
           <div className="border-t border-line pt-3">
             <strong className="block text-fg font-bold mb-1">
-              🛡️ Apakah data penjualan, barang, dan nota saya akan hilang saat aplikasi diperbarui?
+               Apakah data penjualan, barang, dan nota saya akan hilang saat aplikasi diperbarui?
             </strong>
             <p>
               <strong>Sama sekali tidak.</strong> Seluruh data barang jualan, harga, transaksi, nota, dan shift kasir disimpan secara persisten di database aman ponsel Anda. Pembaruan aplikasi hanya memperbarui tampilan dan fitur kasir tanpa pernah mengubah atau menghapus data usaha Anda.
@@ -406,7 +407,7 @@ export default function InstallGuideSection({
 
           <div className="border-t border-line pt-3">
             <strong className="block text-fg font-bold mb-1">
-              🚀 Halaman apa yang pertama kali terbuka saat ikon SakuNota ditekan?
+               Halaman apa yang pertama kali terbuka saat ikon SakuNota ditekan?
             </strong>
             <p>
               Ikon SakuNota di layar utama langsung mengarahkan Anda ke <strong>meja kasir (POS)</strong> yang siap melayani pembeli, bukan halaman beranda ataupun halaman pemilik.

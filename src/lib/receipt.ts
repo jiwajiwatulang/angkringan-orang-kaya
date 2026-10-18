@@ -230,10 +230,10 @@ export function generateEscPosReceipt(
       if (remaining > 0) {
         txt += lineTwoCols("SISA TAGIHAN:", formatCurrency(remaining));
         txt += doubleDivider;
-        txt += center("⏳ STATUS: BELUM LUNAS");
+        txt += center(" STATUS: BELUM LUNAS");
       } else {
         txt += doubleDivider;
-        txt += center("✅ STATUS: LUNAS");
+        txt += center(" STATUS: LUNAS");
       }
     } else {
       txt += lineTwoCols("Metode:", receipt.paymentMethod || "Tunai");
@@ -244,9 +244,9 @@ export function generateEscPosReceipt(
       }
       txt += doubleDivider;
       if (receipt.isDraft) {
-        txt += center("📄 TAGIHAN SEMENTARA (OPEN BILL)");
+        txt += center(" TAGIHAN SEMENTARA (OPEN BILL)");
       } else {
-        txt += center("✅ LUNAS");
+        txt += center(" LUNAS");
       }
     }
 
@@ -337,10 +337,10 @@ export function generatePartialPaymentReceipt(order: any, payment: any, settings
   txt += doubleDivider;
   
   if (remaining > 0) {
-    txt += center("⏳ STATUS: BELUM LUNAS");
+    txt += center(" STATUS: BELUM LUNAS");
     txt += center("Harap simpan bukti pembayaran ini");
   } else {
-    txt += center("✅ STATUS: LUNAS");
+    txt += center(" STATUS: LUNAS");
   }
 
   if (cfg.enableWatermark) {

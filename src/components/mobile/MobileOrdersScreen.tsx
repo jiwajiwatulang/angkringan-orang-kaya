@@ -125,7 +125,7 @@ export default function MobileOrdersScreen({
                     onClick={() => onReprintReceipt(order)}
                     className="px-3 py-1.5 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-bold active:scale-95 transition-all flex items-center gap-1 shadow-sm"
                   >
-                    <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 8V3h10v5M7 17H3V8h18v9h-4M7 14h10v7H7zM17 11h1" /></svg></span>
+                    <span><LineIcon name="printer" /></span>
                     <span>Cetak Ulang</span>
                   </button>
                 </div>

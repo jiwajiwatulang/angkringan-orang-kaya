@@ -67,7 +67,7 @@ export function getDefaultModifiersForCategory(kategori: string, nama: string) {
         options: [
           { id: 'sp_none', nama: 'Tidak Pedas', harga: 0 },
           { id: 'sp_mild', nama: 'Sedang (Normal)', harga: 0 },
-          { id: 'sp_hot', nama: 'Pedas Banget 🔥', harga: 0 }
+          { id: 'sp_hot', nama: 'Pedas Banget', harga: 0 }
         ]
       },
       {

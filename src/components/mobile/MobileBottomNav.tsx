@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import LineIcon from "@/components/LineIcon";
 
 export type MobileTab = "home" | "menu" | "meja" | "nota" | "lainnya";
 
@@ -18,11 +19,11 @@ export default function MobileBottomNav({
   enableTables = true,
 }: MobileBottomNavProps) {
   const allTabs = [
-    { id: "home" as MobileTab, label: "Home", icon: "/icons/icon-home.png" },
-    { id: "menu" as MobileTab, label: "Menu", icon: "/icons/icon-kasir.png" },
-    { id: "meja" as MobileTab, label: "Meja", icon: "/icons/icon-meja.png", badge: occupiedTablesCount > 0 ? occupiedTablesCount : undefined },
-    { id: "nota" as MobileTab, label: "Nota", icon: "/icons/icon-transaksi.png" },
-    { id: "lainnya" as MobileTab, label: "Lainnya", icon: "/icons/icon-pengaturan.png" },
+    { id: "home" as MobileTab, label: "Home", icon: "home" },
+    { id: "menu" as MobileTab, label: "Menu", icon: "cashier" },
+    { id: "meja" as MobileTab, label: "Meja", icon: "table", badge: occupiedTablesCount > 0 ? occupiedTablesCount : undefined },
+    { id: "nota" as MobileTab, label: "Nota", icon: "receipt" },
+    { id: "lainnya" as MobileTab, label: "Lainnya", icon: "settings" },
   ];
 
   const tabs = enableTables ? allTabs : allTabs.filter(t => t.id !== "meja");
@@ -43,11 +44,7 @@ export default function MobileBottomNav({
             }`}
           >
             <div className="relative text-lg leading-none mb-1 flex items-center justify-center">
-              {tab.icon.startsWith("/") ? (
-                <img src={tab.icon} alt={tab.label} className="w-5 h-5 object-contain" />
-              ) : (
-                <span>{tab.icon}</span>
-              )}
+              <LineIcon name={tab.icon} />
               {tab.badge !== undefined && (
                 <span className="absolute -top-1.5 -right-2 bg-amber-500 text-slate-900 font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
                   {tab.badge}

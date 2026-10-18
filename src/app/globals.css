@@ -47,6 +47,18 @@ body {
   color: var(--color-fg);
 }
 
+/* Owner-supplied icons: black on light surfaces, white on filled actions. */
+.sakunota-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+  color: #0F172A;
+}
+.text-white .sakunota-icon,
+.sakunota-icon.text-white {
+  color: #FFFFFF;
+}
+
 body {
   font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;

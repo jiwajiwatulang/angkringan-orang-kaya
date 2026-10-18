@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import { useEffect } from "react";
 import Link from "next/link";
@@ -17,9 +18,7 @@ export default function GlobalError({
   return (
     <div className="min-h-screen bg-slate-900 text-white flex flex-col justify-between p-4 sm:p-6 md:p-8">
       <div className="max-w-md w-full mx-auto my-auto py-8 text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 mb-4 shadow-lg text-3xl">
-          ⚠️
-        </div>
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 mb-4 shadow-lg text-3xl"><LineIcon name="warning" /></div>
         <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-2">
           Terjadi Kendala Memuat Halaman
         </h1>

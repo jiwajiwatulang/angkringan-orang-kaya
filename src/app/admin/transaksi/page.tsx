@@ -299,7 +299,7 @@ export default function AdminTransaksiPage() {
   const handleVerifyProof = async (proofId: number) => {
     try {
       await verifyPaymentProof(proofId, { operator: "Admin" });
-      showToast("Bukti pembayaran berhasil DIVERIFIKASI ✓");
+      showToast("Bukti pembayaran berhasil DIVERIFIKASI ");
       await loadData();
     } catch (err: any) {
       alert("Gagal memverifikasi: " + err.message);
@@ -498,7 +498,7 @@ export default function AdminTransaksiPage() {
               onClick={() => handleBulkExport('xlsx')}
               className="px-3 py-2 bg-accent/40 text-accent-text border border-accent/40 hover:bg-accent/15 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
             >
-              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span>
+              <span><LineIcon name="export" /></span>
               <span>Export Excel</span>
             </button>
 
@@ -507,7 +507,7 @@ export default function AdminTransaksiPage() {
               onClick={() => setIsHistoricalModalOpen(true)}
               className="px-3 py-2 bg-accent/40 text-accent-text border border-accent/40 hover:bg-accent/15 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
             >
-              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span>
+              <span><LineIcon name="import" /></span>
               <span>Import Historis</span>
             </button>
 
@@ -516,7 +516,7 @@ export default function AdminTransaksiPage() {
               onClick={() => setIsBulkProofModalOpen(true)}
               className="px-3 py-2 bg-amber-950/40 text-amber-300 border border-amber-800 hover:bg-amber-500/15 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
             >
-              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h5l2-3h4l2 3h5v15H3zM16 13a4 4 0 1 0-8 0 4 4 0 0 0 8 0" /></svg></span>
+              <span><LineIcon name="camera" /></span>
               <span>Bulk Bukti Bayar</span>
             </button>
           </div>
@@ -574,7 +574,7 @@ export default function AdminTransaksiPage() {
               className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
             >
               <option value="Semua"> Semua Status Verifikasi</option>
-              <option value="terverifikasi">✓ Terverifikasi</option>
+              <option value="terverifikasi">Terverifikasi</option>
               <option value="menunggu_verifikasi"> Menunggu Verifikasi</option>
               <option value="menunggu_bukti"> Menunggu Bukti</option>
             </select>
@@ -645,7 +645,7 @@ export default function AdminTransaksiPage() {
               onClick={handleBulkReprint}
               className="px-3 py-1.5 bg-card text-accent-text hover:bg-accent/10 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95"
             >
-              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 8V3h10v5M7 17H3V8h18v9h-4M7 14h10v7H7zM17 11h1" /></svg></span>
+              <span><LineIcon name="printer" /></span>
               <span>Cetak Terpilih</span>
             </button>
             <button
@@ -653,7 +653,7 @@ export default function AdminTransaksiPage() {
               onClick={() => handleBulkExport('xlsx')}
               className="px-3 py-1.5 bg-accent text-white hover:bg-accent-hover rounded-xl text-xs font-bold transition-all flex items-center gap-1"
             >
-              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span>
+              <span><LineIcon name="export" /></span>
               <span>Export (.xlsx)</span>
             </button>
             <button
@@ -705,7 +705,7 @@ export default function AdminTransaksiPage() {
                     viewMode === "table" ? "bg-accent text-white shadow-sm" : "text-muted hover:text-fg"
                   }`}
                 >
-                  <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
+                  <span><LineIcon name="receipt" /></span>
                   <span>Tabel</span>
                 </button>
                 <button
@@ -715,7 +715,7 @@ export default function AdminTransaksiPage() {
                     viewMode === "card" ? "bg-accent text-white shadow-sm" : "text-muted hover:text-fg"
                   }`}
                 >
-                  <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" /></svg></span>
+                  <span><LineIcon name="catalog" /></span>
                   <span>Kartu</span>
                 </button>
               </div>
@@ -828,7 +828,7 @@ export default function AdminTransaksiPage() {
                                     : "bg-rose-950/60 text-rose-300"
                                 }`}
                               >
-                                <span>{vStatus === "terverifikasi" ? "✓" : vStatus === "menunggu_verifikasi" ? "⏳" : "⚠️"}</span>
+                                <span><LineIcon name={vStatus === "terverifikasi" ? "success" : vStatus === "menunggu_verifikasi" ? "waiting" : "warning"} /></span>
                                 <span>
                                   {vStatus === "terverifikasi"
                                     ? "Terverifikasi"
@@ -868,7 +868,7 @@ export default function AdminTransaksiPage() {
                               className="px-2.5 py-1.5 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
                               title="Lihat detail & cetak ulang"
                             >
-                              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 15l6 6M17 10a7 7 0 1 0-14 0 7 7 0 0 0 14 0" /></svg></span>
+                              <span><LineIcon name="search" /></span>
                               <span>Rincian</span>
                             </button>
 
@@ -959,7 +959,7 @@ export default function AdminTransaksiPage() {
                                 : " bg-rose-950/60 text-rose-300"
                             }`}
                           >
-                            <span>{vStatus === "terverifikasi" ? "✓" : vStatus === "menunggu_verifikasi" ? "⏳" : "⚠️"}</span>
+                            <span><LineIcon name={vStatus === "terverifikasi" ? "success" : vStatus === "menunggu_verifikasi" ? "waiting" : "warning"} /></span>
                             <span>
                               {vStatus === "terverifikasi"
                                 ? "Terverifikasi"
@@ -1007,7 +1007,7 @@ export default function AdminTransaksiPage() {
                         onClick={() => setReceiptData(order)}
                         className="px-3 py-2 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors flex items-center gap-1"
                       >
-                        <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 15l6 6M17 10a7 7 0 1 0-14 0 7 7 0 0 0 14 0" /></svg></span>
+                        <span><LineIcon name="search" /></span>
                         <span>Rincian & Bukti</span>
                       </button>
 
@@ -1110,7 +1110,7 @@ export default function AdminTransaksiPage() {
                 onClick={() => setReceiptData(null)}
                 className="w-7 h-7 rounded-full bg-card text-muted hover:text-fg text-xs font-bold"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -1163,7 +1163,7 @@ export default function AdminTransaksiPage() {
                           ? ' bg-accent text-accent-text'
                           : ' bg-amber-950 text-amber-300'
                       }`}>
-                        {receiptData.proofs[0].status === 'terverifikasi' ? '✓ Terverifikasi' : '⏳ Menunggu Verifikasi'}
+                        {receiptData.proofs[0].status === 'terverifikasi' ? 'Terverifikasi' : ' Menunggu Verifikasi'}
                       </span>
                     ) : (
                       <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400"> Belum Ada Bukti
@@ -1211,7 +1211,7 @@ export default function AdminTransaksiPage() {
                               onClick={() => handleVerifyProof(pr.id)}
                               className="flex-1 py-1.5 px-3 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1"
                             >
-                              <span>✓</span>
+                              <span><LineIcon name="success" /></span>
                               <span>Verifikasi Sekarang</span>
                             </button>
                           )}
@@ -1241,7 +1241,7 @@ export default function AdminTransaksiPage() {
                         disabled={isUploadingDetailProof}
                         className="w-full py-2.5 px-4 bg-accent hover:bg-accent-hover active:scale-95 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-accent/20 flex items-center justify-center gap-1.5"
                       >
-                        <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h5l2-3h4l2 3h5v15H3zM16 13a4 4 0 1 0-8 0 4 4 0 0 0 8 0" /></svg></span>
+                        <span><LineIcon name="camera" /></span>
                         <span>{isUploadingDetailProof ? "Mengompresi..." : "Upload Bukti Pembayaran Sekarang"}</span>
                       </button>
                       <p className="text-[10px] text-muted mt-1.5">
@@ -1299,7 +1299,7 @@ export default function AdminTransaksiPage() {
               onClick={() => setZoomProofImage(null)}
               className="mt-4 px-6 py-2 rounded-full bg-card/20 hover:bg-card/30 text-white text-xs font-bold backdrop-blur-md"
             >
-              ✕ Tutup Pratinjau
+              × Tutup Pratinjau
             </button>
           </div>
         </div>
@@ -1325,7 +1325,7 @@ export default function AdminTransaksiPage() {
                 onClick={() => setIsHistoricalModalOpen(false)}
                 className="w-7 h-7 rounded-full bg-card text-muted hover:text-fg text-xs font-bold"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -1438,7 +1438,7 @@ export default function AdminTransaksiPage() {
                 onClick={() => setIsBulkProofModalOpen(false)}
                 className="w-7 h-7 rounded-full bg-card text-muted hover:text-fg text-xs font-bold"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -1500,7 +1500,7 @@ export default function AdminTransaksiPage() {
                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${
                           m.matched ? "bg-accent/15 text-accent-text" : "bg-rose-500/15 text-rose-400"
                         }`}>
-                          {m.matched ? "✓ Cocok" : "✕ Gagal"}
+                          {m.matched ? "Cocok" : "× Gagal"}
                         </span>
                       </div>
                     ))}

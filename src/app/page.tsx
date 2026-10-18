@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -369,12 +370,12 @@ export default function SakuNotaLandingPage() {
       const res = await activateLicenseServer(licenseKey, "Perangkat Kasir Utama");
       if (res.success) {
         setIsActivatedHere(true);
-        setActivateMsg("✅ Lisensi resmi berhasil diaktifkan di perangkat ini! Kasir Anda siap digunakan tanpa internet.");
+        setActivateMsg("Lisensi resmi berhasil diaktifkan di perangkat ini! Kasir Anda siap digunakan tanpa internet.");
       } else {
-        setActivateMsg("❌ " + (res.error || "Gagal mengaktifkan lisensi di perangkat ini."));
+        setActivateMsg(" " + (res.error || "Gagal mengaktifkan lisensi di perangkat ini."));
       }
     } catch (err: any) {
-      setActivateMsg("❌ " + err.message);
+      setActivateMsg(" " + err.message);
     } finally {
       setIsActivatingHere(false);
     }
@@ -517,7 +518,7 @@ export default function SakuNotaLandingPage() {
               aria-label="Toggle menu"
             >
               <span>Menu</span>
-              <span>{mobileMenuOpen ? "✕" : "☰"}</span>
+              <span>{mobileMenuOpen ? "×" : "☰"}</span>
             </button>
           </div>
         </div>
@@ -547,7 +548,7 @@ export default function SakuNotaLandingPage() {
                   className="w-8 h-8 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-black flex items-center justify-center transition-colors"
                   aria-label="Tutup Menu"
                 >
-                  ✕
+                  ×
                 </button>
               </div>
 
@@ -562,7 +563,7 @@ export default function SakuNotaLandingPage() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
                   >
-                    <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 10-13h-7z" /></svg></span>
+                    <span className="text-base"><LineIcon name="lightning" /></span>
                     <span className="text-[11px] font-extrabold">Fitur</span>
                   </a>
                   <a 
@@ -570,7 +571,7 @@ export default function SakuNotaLandingPage() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
                   >
-                    <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" /></svg></span>
+                    <span className="text-base"><LineIcon name="demo" /></span>
                     <span className="text-[11px] font-extrabold">Usaha</span>
                   </a>
                   <a 
@@ -578,7 +579,7 @@ export default function SakuNotaLandingPage() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
                   >
-                    <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
+                    <span className="text-base"><LineIcon name="receipt" /></span>
                     <span className="text-[11px] font-extrabold">Harga</span>
                   </a>
                   <Link 
@@ -586,7 +587,7 @@ export default function SakuNotaLandingPage() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
                   >
-                    <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v16M12 5C9 2 4 3 2 4v15c4-1 7-1 10 2 3-3 6-3 10-2V4c-2-1-7-2-10 1" /></svg></span>
+                    <span className="text-base"><LineIcon name="guide" /></span>
                     <span className="text-[11px] font-extrabold">Panduan</span>
                   </Link>
                 </div>
@@ -856,19 +857,19 @@ export default function SakuNotaLandingPage() {
           {/* Mobile 4-Grid Icon Summary Bar */}
           <div className="grid grid-cols-4 gap-2 sm:hidden">
             <div className="p-2.5 rounded-2xl bg-blue-50 border border-blue-200 text-center">
-              <span className="text-lg block">🍽️</span>
+              <span className="text-lg block"><LineIcon name="food" /></span>
               <span className="text-[10px] font-extrabold text-blue-900 block mt-0.5 leading-tight">Kasir &amp; Meja</span>
             </div>
             <div className="p-2.5 rounded-2xl bg-blue-50 border border-blue-200 text-center">
-              <span className="text-lg block">🖨️</span>
+              <span className="text-lg block"><LineIcon name="printer" /></span>
               <span className="text-[10px] font-extrabold text-blue-900 block mt-0.5 leading-tight">Cetak Struk</span>
             </div>
             <div className="p-2.5 rounded-2xl bg-blue-50 border border-blue-200 text-center">
-              <span className="text-lg block">📊</span>
+              <span className="text-lg block"><LineIcon name="chart" /></span>
               <span className="text-[10px] font-extrabold text-blue-900 block mt-0.5 leading-tight">Rekap WA</span>
             </div>
             <div className="p-2.5 rounded-2xl bg-blue-50 border border-blue-200 text-center">
-              <span className="text-lg block">🛡️</span>
+              <span className="text-lg block"><LineIcon name="security" /></span>
               <span className="text-[10px] font-extrabold text-blue-900 block mt-0.5 leading-tight">100% Offline</span>
             </div>
           </div>
@@ -890,11 +891,11 @@ export default function SakuNotaLandingPage() {
                 </p>
                 <ul className="hidden sm:block space-y-2 pt-1 text-xs text-slate-700">
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold">✓</span>
+                    <span className="text-blue-600 font-bold"><LineIcon name="success" /></span>
                     <span>Mode kasir cepat untuk pesanan bungkus atau denah meja interaktif untuk restoran.</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold">✓</span>
+                    <span className="text-blue-600 font-bold"><LineIcon name="success" /></span>
                     <span>Pisah dan gabung nota pembayaran dengan mudah tanpa membingungkan kasir.</span>
                   </li>
                 </ul>
@@ -920,11 +921,11 @@ export default function SakuNotaLandingPage() {
                 </p>
                 <ul className="hidden sm:block space-y-2 pt-1 text-xs text-slate-700">
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold">✓</span>
+                    <span className="text-blue-600 font-bold"><LineIcon name="success" /></span>
                     <span>Koneksi instan ke printer thermal Bluetooth (Panda, VSC, Eppos, Zjiang, Kassen, dll).</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold">✓</span>
+                    <span className="text-blue-600 font-bold"><LineIcon name="success" /></span>
                     <span>Struk tercetak instan, rapi, dan tersimpan aman di memori HP.</span>
                   </li>
                 </ul>
@@ -950,11 +951,11 @@ export default function SakuNotaLandingPage() {
                 </p>
                 <ul className="hidden sm:block space-y-2 pt-1 text-xs text-slate-700">
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold">✓</span>
+                    <span className="text-blue-600 font-bold"><LineIcon name="success" /></span>
                     <span>Hitung kas masuk dan keluar shift secara objektif dan akurat.</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold">✓</span>
+                    <span className="text-blue-600 font-bold"><LineIcon name="success" /></span>
                     <span>Kirim rekapitulasi penjualan harian langsung ke WhatsApp pemilik.</span>
                   </li>
                 </ul>
@@ -980,11 +981,11 @@ export default function SakuNotaLandingPage() {
                 </p>
                 <ul className="hidden sm:block space-y-2 pt-1 text-xs text-slate-700">
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold">✓</span>
+                    <span className="text-blue-600 font-bold"><LineIcon name="success" /></span>
                     <span>Buka kasir hanya dalam 1 detik tanpa menunggu loading server luar.</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold">✓</span>
+                    <span className="text-blue-600 font-bold"><LineIcon name="success" /></span>
                     <span>Backup data ke file HP kapan saja dan pulihkan saat ganti perangkat.</span>
                   </li>
                 </ul>
@@ -1021,9 +1022,7 @@ export default function SakuNotaLandingPage() {
             
             {/* 1. Warung Makan */}
             <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all space-y-2">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-base sm:text-lg font-black">
-                🍛
-              </div>
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-base sm:text-lg font-black"><LineIcon name="food" /></div>
               <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-snug">
                 Warung Makan &amp; Kuliner Harian
               </h3>
@@ -1034,9 +1033,7 @@ export default function SakuNotaLandingPage() {
 
             {/* 2. Rumah Makan & Restoran */}
             <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all space-y-2">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-base sm:text-lg font-black">
-                🍽️
-              </div>
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-base sm:text-lg font-black"><LineIcon name="food" /></div>
               <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-snug">
                 Rumah Makan &amp; Restoran (Meja &amp; Open Bill)
               </h3>
@@ -1047,9 +1044,7 @@ export default function SakuNotaLandingPage() {
 
             {/* 3. Kafe & Kedai Minuman */}
             <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all space-y-2">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-base sm:text-lg font-black">
-                ☕
-              </div>
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-base sm:text-lg font-black"><LineIcon name="drink" /></div>
               <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-snug">
                 Kafe &amp; Kedai Minuman (Varian &amp; Topping)
               </h3>
@@ -1060,9 +1055,7 @@ export default function SakuNotaLandingPage() {
 
             {/* 4. Booth Jajanan */}
             <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all space-y-2">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-base sm:text-lg font-black">
-                🥡
-              </div>
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center text-base sm:text-lg font-black"><LineIcon name="takeaway" /></div>
               <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-snug">
                 Booth Jajanan &amp; Street Food (Ringan)
               </h3>
@@ -1101,7 +1094,7 @@ export default function SakuNotaLandingPage() {
                 {/* Badge & Title */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-black border border-blue-200">
-                    <span>🔥</span>
+                    <span></span>
                     <span>Promo Peluncuran</span>
                   </div>
                   <span className="text-[11px] font-bold text-slate-600">
@@ -1134,27 +1127,27 @@ export default function SakuNotaLandingPage() {
                 {/* Checkmarks */}
                 <div className="pt-2 border-t border-slate-100 space-y-2.5 text-xs text-slate-700">
                   <div className="flex items-start gap-2.5">
-                    <span className="text-blue-600 font-black text-sm leading-none">✓</span>
+                    <span className="text-blue-600 font-black text-sm leading-none"><LineIcon name="success" /></span>
                     <span className="font-semibold">Seluruh Fitur Kasir Lengkap (Menu, Varian &amp; Meja)</span>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <span className="text-blue-600 font-black text-sm leading-none">✓</span>
+                    <span className="text-blue-600 font-black text-sm leading-none"><LineIcon name="success" /></span>
                     <span className="font-semibold">100% Offline (Tetap jualan lancar tanpa internet)</span>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <span className="text-blue-600 font-black text-sm leading-none">✓</span>
+                    <span className="text-blue-600 font-black text-sm leading-none"><LineIcon name="success" /></span>
                     <span className="font-semibold">Cetak Struk Bluetooth Mini Thermal (58mm &amp; 80mm)</span>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <span className="text-blue-600 font-black text-sm leading-none">✓</span>
+                    <span className="text-blue-600 font-black text-sm leading-none"><LineIcon name="success" /></span>
                     <span className="font-semibold">Rekap Kas &amp; Kirim Laporan Harian ke WhatsApp</span>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <span className="text-blue-600 font-black text-sm leading-none">✓</span>
+                    <span className="text-blue-600 font-black text-sm leading-none"><LineIcon name="success" /></span>
                     <span className="font-semibold">Data Tersimpan Privat di Memori HP Sendiri</span>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <span className="text-blue-600 font-black text-sm leading-none">✓</span>
+                    <span className="text-blue-600 font-black text-sm leading-none"><LineIcon name="success" /></span>
                     <span className="font-semibold">Tanpa Biaya Bulanan / Tanpa Potongan Penjualan</span>
                   </div>
                 </div>
@@ -1227,23 +1220,23 @@ export default function SakuNotaLandingPage() {
                 {/* Drawbacks Checklist */}
                 <div className="pt-2 border-t border-slate-200 space-y-2.5 text-xs text-slate-700">
                   <div className="flex items-start gap-2.5">
-                    <span className="text-rose-500 font-bold text-sm leading-none">✕</span>
+                    <span className="text-rose-500 font-bold text-sm leading-none">×</span>
                     <span>Wajib terhubung internet terus (transaksi macet saat offline)</span>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <span className="text-rose-500 font-bold text-sm leading-none">✕</span>
+                    <span className="text-rose-500 font-bold text-sm leading-none">×</span>
                     <span>Ada potongan komisi atau biaya transaksi tambahan</span>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <span className="text-rose-500 font-bold text-sm leading-none">✕</span>
+                    <span className="text-rose-500 font-bold text-sm leading-none">×</span>
                     <span>Data tersimpan di server luar (terkunci jika berhenti langganan)</span>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <span className="text-rose-500 font-bold text-sm leading-none">✕</span>
+                    <span className="text-rose-500 font-bold text-sm leading-none">×</span>
                     <span>Tagihan bulanan tetap berjalan meski omzet warung sedang sepi</span>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <span className="text-rose-500 font-bold text-sm leading-none">✕</span>
+                    <span className="text-rose-500 font-bold text-sm leading-none">×</span>
                     <span>Tergantung router Wi-Fi atau instalasi jaringan rumit</span>
                   </div>
                 </div>
@@ -1252,7 +1245,7 @@ export default function SakuNotaLandingPage() {
               {/* Bottom Info Note */}
               <div className="pt-4">
                 <div className="p-3.5 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-700 leading-relaxed text-center font-medium">
-                  💡 Dengan beralih ke SakuNota sekali bayar, Anda menghemat jutaan rupiah setiap tahun dan memiliki kedaulatan data 100%.
+                   Dengan beralih ke SakuNota sekali bayar, Anda menghemat jutaan rupiah setiap tahun dan memiliki kedaulatan data 100%.
                 </div>
               </div>
 
@@ -1363,7 +1356,7 @@ export default function SakuNotaLandingPage() {
               },
               {
                 q: "Bagaimana cara mengaktifkan Lisensi SakuNota atau Lisensi Tester?",
-                a: "Sangat mudah! Anda tidak perlu memasukkan Nomor Pesanan atau Kode Akses jika sudah memegang Kode Lisensi (misal SN-XXXX-XXXX-XXXX atau SN-TEST-XXXX). Cukup klik tombol '🔑 Aktivasi Lisensi' di bagian atas halaman ini atau langsung buka halaman Kasir (/pos), tempel kode lisensi Anda, lalu klik Aktifkan.",
+                a: "Sangat mudah! Anda tidak perlu memasukkan Nomor Pesanan atau Kode Akses jika sudah memegang Kode Lisensi (misal SN-XXXX-XXXX-XXXX atau SN-TEST-XXXX). Cukup klik tombol ' Aktivasi Lisensi' di bagian atas halaman ini atau langsung buka halaman Kasir (/pos), tempel kode lisensi Anda, lalu klik Aktifkan.",
               },
               {
                 q: "Berapa harga SakuNota?",
@@ -1636,7 +1629,7 @@ export default function SakuNotaLandingPage() {
             <div className="flex justify-between items-start">
               <div className="space-y-1">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-black border border-blue-200">
-                  <span>🚀 PROGRAM CLOSED BETA</span>
+                  <span> PROGRAM CLOSED BETA</span>
                 </div>
                 <h3 className="font-black text-xl text-slate-900">Uji Coba 7 Hari SakuNota</h3>
                 <p className="text-xs text-slate-600">
@@ -1648,15 +1641,13 @@ export default function SakuNotaLandingPage() {
                 onClick={() => setIsBetaModalOpen(false)}
                 className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-xs font-black transition-colors flex items-center justify-center"
               >
-                ✕
+                ×
               </button>
             </div>
 
             {betaSuccessResult ? (
               <div className="space-y-5 text-center py-4">
-                <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center mx-auto text-3xl">
-                  🎉
-                </div>
+                <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center mx-auto text-3xl"><LineIcon name="success" /></div>
                 <div className="space-y-1">
                   <h4 className="text-lg font-black text-slate-900">Pendaftaran Berhasil Dikirim!</h4>
                   <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
@@ -1767,7 +1758,7 @@ export default function SakuNotaLandingPage() {
                 {/* Safe Data Guarantee Box */}
                 <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-[11px] text-blue-800 space-y-1">
                   <div className="font-bold flex items-center gap-1.5 text-blue-900">
-                    <span>🛡️</span> Jaminan Keamanan Data Toko
+                    <span><LineIcon name="security" /></span> Jaminan Keamanan Data Toko
                   </div>
                   <p className="leading-relaxed text-slate-700">
                     Semua transaksi, menu, dan rekap shift selama uji coba tersimpan utuh di perangkat Anda dan dapat diekspor kapan pun.
@@ -1839,7 +1830,7 @@ export default function SakuNotaLandingPage() {
                 onClick={() => setIsBuyModalOpen(false)}
                 className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-sm flex items-center justify-center transition-colors"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -1968,8 +1959,7 @@ export default function SakuNotaLandingPage() {
                 </div>
 
                 {snapError && (
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold">
-                    ⚠️ {snapError}
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold"><LineIcon name="warning" />{snapError}
                   </div>
                 )}
 
@@ -2064,13 +2054,13 @@ export default function SakuNotaLandingPage() {
                           if (file) setTransferProofFileName(file.name);
                         }}
                       />
-                      <span>{transferProofFileName ? `✅ Terlampir: ${transferProofFileName}` : "📎 Ketuk untuk Unggah Screenshot Bukti Transfer"}</span>
+                      <span>{transferProofFileName ? ` Terlampir: ${transferProofFileName}` : " Ketuk untuk Unggah Screenshot Bukti Transfer"}</span>
                     </label>
                   </div>
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed space-y-1">
-                  <strong className="text-slate-800 block">ℹ️ Proses Verifikasi:</strong>
+                  <strong className="text-slate-800 block"> Proses Verifikasi:</strong>
                   <p>
                     Setelah bukti transfer terlampir, status pesanan akan menjadi <strong>Menunggu Verifikasi</strong>. Tim SakuNota akan mencocokkan mutasi rekening sebelum lisensi terbit.
                   </p>
@@ -2098,9 +2088,7 @@ export default function SakuNotaLandingPage() {
             {/* Step 3: Status Menunggu Verifikasi */}
             {checkoutStep === "waiting" && (
               <div className="space-y-5 text-center">
-                <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 text-2xl mx-auto flex items-center justify-center border border-blue-200">
-                  ⏳
-                </div>
+                <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 text-2xl mx-auto flex items-center justify-center border border-blue-200"><LineIcon name="waiting" /></div>
 
                 <div className="space-y-1">
                   <h4 className="text-lg font-black text-slate-900">Bukti Transfer Telah Dikirim!</h4>
@@ -2141,7 +2129,7 @@ export default function SakuNotaLandingPage() {
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-white border border-slate-200 text-left text-xs text-slate-600 space-y-1.5 leading-relaxed">
-                  <strong className="text-slate-900 block">💡 Apa yang terjadi selanjutnya?</strong>
+                  <strong className="text-slate-900 block"> Apa yang terjadi selanjutnya?</strong>
                   <p>
                     1. Tim SakuNota memeriksa dana masuk di mutasi BCA.<br />
                     2. Setelah dana cocok, lisensi resmi akan langsung diterbitkan.<br />
@@ -2156,7 +2144,7 @@ export default function SakuNotaLandingPage() {
                     rel="noopener noreferrer"
                     className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
                   >
-                    <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg></span>
+                    <span><LineIcon name="info" /></span>
                     <span>Konfirmasi Cepat via WhatsApp</span>
                   </a>
                   <button
@@ -2173,9 +2161,7 @@ export default function SakuNotaLandingPage() {
             {/* Step 4: Pembayaran Berhasil & Lisensi Resmi Terbit */}
             {checkoutStep === "success" && (
               <div className="space-y-5 text-center">
-                <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 text-3xl mx-auto flex items-center justify-center border border-blue-200">
-                  ✓
-                </div>
+                <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 text-3xl mx-auto flex items-center justify-center border border-blue-200"><LineIcon name="success" /></div>
 
                 <div className="space-y-1">
                   <h4 className="text-xl font-black text-slate-900">Pembayaran Berhasil!</h4>
@@ -2236,7 +2222,7 @@ export default function SakuNotaLandingPage() {
                         }}
                         className="flex-1 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors flex items-center justify-center gap-1.5"
                       >
-                        <span>{copiedLicense ? "✓ Berhasil Disalin!" : " Salin Nomor Lisensi"}</span>
+                        <span>{copiedLicense ? "Berhasil Disalin!" : " Salin Nomor Lisensi"}</span>
                       </button>
                     </div>
                   </div>
@@ -2246,7 +2232,7 @@ export default function SakuNotaLandingPage() {
                     <span className="text-[10px] text-slate-600 block uppercase font-bold mb-1">Status Perangkat Kasir:</span>
                     {createdOrder?.boundDeviceId ? (
                       <div className="flex items-center gap-2 text-blue-700 font-bold text-xs bg-blue-50 p-2.5 rounded-xl border border-blue-200">
-                        <span>🟢</span>
+                        <span></span>
                         <span>Terikat di: {createdOrder.deviceName || createdOrder.boundDeviceId}</span>
                       </div>
                     ) : (
@@ -2261,7 +2247,7 @@ export default function SakuNotaLandingPage() {
                 {/* Activation on This Device Feedback */}
                 {activateMsg && (
                   <div className={`p-3 rounded-xl text-xs font-bold leading-relaxed ${
-                    activateMsg.startsWith("✅")
+                    activateMsg.trimStart().startsWith("Lisensi resmi berhasil")
                       ? "bg-blue-50 border border-blue-200 text-blue-800"
                       : "bg-rose-50 border border-rose-200 text-rose-600"
                   }`}>
@@ -2278,7 +2264,7 @@ export default function SakuNotaLandingPage() {
                       onClick={() => handleActivateOnThisDevice(createdOrder.licenseKey!)}
                       className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 10-13h-7z" /></svg></span>
+                      <span><LineIcon name="lightning" /></span>
                       <span>{isActivatingHere ? "Mengaktifkan Lisensi..." : "Aktifkan di Perangkat Ini"}</span>
                     </button>
                   )}
@@ -2296,7 +2282,7 @@ export default function SakuNotaLandingPage() {
                       href="/pos"
                       className="py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl text-center shadow-sm transition-all flex items-center justify-center gap-1.5"
                     >
-                      <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" /></svg></span>
+                      <span><LineIcon name="demo" /></span>
                       <span>Buka Kasir →</span>
                     </Link>
                   </div>
@@ -2335,9 +2321,7 @@ export default function SakuNotaLandingPage() {
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-base shadow-sm">
-                  🔑
-                </div>
+                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-base shadow-sm"><LineIcon name="pin" /></div>
                 <div>
                   <h3 className="font-black text-sm text-slate-900">Aktivasi Lisensi &amp; Cek Pesanan</h3>
                   <span className="text-[10px] text-slate-600 block">Aktifkan Kode Lisensi / Tester atau cek status transfer</span>
@@ -2348,7 +2332,7 @@ export default function SakuNotaLandingPage() {
                 onClick={() => setIsCheckStatusModalOpen(false)}
                 className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-xs flex items-center justify-center font-black"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -2402,15 +2386,14 @@ export default function SakuNotaLandingPage() {
                   </div>
 
                   {directActivateError && (
-                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
-                      ⚠️ {directActivateError}
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold"><LineIcon name="warning" />{directActivateError}
                     </div>
                   )}
 
                   {directActivateSuccess && (
                     <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs space-y-3">
                       <div className="font-extrabold flex items-center gap-1.5">
-                        <span>✅</span>
+                        <span><LineIcon name="success" /></span>
                         <span>{directActivateSuccess}</span>
                       </div>
                       <Link
@@ -2463,13 +2446,12 @@ export default function SakuNotaLandingPage() {
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:bg-white outline-none font-mono uppercase"
                     />
                     <span className="text-[10px] text-slate-600 block mt-1">
-                      Kode rahasia diberikan saat checkout. Jika Anda sudah punya Kode Lisensi / Tester, pilih tab <strong>🔑 Pakai Kode Lisensi</strong> di atas.
+                      Kode rahasia diberikan saat checkout. Jika Anda sudah punya Kode Lisensi / Tester, pilih tab <strong> Pakai Kode Lisensi</strong> di atas.
                     </span>
                   </div>
 
                   {searchError && (
-                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-semibold">
-                      ⚠️ {searchError}
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-semibold"><LineIcon name="warning" />{searchError}
                     </div>
                   )}
 
@@ -2518,7 +2500,7 @@ export default function SakuNotaLandingPage() {
                             }}
                             className="flex-1 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors flex items-center justify-center gap-1.5"
                           >
-                            <span>{copiedLicense ? "✓ Tersalin!" : " Salin Lisensi"}</span>
+                            <span>{copiedLicense ? "Tersalin!" : " Salin Lisensi"}</span>
                           </button>
                         </div>
 
@@ -2527,7 +2509,7 @@ export default function SakuNotaLandingPage() {
                           <span className="text-[10px] text-slate-600 block uppercase font-bold mb-1">Status Perangkat Kasir:</span>
                           {searchResult.boundDeviceId ? (
                             <div className="text-blue-700 font-bold text-xs flex items-center gap-1.5">
-                              <span>🟢</span>
+                              <span></span>
                               <span>Terikat di: {searchResult.deviceName || searchResult.boundDeviceId}</span>
                             </div>
                           ) : (
@@ -2546,7 +2528,7 @@ export default function SakuNotaLandingPage() {
                             onClick={() => handleActivateOnThisDevice(searchResult.licenseKey!)}
                             className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
                           >
-                            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 10-13h-7z" /></svg></span>
+                            <span><LineIcon name="lightning" /></span>
                             <span>{isActivatingHere ? "Mengaktifkan..." : "Aktifkan di Perangkat Ini"}</span>
                           </button>
                         )}
@@ -2599,7 +2581,7 @@ export default function SakuNotaLandingPage() {
                           }}
                           className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
                         >
-                          <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
+                          <span><LineIcon name="receipt" /></span>
                           <span>{isSearchingOrder ? "Menyinkronkan..." : "Sinkronkan Status Pembayaran"}</span>
                         </button>
 
@@ -2609,7 +2591,7 @@ export default function SakuNotaLandingPage() {
                           rel="noopener noreferrer"
                           className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold rounded-xl border border-blue-200 transition-all flex items-center justify-center gap-1.5"
                         >
-                          <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg></span>
+                          <span><LineIcon name="info" /></span>
                           <span>Konfirmasi via WhatsApp SakuNota</span>
                         </a>
                       </div>

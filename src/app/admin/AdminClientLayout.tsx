@@ -18,7 +18,7 @@ const navItems = [
   { href: "/admin/meja", label: "Kelola Meja", icon: "tables" },
   { href: "/admin/transaksi", label: "Riwayat Transaksi", icon: "receipt" },
   { href: "/admin/shift", label: "Shift & Kas Laci", icon: "shift" },
-  { href: "/admin/pelayan", label: "Waiter Floor", icon: "tables" },
+  { href: "/admin/pelayan", label: "Waiter Floor", icon: "table" },
   { href: "/admin/menu", label: "Katalog & Stok", icon: "catalog" },
   { href: "/admin/pengaturan", label: "Pengaturan POS", icon: "settings" },
   { href: "/admin", label: "Dashboard", icon: "chart" },
@@ -270,7 +270,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 }}
                 className="px-4 py-2 rounded-xl bg-card border border-line text-xs font-bold text-fg hover:border-accent flex items-center gap-2 transition-all"
               >
-                <span>{codeCopied ? "✓ Berhasil Disalin" : " Salin Kode"}</span>
+                <span>{codeCopied ? "Berhasil Disalin" : " Salin Kode"}</span>
               </button>
             </div>
 
@@ -547,7 +547,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             onClick={logout}
             className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-700 hover:bg-rose-50 transition-colors"
           >
-            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H3v18h6M9 12h12M16 7l5 5-5 5" /></svg></span>
+            <span><LineIcon name="logout" /></span>
             <span>Keluar Admin</span>
           </button>
         </div>
@@ -620,7 +620,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
         {/* Security Reminder if PIN is still default */}
         {isDefaultPin && (
-          <div className=" bg-amber-950/50 border-b border-amber-900/60 px-4 py-2.5 flex items-center justify-between text-xs text-amber-200">
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex flex-wrap gap-3 items-center justify-between text-xs text-amber-900">
             <div className="flex items-center gap-2">
               <span className="text-base"><LockIcon /></span>
               <span>
@@ -629,7 +629,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
             <Link
               href="/admin/pengaturan/keamanan"
-              className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shrink-0 ml-2 transition-colors"
+              className="px-2.5 py-1 bg-accent hover:bg-accent-hover text-white font-bold rounded-lg shrink-0 transition-colors"
             >
               Ganti PIN
             </Link>
@@ -652,7 +652,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               : " text-muted"
           }`}
         >
-          <span className="text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16M7 16v-4M12 16V5M17 16V9" /></svg></span>
+          <span className="text-lg"><LineIcon name="chart" /></span>
           <span className="truncate w-full text-center">Dashboard</span>
         </Link>
 
@@ -664,7 +664,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               : " text-muted"
           }`}
         >
-          <span className="text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12h13M10 8c2-4 8-4 10 0l1 4H8zM2 3v6M5 3v6M2 6h3M3.5 9v12M8 16h13" /></svg></span>
+          <span className="text-lg"><LineIcon name="food" /></span>
           <span className="truncate w-full text-center">Menu</span>
         </Link>
 
@@ -676,7 +676,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               : " text-muted"
           }`}
         >
-          <span className="text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
+          <span className="text-lg"><LineIcon name="receipt" /></span>
           <span className="truncate w-full text-center">Transaksi</span>
         </Link>
 
@@ -689,7 +689,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               : " text-muted"
           }`}
         >
-          <span className="text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3l1 4 4 1 2 4-3 3v4l-4 2-3-3-4 1-3-4 2-3-1-4 4-2zM14 12a2 2 0 1 0-4 0 2 2 0 0 0 4 0" /></svg></span>
+          <span className="text-lg"><LineIcon name="settings" /></span>
           <span className="truncate w-full text-center">Lainnya</span>
         </button>
       </div>
@@ -709,14 +709,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
             <div className="grid grid-cols-1 gap-2 mb-4">
               <Link href="/admin/menu?tab=stock" onClick={() => setIsLainnyaOpen(false)} className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-line text-fg">
-                <span className="text-xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 12v3h4v-3" /></svg></span><div><div className="font-bold text-sm">Katalog &amp; Stok</div><div className="text-xs text-muted">Produk, persediaan, dan opname</div></div>
+                <span className="text-xl"><LineIcon name="catalog" /></span><div><div className="font-bold text-sm">Katalog &amp; Stok</div><div className="text-xs text-muted">Produk, persediaan, dan opname</div></div>
               </Link>
               <Link
                 href="/admin/meja"
                 onClick={() => setIsLainnyaOpen(false)}
                 className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
-                <span className="text-xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3h14v10H5zM3 13h18v4H3zM5 17v5M19 17v5" /></svg></span>
+                <span className="text-xl"><LineIcon name="tables" /></span>
                 <div className="flex-1">
                   <div className="font-bold text-sm">Kelola Meja</div>
                   <div className="text-[10px] text-muted">Atur nomor meja dan status dine-in</div>
@@ -729,7 +729,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 onClick={() => setIsLainnyaOpen(false)}
                 className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
-                <span className="text-xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 12v3h4v-3" /></svg></span>
+                <span className="text-xl"><LineIcon name="shift" /></span>
                 <div className="flex-1">
                   <div className="font-bold text-sm">Shift & Kas Laci</div>
                   <div className="text-[10px] text-muted">Laporan Z-Report, uang fisik, dan kas operasional</div>
@@ -742,7 +742,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 onClick={() => setIsLainnyaOpen(false)}
                 className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
-                <span className="text-xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3l1 4 4 1 2 4-3 3v4l-4 2-3-3-4 1-3-4 2-3-1-4 4-2zM14 12a2 2 0 1 0-4 0 2 2 0 0 0 4 0" /></svg></span>
+                <span className="text-xl"><LineIcon name="settings" /></span>
                 <div className="flex-1">
                   <div className="font-bold text-sm">Pengaturan POS</div>
                   <div className="text-[10px] text-muted">Profil, Printer Bluetooth, Pajak, PIN, & Backup</div>
