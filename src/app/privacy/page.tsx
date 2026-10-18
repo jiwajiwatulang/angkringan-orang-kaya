@@ -11,12 +11,11 @@ export default function PrivacyPolicyPage() {
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20">
-              SN
-            </div>
-            <span className="font-extrabold text-slate-900 tracking-tight text-base">
-              SakuNota<span className="text-blue-600">.</span>
-            </span>
+            <img
+              src="/logo-sakunota.png"
+              alt="SakuNota"
+              className="h-8 w-auto object-contain"
+            />
           </Link>
           <Link
             href="/"
@@ -90,7 +89,7 @@ export default function PrivacyPolicyPage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all"
               >
-                <span>💬 Hubungi Bantuan WhatsApp</span>
+                <span>Hubungi Bantuan WhatsApp</span>
               </a>
             </div>
           </section>
@@ -98,13 +97,25 @@ export default function PrivacyPolicyPage() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
-        <div className="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>© 2026 SakuNota - PT Pemuda Gaya Bebas. Hak cipta dilindungi.</span>
+      <footer className="bg-white border-t border-slate-200 py-8 text-xs text-slate-500">
+        <div className="max-w-4xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-1 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-2">
+              <img
+                src="/logo-sakunota.png"
+                alt="SakuNota"
+                className="h-6 w-auto object-contain"
+              />
+              <span className="font-bold text-slate-800">© 2026 SakuNota. Hak cipta dilindungi.</span>
+            </div>
+            <p className="text-[11px] text-slate-500 max-w-md">
+              Aplikasi kasir modern untuk UMKM, angkringan, kafe, dan retail. 100% jalan offline tanpa biaya langganan bulanan.
+            </p>
+          </div>
           <div className="flex gap-4 font-semibold">
             <Link href="/tentang" className="hover:text-blue-600">Tentang Kami</Link>
-            <Link href="/terms" className="hover:text-blue-600">Syarat &amp; Ketentuan</Link>
-            <Link href="/panduan" className="hover:text-blue-600">Buku Panduan</Link>
+            <Link href="/terms" className="hover:text-blue-600">Terms</Link>
+            <Link href="/panduan" className="hover:text-blue-600">Panduan</Link>
           </div>
         </div>
       </footer>

@@ -17,7 +17,6 @@ interface GuideArticle {
 interface GuideTopic {
   id: string;
   title: string;
-  articleCount: number;
   shortDesc: string;
   iconType: string;
   articles: GuideArticle[];
@@ -28,7 +27,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "getting-started",
     title: "Memulai & Setup Awal",
-    articleCount: 6,
     shortDesc: "Panduan cepat awal memasang aplikasi, aktivasi lisensi, hingga siap jualan pertama kali.",
     iconType: "rocket",
     articles: [
@@ -77,7 +75,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "account-settings",
     title: "Profil Toko & Pengaturan Usaha",
-    articleCount: 5,
     shortDesc: "Atur nama outlet, alamat toko, nomor telepon, logo nota, dan catatan kaki struk.",
     iconType: "settings",
     articles: [
@@ -110,7 +107,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "pos-checkout",
     title: "Kasir POS & Transaksi",
-    articleCount: 8,
     shortDesc: "Input pesanan kilat, opsi bungkus/dine-in, diskon per item, open bill, dan struk bayar.",
     iconType: "cart",
     articles: [
@@ -155,7 +151,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "products-catalog",
     title: "Katalog Menu & Varian",
-    articleCount: 6,
     shortDesc: "Kelola daftar makanan, minuman, kategori produk, level pedas, dan topping tambahan.",
     iconType: "package",
     articles: [
@@ -200,7 +195,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "inventory-management",
     title: "Manajemen Stok & Bahan Baku",
-    articleCount: 5,
     shortDesc: "Pantau sisa stok otomatis berkurang saat penjualan dan dapatkan alarm stok menipis.",
     iconType: "layers",
     articles: [
@@ -232,7 +226,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "customers-loyalty",
     title: "Pelanggan & Kasbon / Hutang",
-    articleCount: 4,
     shortDesc: "Catat nomor langganan setia, histori belanja, dan pencatatan kasbon pelanggan.",
     iconType: "users",
     articles: [
@@ -263,7 +256,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "table-service",
     title: "Manajemen Meja & Dine-In",
-    articleCount: 5,
     shortDesc: "Tata nomor meja, lihat meja kosong vs terisi, pindah meja, dan cetak pesanan dapur.",
     iconType: "utensils",
     articles: [
@@ -296,7 +288,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "online-ordering",
     title: "Menu Digital & QR Meja",
-    articleCount: 4,
     shortDesc: "Buat kode QR untuk setiap meja agar pelanggan bisa melihat menu langsung dari HP.",
     iconType: "globe",
     articles: [
@@ -317,7 +308,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "reports-analytics",
     title: "Laporan Penjualan & Shift Kasir",
-    articleCount: 6,
     shortDesc: "Grafik omzet harian, menu paling laris, selisih kas laci, dan kirim rekap ke WhatsApp.",
     iconType: "bar-chart",
     articles: [
@@ -360,7 +350,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "billing-subscription",
     title: "Aktivasi Lisensi & Beli Sekali",
-    articleCount: 5,
     shortDesc: "Sistem beli sekali pakai selamanya tanpa biaya bulanan, aktivasi tester, dan ganti HP.",
     iconType: "credit-card",
     articles: [
@@ -391,7 +380,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "integrations",
     title: "Integrasi WhatsApp & Ekspor Excel",
-    articleCount: 4,
     shortDesc: "Kirim nota digital ke WA pelanggan, rekap shift ke owner, dan ekspor riwayat ke file Excel.",
     iconType: "plug",
     articles: [
@@ -422,7 +410,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "hardware-devices",
     title: "Printer Bluetooth & Perangkat Keras",
-    articleCount: 6,
     shortDesc: "Hubungkan printer thermal Bluetooth 58mm & 80mm ke HP Android tanpa router kabel.",
     iconType: "printer",
     articles: [
@@ -456,7 +443,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "receipts-templates",
     title: "Format Struk & Catatan Nota",
-    articleCount: 4,
     shortDesc: "Kustomisasi logo nota, ukuran teks struk, nomor antrean, dan catatan terima kasih.",
     iconType: "file-text",
     articles: [
@@ -476,7 +462,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "users-permissions",
     title: "Hak Akses Kasir & PIN Owner",
-    articleCount: 4,
     shortDesc: "Kunci menu admin dengan PIN rahasia dan batasi pegawai hanya bisa mengakses kasir.",
     iconType: "shield",
     articles: [
@@ -497,7 +482,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "offline-mode",
     title: "Mode 100% Offline & PWA",
-    articleCount: 5,
     shortDesc: "Jualan normal tanpa sinyal internet, tanpa buffering, dan data aman di penyimpanan lokal HP.",
     iconType: "wifi-off",
     articles: [
@@ -518,7 +502,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "payments-refunds",
     title: "Metode Pembayaran Tunai, QRIS & Void",
-    articleCount: 5,
     shortDesc: "Hitung kembalian uang otomatis, pembayaran QRIS statis, dan pembatalan transaksi (void).",
     iconType: "banknote",
     articles: [
@@ -562,7 +545,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "taxes-compliance",
     title: "Pajak PB1 & Service Charge",
-    articleCount: 4,
     shortDesc: "Penerapan pajak restoran daerah (PB1 10%) dan biaya layanan yang otomatis terhitung di struk.",
     iconType: "percent",
     articles: [
@@ -594,7 +576,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "troubleshooting",
     title: "Solusi Kendala & Troubleshooting",
-    articleCount: 8,
     shortDesc: "Panduan mengatasi Bluetooth printer tidak terdeteksi, cetak struk loncat, dan lupa PIN.",
     iconType: "help-circle",
     articles: [
@@ -640,7 +621,6 @@ const TOPICS: GuideTopic[] = [
   {
     id: "security-privacy",
     title: "Keamanan Data & Backup File",
-    articleCount: 5,
     shortDesc: "Data tersimpan aman di HP pemilik, unduh cadangan file JSON, dan panduan ganti perangkat.",
     iconType: "lock",
     articles: [
@@ -1014,7 +994,7 @@ export default function PanduanPage() {
               {/* Bottom: Article Count */}
               <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  {topic.articleCount} PANDUAN
+                  {topic.articles.length} PANDUAN
                 </span>
                 <span className="text-xs font-bold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
                   Buka Pelajari →
@@ -1027,7 +1007,6 @@ export default function PanduanPage() {
         {/* Empty State when search has no match */}
         {filteredTopics.length === 0 && (
           <div className="text-center py-16 bg-slate-50 rounded-3xl border border-slate-200 p-8 space-y-3">
-            <span className="text-3xl">🔍</span>
             <h3 className="text-base font-bold text-slate-900">
               Tidak ada topik yang sesuai dengan &quot;{searchQuery}&quot;
             </h3>
@@ -1176,24 +1155,6 @@ export default function PanduanPage() {
               <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
                 Aplikasi kasir modern untuk UMKM, angkringan, kafe, dan retail. 100% jalan offline tanpa biaya langganan bulanan.
               </p>
-              <div className="flex items-center gap-3 text-slate-400 pt-1">
-                <a
-                  href={`https://wa.me/${SUPPORT_WHATSAPP}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-8 h-8 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center hover:text-white hover:border-slate-700 transition-colors text-xs font-bold"
-                  title="WhatsApp"
-                >
-                  WA
-                </a>
-                <Link
-                  href="/"
-                  className="w-8 h-8 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center hover:text-white hover:border-slate-700 transition-colors text-xs font-bold"
-                  title="Website"
-                >
-                  WEB
-                </Link>
-              </div>
             </div>
 
             {/* Col 2: Product */}
@@ -1246,16 +1207,6 @@ export default function PanduanPage() {
                     Cerita Kami
                   </Link>
                 </li>
-                <li>
-                  <a
-                    href={`https://wa.me/${SUPPORT_WHATSAPP}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-white transition-colors"
-                  >
-                    Bantuan CS
-                  </a>
-                </li>
               </ul>
             </div>
 
@@ -1299,7 +1250,7 @@ export default function PanduanPage() {
                 Privasi
               </Link>
               <Link href="/terms" className="hover:text-slate-300 transition-colors">
-                Syarat &amp; Ketentuan
+                Terms
               </Link>
             </div>
           </div>

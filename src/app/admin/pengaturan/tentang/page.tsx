@@ -88,11 +88,11 @@ export default function PengaturanTentangPage() {
 
       {/* Main Branding Card */}
       <div className="p-6 sm:p-8 rounded-3xl bg-surface border border-line shadow-sm space-y-6 text-center">
-        <div className="w-16 h-16 rounded-3xl bg-white border border-blue-200 flex items-center justify-center p-2.5 mx-auto shadow-lg shadow-blue-500/10">
+        <div>
           <img
             src="/logo-sakunota.png"
             alt="SakuNota"
-            className="w-full h-full object-contain"
+            className="h-12 w-auto object-contain mx-auto"
           />
         </div>
 
@@ -100,9 +100,6 @@ export default function PengaturanTentangPage() {
           <h2 className="text-2xl font-black text-fg tracking-tight">SakuNota</h2>
           <p className="text-sm font-semibold text-muted">
             Kasir Jalan Tanpa Internet.
-          </p>
-          <p className="text-xs font-bold text-accent-text">
-            Aplikasi Kasir Mandiri 100% Offline
           </p>
         </div>
 

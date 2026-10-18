@@ -593,7 +593,6 @@ export default function SakuNotaLandingPage() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="py-2.5 px-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 font-extrabold text-xs flex items-center justify-center gap-1.5 hover:border-blue-500 hover:text-blue-600 transition-all"
                   >
-                    <span>🏢</span>
                     <span>Tentang Kami</span>
                   </Link>
                   <button
@@ -604,7 +603,6 @@ export default function SakuNotaLandingPage() {
                     }}
                     className="py-2.5 px-3 rounded-2xl bg-blue-50 border border-blue-300 text-blue-700 font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-blue-100 transition-all"
                   >
-                    <span>🔑</span>
                     <span>Aktivasi Lisensi</span>
                   </button>
                 </div>
@@ -676,7 +674,6 @@ export default function SakuNotaLandingPage() {
               }}
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-blue-50 text-slate-900 hover:text-blue-700 font-extrabold text-xs border-2 border-slate-300 hover:border-blue-300 shadow-xs transition-all text-center flex items-center justify-center gap-2"
             >
-              <span>🎮</span>
               <span>Coba Sandbox Kasir</span>
             </Link>
 
@@ -697,7 +694,6 @@ export default function SakuNotaLandingPage() {
               onClick={() => handleOpenLicenseModal("direct_license")}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-extrabold transition-all shadow-2xs"
             >
-              <span>🔑</span>
               <span>Sudah Punya Lisensi / Kode Tester? Aktifkan Langsung</span>
               <span>→</span>
             </button>
@@ -877,7 +873,7 @@ export default function SakuNotaLandingPage() {
             <div className="p-4 sm:p-7 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between gap-3 sm:gap-6 group">
               <div className="space-y-2.5 sm:space-y-4">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] sm:text-xs font-extrabold border border-blue-200">
-                  <span>🍽️ Transaksi Fleksibel</span>
+                  <span>Transaksi Fleksibel</span>
                 </div>
                 <h3 className="text-xs sm:text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
                   Mode Kasir Cepat atau Denah Meja &amp; Open Bill
@@ -907,7 +903,7 @@ export default function SakuNotaLandingPage() {
             <div className="p-4 sm:p-7 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between gap-3 sm:gap-6 group">
               <div className="space-y-2.5 sm:space-y-4">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] sm:text-xs font-extrabold border border-blue-200">
-                  <span>🖨️ Cetak Struk</span>
+                  <span>Cetak Struk</span>
                 </div>
                 <h3 className="text-xs sm:text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
                   Cetak Struk Bluetooth Tanpa Internet
@@ -937,7 +933,7 @@ export default function SakuNotaLandingPage() {
             <div className="p-4 sm:p-7 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between gap-3 sm:gap-6 group">
               <div className="space-y-2.5 sm:space-y-4">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] sm:text-xs font-extrabold border border-blue-200">
-                  <span>📊 Audit &amp; Laporan</span>
+                  <span>Audit &amp; Laporan</span>
                 </div>
                 <h3 className="text-xs sm:text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
                   Rekap Omzet Harian &amp; Kirim Laporan ke WhatsApp
@@ -967,7 +963,7 @@ export default function SakuNotaLandingPage() {
             <div className="p-4 sm:p-7 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between gap-3 sm:gap-6 group">
               <div className="space-y-2.5 sm:space-y-4">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] sm:text-xs font-extrabold border border-blue-200">
-                  <span>🛡️ Privasi &amp; Backup</span>
+                  <span>Privasi &amp; Backup</span>
                 </div>
                 <h3 className="text-xs sm:text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
                   100% Offline di Memori HP &amp; Cadangkan Mandiri
@@ -1317,7 +1313,7 @@ export default function SakuNotaLandingPage() {
               href="/panduan"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-sm transition-all"
             >
-              <span>📖 Buka Pusat Panduan Lengkap</span>
+              <span>Buka Pusat Panduan Lengkap</span>
               <span>→</span>
             </Link>
             <button
@@ -1325,7 +1321,7 @@ export default function SakuNotaLandingPage() {
               onClick={() => handleOpenLicenseModal("direct_license")}
               className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white hover:bg-blue-50 text-blue-700 font-extrabold text-xs border border-blue-200 shadow-xs transition-all"
             >
-              <span>🔑 Aktivasi Kode Lisensi</span>
+              <span>Aktivasi Kode Lisensi</span>
               <span>→</span>
             </button>
           </div>
@@ -1404,7 +1400,6 @@ export default function SakuNotaLandingPage() {
               rel="noopener noreferrer"
               className="text-blue-600 hover:text-blue-700 font-extrabold inline-flex items-center gap-1.5"
             >
-              <span>💬</span>
               <span>Hubungi WhatsApp Resmi SakuNota</span>
               <span>→</span>
             </a>
@@ -1479,7 +1474,7 @@ export default function SakuNotaLandingPage() {
               Kasir Jalan Tanpa Internet
             </p>
             <p className="text-slate-600 text-[11px] leading-relaxed max-w-sm">
-              Aplikasi kasir offline yang dirancang khusus untuk usaha kuliner dan F&amp;B di Indonesia.
+              Aplikasi kasir modern untuk UMKM, angkringan, kafe, dan retail. 100% jalan offline tanpa biaya langganan bulanan.
             </p>
           </div>
 
@@ -1503,14 +1498,14 @@ export default function SakuNotaLandingPage() {
               Bantuan &amp; Lisensi
             </span>
             <ul className="space-y-2 text-xs font-medium">
-              <li><Link href="/panduan" className="hover:text-blue-600 transition-colors">Buku Panduan Pengguna</Link></li>
+              <li><Link href="/panduan" className="hover:text-blue-600 transition-colors">Panduan</Link></li>
               <li>
                 <button
                   type="button"
                   onClick={() => handleOpenLicenseModal("direct_license")}
                   className="hover:text-blue-600 transition-colors text-left font-bold text-blue-600"
                 >
-                  🔑 Aktivasi Kode Lisensi / Tester
+                  Aktivasi Kode Lisensi / Tester
                 </button>
               </li>
               <li>
@@ -1545,7 +1540,7 @@ export default function SakuNotaLandingPage() {
           <div className="flex items-center gap-6 font-semibold">
             <Link href="/tentang" className="hover:text-blue-600 transition-colors">Tentang Kami</Link>
             <Link href="/privacy" className="hover:text-blue-600 transition-colors">Kebijakan Privasi</Link>
-            <Link href="/terms" className="hover:text-blue-600 transition-colors">Syarat &amp; Ketentuan</Link>
+            <Link href="/terms" className="hover:text-blue-600 transition-colors">Terms</Link>
           </div>
         </div>
       </footer>
@@ -1823,9 +1818,11 @@ export default function SakuNotaLandingPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-md shadow-blue-600/30">
-                  SN
-                </div>
+                <img
+                  src="/logo-sakunota.png"
+                  alt="SakuNota"
+                  className="h-8 w-auto object-contain"
+                />
                 <div>
                   <h3 className="font-black text-base text-slate-900">Formulir Pembelian SakuNota</h3>
                 </div>
@@ -1973,15 +1970,15 @@ export default function SakuNotaLandingPage() {
                 <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black text-blue-700">
-                      ⚡ Gerbang Pembayaran Otomatis
+                      Gerbang Pembayaran Otomatis
                     </span>
                     <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-black uppercase">
-                      QRIS • E-Wallet • Virtual Account
+                      QRIS &amp; Transfer
                     </span>
                   </div>
 
                   <p className="text-[11px] text-slate-700 leading-relaxed">
-                    Bayar instan dengan scan QRIS (GoPay, OVO, Dana, BCA Mobile) atau transfer Virtual Account. Lisensi langsung terbit otomatis setelah bayar.
+                    Bayar instan dengan scan QRIS atau transfer bank. Lisensi langsung terbit otomatis setelah pembayaran terverifikasi.
                   </p>
 
                   <button

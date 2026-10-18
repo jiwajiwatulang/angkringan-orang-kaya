@@ -236,18 +236,12 @@ export default function TentangSakuNotaPage() {
                 alt="Reza Rengga"
                 className="w-full h-full object-cover"
               />
-              <div className="absolute bottom-2 right-2 px-2.5 py-1 rounded-full bg-blue-600 text-white text-[10px] font-black border-2 border-white shadow-xs">
-                Founder
-              </div>
             </div>
 
             <div className="space-y-1">
               <h3 className="text-2xl font-black text-slate-900">
                 Reza Rengga
               </h3>
-              <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">
-                Founder
-              </p>
             </div>
 
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed text-left border-t border-slate-200 pt-4">
@@ -285,21 +279,26 @@ export default function TentangSakuNotaPage() {
       </section>
 
       {/* 7. Footer */}
-      <footer className="bg-white border-t border-slate-200 px-4 sm:px-8 py-8 text-xs text-slate-500">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <img
-              src="/logo-sakunota.png"
-              alt="SakuNota"
-              className="h-6 w-auto object-contain"
-            />
-            <span>© 2026 <strong>SakuNota</strong>. Hak cipta dilindungi.</span>
+      <footer className="bg-white border-t border-slate-200 px-4 sm:px-8 py-10 text-xs text-slate-500">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-1.5 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-2">
+              <img
+                src="/logo-sakunota.png"
+                alt="SakuNota"
+                className="h-6 w-auto object-contain"
+              />
+              <span className="font-bold text-slate-800">© 2026 SakuNota. Hak cipta dilindungi.</span>
+            </div>
+            <p className="text-[11px] text-slate-500 max-w-md">
+              Aplikasi kasir modern untuk UMKM, angkringan, kafe, dan retail. 100% jalan offline tanpa biaya langganan bulanan.
+            </p>
           </div>
           <div className="flex items-center gap-5 font-semibold">
             <Link href="/" className="hover:text-blue-600">Beranda</Link>
             <Link href="/panduan" className="hover:text-blue-600">Panduan</Link>
             <Link href="/privacy" className="hover:text-blue-600">Privasi</Link>
-            <Link href="/terms" className="hover:text-blue-600">Ketentuan</Link>
+            <Link href="/terms" className="hover:text-blue-600">Terms</Link>
           </div>
         </div>
       </footer>

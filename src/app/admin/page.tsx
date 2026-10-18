@@ -334,9 +334,6 @@ export default function AdminDashboardPage() {
             <h2 className="text-2xl font-black text-fg tracking-tight">
               Ringkasan Penjualan &amp; Traffic
             </h2>
-            <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-extrabold text-[10px] uppercase">
-              Shopify Analytics Standard
-            </span>
           </div>
           <p className="text-xs text-muted mt-0.5">
             {storeSettings.storeName || "SakuNota"} • Pantau tren omzet, rata-rata transaksi, dan menu terlaris secara real-time.
@@ -374,7 +371,6 @@ export default function AdminDashboardPage() {
             onClick={() => setIsWaModalOpen(true)}
             className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
           >
-            <span>📲</span>
             <span>Kirim WA</span>
           </button>
 
