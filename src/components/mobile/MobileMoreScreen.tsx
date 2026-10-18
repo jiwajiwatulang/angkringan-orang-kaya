@@ -6,6 +6,7 @@ import { StoreSettings } from "@/lib/settings";
 
 interface MobileMoreScreenProps {
   storeSettings: StoreSettings;
+  showOnboarding?: boolean;
   activeShift: any;
   currentShiftStats: any;
   onOpenShiftModal: () => void;
@@ -16,6 +17,7 @@ interface MobileMoreScreenProps {
 
 export default function MobileMoreScreen({
   storeSettings,
+  showOnboarding = false,
   activeShift,
   currentShiftStats,
   onOpenShiftModal,
@@ -31,9 +33,6 @@ export default function MobileMoreScreen({
           <h2 className="text-base font-black text-slate-900">
             Menu Lainnya &amp; Pengaturan
           </h2>
-          <p className="text-[11px] text-slate-600">
-            Kelola shift kasir, menu, printer, dan konfigurasi toko.
-          </p>
         </div>
         <span className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-[10px] font-extrabold text-blue-700">
           SakuNota
@@ -44,7 +43,6 @@ export default function MobileMoreScreen({
       <div className="bg-white border border-blue-100 rounded-2xl p-3.5 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xl">💼</span>
             <div>
               <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
                 Shift Kasir
@@ -97,7 +95,7 @@ export default function MobileMoreScreen({
       {/* 3. Compact 4-Grid Navigation Shortcuts (Tidak Memanjang ke Bawah) */}
       <div>
         <span className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider px-1 block mb-2">
-          Menu Pengaturan &amp; Backoffice (4 Grid Ringkas):
+          Pengaturan &amp; Backoffice
         </span>
         <div className="grid grid-cols-4 gap-2">
           <Link
@@ -183,7 +181,7 @@ export default function MobileMoreScreen({
       </div>
 
       {/* 4. Help & Wizard */}
-      <div>
+      {showOnboarding && <div>
         <button
           type="button"
           onClick={onOpenOnboarding}
@@ -192,7 +190,7 @@ export default function MobileMoreScreen({
           <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 10-13h-7z" /></svg></span>
           <span>Buka Panduan Persiapan Awal Toko</span>
         </button>
-      </div>
+      </div>}
     </div>
   );
 }

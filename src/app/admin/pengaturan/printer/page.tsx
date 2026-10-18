@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -174,7 +175,7 @@ export default function PengaturanPrinterPage() {
             <span>← Kembali ke Pengaturan</span>
           </Link>
           <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
-            <span>🖨️</span>
+            
             <span>Koneksi Printer Bluetooth Thermal</span>
           </h2>
           <p className="text-xs text-muted mt-0.5">
@@ -302,7 +303,7 @@ export default function PengaturanPrinterPage() {
       <div className="bg-surface rounded-3xl p-5 border border-line shadow-sm space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-black text-fg flex items-center gap-2">
-            <span>📡</span>
+            
             <span>Daftar Perangkat Bluetooth Ditemukan</span>
           </h4>
           <span className="text-[11px] text-muted">
@@ -312,7 +313,7 @@ export default function PengaturanPrinterPage() {
 
         {btDevices.length === 0 ? (
           <div className="py-8 text-center text-muted text-xs space-y-2 border border-dashed border-line/60 rounded-2xl p-4">
-            <div className="text-3xl">🖨️</div>
+            <div className="text-3xl"><LineIcon name="printer" /></div>
             <p className="font-bold text-fg">Belum ada printer yang dipindai.</p>
             <p className="max-w-md mx-auto text-[11px] leading-relaxed">
               Nyalakan Bluetooth HP dan printer thermal Anda. Pastikan printer sudah di-pairing (dipasangkan) di menu Pengaturan Bluetooth HP Android, lalu tekan tombol <strong>"Pindai Bluetooth"</strong> di atas.
@@ -328,7 +329,7 @@ export default function PengaturanPrinterPage() {
                   className="py-3 flex items-center justify-between gap-3 text-xs"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">🖨️</span>
+                    <span className="text-xl"><LineIcon name="printer" /></span>
                     <div>
                       <span className="font-bold text-fg text-sm block">
                         {dev.name || "Perangkat Thermal Tanpa Nama"}
@@ -360,7 +361,7 @@ export default function PengaturanPrinterPage() {
       {/* Manual Input Fallback */}
       <div className="bg-surface rounded-3xl p-5 border border-line shadow-sm space-y-3">
         <h4 className="text-sm font-black text-fg flex items-center gap-2">
-          <span>⚙️</span>
+          
           <span>Input Manual MAC Address (Alternatif Tambahan)</span>
         </h4>
         <p className="text-xs text-muted leading-relaxed">
@@ -398,7 +399,7 @@ export default function PengaturanPrinterPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-line mb-4">
               <div className="flex items-center gap-2">
-                <span className="text-xl">🧾</span>
+                <span className="text-xl"><LineIcon name="info" /></span>
                 <div>
                   <h3 className="font-black text-sm text-fg">Pratinjau Format Struk</h3>
                   <p className="text-[10px] text-muted">Format cetak presisi black-on-white ({previewWidth})</p>
@@ -530,8 +531,7 @@ export default function PengaturanPrinterPage() {
 
                 <div className="border-t-2 border-dashed border-black my-2" />
 
-                <div className="text-center font-black text-xs py-1 border border-black my-1">
-                  ✅ LUNAS
+                <div className="text-center font-black text-xs py-1 border border-black my-1"> LUNAS
                 </div>
 
                 {storeSettings.receiptFooter && (

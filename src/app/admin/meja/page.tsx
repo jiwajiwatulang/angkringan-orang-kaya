@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
 import { useAdmin } from "../AdminContext";
@@ -267,7 +268,7 @@ export default function AdminMejaPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line">
         <div>
           <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
-            <span>🪑</span>
+            
             <span>Kelola Meja ({tables.length})</span>
           </h2>
           <p className="text-xs text-muted mt-0.5">
@@ -332,7 +333,7 @@ export default function AdminMejaPage() {
         <div className="py-12 text-center text-muted text-xs">Memuat daftar meja...</div>
       ) : tables.length === 0 ? (
         <div className="py-12 text-center bg-surface rounded-3xl border border-line p-8">
-          <div className="text-4xl mb-2">🪑</div>
+          <div className="text-4xl mb-2"><LineIcon name="info" /></div>
           <h3 className="text-sm font-bold text-slate-300">Belum ada meja</h3>
           <p className="text-xs text-muted mt-1">
             Klik tombol di atas untuk menambahkan meja atau gunakan fitur Tambah Massal.
@@ -364,7 +365,7 @@ export default function AdminMejaPage() {
                         onChange={() => {}} // handled by parent onClick
                         className="w-4 h-4 text-accent-text rounded border-line focus:ring-accent pointer-events-none"
                       />
-                      <span className="text-lg">🪑</span>
+                      <span className="text-lg"><LineIcon name="info" /></span>
                     </div>
 
                     <span
@@ -469,8 +470,7 @@ export default function AdminMejaPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
-            <h3 className="text-lg font-black text-fg mb-1">
-              ⚡ Tambah Meja Massal
+            <h3 className="text-lg font-black text-fg mb-1"> Tambah Meja Massal
             </h3>
             <p className="text-xs text-muted mb-4">
               Buat serangkaian meja secara otomatis sekaligus.
@@ -564,8 +564,7 @@ export default function AdminMejaPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
-            <h3 className="text-lg font-black text-fg mb-1">
-              ✏️ Rename Massal Meja
+            <h3 className="text-lg font-black text-fg mb-1"> Rename Massal Meja
             </h3>
             <p className="text-xs text-muted mb-4">
               Ubah format nama <strong>{selectedTableIds.length}</strong> meja terpilih secara berurutan.
@@ -627,14 +626,11 @@ export default function AdminMejaPage() {
             className=" bg-surface rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
-              🗑️
-            </div>
+            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg mb-1">
               Hapus {selectedTableIds.length} Meja Terpilih?
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed mb-4 text-left bg-card/60 p-3 rounded-xl border border-line/60">
-              🛡️ <strong>Fitur Pengaman Tagihan:</strong> Meja yang sedang memiliki pesanan/tagihan aktif (Status Open Bill atau Terisi) tidak akan dapat dihapus untuk mencegah kehilangan data keuangan kasir.
+            <p className="text-xs text-slate-300 leading-relaxed mb-4 text-left bg-card/60 p-3 rounded-xl border border-line/60"><LineIcon name="info" /><strong>Fitur Pengaman Tagihan:</strong> Meja yang sedang memiliki pesanan/tagihan aktif (Status Open Bill atau Terisi) tidak akan dapat dihapus untuk mencegah kehilangan data keuangan kasir.
             </p>
             <div className="flex space-x-2">
               <button
@@ -667,8 +663,7 @@ export default function AdminMejaPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
-            <h3 className="text-lg font-black text-fg mb-1">
-              ➕ Tambah Meja Baru
+            <h3 className="text-lg font-black text-fg mb-1"> Tambah Meja Baru
             </h3>
             <p className="text-xs text-muted mb-4">
               Masukkan nomor atau nama meja makan pelanggan.
@@ -721,8 +716,7 @@ export default function AdminMejaPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
-            <h3 className="text-lg font-black text-fg mb-1">
-              ✏️ Ubah Nama Meja
+            <h3 className="text-lg font-black text-fg mb-1"> Ubah Nama Meja
             </h3>
             <p className="text-xs text-muted mb-4">
               Ganti nama meja ID #{tableToEdit.id}.
@@ -773,9 +767,7 @@ export default function AdminMejaPage() {
             className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
-              🗑️
-            </div>
+            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg mb-1">
               Hapus Meja Ini?
             </h3>
@@ -812,9 +804,7 @@ export default function AdminMejaPage() {
             className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
-              ⚠️
-            </div>
+            <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg mb-1">
               Batalkan Perubahan?
             </h3>

@@ -7,7 +7,7 @@ const root = path.resolve('out');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'offline-manifest.json'), 'utf8'));
 assert.equal(manifest.totalFiles, manifest.allUrls.length);
 assert.equal(new Set(manifest.allUrls).size, manifest.allUrls.length, 'manifest URLs must be unique');
-for (const route of ['/pos', '/admin', '/admin/stok', '/admin/menu', '/admin/pengaturan/data', '/panduan']) assert.ok(manifest.routes.includes(route), `${route} must be available offline`);
+for (const route of ['/pos', '/admin', '/admin/stok', '/admin/menu', '/admin/pengaturan/data', '/admin/pelayan', '/waiter', '/panduan']) assert.ok(manifest.routes.includes(route), `${route} must be available offline`);
 for (const url of manifest.allUrls) {
   assert.ok(url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/'), `invalid cache target ${url}`);
   assert.ok(!/\.env|\.sql|\.db(?:$|\.)/.test(url), 'private files must not be cached');

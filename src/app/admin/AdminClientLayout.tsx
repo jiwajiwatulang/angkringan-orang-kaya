@@ -6,20 +6,22 @@ import { usePathname, useRouter } from "next/navigation";
 import { App } from "@capacitor/app";
 import { AdminProvider, useAdmin } from "./AdminContext";
 import ThemeToggle from "@/components/ThemeToggle";
+import LineIcon from "@/components/LineIcon";
 import { saveStoreSettingsAsync } from "@/lib/settings";
 import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "@/lib/recovery";
 import { createAdminSession, verifyAdminSession, destroyAdminSession } from "@/lib/session";
 import { db } from "@/lib/dexie";
 
 const navItems = [
-  { href: "/pos", label: "Kasir & Menu", icon: "/icons/icon-kasir.png" },
-  { href: "/admin/meja", label: "Kelola Meja", icon: "/icons/icon-meja.png" },
-  { href: "/admin/transaksi", label: "Riwayat Transaksi", icon: "/icons/icon-transaksi.png" },
-  { href: "/admin/shift", label: "Shift & Kas Laci", icon: "/icons/icon-shift.png" },
-  { href: "/admin/menu", label: "Katalog & Stok", icon: "/icons/icon-katalog.png" },
-  { href: "/admin/stok", label: "Stok & Opname", icon: "/icons/icon-katalog.png" },
-  { href: "/admin/pengaturan", label: "Pengaturan POS", icon: "/icons/icon-pengaturan.png" },
-  { href: "/admin", label: "Dashboard", icon: "/icons/icon-dashboard.png" },
+  { href: "/admin/pelayan", label: "Waiter Floor", icon: "tables" },
+  { href: "/pos", label: "Kasir & Menu", icon: "cashier" },
+  { href: "/admin/meja", label: "Kelola Meja", icon: "tables" },
+  { href: "/admin/transaksi", label: "Riwayat Transaksi", icon: "receipt" },
+  { href: "/admin/shift", label: "Shift & Kas Laci", icon: "shift" },
+  { href: "/admin/menu", label: "Katalog & Stok", icon: "catalog" },
+  { href: "/admin/stok", label: "Stok & Opname", icon: "catalog" },
+  { href: "/admin/pengaturan", label: "Pengaturan POS", icon: "settings" },
+  { href: "/admin", label: "Dashboard", icon: "chart" },
 ];
 
 function AdminShell({ children }: { children: React.ReactNode }) {
@@ -242,9 +244,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       return (
         <div className="min-h-screen bg-app flex flex-col items-center justify-center p-4">
           <div className=" bg-surface rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border-2 border-accent text-center animate-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 rounded-2xl bg-accent text-white flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-lg shadow-accent/20">
-              🛡️
-            </div>
+            <div className="w-16 h-16 rounded-2xl bg-accent text-white flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-lg shadow-accent/20"><LineIcon name="info" /></div>
             <h2 className="text-xl font-black text-fg">Simpan Kode Pemulihan Anda!</h2>
             <p className="text-xs text-muted mt-1 mb-5">
               Kode ini adalah <strong>satu-satunya kunci</strong> untuk mereset PIN Admin Anda secara offline jika lupa PIN atau data PIN terhapus.
@@ -275,7 +275,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="p-3 bg-amber-950/40 border border-amber-900/60 rounded-xl text-left text-xs text-amber-200 mb-5 space-y-1">
-              <p className="font-bold">⚠️ Perhatian Penting:</p>
+              <p className="font-bold"> Perhatian Penting:</p>
               <p className="text-[11px] text-amber-300/90 leading-relaxed">
                 Catat kode ini di buku catatan atau simpan di chat WhatsApp pribadi Anda. Kode ini <strong>tidak disimpan dalam bentuk teks</strong> di aplikasi dan tidak disertakan dalam file cadangan demi privasi.
               </p>
@@ -313,7 +313,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen bg-app flex flex-col items-center justify-center p-4">
         <div className=" bg-surface rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-line text-center animate-in zoom-in-95 duration-200">
           <div className="w-16 h-16 rounded-2xl bg-accent/60 text-accent-text flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-sm">
-            {authView === "login" ? "🔒" : "🛡️"}
+            🔒
           </div>
 
           <h2 className="text-2xl font-black text-fg">
@@ -350,8 +350,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </div>
 
               {pinError && (
-                <p className="text-xs font-bold text-rose-400 animate-in fade-in">
-                  ⚠️ {pinError}
+                <p className="text-xs font-bold text-rose-400 animate-in fade-in"><LineIcon name="info" />{pinError}
                 </p>
               )}
 
@@ -398,8 +397,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </div>
 
               {pinError && (
-                <p className="text-xs font-bold text-rose-400 text-center animate-in fade-in">
-                  ⚠️ {pinError}
+                <p className="text-xs font-bold text-rose-400 text-center animate-in fade-in"><LineIcon name="info" />{pinError}
                 </p>
               )}
 
@@ -467,8 +465,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </div>
 
               {pinError && (
-                <p className="text-xs font-bold text-rose-400 text-center animate-in fade-in">
-                  ⚠️ {pinError}
+                <p className="text-xs font-bold text-rose-400 text-center animate-in fade-in"><LineIcon name="info" />{pinError}
                 </p>
               )}
 
@@ -518,7 +515,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
         {/* Navigation Links */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {navItems.filter(item => item.href !== '/admin/meja' || storeSettings.serviceMode === 'resto').map((item) => {
+          {navItems.filter(item => !['/admin/meja', '/admin/pelayan'].includes(item.href) || storeSettings.serviceMode === 'resto').map((item) => {
             const active = isActiveLink(item.href);
             return (
               <Link
@@ -530,11 +527,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                     : " text-muted hover:bg-card/60 hover:text-fg"
                 }`}
               >
-                {item.icon.startsWith("/") ? (
-                  <img src={item.icon} alt="" aria-hidden="true" className={`w-5 h-5 object-contain shrink-0 ${active ? "brightness-0 invert" : ""}`} />
-                ) : (
-                  <span className="text-lg">{item.icon}</span>
-                )}
+                <LineIcon name={item.icon} className="w-5 h-5 shrink-0" />
                 <span className="text-sm font-bold">{item.label}</span>
               </Link>
             );
@@ -609,7 +602,6 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 ? "bg-amber-100 border border-amber-300 text-amber-900"
                 : "bg-blue-50 border border-blue-200 text-blue-700"
             }`}>
-              <span>{isDemo ? "🎮" : "🏪"}</span>
               <span>{isDemo ? "Mode Demo Admin (Simulasi)" : (storeSettings.storeName || "SakuNota")}</span>
             </div>
           </div>

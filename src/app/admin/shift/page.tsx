@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
 import { useAdmin } from "../AdminContext";
@@ -67,7 +68,7 @@ export default function AdminShiftPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line">
         <div>
           <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
-            <span>💼</span>
+            
             <span>Shift Kasir & Z-Report</span>
           </h2>
           <p className="text-xs text-muted mt-0.5">
@@ -143,8 +144,7 @@ export default function AdminShiftPage() {
               </span>
             </div>
           </div>
-          <p className="text-[11px] text-muted leading-relaxed">
-            ℹ️ Penutupan shift kasir dilakukan dari menu POS dengan prosedur <strong>True Blind Close</strong> (penghitungan uang fisik objektif).
+          <p className="text-[11px] text-muted leading-relaxed"> Penutupan shift kasir dilakukan dari menu POS dengan prosedur <strong>True Blind Close</strong> (penghitungan uang fisik objektif).
           </p>
         </div>
       )}
@@ -155,7 +155,7 @@ export default function AdminShiftPage() {
       ) : activeTab === 'shifts' ? (
         shifts.length === 0 ? (
           <div className="py-12 text-center bg-surface rounded-3xl border border-line p-8">
-            <div className="text-4xl mb-2">💼</div>
+            <div className="text-4xl mb-2"><LineIcon name="info" /></div>
             <h3 className="text-sm font-bold text-slate-300">Belum ada riwayat shift</h3>
             <p className="text-xs text-muted mt-1">Shift kasir akan tercatat secara otomatis setelah kasir ditutup.</p>
           </div>
@@ -298,7 +298,7 @@ export default function AdminShiftPage() {
         /* Cash Movements Tab */
         cashMovements.length === 0 ? (
           <div className="py-12 text-center bg-surface rounded-3xl border border-line p-8">
-            <div className="text-4xl mb-2">💵</div>
+            <div className="text-4xl mb-2"><LineIcon name="tax" /></div>
             <h3 className="text-sm font-bold text-slate-300">Belum ada catatan kas laci</h3>
             <p className="text-xs text-muted mt-1">Pencatatan kas masuk / kas keluar kasir akan muncul di sini.</p>
           </div>

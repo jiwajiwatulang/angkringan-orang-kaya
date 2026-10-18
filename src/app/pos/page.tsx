@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -16,6 +17,7 @@ import {
 } from '@/lib/receipt';
 import PaymentProofUpload from '@/components/PaymentProofUpload';
 import OnboardingWizard from '@/components/OnboardingWizard';
+import { canOpenStoreOnboarding } from '@/lib/onboarding';
 import MobileHeader from '@/components/mobile/MobileHeader';
 import MobileHomeScreen from '@/components/mobile/MobileHomeScreen';
 import MobileCatalogScreen from '@/components/mobile/MobileCatalogScreen';
@@ -141,7 +143,7 @@ export default function POSPage() {
         setActivationNotice({ type: 'success', message: '🎉 Aktivasi berhasil! Menyiapkan panduan pengaturan toko Anda...' });
         const refreshed = await checkCashierAccess(true);
         setAccessStatus(refreshed);
-        setIsOnboardingOpen(true);
+        setIsOnboardingOpen(canOpenStoreOnboarding(refreshed));
       } else {
         setActivationNotice({ type: 'error', message: res.error || 'Aktivasi gagal. Periksa nomor lisensi Anda.' });
       }
@@ -293,12 +295,12 @@ export default function POSPage() {
   const getCategoryIcon = (category: string, name?: string) => {
     const c = (category || '').toLowerCase();
     const n = (name || '').toLowerCase();
-    if (c.includes('minum') || n.includes('teh') || n.includes('kopi') || n.includes('jeruk') || n.includes('wedang') || n.includes('susu') || n.includes('es ') || n.includes('lemon')) return '🥤';
-    if (c.includes('nasi') || n.includes('nasi') || n.includes('ayam') || n.includes('bebek') || n.includes('mie') || n.includes('soto') || n.includes('bakso')) return '🍚';
-    if (c.includes('sate') || n.includes('sate') || n.includes('sunduk')) return '🍢';
-    if (c.includes('snack') || c.includes('gorengan') || n.includes('mendoan') || n.includes('tahu') || n.includes('tempe') || n.includes('pisang') || n.includes('bakwan')) return '🥟';
-    if (c.includes('roti') || n.includes('roti') || n.includes('bakar')) return '🍞';
-    return '🍽️';
+    if (c.includes('minum') || n.includes('teh') || n.includes('kopi') || n.includes('jeruk') || n.includes('wedang') || n.includes('susu') || n.includes('es ') || n.includes('lemon')) return <LineIcon name="cashier" className="w-6 h-6" />;
+    if (c.includes('nasi') || n.includes('nasi') || n.includes('ayam') || n.includes('bebek') || n.includes('mie') || n.includes('soto') || n.includes('bakso')) return <LineIcon name="cashier" className="w-6 h-6" />;
+    if (c.includes('sate') || n.includes('sate') || n.includes('sunduk')) return <LineIcon name="cashier" className="w-6 h-6" />;
+    if (c.includes('snack') || c.includes('gorengan') || n.includes('mendoan') || n.includes('tahu') || n.includes('tempe') || n.includes('pisang') || n.includes('bakwan')) return <LineIcon name="cashier" className="w-6 h-6" />;
+    if (c.includes('roti') || n.includes('roti') || n.includes('bakar')) return <LineIcon name="cashier" className="w-6 h-6" />;
+    return <LineIcon name="cashier" className="w-6 h-6" />;
   };
 
   // Payment & Modal State
@@ -341,7 +343,8 @@ export default function POSPage() {
       try {
         const fresh = await loadStoreSettingsAsync();
         setStoreSettings(fresh);
-        if (fresh.onboardingCompleted === false || (typeof window !== 'undefined' && window.location.search.includes('onboarding=true'))) {
+        const access = await checkCashierAccess();
+        if (canOpenStoreOnboarding(access) && (fresh.onboardingCompleted === false || window.location.search.includes('onboarding=true'))) {
           setIsOnboardingOpen(true);
         }
       } catch (err) {
@@ -1767,8 +1770,7 @@ export default function POSPage() {
                   <span className="opacity-70 ml-1">({selectedTableStatus === 'open' ? 'Open Bill' : selectedTableStatus === 'lunas' ? 'Lunas' : 'Kosong'})</span>
                 </div>
                 {customerName && (
-                  <div className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-line text-fg border border-line shadow-sm">
-                    👤 {customerName}
+                  <div className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-line text-fg border border-line shadow-sm"><LineIcon name="info" />{customerName}
                   </div>
                 )}
               </div>
@@ -1785,13 +1787,13 @@ export default function POSPage() {
 
               return (
                 <div className="text-center mt-6 flex flex-col items-center">
-                  <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center text-3xl mb-3 border border-accent/40 shadow-sm">✅</div>
+                  <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center text-3xl mb-3 border border-accent/40 shadow-sm"><LineIcon name="info" /></div>
                   <p className="font-extrabold text-base text-fg">Tagihan Meja Ini Sudah LUNAS</p>
                   
                   <div className="bg-surface border border-line rounded-xl p-3.5 mt-3 text-xs text-slate-300 text-left w-full space-y-2">
                     <div className="flex justify-between items-center pb-2 border-b border-line">
                       <span className="text-muted font-medium">Pelanggan:</span>
-                      <span className="font-bold text-accent-text text-sm">👤 {displayCustomer}</span>
+                      <span className="font-bold text-accent-text text-sm"><LineIcon name="info" />{displayCustomer}</span>
                     </div>
                     {paidOrder && (
                       <>
@@ -1869,8 +1871,7 @@ export default function POSPage() {
                 <div className="flex justify-between items-center">
                   {discountAmount > 0 ? (
                     <div className="flex items-center gap-1.5">
-                      <span className=" text-accent-text font-bold">
-                        🏷️ Diskon ({discountType === 'percent' ? discountValue + '%' : 'Rp'}):
+                      <span className=" text-accent-text font-bold"> Diskon ({discountType === 'percent' ? discountValue + '%' : 'Rp'}):
                       </span>
                       <button 
                         onClick={() => { setDiscountValue(0); setTempDiscountVal(""); }}
@@ -1996,7 +1997,7 @@ export default function POSPage() {
             <div className="mt-2 flex items-center gap-2">
               {selectedTableObj && (
                 <div className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm shrink-0 ${selectedTableStatus === 'open' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : selectedTableStatus === 'lunas' ? 'bg-accent/10 text-accent-text border border-accent/30' : 'bg-card text-slate-200 border border-line'}`}>
-                  <span>🪑</span>
+                  <span><LineIcon name="info" /></span>
                   <span>{selectedTableObj.nomor.replace(/^Meja\s*/i, '')}</span>
                   <span className="opacity-70 text-[10px]">({selectedTableStatus === 'open' ? 'Open' : selectedTableStatus === 'lunas' ? 'Lunas' : 'Kosong'})</span>
                 </div>
@@ -2015,13 +2016,13 @@ export default function POSPage() {
 
               return (
                 <div className="text-center py-4 flex flex-col items-center">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-accent/20 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 border border-accent/40 shadow-sm">✅</div>
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-accent/20 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 border border-accent/40 shadow-sm"><LineIcon name="info" /></div>
                   <p className="font-extrabold text-sm sm:text-base text-fg">Tagihan Meja Ini Sudah LUNAS</p>
                   
                   <div className="bg-surface border border-line rounded-xl p-3 mt-2 text-xs text-slate-300 text-left w-full space-y-1.5">
                     <div className="flex justify-between items-center pb-1.5 border-b border-line">
                       <span className="text-muted font-medium">Pelanggan:</span>
-                      <span className="font-bold text-accent-text text-sm">👤 {displayCustomer}</span>
+                      <span className="font-bold text-accent-text text-sm"><LineIcon name="info" />{displayCustomer}</span>
                     </div>
                     {paidOrder && (
                       <>
@@ -2096,8 +2097,7 @@ export default function POSPage() {
                 <div className="flex justify-between items-center">
                   {discountAmount > 0 ? (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-accent-text font-bold">
-                        🏷️ Diskon ({discountType === 'percent' ? discountValue + '%' : 'Rp'}):
+                      <span className="text-accent-text font-bold"> Diskon ({discountType === 'percent' ? discountValue + '%' : 'Rp'}):
                       </span>
                       <button 
                         onClick={() => { setDiscountValue(0); setTempDiscountVal(""); }}
@@ -2227,7 +2227,7 @@ export default function POSPage() {
           {/* Direct Activation Form Box (Primary & High-Contrast Light Blue) */}
           <div className="bg-white border-2 border-blue-300 rounded-3xl p-5 sm:p-6 mb-5 shadow-lg shadow-blue-900/5">
             <h2 className="text-sm sm:text-base font-black text-slate-900 mb-1.5 flex items-center gap-2">
-              <span>🔑</span>
+              
               <span>Punya Kode Lisensi / Lisensi Tester? Aktifkan Langsung:</span>
             </h2>
             <p className="text-xs text-slate-600 mb-4 leading-relaxed">
@@ -2282,7 +2282,7 @@ export default function POSPage() {
           {/* Guarantee Box: Data Never Held Hostage */}
           <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 mb-5 text-slate-800 shadow-2xs">
             <div className="flex items-start gap-3">
-              <span className="text-2xl">🛡️</span>
+              <span className="text-2xl"><LineIcon name="info" /></span>
               <div className="flex-1">
                 <h3 className="text-xs sm:text-sm font-black text-slate-900">Jaminan Keamanan: Data Usaha Anda 100% Milik Anda</h3>
                 <p className="text-xs text-slate-600 mt-1 leading-relaxed">
@@ -2517,10 +2517,10 @@ export default function POSPage() {
                   <label className="block text-xs font-bold text-muted mb-1.5 mt-2">Metode Pembayaran</label>
                   <div className="grid grid-cols-4 gap-2">
                     {[
-                      { id: "Cash", label: "Tunai", icon: "💵" },
-                      { id: "QRIS", label: "QRIS", icon: "📱" },
-                      { id: "Transfer", label: "Transfer", icon: "💳" },
-                      { id: "E-Wallet", label: "E-Wallet", icon: "👛" }
+                      { id: "Cash", label: "Tunai" },
+                      { id: "QRIS", label: "QRIS" },
+                      { id: "Transfer", label: "Transfer" },
+                      { id: "E-Wallet", label: "E-Wallet" }
                     ].map((method) => (
                       <button 
                         key={method.id}
@@ -2532,7 +2532,6 @@ export default function POSPage() {
                             : ' bg-surface border-line text-muted hover:border-slate-500'
                         }`}
                       >
-                        <span className="text-sm">{method.icon}</span>
                         <span>{method.label}</span>
                       </button>
                     ))}
@@ -2603,7 +2602,7 @@ export default function POSPage() {
                     {/* Validasi Uang Kurang / Indikator Kembalian */}
                     {(!cashTendered || (Number(cashTendered) || 0) < totalPrice) ? (
                       <div className="mt-2.5 p-2.5 bg-red-50 border border-red-300 rounded-xl text-xs font-bold text-red-700 flex items-center justify-between shadow-sm">
-                        <span>⚠️ Uang tunai kurang:</span>
+                        <span> Uang tunai kurang:</span>
                         <span className="font-extrabold text-red-800">
                           -Rp {(totalPrice - (Number(cashTendered) || 0)).toLocaleString('id-ID')}
                         </span>
@@ -2942,7 +2941,7 @@ export default function POSPage() {
                 ? 'bg-accent text-white shadow-sm' 
                 : 'text-muted hover:text-fg'
             }`}
-          ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8h14v10H3zM17 9h4v5h-4M2 21h17M6 2v3M11 2v3" /></svg>{isTableManagementEnabled(storeSettings) ? 'Menu' : 'Kasir / Katalog'}
+          >{isTableManagementEnabled(storeSettings) ? 'Menu' : 'Kasir / Katalog'}
           </button>
         </div>
 
@@ -2977,8 +2976,8 @@ export default function POSPage() {
               className="flex items-center gap-1.5 bg-accent/20 border border-accent/40 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold text-accent-text hover:bg-accent/30 shadow-sm transition-transform active:scale-95 shrink-0"
               title="Buka Shift Kasir"
             >
-              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 12v3h4v-3" /></svg></span>
-              <span className="hidden sm:inline">Buka Shift</span>
+              
+              <span className="">Buka Shift</span>
             </button>
           )}
 
@@ -2987,8 +2986,8 @@ export default function POSPage() {
             className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-surface border border-line text-xs font-bold text-fg hover:border-accent hover:text-accent-text transition-colors flex items-center gap-1.5"
             title="Halaman Admin"
           >
-            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3l1 4 4 1 2 4-3 3v4l-4 2-3-3-4 1-3-4 2-3-1-4 4-2zM14 12a2 2 0 1 0-4 0 2 2 0 0 0 4 0" /></svg></span>
-            <span className="hidden sm:inline">Admin</span>
+            
+            <span className="">Admin</span>
           </Link>
         </div>
       </header>
@@ -3118,8 +3117,7 @@ export default function POSPage() {
                           {style.label}
                         </span>
                         {name && (
-                          <span className={`mt-1 text-xs font-bold truncate max-w-full ${tStatus === 'lunas' ? 'text-accent-text' : 'text-fg'}`}>
-                            👤 {name}
+                          <span className={`mt-1 text-xs font-bold truncate max-w-full ${tStatus === 'lunas' ? 'text-accent-text' : 'text-fg'}`}><LineIcon name="info" />{name}
                           </span>
                         )}
                         {openOrder && (
@@ -3446,13 +3444,14 @@ export default function POSPage() {
 
           {mobileTab === 'lainnya' && (
             <MobileMoreScreen
+              showOnboarding={!isAccessChecking && canOpenStoreOnboarding(accessStatus)}
               storeSettings={storeSettings}
               activeShift={activeShift}
               currentShiftStats={currentShiftStats}
               onOpenShiftModal={() => setIsOpenShiftModalOpen(true)}
               onOpenCloseShiftModal={openCloseShiftModal}
               onOpenCashMovement={() => setIsCashMovementModalOpen(true)}
-              onOpenOnboarding={() => setIsOnboardingOpen(true)}
+              onOpenOnboarding={() => { if (canOpenStoreOnboarding(accessStatus)) setIsOnboardingOpen(true); }}
             />
           )}
 
@@ -3506,9 +3505,7 @@ export default function POSPage() {
             className=" bg-card rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-line"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 rounded-2xl bg-accent/60 text-accent-text flex items-center justify-center text-2xl font-black mb-3">
-              💼
-            </div>
+            <div className="w-12 h-12 rounded-2xl bg-accent/60 text-accent-text flex items-center justify-center text-2xl font-black mb-3"><LineIcon name="info" /></div>
             <h3 className="text-xl font-black text-fg">Buka Shift Kasir Baru</h3>
             <p className="text-xs text-muted mt-1 mb-5">Mulai sesi kerja kasir dan masukkan uang kas modal awal di laci.</p>
 
@@ -3653,9 +3650,7 @@ export default function POSPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center space-x-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-accent/60 text-accent-text flex items-center justify-center text-2xl font-black">
-                📊
-              </div>
+              <div className="w-12 h-12 rounded-2xl bg-accent/60 text-accent-text flex items-center justify-center text-2xl font-black"><LineIcon name="chart" /></div>
               <div>
                 <h3 className="text-xl font-black text-fg">Tutup Shift Kasir (Z-Report)</h3>
                 <p className="text-xs text-muted">Operator: <strong>{currentShiftStats.operatorName}</strong></p>
@@ -3917,7 +3912,7 @@ export default function POSPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center pb-4 border-b border-line">
-              <span className="text-4xl">🏁</span>
+              <span className="text-4xl"><LineIcon name="info" /></span>
               <h3 className="text-xl font-black text-fg mt-2">Laporan Tutup Shift (Z-Report)</h3>
               <p className="text-xs text-muted">Shift #{blindCloseResult.id} • Operator: <span className="font-bold text-fg">{blindCloseResult.operatorName}</span></p>
             </div>
@@ -3988,8 +3983,7 @@ export default function POSPage() {
                 <span>Penjualan Non-Tunai (QRIS/Transfer):</span>
                 <span>Rp {blindCloseResult.nonCashSales?.toLocaleString('id-ID')}</span>
               </div>
-              <p className="text-[10px] text-accent-text mt-1 leading-relaxed">
-                ℹ️ Penjualan QRIS & transfer langsung masuk ke rekening bank/merchant QRIS, tidak dihitung sebagai uang fisik di laci kasir.
+              <p className="text-[10px] text-accent-text mt-1 leading-relaxed"> Penjualan QRIS & transfer langsung masuk ke rekening bank/merchant QRIS, tidak dihitung sebagai uang fisik di laci kasir.
               </p>
             </div>
 
@@ -4055,7 +4049,7 @@ export default function POSPage() {
               <div>
                 <span className="text-[10px] font-bold tracking-widest text-accent-text uppercase">Sistem Pembayaran Fleksibel</span>
                 <h3 className="text-xl font-black text-fg flex items-center gap-2">
-                  <span>✂️ Split Bill & Cicil Tagihan</span>
+                  <span> Split Bill & Cicil Tagihan</span>
                 </h3>
                 <p className="text-xs text-muted mt-0.5">
                   Nota #A-{splitBillTargetOrder.id} • {splitBillTargetOrder.tableName || (splitBillTargetOrder.tableId ? 'Meja ' + splitBillTargetOrder.tableId : splitBillTargetOrder.orderType)} • Tamu: <span className="font-bold text-fg">{splitBillTargetOrder.customerName || 'Tamu'}</span>
@@ -4210,8 +4204,7 @@ export default function POSPage() {
 
                       return (
                         <div key={idx} className="flex justify-between items-center py-1 border-b border-line last:border-0">
-                          <span className="font-semibold text-slate-300">
-                            👤 Bagian Orang #{idx + 1} {idx === 0 && mod > 0 && <span className="text-[10px] text-muted">(+sisa pembulatan)</span>}:
+                          <span className="font-semibold text-slate-300"> Bagian Orang #{idx + 1} {idx === 0 && mod > 0 && <span className="text-[10px] text-muted">(+sisa pembulatan)</span>}:
                           </span>
                           <span className="font-black text-amber-400">
                             Rp {share.toLocaleString('id-ID')}
@@ -4220,8 +4213,7 @@ export default function POSPage() {
                       );
                     })}
                   </div>
-                  <p className="text-[11px] text-muted leading-snug">
-                    ℹ️ Pembayaran ini akan melunasi <b>Bagian Orang #1</b> sebesar <b>Rp {(Math.floor((splitBillTargetOrder.remainingBalance || splitBillTargetOrder.total) / splitNumPeople) + ((splitBillTargetOrder.remainingBalance || splitBillTargetOrder.total) % splitNumPeople)).toLocaleString('id-ID')}</b>.
+                  <p className="text-[11px] text-muted leading-snug"> Pembayaran ini akan melunasi <b>Bagian Orang #1</b> sebesar <b>Rp {(Math.floor((splitBillTargetOrder.remainingBalance || splitBillTargetOrder.total) / splitNumPeople) + ((splitBillTargetOrder.remainingBalance || splitBillTargetOrder.total) % splitNumPeople)).toLocaleString('id-ID')}</b>.
                   </p>
                 </div>
               )}
@@ -4328,8 +4320,7 @@ export default function POSPage() {
               {/* RIWAYAT PEMBAYARAN PARSIAL NOTA INI */}
               {splitBillTargetOrder.payments && splitBillTargetOrder.payments.length > 0 && (
                 <div className=" bg-surface/40 p-4 rounded-2xl border border-line">
-                  <span className="text-xs font-black text-fg block mb-2">
-                    📋 Riwayat Cicilan / Pembayaran Sebelumnya ({splitBillTargetOrder.payments.length}):
+                  <span className="text-xs font-black text-fg block mb-2"> Riwayat Cicilan / Pembayaran Sebelumnya ({splitBillTargetOrder.payments.length}):
                   </span>
                   <div className="space-y-2">
                     {splitBillTargetOrder.payments.map((p: any, pIdx: number) => {
@@ -4599,7 +4590,7 @@ export default function POSPage() {
 
       {/* Onboarding Wizard Toko Baru */}
       <OnboardingWizard
-        isOpen={isOnboardingOpen}
+        isOpen={isOnboardingOpen && !isAccessChecking && canOpenStoreOnboarding(accessStatus)}
         onComplete={async () => {
           setIsOnboardingOpen(false);
           await loadData();

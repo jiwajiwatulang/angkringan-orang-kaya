@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -118,7 +119,7 @@ export default function PengaturanPajakPage() {
             <span>← Kembali ke Pengaturan</span>
           </button>
           <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
-            <span>💵</span>
+            
             <span>Pajak (PBJT) & Biaya Layanan</span>
           </h2>
         </div>
@@ -227,7 +228,7 @@ export default function PengaturanPajakPage() {
         <div>
           <div className=" bg-surface p-5 rounded-3xl border border-line shadow-sm sticky top-20 space-y-3">
             <h4 className="text-xs font-black text-fg flex items-center gap-1.5 uppercase tracking-wider">
-              <span>🧮</span>
+              
               <span>Simulasi Hitungan Kasir</span>
             </h4>
             <p className="text-[11px] text-muted">
@@ -275,9 +276,7 @@ export default function PengaturanPajakPage() {
             className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
-              ⚠️
-            </div>
+            <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg mb-1">
               Perubahan Pajak Belum Disimpan
             </h3>

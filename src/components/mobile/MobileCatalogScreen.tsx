@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState } from "react";
 
@@ -49,7 +50,7 @@ export default function MobileCatalogScreen({
       n.includes("es ") ||
       n.includes("lemon")
     )
-      return "🥤";
+      return <LineIcon name="cashier" className="w-6 h-6" />;
     if (
       c.includes("nasi") ||
       n.includes("ayam") ||
@@ -58,9 +59,9 @@ export default function MobileCatalogScreen({
       n.includes("soto") ||
       n.includes("bakso")
     )
-      return "🍚";
+      return <LineIcon name="cashier" className="w-6 h-6" />;
     if (c.includes("sate") || n.includes("sate") || n.includes("sunduk"))
-      return "🍢";
+      return <LineIcon name="cashier" className="w-6 h-6" />;
     if (
       c.includes("snack") ||
       c.includes("gorengan") ||
@@ -69,8 +70,8 @@ export default function MobileCatalogScreen({
       n.includes("tempe") ||
       n.includes("pisang")
     )
-      return "🥟";
-    return "🍽️";
+      return <LineIcon name="cashier" className="w-6 h-6" />;
+    return <LineIcon name="cashier" className="w-6 h-6" />;
   };
 
   const filteredMenu = menuData.filter((item) => {
@@ -177,7 +178,7 @@ export default function MobileCatalogScreen({
       <div className="flex-1 overflow-y-auto p-3 pb-28">
         {filteredMenu.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-slate-500">
-            <span className="text-4xl mb-2">🍽️</span>
+            <span className="text-4xl mb-2"><LineIcon name="cashier" /></span>
             <p className="text-sm font-black text-slate-900">Menu Tidak Ditemukan</p>
             <p className="text-xs text-slate-600 mt-1">
               Coba kata kunci pencarian atau pilih kategori lain di atas.

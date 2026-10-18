@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -163,7 +164,7 @@ export default function PengaturanProfilPage() {
             <span>← Kembali ke Pengaturan</span>
           </button>
           <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
-            <span>🏪</span>
+            
             <span>Profil Usaha & Pengaturan Struk</span>
           </h2>
         </div>
@@ -190,13 +191,13 @@ export default function PengaturanProfilPage() {
                   {storeLogo ? (
                     <img src={storeLogo} alt="Logo" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-2xl">🏪</span>
+                    <span className="text-2xl"><LineIcon name="info" /></span>
                   )}
                 </div>
                 <div className="space-y-1.5 flex-1">
                   <div className="flex flex-wrap gap-2">
                     <label className="relative cursor-pointer px-3.5 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors inline-flex items-center gap-1.5 overflow-hidden active:scale-95 shadow-sm">
-                      <span>📁 Pilih Gambar Logo</span>
+                      <span> Pilih Gambar Logo</span>
                       <input
                         type="file"
                         accept="image/png,image/jpeg,image/webp"
@@ -341,7 +342,7 @@ export default function PengaturanProfilPage() {
         <div>
           <div className=" bg-surface p-5 rounded-3xl border border-line shadow-sm sticky top-20">
             <h4 className="text-xs font-black text-fg mb-3 flex items-center gap-1.5 uppercase tracking-wider">
-              <span>🧾</span>
+              
               <span>Pratinjau Struk Kasir</span>
             </h4>
 
@@ -401,9 +402,7 @@ export default function PengaturanProfilPage() {
             className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
-              ⚠️
-            </div>
+            <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg mb-1">
               Profil Belum Disimpan
             </h3>

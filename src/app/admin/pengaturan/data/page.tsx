@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -255,7 +256,7 @@ export default function PengaturanDataPage() {
           <span>← Kembali ke Pengaturan</span>
         </Link>
         <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
-          <span>💾</span>
+          
           <span>Data & Cadangan</span>
         </h2>
         <p className="text-xs text-muted mt-0.5">
@@ -267,7 +268,7 @@ export default function PengaturanDataPage() {
       <div className="p-5 rounded-3xl bg-surface border border-line space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-lg">🏪</span>
+            <span className="text-lg"><LineIcon name="info" /></span>
             <h3 className="text-xs font-black text-fg uppercase tracking-wider">
               Data Usaha Anda
             </h3>
@@ -312,7 +313,7 @@ export default function PengaturanDataPage() {
       {/* Status Pencadangan Terakhir */}
       <div className="p-5 rounded-3xl bg-accent/15 border border-accent/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="text-3xl">🛡️</span>
+          <span className="text-3xl"><LineIcon name="info" /></span>
           <div>
             <h4 className="text-xs font-black text-accent-text uppercase tracking-wider">
               Status Cadangan
@@ -343,7 +344,7 @@ export default function PengaturanDataPage() {
       {preRestoreSnapshot && (
         <div className="p-5 rounded-3xl bg-amber-950/30 border border-amber-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
-            <span className="text-2xl">↩️</span>
+            <span className="text-2xl"><LineIcon name="info" /></span>
             <div>
               <h4 className="text-xs font-black text-amber-300 uppercase tracking-wider">
                 Batalkan Pemulihan Terakhir
@@ -370,9 +371,7 @@ export default function PengaturanDataPage() {
         {/* 1. Simpan Cadangan */}
         <div className="p-5 rounded-3xl bg-surface border border-line space-y-4 flex flex-col justify-between">
           <div className="space-y-2">
-            <span className="w-11 h-11 rounded-2xl bg-accent/20 text-accent-text flex items-center justify-center text-xl">
-              📥
-            </span>
+            <span className="w-11 h-11 rounded-2xl bg-accent/20 text-accent-text flex items-center justify-center text-xl"><LineIcon name="backup" /></span>
             <h3 className="font-black text-base text-fg">Simpan Cadangan</h3>
             <p className="text-xs text-muted leading-relaxed">
               Simpan salinan menu, transaksi, dan pengaturan usaha agar bisa dikembalikan kapan saja.
@@ -398,9 +397,7 @@ export default function PengaturanDataPage() {
         {/* 2. Kembalikan Data */}
         <div className="p-5 rounded-3xl bg-surface border border-line space-y-4 flex flex-col justify-between">
           <div className="space-y-2">
-            <span className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
-              📂
-            </span>
+            <span className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl"><LineIcon name="info" /></span>
             <h3 className="font-black text-base text-fg">Kembalikan Data</h3>
             <p className="text-xs text-muted leading-relaxed">
               Punya cadangan sebelumnya? Pilih file yang pernah disimpan untuk mengembalikan data usaha.
@@ -420,7 +417,7 @@ export default function PengaturanDataPage() {
               htmlFor="backup-file-input"
               className="w-full py-3 bg-card hover:bg-line text-fg text-xs font-black rounded-2xl border border-line transition-all flex items-center justify-center gap-2 cursor-pointer text-center select-none active:scale-95 shadow-sm"
             >
-              <span>📁</span>
+              <span><LineIcon name="info" /></span>
               <span>Pilih File Cadangan</span>
             </label>
             <p className="text-[10px] text-muted text-center leading-tight">
@@ -432,9 +429,7 @@ export default function PengaturanDataPage() {
         {/* 3. Pindah HP / Perangkat */}
         <div className="p-5 rounded-3xl bg-surface border border-line space-y-4 flex flex-col justify-between">
           <div className="space-y-2">
-            <span className="w-11 h-11 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-xl">
-              📱
-            </span>
+            <span className="w-11 h-11 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-xl"><LineIcon name="info" /></span>
             <h3 className="font-black text-base text-fg">Pindah HP / Perangkat</h3>
             <p className="text-xs text-muted leading-relaxed">
               Ganti HP? Ikuti panduan untuk membawa data usaha ke perangkat baru dengan mudah.
@@ -460,9 +455,7 @@ export default function PengaturanDataPage() {
       {/* Pembersihan Riwayat Transaksi (Selesai Percobaan / Mulai Resmi) */}
       <div className="p-5 rounded-3xl bg-red-950/20 border border-red-900/40 space-y-3">
         <div className="flex items-center gap-3">
-          <span className="w-10 h-10 rounded-2xl bg-red-900/40 text-red-400 flex items-center justify-center text-xl">
-            ⚠️
-          </span>
+          <span className="w-10 h-10 rounded-2xl bg-red-900/40 text-red-400 flex items-center justify-center text-xl"><LineIcon name="info" /></span>
           <div>
             <h3 className="font-black text-sm text-red-300">Hapus Seluruh Riwayat Penjualan & Shift</h3>
             <p className="text-xs text-red-400/80 mt-0.5">
@@ -472,8 +465,7 @@ export default function PengaturanDataPage() {
         </div>
 
         <div className="pt-3 border-t border-red-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <p className="text-[11px] text-amber-300/90 font-medium">
-            ⚠️ PERINGATAN: Tindakan ini permanen. Pastikan Anda sudah membuat cadangan data sebelum menghapus transaksi.
+          <p className="text-[11px] text-amber-300/90 font-medium"> PERINGATAN: Tindakan ini permanen. Pastikan Anda sudah membuat cadangan data sebelum menghapus transaksi.
           </p>
 
           <button
@@ -505,7 +497,7 @@ export default function PengaturanDataPage() {
           >
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <div className="flex items-center gap-2.5">
-                <span className="text-2xl">⚠️</span>
+                <span className="text-2xl"><LineIcon name="info" /></span>
                 <div>
                   <h3 className="font-black text-base text-fg">Kembalikan Data Usaha?</h3>
                   <p className="text-xs text-muted">Periksa ringkasan isi file sebelum melanjutkan.</p>
@@ -592,7 +584,7 @@ export default function PengaturanDataPage() {
           >
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <div className="flex items-center gap-2.5">
-                <span className="text-2xl">📱</span>
+                <span className="text-2xl"><LineIcon name="info" /></span>
                 <div>
                   <h3 className="font-black text-base text-fg">Panduan Pindah HP / Perangkat</h3>
                   <p className="text-xs text-muted">Bawa data usaha Anda ke HP baru dalam 4 langkah mudah.</p>
@@ -685,7 +677,7 @@ export default function PengaturanDataPage() {
             <div className="p-3.5 rounded-2xl bg-card border border-line/60 space-y-1.5">
               <div className="flex items-center justify-between">
                 <h4 className="font-black text-fg text-xs flex items-center gap-1.5">
-                  <span>🔑 Pemindahan Lisensi SakuNota</span>
+                  <span> Pemindahan Lisensi SakuNota</span>
                 </h4>
                 <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-400 font-black text-[10px] tracking-wider uppercase">
                   Belum Tersedia Otomatis
@@ -723,7 +715,7 @@ export default function PengaturanDataPage() {
           >
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <div className="flex items-center gap-2">
-                <span className="text-xl">⚠️</span>
+                <span className="text-xl"><LineIcon name="info" /></span>
                 <h3 className="font-black text-base text-red-400">Hapus Seluruh Riwayat Penjualan & Shift?</h3>
               </div>
               <button

@@ -378,7 +378,7 @@ export default function AdminDashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line">
           <div>
             <h3 className="text-base font-black text-fg flex items-center gap-2">
-              <span>📈</span>
+              
               <span>Tren penjualan</span>
             </h3>
             <p className="text-xs text-muted mt-0.5">
@@ -516,7 +516,7 @@ export default function AdminDashboardPage() {
           <div className="flex items-center justify-between pb-3 border-b border-line">
             <div>
               <h4 className="text-sm font-black text-fg flex items-center gap-2">
-                <span>💳</span>
+                
                 <span>Komposisi Metode Pembayaran</span>
               </h4>
               <p className="text-xs text-muted mt-0.5">Distribusi penerimaan kasir (Tunai vs Non-Tunai)</p>
@@ -566,7 +566,7 @@ export default function AdminDashboardPage() {
           <div className="flex items-center justify-between pb-3 border-b border-line">
             <div>
               <h4 className="text-sm font-black text-fg flex items-center gap-2">
-                <span>🏆</span>
+                
                 <span>5 Menu Terlaris (Top Products)</span>
               </h4>
               <p className="text-xs text-muted mt-0.5">Produk dengan perputaran unit tertinggi</p>
@@ -637,7 +637,7 @@ export default function AdminDashboardPage() {
           >
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <h3 className="font-black text-sm text-fg flex items-center gap-2">
-                <span>📲</span>
+                
                 <span>Kirim Laporan Omzet ke WhatsApp</span>
               </h3>
               <button

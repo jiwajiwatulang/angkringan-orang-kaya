@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState } from "react";
 
@@ -38,9 +39,7 @@ export default function MobileOrdersScreen({
         </div>
 
         <div className="relative mb-2">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-sm">
-            🔍
-          </span>
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-sm"><LineIcon name="info" /></span>
           <input
             type="text"
             value={search}
@@ -55,7 +54,7 @@ export default function MobileOrdersScreen({
       <div className="flex-1 overflow-y-auto p-4 pb-28 space-y-3">
         {filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-muted">
-            <span className="text-4xl mb-2">🧾</span>
+            <span className="text-4xl mb-2"><LineIcon name="info" /></span>
             <p className="text-sm font-bold text-fg">Belum Ada Transaksi</p>
             <p className="text-xs text-muted mt-1">Transaksi yang sudah dibayar akan tercatat di sini.</p>
           </div>

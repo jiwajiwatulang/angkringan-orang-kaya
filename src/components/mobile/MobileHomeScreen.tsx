@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState } from "react";
 
@@ -53,11 +54,11 @@ export default function MobileHomeScreen({
   const getCategoryIcon = (category: string, name?: string) => {
     const c = (category || "").toLowerCase();
     const n = (name || "").toLowerCase();
-    if (c.includes("minum") || n.includes("teh") || n.includes("kopi") || n.includes("jeruk") || n.includes("es ")) return "🥤";
-    if (c.includes("nasi") || n.includes("ayam") || n.includes("bebek") || n.includes("mie")) return "🍚";
-    if (c.includes("sate") || n.includes("sunduk")) return "🍢";
-    if (c.includes("snack") || n.includes("gorengan") || n.includes("mendoan")) return "🥟";
-    return "🍽️";
+    if (c.includes("minum") || n.includes("teh") || n.includes("kopi") || n.includes("jeruk") || n.includes("es ")) return <LineIcon name="cashier" className="w-6 h-6" />;
+    if (c.includes("nasi") || n.includes("ayam") || n.includes("bebek") || n.includes("mie")) return <LineIcon name="cashier" className="w-6 h-6" />;
+    if (c.includes("sate") || n.includes("sunduk")) return <LineIcon name="cashier" className="w-6 h-6" />;
+    if (c.includes("snack") || n.includes("gorengan") || n.includes("mendoan")) return <LineIcon name="cashier" className="w-6 h-6" />;
+    return <LineIcon name="cashier" className="w-6 h-6" />;
   };
 
   // Top 4 favorite items from menu
@@ -120,9 +121,7 @@ export default function MobileHomeScreen({
 
         {/* Quick Search */}
         <form onSubmit={handleSearchSubmit} className="relative">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-xs">
-            🔍
-          </span>
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-xs"><LineIcon name="info" /></span>
           <input
             type="text"
             value={localSearch}

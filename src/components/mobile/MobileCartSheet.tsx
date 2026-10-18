@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useRef } from "react";
 
@@ -186,8 +187,7 @@ export default function MobileCartSheet({
                 ))}
               </select>
             ) : (
-              <div className="bg-card/50 border border-line/40 rounded-xl px-2.5 py-1.5 text-xs text-muted flex items-center">
-                🥡 Pesanan Dibungkus
+              <div className="bg-card/50 border border-line/40 rounded-xl px-2.5 py-1.5 text-xs text-muted flex items-center"> Pesanan Dibungkus
               </div>
             )}
 
@@ -205,7 +205,7 @@ export default function MobileCartSheet({
         <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center text-muted">
-              <span className="text-4xl mb-2">🛒</span>
+              <span className="text-4xl mb-2"><LineIcon name="info" /></span>
               <p className="text-sm font-bold text-fg">Keranjang Kosong</p>
               <p className="text-xs text-muted mt-1">Pilih menu dari katalog untuk menambahkan ke keranjang.</p>
             </div>

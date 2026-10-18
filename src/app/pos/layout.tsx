@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import WaiterModeGuard from "@/components/WaiterModeGuard";
 
 export const metadata: Metadata = {
   title: "Kasir SakuNota - Jalan Tanpa Internet",
@@ -10,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function PosLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return <WaiterModeGuard>{children}</WaiterModeGuard>;
 }

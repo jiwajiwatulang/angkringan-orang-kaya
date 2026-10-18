@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
 import { useAdmin } from "../AdminContext";
@@ -47,12 +48,12 @@ export default function AdminMenuPage() {
   const getCategoryIcon = (category: string, name?: string) => {
     const c = (category || '').toLowerCase();
     const n = (name || '').toLowerCase();
-    if (c.includes('minum') || n.includes('teh') || n.includes('kopi') || n.includes('jeruk') || n.includes('wedang') || n.includes('susu') || n.includes('es ') || n.includes('lemon')) return '🥤';
-    if (c.includes('nasi') || n.includes('nasi') || n.includes('ayam') || n.includes('bebek') || n.includes('mie') || n.includes('soto') || n.includes('bakso')) return '🍚';
-    if (c.includes('sate') || n.includes('sate') || n.includes('sunduk')) return '🍢';
-    if (c.includes('snack') || c.includes('gorengan') || n.includes('mendoan') || n.includes('tahu') || n.includes('tempe') || n.includes('pisang') || n.includes('bakwan')) return '🥟';
-    if (c.includes('roti') || n.includes('roti') || n.includes('bakar')) return '🍞';
-    return '🍽️';
+    if (c.includes('minum') || n.includes('teh') || n.includes('kopi') || n.includes('jeruk') || n.includes('wedang') || n.includes('susu') || n.includes('es ') || n.includes('lemon')) return <LineIcon name="cashier" className="w-6 h-6" />;
+    if (c.includes('nasi') || n.includes('nasi') || n.includes('ayam') || n.includes('bebek') || n.includes('mie') || n.includes('soto') || n.includes('bakso')) return <LineIcon name="cashier" className="w-6 h-6" />;
+    if (c.includes('sate') || n.includes('sate') || n.includes('sunduk')) return <LineIcon name="cashier" className="w-6 h-6" />;
+    if (c.includes('snack') || c.includes('gorengan') || n.includes('mendoan') || n.includes('tahu') || n.includes('tempe') || n.includes('pisang') || n.includes('bakwan')) return <LineIcon name="cashier" className="w-6 h-6" />;
+    if (c.includes('roti') || n.includes('roti') || n.includes('bakar')) return <LineIcon name="cashier" className="w-6 h-6" />;
+    return <LineIcon name="cashier" className="w-6 h-6" />;
   };
 
   // Multi-select for Bulk Actions
@@ -664,7 +665,7 @@ export default function AdminMenuPage() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-line">
         <div>
           <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
-            <span>🍽️</span>
+            
             <span>Kelola Menu & Stok</span>
           </h2>
           <p className="text-xs text-muted mt-0.5">
@@ -722,7 +723,7 @@ export default function AdminMenuPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-surface border border-line rounded-2xl py-2.5 pl-10 pr-4 text-xs font-semibold text-fg outline-none focus:border-accent"
           />
-          <span className="absolute left-3.5 top-3 text-muted text-sm">🔍</span>
+          <span className="absolute left-3.5 top-3 text-muted text-sm"><LineIcon name="info" /></span>
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
@@ -761,11 +762,11 @@ export default function AdminMenuPage() {
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="py-1.5 px-2.5 rounded-xl bg-card border border-line font-bold text-slate-300 outline-none"
               >
-                <option value="nama_asc">🔤 Nama (A - Z)</option>
-                <option value="nama_desc">🔤 Nama (Z - A)</option>
-                <option value="harga_asc">💰 Harga (Termurah)</option>
-                <option value="harga_desc">💰 Harga (Termahal)</option>
-                <option value="stok_first">🟢 Stok Tersedia Dahulu</option>
+                <option value="nama_asc"> Nama (A - Z)</option>
+                <option value="nama_desc"> Nama (Z - A)</option>
+                <option value="harga_asc"> Harga (Termurah)</option>
+                <option value="harga_desc"> Harga (Termahal)</option>
+                <option value="stok_first"> Stok Tersedia Dahulu</option>
               </select>
             </div>
 
@@ -847,7 +848,7 @@ export default function AdminMenuPage() {
         <div className="py-12 text-center text-muted text-xs">Memuat daftar menu...</div>
       ) : sortedMenus.length === 0 ? (
         <div className="py-12 text-center bg-surface rounded-3xl border border-line p-8">
-          <div className="text-4xl mb-2">🍽️</div>
+          <div className="text-4xl mb-2"><LineIcon name="cashier" /></div>
           <h3 className="text-sm font-bold text-slate-300">Tidak ada menu yang cocok</h3>
           <p className="text-xs text-muted mt-1">Coba ganti kata kunci pencarian atau kategori filter.</p>
         </div>
@@ -1245,8 +1246,7 @@ export default function AdminMenuPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
-            <h3 className="text-lg font-black text-fg mb-1">
-              💲 Ubah Harga Massal
+            <h3 className="text-lg font-black text-fg mb-1"> Ubah Harga Massal
             </h3>
             <p className="text-xs text-muted mb-4">
               Ubah harga serentak untuk <strong>{selectedMenuIds.length}</strong> menu terpilih.
@@ -1336,8 +1336,7 @@ export default function AdminMenuPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
-            <h3 className="text-lg font-black text-fg mb-1">
-              🏷️ Ubah Kategori Massal
+            <h3 className="text-lg font-black text-fg mb-1"> Ubah Kategori Massal
             </h3>
             <p className="text-xs text-muted mb-4">
               Pindahkan <strong>{selectedMenuIds.length}</strong> menu terpilih ke kategori yang sama.
@@ -1413,14 +1412,11 @@ export default function AdminMenuPage() {
             className=" bg-surface rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
-              🗑️
-            </div>
+            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg mb-1">
               Hapus {selectedMenuIds.length} Menu Terpilih?
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed mb-4 text-left bg-card/60 p-3 rounded-xl border border-line/60">
-              🛡️ <strong>Fitur Pengaman Finansial:</strong> Menu yang pernah memiliki riwayat transaksi/nota tidak akan dihapus dari database, melainkan otomatis dinonaktifkan (Status Habis) agar seluruh laporan penjualan masa lalu tetap akurat.
+            <p className="text-xs text-slate-300 leading-relaxed mb-4 text-left bg-card/60 p-3 rounded-xl border border-line/60"><LineIcon name="info" /><strong>Fitur Pengaman Finansial:</strong> Menu yang pernah memiliki riwayat transaksi/nota tidak akan dihapus dari database, melainkan otomatis dinonaktifkan (Status Habis) agar seluruh laporan penjualan masa lalu tetap akurat.
             </p>
             <div className="flex space-x-2">
               <button
@@ -1455,7 +1451,7 @@ export default function AdminMenuPage() {
             <div className="flex justify-between items-center pb-3 border-b border-line">
               <div>
                 <h3 className="text-lg font-black text-fg flex items-center gap-2">
-                  <span>📊</span>
+                  
                   <span>Import Menu Massal (Excel / CSV)</span>
                 </h3>
                 <p className="text-xs text-muted mt-0.5">
@@ -1638,7 +1634,7 @@ export default function AdminMenuPage() {
                       onChange={(e) => setImportAutoBackup(e.target.checked)}
                       className="w-4 h-4 rounded text-accent-text focus:ring-accent"
                     />
-                    <span>🛡️ Buat file backup database otomatis sebelum proses import dimulai</span>
+                    <span> Buat file backup database otomatis sebelum proses import dimulai</span>
                   </label>
                 </div>
               )}
@@ -2163,9 +2159,7 @@ export default function AdminMenuPage() {
             className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
-              🗑️
-            </div>
+            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg mb-1">
               Hapus Menu Ini?
             </h3>
@@ -2202,9 +2196,7 @@ export default function AdminMenuPage() {
             className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
-              ⚠️
-            </div>
+            <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg mb-1">
               Batalkan Perubahan Menu?
             </h3>

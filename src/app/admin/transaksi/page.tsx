@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect, useRef } from "react";
 import { useAdmin } from "../AdminContext";
@@ -451,7 +452,7 @@ export default function AdminTransaksiPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-3xl border border-line shadow-sm">
         <div>
           <h2 className="text-lg font-black text-fg flex items-center gap-2">
-            <span>🧾</span>
+            
             <span>Riwayat Transaksi & Pembatalan</span>
           </h2>
           <p className="text-xs text-muted mt-0.5">
@@ -527,7 +528,7 @@ export default function AdminTransaksiPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
           {/* Search */}
           <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-xs">🔍</span>
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-xs"><LineIcon name="info" /></span>
             <input
               type="text"
               value={searchQuery}
@@ -544,10 +545,10 @@ export default function AdminTransaksiPage() {
               onChange={(e) => setDateFilter(e.target.value)}
               className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
             >
-              <option value="all">📅 Semua Waktu</option>
-              <option value="today">📅 Hari Ini</option>
-              <option value="month">📅 Bulan Ini</option>
-              <option value="custom">📅 Rentang Tanggal Khusus</option>
+              <option value="all"> Semua Waktu</option>
+              <option value="today"> Hari Ini</option>
+              <option value="month"> Bulan Ini</option>
+              <option value="custom"> Rentang Tanggal Khusus</option>
             </select>
           </div>
 
@@ -558,10 +559,10 @@ export default function AdminTransaksiPage() {
               onChange={(e) => setPaymentFilter(e.target.value)}
               className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
             >
-              <option value="Semua">💳 Semua Pembayaran</option>
-              <option value="Cash">💵 Tunai (Cash)</option>
-              <option value="QRIS">📱 QRIS</option>
-              <option value="Transfer">💳 Transfer Bank</option>
+              <option value="Semua"> Semua Pembayaran</option>
+              <option value="Cash"> Tunai (Cash)</option>
+              <option value="QRIS"> QRIS</option>
+              <option value="Transfer"> Transfer Bank</option>
             </select>
           </div>
 
@@ -572,10 +573,10 @@ export default function AdminTransaksiPage() {
               onChange={(e) => setVerificationFilter(e.target.value)}
               className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
             >
-              <option value="Semua">🔍 Semua Status Verifikasi</option>
+              <option value="Semua"> Semua Status Verifikasi</option>
               <option value="terverifikasi">✓ Terverifikasi</option>
-              <option value="menunggu_verifikasi">⏳ Menunggu Verifikasi</option>
-              <option value="menunggu_bukti">⚠️ Menunggu Bukti</option>
+              <option value="menunggu_verifikasi"> Menunggu Verifikasi</option>
+              <option value="menunggu_bukti"> Menunggu Bukti</option>
             </select>
           </div>
 
@@ -586,10 +587,10 @@ export default function AdminTransaksiPage() {
               onChange={(e) => setSortBy(e.target.value as any)}
               className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
             >
-              <option value="waktu_desc">⏱️ Waktu (Terbaru)</option>
-              <option value="waktu_asc">⏱️ Waktu (Terlama)</option>
-              <option value="total_desc">💰 Total (Tertinggi)</option>
-              <option value="total_asc">💰 Total (Terendah)</option>
+              <option value="waktu_desc"> Waktu (Terbaru)</option>
+              <option value="waktu_asc"> Waktu (Terlama)</option>
+              <option value="total_desc"> Total (Tertinggi)</option>
+              <option value="total_asc"> Total (Terendah)</option>
             </select>
           </div>
 
@@ -600,10 +601,10 @@ export default function AdminTransaksiPage() {
               onChange={(e) => setItemsPerPage(Number(e.target.value))}
               className="w-full py-2.5 px-3 bg-card border border-line rounded-xl text-xs font-bold text-slate-300 outline-none"
             >
-              <option value={15}>📄 15 Nota / Hal</option>
-              <option value={30}>📄 30 Nota / Hal</option>
-              <option value={50}>📄 50 Nota / Hal</option>
-              <option value={0}>📄 Tampilkan Semua</option>
+              <option value={15}> 15 Nota / Hal</option>
+              <option value={30}> 30 Nota / Hal</option>
+              <option value={50}> 50 Nota / Hal</option>
+              <option value={0}> Tampilkan Semua</option>
             </select>
           </div>
         </div>
@@ -671,7 +672,7 @@ export default function AdminTransaksiPage() {
         <div className="p-12 text-center text-muted text-xs">Memuat daftar transaksi...</div>
       ) : filteredOrders.length === 0 ? (
         <div className=" bg-surface rounded-3xl p-12 text-center border border-line">
-          <span className="text-4xl block mb-2">🧾</span>
+          <span className="text-4xl block mb-2"><LineIcon name="info" /></span>
           <p className="text-sm font-bold text-slate-300">Tidak ada nota ditemukan</p>
           <p className="text-xs text-muted mt-1">Coba sesuaikan filter pencarian atau rentang tanggal Anda.</p>
         </div>
@@ -790,8 +791,7 @@ export default function AdminTransaksiPage() {
                           <span className="text-[10px] text-muted block mt-0.5">{dateDisplay}</span>
                         </td>
                         <td className="py-3.5 px-3">
-                          <span className="font-bold text-fg block truncate">
-                            👤 {order.customerName || "Tamu"}
+                          <span className="font-bold text-fg block truncate"><LineIcon name="info" />{order.customerName || "Tamu"}
                           </span>
                           <span className="text-[10px] text-muted block mt-0.5">
                             {order.tableName || (order.tableId ? `Meja ${order.tableId}` : order.orderType || "Takeaway")}
@@ -1153,7 +1153,7 @@ export default function AdminTransaksiPage() {
                 <div className="p-3.5 bg-card/60 rounded-2xl border border-line space-y-3">
                   <div className="flex justify-between items-center">
                     <h4 className="text-xs font-black text-fg flex items-center gap-1.5">
-                      <span>📷</span>
+                      
                       <span>Bukti Pembayaran ({receiptData.paymentMethod})</span>
                     </h4>
 
@@ -1166,8 +1166,7 @@ export default function AdminTransaksiPage() {
                         {receiptData.proofs[0].status === 'terverifikasi' ? '✓ Terverifikasi' : '⏳ Menunggu Verifikasi'}
                       </span>
                     ) : (
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400">
-                        ⚠️ Belum Ada Bukti
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400"> Belum Ada Bukti
                       </span>
                     )}
                   </div>
@@ -1185,9 +1184,7 @@ export default function AdminTransaksiPage() {
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={pr.imageData} alt={pr.fileName} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
-                              🔍
-                            </div>
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs"><LineIcon name="info" /></div>
                           </div>
 
                           <div className="flex-1 min-w-0">
@@ -1320,7 +1317,7 @@ export default function AdminTransaksiPage() {
           >
             <div className="flex justify-between items-center pb-3 border-b border-line">
               <h3 className="text-sm font-black text-fg flex items-center gap-2">
-                <span>📥</span>
+                
                 <span>Import Riwayat Transaksi Historis</span>
               </h3>
               <button
@@ -1333,8 +1330,7 @@ export default function AdminTransaksiPage() {
             </div>
 
             <div className="py-4 overflow-y-auto space-y-4">
-              <div className="p-3 bg-accent/40 rounded-2xl border border-accent/40 text-accent-text text-xs leading-relaxed">
-                ℹ️ Transaksi historis akan diberi tanda <b>Migrasi Historis</b> untuk menjaga audit finansial tanpa mengubah shift laci kasir saat ini.
+              <div className="p-3 bg-accent/40 rounded-2xl border border-accent/40 text-accent-text text-xs leading-relaxed"> Transaksi historis akan diberi tanda <b>Migrasi Historis</b> untuk menjaga audit finansial tanpa mengubah shift laci kasir saat ini.
               </div>
 
               {/* Unduh Template */}
@@ -1434,7 +1430,7 @@ export default function AdminTransaksiPage() {
           >
             <div className="flex justify-between items-center pb-3 border-b border-line">
               <h3 className="text-sm font-black text-fg flex items-center gap-2">
-                <span>📷</span>
+                
                 <span>Pencocokan Massal Bukti Bayar QRIS / Transfer</span>
               </h3>
               <button
@@ -1466,8 +1462,7 @@ export default function AdminTransaksiPage() {
               </div>
 
               {isMatchingProofs && (
-                <div className="text-center py-6 text-xs text-muted font-semibold animate-pulse">
-                  ⏳ Sedang membaca dan mencocokkan gambar ke nota transaksi...
+                <div className="text-center py-6 text-xs text-muted font-semibold animate-pulse"> Sedang membaca dan mencocokkan gambar ke nota transaksi...
                 </div>
               )}
 
@@ -1545,9 +1540,7 @@ export default function AdminTransaksiPage() {
             className=" bg-surface rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
-              ⚠️
-            </div>
+            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg text-center">
               Batalkan Nota #{voidTargetOrder.id}?
             </h3>

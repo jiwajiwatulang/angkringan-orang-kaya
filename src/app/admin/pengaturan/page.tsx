@@ -1,51 +1,53 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
+import LineIcon from "@/components/LineIcon";
 import { useAdmin } from "../AdminContext";
 
 export default function AdminPengaturanHubPage() {
   const { storeSettings } = useAdmin();
 
   const settingsCategories = [
+    ...(storeSettings.serviceMode === 'resto' ? [{ href: '/admin/pelayan', icon: 'tables', title: 'Waiter Floor', badge: 'Pelayan & Meja' }] : []),
     {
       href: "/admin/pengaturan/profil",
-      icon: "🏪",
+      icon: "store",
       title: "Profil Usaha & Struk",
       desc: "Nama toko, alamat cabang, kontak WhatsApp, dan catatan kaki struk thermal.",
       badge: storeSettings.storeName || "Toko SakuNota",
     },
     {
       href: "/admin/pengaturan/printer",
-      icon: "🖨️",
+      icon: "printer",
       title: "Printer Bluetooth Thermal",
       desc: "Pindai & hubungkan printer kasir Bluetooth (58mm/80mm) dan uji cetak.",
       badge: storeSettings.paperWidth || "58mm",
     },
     {
       href: "/admin/pengaturan/keamanan",
-      icon: "🔒",
+      icon: "lock",
       title: "Keamanan & PIN Admin",
       desc: "Ganti PIN Admin 4 digit untuk melindungi Void, Refund, dan Pengaturan Sensitif.",
       badge: storeSettings.enablePin ? "PIN Aktif" : "PIN Siap",
     },
     {
       href: "/admin/pengaturan/pajak",
-      icon: "💵",
+      icon: "tax",
       title: "Pajak & Biaya Layanan",
       desc: "Konfigurasi PBJT Restoran (pajak daerah) dan Service Charge otomatis.",
       badge: storeSettings.enableTax ? `PBJT ${storeSettings.taxPercent}%` : "Nonaktif",
     },
     {
       href: "/admin/pengaturan/data",
-      icon: "💾",
+      icon: "backup",
       title: "Data & Cadangan",
       desc: "Simpan salinan data usaha, kembalikan data lama, atau pindah ke HP baru.",
       badge: "Simpan Data",
     },
     {
       href: "/admin/pengaturan/tentang",
-      icon: "ℹ️",
+      icon: "info",
       title: "Tentang Aplikasi & Bantuan",
       badge: "Informasi",
     },
@@ -56,12 +58,9 @@ export default function AdminPengaturanHubPage() {
       {/* Header */}
       <div className="pb-3 border-b border-line">
         <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
-          <span>⚙️</span>
+          
           <span>Pusat Pengaturan SakuNota</span>
         </h2>
-        <p className="text-xs text-muted mt-0.5">
-          Pilih kategori di bawah untuk mengonfigurasi toko Anda tanpa perlu scroll panjang.
-        </p>
       </div>
 
       {/* Settings Grid */}
@@ -75,7 +74,7 @@ export default function AdminPengaturanHubPage() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <span className="w-12 h-12 rounded-2xl bg-accent/20 text-accent-text flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                  {cat.icon}
+                  <LineIcon name={cat.icon} className="w-6 h-6" />
                 </span>
                 <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-card text-slate-300">
                   {cat.badge}
@@ -85,9 +84,6 @@ export default function AdminPengaturanHubPage() {
               <h3 className="font-black text-base text-fg group-hover:text-accent-text transition-colors">
                 {cat.title}
               </h3>
-              <p className="text-xs text-muted mt-1 leading-relaxed">
-                {cat.desc}
-              </p>
             </div>
 
             <div className="mt-4 pt-3 border-t border-line flex items-center justify-between text-xs font-bold text-accent-text">
@@ -103,7 +99,7 @@ export default function AdminPengaturanHubPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="w-10 h-10 rounded-2xl bg-accent/20 text-accent-text flex items-center justify-center text-xl">
-              🏪
+              <LineIcon name="store" />
             </span>
             <div>
               <h3 className="font-black text-sm text-fg">SakuNota - Kasir Tetap Jalan, Meski Tanpa Internet</h3>

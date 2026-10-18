@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState } from "react";
 
@@ -102,7 +103,7 @@ export default function MobileTableScreen({
       <div className="flex-1 overflow-y-auto p-4 pb-28">
         {filteredTables.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-muted">
-            <span className="text-4xl mb-2">🪑</span>
+            <span className="text-4xl mb-2"><LineIcon name="info" /></span>
             <p className="text-sm font-bold text-fg">Tidak Ada Meja</p>
             <p className="text-xs text-muted mt-1">Tidak ada meja dengan status filter ini.</p>
           </div>

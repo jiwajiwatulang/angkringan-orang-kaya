@@ -1,4 +1,5 @@
 "use client";
+import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -183,8 +184,7 @@ export default function PengaturanKeamananPage() {
               />
             </div>
           ) : (
-            <div className="p-3 bg-amber-950/40 border border-amber-800/50 rounded-xl text-xs text-amber-200">
-              ℹ️ Perangkat ini belum memiliki PIN Admin yang tersimpan. Silakan langsung tentukan PIN baru untuk mengamankan operasional toko.
+            <div className="p-3 bg-amber-950/40 border border-amber-800/50 rounded-xl text-xs text-amber-200"> Perangkat ini belum memiliki PIN Admin yang tersimpan. Silakan langsung tentukan PIN baru untuk mengamankan operasional toko.
             </div>
           )}
 
@@ -227,8 +227,7 @@ export default function PengaturanKeamananPage() {
           </div>
 
           {errorMessage && (
-            <p className="text-xs font-bold text-rose-400 p-2.5 rounded-xl bg-rose-950/40">
-              ⚠️ {errorMessage}
+            <p className="text-xs font-bold text-rose-400 p-2.5 rounded-xl bg-rose-950/40"><LineIcon name="info" />{errorMessage}
             </p>
           )}
 
@@ -246,7 +245,7 @@ export default function PengaturanKeamananPage() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-black text-fg flex items-center gap-1.5">
-              <span>🛡️</span>
+              
               <span>Kode Pemulihan Pemilik (Offline Recovery Code)</span>
             </h3>
             <p className="text-xs text-muted mt-0.5">
@@ -306,7 +305,7 @@ export default function PengaturanKeamananPage() {
                 </button>
               </div>
               {regenError && (
-                <p className="text-xs font-bold text-rose-400">⚠️ {regenError}</p>
+                <p className="text-xs font-bold text-rose-400"><LineIcon name="info" />{regenError}</p>
               )}
             </form>
           )}
@@ -317,9 +316,7 @@ export default function PengaturanKeamananPage() {
       {revealedCode && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-surface rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border-2 border-accent text-center animate-in zoom-in-95">
-            <div className="w-16 h-16 rounded-2xl bg-accent text-white flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-lg shadow-accent/20">
-              🛡️
-            </div>
+            <div className="w-16 h-16 rounded-2xl bg-accent text-white flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-lg shadow-accent/20"><LineIcon name="info" /></div>
             <h2 className="text-xl font-black text-fg">Simpan Kode Pemulihan Baru Anda!</h2>
             <p className="text-xs text-muted mt-1 mb-5">
               Kode pemulihan lama Anda telah dinonaktifkan. Catat kode baru ini di tempat yang aman.
@@ -380,7 +377,7 @@ export default function PengaturanKeamananPage() {
       {/* Sensitive Operations Info */}
       <div className=" bg-surface p-5 rounded-3xl border border-line shadow-sm space-y-2 text-xs">
         <h4 className="font-black text-fg flex items-center gap-1.5">
-          <span>🛡️</span>
+          
           <span>Operasi Kasir yang Memerlukan Otorisasi PIN:</span>
         </h4>
         <ul className="space-y-1.5 text-muted list-disc list-inside pt-1">

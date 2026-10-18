@@ -83,3 +83,11 @@ npm run preview:local
 ```
 
 Preview Owner menggunakan akun dummy `preview-owner` dengan sandi `Preview-Local-Only!`. Akun ini hanya milik server preview lokal. Tidak ada kunci Midtrans di preview; pembayaran gateway nyata sengaja tidak tersedia. Data Owner preview hilang ketika server dimulai ulang.
+
+## Pembaruan demo dan Waiter Floor
+
+- Panduan awal hanya untuk lisensi/trial/tester yang aktif; demo tidak membuka wizard meskipun diberi query onboarding.
+- Pengujian stabilitas bertambah menjadi 12 skenario: pembatasan onboarding, meja tugas pelayan, varian wajib, kuantitas, shift aktif, harga/biaya dari katalog, stok dan idempotency, tanpa pembayaran, serta PIN keluar dengan cooldown.
+- Uji UI lokal ukuran HP: tombol panduan awal tidak muncul pada demo; shift dibuka; pelayan ditugaskan Meja 1; pesanan Air mineral dengan varian dan catatan berhasil masuk sebagai pesanan #8. URL /pos dan /admin dialihkan ke /waiter saat sesi aktif. PIN salah ditolak; PIN demo yang benar kembali ke kasir.
+- Waiter Floor versi ini berbagi database/browser dengan kasir. Akun staf cloud dan HP pelayan terpisah belum tersedia. Lihat WAITER_FLOOR.md untuk batas operasional.
+- API key hanya berupa rencana; tidak ada key atau endpoint integrasi baru yang diaktifkan.
