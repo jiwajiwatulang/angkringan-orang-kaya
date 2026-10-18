@@ -625,6 +625,31 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
     setIsDeletingOrder(false);
   };
 
+  // Owner action: Download Master D1 Backup (JSON)
+  const handleDownloadD1Backup = () => {
+    const backupPayload = {
+      appName: "SakuNota Owner Master Hub",
+      version: 3,
+      exportedAt: new Date().toISOString(),
+      metrics,
+      totalOrders: orders.length,
+      totalLicenses: licenses.length,
+      totalTesterLicenses: testerLicenses.length,
+      totalBetaRegistrations: betaRegistrations.length,
+      orders,
+      licenses,
+      testerLicenses,
+      betaRegistrations,
+    };
+    const blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `sakunota_master_d1_backup_${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // 1. TAMPILAN LOGIN OWNER
   if (!isLoggedIn) {
     return (
@@ -1878,6 +1903,27 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
               <p className="text-xs text-muted">
                 Pembersihan data pengujian aman dengan jejak audit. Transaksi asli dilindungi dari penghapusan bebas.
               </p>
+            </div>
+
+            {/* Master D1 Database Backup Box */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-card border border-line space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h4 className="font-black text-xs text-fg uppercase tracking-wider">
+                    Cadangan Master Cloudflare D1
+                  </h4>
+                  <p className="text-[11px] text-muted mt-0.5">
+                    Ekspor seluruh data pesanan ({orders.length}), lisensi komersial ({licenses.length}), lisensi tester ({testerLicenses.length}), dan pendaftar beta ({betaRegistrations.length}) ke file JSON.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadD1Backup}
+                  className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs shadow transition-all shrink-0 active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  Unduh Backup Master D1 (.json)
+                </button>
+              </div>
             </div>
 
             {/* Clean Test Data Form */}
