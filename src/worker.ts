@@ -9,6 +9,7 @@ import * as ownerLogout from "../functions/api/owner/logout";
 import * as ownerMetrics from "../functions/api/owner/metrics";
 import * as ownerOrders from "../functions/api/owner/orders";
 import * as ownerTesterLicense from "../functions/api/owner/tester-license";
+import * as ownerSecrets from "../functions/api/owner/secrets";
 import * as ownerVerify from "../functions/api/owner/verify";
 import * as ownerBeta from "../functions/api/owner/beta";
 import * as betaRegister from "../functions/api/beta/register";
@@ -176,6 +177,12 @@ export default {
           if (method === "GET") response = await ownerTesterLicense.onRequestGet(context);
           else if (method === "POST") response = await ownerTesterLicense.onRequestPost(context);
           else if (method === "PUT") response = await ownerTesterLicense.onRequestPut(context);
+          else response = new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), { status: 405 });
+        }
+
+        // Route: /api/owner/secrets
+        else if (pathname === "/api/owner/secrets") {
+          if (method === "GET") response = await ownerSecrets.onRequestGet(context);
           else response = new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), { status: 405 });
         }
 

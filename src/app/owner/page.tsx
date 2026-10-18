@@ -84,6 +84,9 @@ export default function SakuNotaOwnerDashboardPage() {
   const [deleteMessage, setDeleteMessage] = useState("");
   const [isDeletingOrder, setIsDeletingOrder] = useState(false);
   const [showDevDrawer, setShowDevDrawer] = useState(false);
+  const [downloadedSecrets, setDownloadedSecrets] = useState<Record<string, string> | null>(null);
+  const [isLoadingSecrets, setIsLoadingSecrets] = useState(false);
+  const [secretsError, setSecretsError] = useState("");
 
   // Load orders helper with silent polling support
   const loadOrders = async (token: string, silent = false) => {
@@ -648,6 +651,52 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
     a.download = `sakunota_master_d1_backup_${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // Owner action: Download & View Cloudflare Secrets (.env)
+  const handleFetchSecrets = async () => {
+    if (!ownerToken) return;
+    setIsLoadingSecrets(true);
+    setSecretsError("");
+    try {
+      const res = await fetch("/api/owner/secrets", {
+        headers: {
+          Authorization: `Bearer ${ownerToken}`,
+        },
+      });
+      const data = await res.json();
+      if (data.success && data.secrets) {
+        setDownloadedSecrets(data.secrets);
+        // Download as .env file
+        const envLines = [
+          "# SAKUNOTA PRODUCTION ENVIRONMENT CONFIGURATION",
+          `# Exported by Owner on ${new Date().toISOString()}`,
+          "",
+          `MIDTRANS_SERVER_KEY="${data.secrets.MIDTRANS_SERVER_KEY}"`,
+          `MIDTRANS_CLIENT_KEY="${data.secrets.MIDTRANS_CLIENT_KEY}"`,
+          `MIDTRANS_MERCHANT_ID="${data.secrets.MIDTRANS_MERCHANT_ID}"`,
+          `SAKUNOTA_OWNER_USERNAME="${data.secrets.SAKUNOTA_OWNER_USERNAME}"`,
+          `SAKUNOTA_OWNER_PASSWORD="${data.secrets.SAKUNOTA_OWNER_PASSWORD}"`,
+          `SAKUNOTA_OWNER_JWT_SECRET="${data.secrets.SAKUNOTA_OWNER_JWT_SECRET}"`,
+          `SAKUNOTA_SERVER_SECRET="${data.secrets.SAKUNOTA_SERVER_SECRET}"`,
+          `SAKUNOTA_OWNER_SALT="${data.secrets.SAKUNOTA_OWNER_SALT}"`,
+        ].join("\n");
+
+        const blob = new Blob([envLines], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "sakunota_secrets.env";
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        setSecretsError(data.error || "Gagal mengambil data secrets.");
+      }
+    } catch (e: any) {
+      setSecretsError("Koneksi gagal: " + e.message);
+    } finally {
+      setIsLoadingSecrets(false);
+    }
   };
 
   // 1. TAMPILAN LOGIN OWNER
@@ -1924,6 +1973,51 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                   Unduh Backup Master D1 (.json)
                 </button>
               </div>
+            </div>
+
+            {/* Cloudflare Environment Secrets Export Card */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-card border border-line space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h4 className="font-black text-xs text-fg uppercase tracking-wider">
+                    Cadangan Kredensial Cloudflare & Midtrans (.env)
+                  </h4>
+                  <p className="text-[11px] text-muted mt-0.5">
+                    Ambil dan unduh file kredensial rahasia (MIDTRANS_*, SAKUNOTA_OWNER_*, SAKUNOTA_SERVER_SECRET) untuk migrasi server.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={isLoadingSecrets}
+                  onClick={handleFetchSecrets}
+                  className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow transition-all shrink-0 active:scale-95 disabled:opacity-50"
+                >
+                  {isLoadingSecrets ? "Mengunduh..." : "Unduh Kredensial (.env)"}
+                </button>
+              </div>
+
+              {secretsError && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-500 text-xs font-bold">
+                  {secretsError}
+                </div>
+              )}
+
+              {downloadedSecrets && (
+                <div className="mt-3 p-3 bg-surface border border-line rounded-xl space-y-2">
+                  <span className="text-[10px] font-bold text-muted uppercase block">Pratinjau Kredensial Server:</span>
+                  <div className="font-mono text-[11px] text-fg space-y-1 overflow-x-auto p-2 bg-card rounded-lg select-all">
+                    {Object.entries(downloadedSecrets).map(([k, v]) => (
+                      <div key={k} className="flex gap-2">
+                        <span className="text-purple-400">{k}=</span>
+                        <span className="text-emerald-400">"{v ? `${v.substring(0, 8)}...${v.substring(v.length - 4)}` : '(kosong)'}"</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-emerald-500 font-bold">
+                    ✓ File sakunota_secrets.env telah berhasil diunduh ke komputer Anda.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Clean Test Data Form */}
