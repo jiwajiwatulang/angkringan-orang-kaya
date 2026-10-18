@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "../../AdminContext";
+import { requireMerchantAdmin } from "@/lib/merchantAccess";
 import { saveStoreSettingsAsync } from "@/lib/settings";
 import { App } from "@capacitor/app";
 
@@ -91,6 +92,7 @@ export default function PengaturanPajakPage() {
         servicePercent: Number(servicePercent) || 0,
         taxAppliesToService,
       };
+      await requireMerchantAdmin();
       await saveStoreSettingsAsync(updated);
       await refreshSettings();
       showToast("Pengaturan pajak & biaya layanan berhasil disimpan!", "success");

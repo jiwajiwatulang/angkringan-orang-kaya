@@ -371,7 +371,7 @@ export default function AdminMejaPage() {
                     <span
                       className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
                         isOpenBill
-                          ? " bg-rose-950/60 text-rose-300"
+                          ? " bg-rose-50 text-rose-700"
                           : isPaid
                           ? " bg-accent/60 text-accent-text"
                           : " bg-accent/60 text-accent-text"
@@ -626,7 +626,7 @@ export default function AdminMejaPage() {
             className=" bg-surface rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
+            <div className="w-12 h-12 bg-rose-50 text-rose-700 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg mb-1">
               Hapus {selectedTableIds.length} Meja Terpilih?
             </h3>
@@ -767,7 +767,7 @@ export default function AdminMejaPage() {
             className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
+            <div className="w-12 h-12 bg-rose-50 text-rose-700 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg mb-1">
               Hapus Meja Ini?
             </h3>

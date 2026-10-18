@@ -95,7 +95,8 @@ export async function verifyAdminSession(): Promise<boolean> {
 
     // Jika kadaluarsa atau hash tidak cocok: bersihkan
     sessionStorage.removeItem(SESSION_STORAGE_KEY);
-    await db.table('settings').delete(DB_SESSION_KEY);
+    // An old tab must not revoke a newer owner's session with a different token.
+    if (storedHash === tokenHash && Date.now() >= expiresAt) await db.table('settings').delete(DB_SESSION_KEY);
     return false;
   } catch (err) {
     console.error('Session verification error:', err);

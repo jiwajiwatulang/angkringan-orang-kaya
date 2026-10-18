@@ -1,4 +1,16 @@
-# Rencana akses kasir dan pemilik toko — belum diterapkan
+# Akses kasir dan pemilik toko
+
+## Diterapkan pada v2.6.7
+
+- Navigasi depan: **Kasir · Menu · Pesanan · Shift Saya**, serta **Meja** untuk mode meja. Tombol tengah Kasir/Katalog dan tautan backoffice pada navigasi karyawan dihapus. Printer dan Admin tersedia sebagai tindakan ringkas.
+- Kasir adalah keranjang dan pembayaran; Menu untuk memilih produk, varian dan barcode. Kedua layar berbagi keranjang yang sama.
+- Pesanan kasir mencakup tagihan belum lunas yang masih perlu dilayani dan transaksi shift aktif pada perangkat. Transaksi historis, void, dan transaksi lunas shift lain tidak disajikan oleh fungsi pembacaan kasir.
+- Kembali ke POS mengakhiri sesi Admin. Halaman Admin memeriksa sesi/PIN; tab lama diperiksa kembali ketika fokus dan secara berkala. Tindakan produk, stok, impor, ekspor, reset dan riwayat penuh memeriksa otorisasi juga. Demo backoffice tetap dapat dicoba pada database demo terpisah.
+- Refund dari POS selalu memerlukan PIN Admin, meskipun pengaturan lama enablePin dimatikan. Persetujuan refund hanya untuk tindakan itu; tidak membuka sesi backoffice. Percobaan PIN gagal dibatasi.
+- **Shift Saya** merujuk shift aktif perangkat beserta nama operatornya. Akun dan PIN per karyawan belum dibuat. Ini belum merupakan identifikasi personal staf atau dukungan beberapa perangkat.
+- Lisensi tetap satu perangkat. Usulan dua perangkat/satu usaha dan sinkronisasi ditahan sesuai keputusan pemilik.
+
+Bagian berikut adalah rancangan lanjutan; belum seluruhnya diterapkan.
 
 ## Bedakan pemilik toko dan pengelola SakuNota
 
@@ -6,9 +18,9 @@ Admin toko adalah pemilik/manajer usaha, dengan data operasional di IndexedDB pe
 
 ## Navigasi yang disarankan
 
-Kasir depan: **Kasir · Pesanan · Shift Saya · Perangkat**.
+Rancangan awal memakai Perangkat; keputusan akhir v2.6.7 adalah **Kasir · Menu · Pesanan · Shift Saya**, dengan tombol Printer terpisah.
 
-Menu jualan sudah ada di dalam layar Kasir, sehingga tidak perlu navigasi Menu/Katalog kedua. Katalog Admin adalah tempat mengedit produk; katalog pada kasir adalah pemilihan barang untuk dijual. Label yang sama saat ini membuat dua fungsi itu terasa bertumpuk.
+Keputusan akhir memisahkan Menu (pemilihan produk) dari Kasir (keranjang/pembayaran) dengan satu keranjang bersama. Katalog Admin tetap menjadi tempat mengedit produk, foto, harga dan persediaan.
 
 | Aksi | Kasir/karyawan | Pelayan | Admin toko |
 |---|---|---|---|
@@ -36,4 +48,4 @@ Pada browser/perangkat tepercaya, ini pembatasan operasional aplikasi. IndexedDB
 
 ## Kondisi sekarang
 
-Rencana role kasir ini belum mengubah navigasi atau izin kasir yang ada. Admin masih memakai autentikasi PIN yang sudah tersedia. Waiter Floor adalah alur terbatas yang sudah ada pada perangkat sama. Penggabungan Katalog & Stok hanya menyatukan tempat pengelolaan produk dan persediaan; tidak mengubah hak akses staf.
+Navigasi dan pembatasan operasional v2.6.7 dijelaskan di atas. Pengelolaan akun/izin individual karyawan masih menjadi pengembangan lanjutan. Waiter Floor tetap menggunakan perangkat yang sama.

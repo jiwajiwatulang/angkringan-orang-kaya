@@ -274,7 +274,7 @@ export default function PengaturanDataPage() {
               Data Usaha Anda
             </h3>
           </div>
-          <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5">
+          <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
             <span>Tersimpan di Perangkat Ini</span>
           </span>
@@ -664,7 +664,7 @@ export default function PengaturanDataPage() {
               <div className="p-4 rounded-2xl bg-card border border-line/60 flex items-start gap-3">
                 <div className="w-7 h-7 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5"><LineIcon name="success" /></div>
                 <div className="space-y-1 flex-1">
-                  <h4 className="font-black text-emerald-400 text-sm">Selesai & Siap Jualan</h4>
+                  <h4 className="font-black text-emerald-700 text-sm">Selesai & Siap Jualan</h4>
                   <p className="text-muted leading-relaxed">
                     Seluruh menu, daftar meja, dan riwayat usaha Anda langsung aktif di HP baru. Jangan lupa pilih menu <strong>Tambahkan ke Layar Utama</strong> di browser agar memiliki ikon aplikasi kasir.
                   </p>

@@ -24,7 +24,7 @@ export function formatBytes(bytes: number, decimals: number = 1): string {
  * Kompresi gambar client-side via HTML5 Canvas.
  * Menghasilkan Data URL base64 dengan ukuran <= 2 MB.
  */
-export async function compressPaymentProof(file: File | Blob, customFileName?: string): Promise<ProcessedImage> {
+export async function compressPaymentProof(file: File | Blob, customFileName?: string, options?: { maxDim: number; maxBytes: number }): Promise<ProcessedImage> {
   const originalName = (file as File).name || customFileName || `bukti_${Date.now()}.jpg`;
   const originalType = file.type || 'image/jpeg';
 
@@ -56,7 +56,7 @@ export async function compressPaymentProof(file: File | Blob, customFileName?: s
       img.onerror = () => reject(new Error('File bukan gambar yang valid.'));
       img.onload = () => {
         try {
-          const maxDim = 1600;
+          const maxDim = options?.maxDim ?? 1600;
           let width = img.width;
           let height = img.height;
 
@@ -98,14 +98,14 @@ export async function compressPaymentProof(file: File | Blob, customFileName?: s
           let byteLength = Math.round((dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75);
 
           // Jika masih > 2MB (2,097,152 bytes), kurangi resolusi & kualitas
-          if (byteLength > 2 * 1024 * 1024) {
+          if (byteLength > (options?.maxBytes ?? 2 * 1024 * 1024)) {
             quality = 0.65;
             dataUrl = canvas.toDataURL(targetMime, quality);
             byteLength = Math.round((dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75);
           }
 
-          if (byteLength > 2 * 1024 * 1024) {
-            throw new Error(`Ukuran gambar setelah kompresi masih melebihi 2 MB (${formatBytes(byteLength)}). Harap pilih gambar yang lebih kecil.`);
+          if (byteLength > (options?.maxBytes ?? 2 * 1024 * 1024)) {
+            throw new Error(`Ukuran gambar setelah kompresi masih terlalu besar (${formatBytes(byteLength)}). Harap pilih gambar yang lebih kecil.`);
           }
 
           const cleanExt = targetMime === 'image/webp' ? '.webp' : '.jpg';

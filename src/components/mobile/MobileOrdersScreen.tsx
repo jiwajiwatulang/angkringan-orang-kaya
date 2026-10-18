@@ -7,12 +7,14 @@ interface MobileOrdersScreenProps {
   allOrders: any[];
   onReprintReceipt: (order: any) => void;
   onOpenSplitBill: (order: any) => void;
+  onResumeOrder?: (order: any) => void;
 }
 
 export default function MobileOrdersScreen({
   allOrders,
   onReprintReceipt,
   onOpenSplitBill,
+  onResumeOrder,
 }: MobileOrdersScreenProps) {
   const [search, setSearch] = useState("");
 
@@ -31,7 +33,7 @@ export default function MobileOrdersScreen({
       <div className="p-4 pb-2 shrink-0 border-b border-line/40 bg-surface/50 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-black text-fg flex items-center gap-2">
-            <span>Riwayat Transaksi</span>
+            <span>Pesanan</span>
             <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-card text-muted border border-line">
               {filteredOrders.length}
             </span>
@@ -56,7 +58,7 @@ export default function MobileOrdersScreen({
           <div className="flex flex-col items-center justify-center py-16 text-center text-muted">
             <span className="text-4xl mb-2"><LineIcon name="info" /></span>
             <p className="text-sm font-bold text-fg">Belum Ada Transaksi</p>
-            <p className="text-xs text-muted mt-1">Transaksi yang sudah dibayar akan tercatat di sini.</p>
+            <p className="text-xs text-muted mt-1">Pesanan belum lunas dan transaksi pada shift berjalan muncul di sini.</p>
           </div>
         ) : (
           filteredOrders.map((order) => {
@@ -117,9 +119,10 @@ export default function MobileOrdersScreen({
                       onClick={() => onOpenSplitBill(order)}
                       className="px-2.5 py-1.5 rounded-xl bg-surface border border-line text-xs font-bold text-accent-text hover:bg-line active:scale-95 transition-all"
                     >
-                      Split Bill
+                      Bayar / Split Bill
                     </button>
                   )}
+                  {!isPaid && onResumeOrder && <button type="button" onClick={() => onResumeOrder(order)} className="px-3 py-1.5 border border-line rounded-xl text-xs font-bold">Lanjutkan Pesanan</button>}
                   <button
                     type="button"
                     onClick={() => onReprintReceipt(order)}

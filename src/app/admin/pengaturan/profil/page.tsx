@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "../../AdminContext";
+import { requireMerchantAdmin } from "@/lib/merchantAccess";
 import { saveStoreSettingsAsync, BUSINESS_TYPES } from "@/lib/settings";
 import { App } from "@capacitor/app";
 
@@ -143,6 +144,7 @@ export default function PengaturanProfilPage() {
         businessType: businessType,
         serviceMode: (businessType === "restoran" || businessType === "kafe") ? ("resto" as const) : ("quick" as const),
       };
+      await requireMerchantAdmin();
       await saveStoreSettingsAsync(updated);
       await refreshSettings();
       showToast("Profil usaha & alur kasir berhasil disimpan!", "success");

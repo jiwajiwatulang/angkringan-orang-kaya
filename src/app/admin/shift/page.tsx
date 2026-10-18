@@ -221,7 +221,7 @@ export default function AdminShiftPage() {
                               ? " bg-accent/60 text-accent-text"
                               : isOver
                               ? " bg-amber-950/60 text-amber-300"
-                              : " bg-rose-950/60 text-rose-300"
+                              : " bg-rose-50 text-rose-700"
                           }`}
                         >
                           {isMatch ? "PAS / COCOK" : isOver ? `+Rp ${diff.toLocaleString("id-ID")} (LEBIH)` : `-Rp ${Math.abs(diff).toLocaleString("id-ID")} (KURANG)`}
@@ -314,7 +314,7 @@ export default function AdminShiftPage() {
                     className={`w-9 h-9 rounded-xl flex items-center justify-center text-base font-black ${
                       m.type === 'in'
                         ? ' bg-accent/60 text-accent-text'
-                        : ' bg-rose-950/60 text-rose-300'
+                        : ' bg-rose-50 text-rose-700'
                     }`}
                   >
                     {m.type === 'in' ? 'Masuk' : 'Keluar'}
@@ -332,7 +332,7 @@ export default function AdminShiftPage() {
                 <div className="text-right">
                   <span
                     className={`text-sm font-black ${
-                      m.type === 'in' ? 'text-accent-text' : 'text-rose-400'
+                      m.type === 'in' ? 'text-accent-text' : 'text-rose-700'
                     }`}
                   >
                     {m.type === 'in' ? '+' : '-'}Rp {(m.amount || 0).toLocaleString("id-ID")}

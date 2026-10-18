@@ -1,13 +1,15 @@
 "use client";
 import LockIcon from "@/components/LockIcon";
 import LineIcon from "@/components/LineIcon";
+import ProductPhoto from "@/components/ProductPhoto";
+import CategoryScroller from "@/components/CategoryScroller";
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { getStoreSettings, loadStoreSettingsAsync, subscribeStoreSettings, StoreSettings, isTableManagementEnabled } from '@/lib/settings';
-import { getMenus, getTables, getOrders, getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement, recordPayment, refundPartialPayment, getOrderPayments, exportAllData, clearTable, resetDemoSandbox } from '@/lib/api';
+import { getMenus, getTables, getCashierOrders as getOrders, getActiveShift, getShiftLiveStats, openShift, closeShift, addCashMovement, recordPayment, refundPartialPayment, getOrderPayments, exportAllData, clearTable, resetDemoSandbox } from '@/lib/api';
 import { 
   generateEscPosReceipt, 
   generatePartialPaymentReceipt, 
@@ -20,11 +22,9 @@ import PaymentProofUpload from '@/components/PaymentProofUpload';
 import OnboardingWizard from '@/components/OnboardingWizard';
 import { canOpenStoreOnboarding } from '@/lib/onboarding';
 import MobileHeader from '@/components/mobile/MobileHeader';
-import MobileHomeScreen from '@/components/mobile/MobileHomeScreen';
 import MobileCatalogScreen from '@/components/mobile/MobileCatalogScreen';
 import MobileTableScreen from '@/components/mobile/MobileTableScreen';
 import MobileOrdersScreen from '@/components/mobile/MobileOrdersScreen';
-import MobileMoreScreen from '@/components/mobile/MobileMoreScreen';
 import MobileBottomNav, { MobileTab } from '@/components/mobile/MobileBottomNav';
 import MobileFloatingCartBar from '@/components/mobile/MobileFloatingCartBar';
 import { checkCashierAccess, CashierAccessStatus } from '@/lib/licenseGuard';
@@ -32,8 +32,11 @@ import { activateLicenseServer } from '@/lib/ordersClient';
 import { setupHardwareBarcodeScanner, playScannerBeep } from '@/lib/barcodeScanner';
 import BarcodeCameraModal from '@/components/BarcodeCameraModal';
 import { db } from '@/lib/dexie';
+import { destroyAdminSession } from '@/lib/session';
+import CashierShiftPanel from '@/components/CashierShiftPanel';
+import CashierPrinter from '@/components/CashierPrinter';
 
-type MenuItem = { id: number; sku?: string; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; modifiers?: any[]; };
+type MenuItem = { id: number; sku?: string; imageData?: string | null; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; modifiers?: any[]; };
 type CartItem = MenuItem & { qty: number; selectedModifiers?: { groupName: string; optionName: string; harga: number }[]; itemKey?: string };
 
 export default function POSPage() {
@@ -41,8 +44,13 @@ export default function POSPage() {
   const [tableData, setTableData] = useState<any[]>([]);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [allOrders, setAllOrders] = useState<any[]>([]);
-  const [view, setView] = useState<'meja' | 'menu'>('meja');
+  const [view, setView] = useState<'kasir' | 'meja' | 'menu' | 'pesanan' | 'shift'>('kasir');
+  useEffect(() => { void destroyAdminSession(); }, []);
+  const enterAdmin = async () => { await destroyAdminSession(); window.location.assign('/admin' + (accessStatus.isDemo ? '?demo=true' : '')); };
+
   const [mobileTab, setMobileTab] = useState<MobileTab>('home');
+  const navigateWorkspace = (next: typeof view) => { setView(next); setMobileTab(({ kasir: "home", menu: "menu", meja: "meja", pesanan: "nota", shift: "lainnya" } as const)[next]); };
+  const navigateMobile = (next: MobileTab) => { setMobileTab(next); setView(({ home: "kasir", menu: "menu", meja: "meja", nota: "pesanan", lainnya: "shift" } as const)[next]); };
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -322,17 +330,19 @@ export default function POSPage() {
     document.documentElement.classList.add('light');
     if (typeof window !== 'undefined') {
       if (window.location.search.includes('view=menu') || window.location.search.includes('tab=menu')) {
-        setView('menu');
-        setMobileTab('menu');
+        navigateWorkspace('menu');
+        navigateMobile('menu');
       } else if (window.location.search.includes('tab=meja') || window.location.search.includes('view=meja')) {
-        setView('meja');
-        setMobileTab('meja');
+        navigateWorkspace(isTableManagementEnabled(storeSettings) ? 'meja' : 'kasir');
+        navigateMobile('meja');
       } else if (window.location.search.includes('tab=nota')) {
-        setMobileTab('nota');
+        navigateMobile('nota');
+        navigateWorkspace('pesanan');
       } else if (window.location.search.includes('tab=lainnya')) {
-        setMobileTab('lainnya');
+        navigateMobile('lainnya');
+        navigateWorkspace('shift');
       } else if (window.location.search.includes('tab=home')) {
-        setMobileTab('home');
+        navigateMobile('home');
       }
     }
   }, []);
@@ -603,7 +613,7 @@ export default function POSPage() {
           } else if (isMobileCartOpen) {
             closeMobileCart();
           } else if (view === 'menu' && selectedTable) {
-            setView('meja');
+            navigateWorkspace(isTableManagementEnabled(storeSettings) ? 'meja' : 'kasir');
           } else if (canGoBack) {
             window.history.back();
           }
@@ -731,7 +741,7 @@ export default function POSPage() {
         setIsMobileCartOpen(false);
         setCartSheetDragY(0);
       } else if (view === 'menu' && selectedTable) {
-        setView('meja');
+        navigateWorkspace(isTableManagementEnabled(storeSettings) ? 'meja' : 'kasir');
       }
     };
 
@@ -778,11 +788,11 @@ export default function POSPage() {
       const menus = await getMenus();
       const tables = await getTables();
       const orders = await getOrders();
-      
+
       // Group variants
       const groupedMenus: MenuItem[] = [];
       const groups: Record<string, MenuItem[]> = {};
-      
+
       (menus || []).forEach((m: any) => {
         if (!m) return;
         if (m.nama && (m.nama.includes('(Hot)') || m.nama.includes('(Ice)'))) {
@@ -801,6 +811,7 @@ export default function POSPage() {
             nama: baseName,
             harga: variants[0].harga,
             kategori: variants[0].kategori,
+            imageData: variants.find(v => v.imageData)?.imageData,
             isGroup: true,
             variants: variants
           });
@@ -906,7 +917,7 @@ export default function POSPage() {
     resetCart();
     setOrderType("Dine-in");
     setSelectedTable(table.id.toString());
-    
+
     if (status === 'open') {
       const numTableId = Number(table.id);
       const strTableId = String(table.id);
@@ -924,11 +935,11 @@ export default function POSPage() {
       // Meja kosong atau lunas yang dibuka untuk pesanan baru: selalu mulai dengan nama pembeli bersih
       setCustomerName("");
     }
-    
-    setView('menu');
+
+    navigateWorkspace('menu');
   };
 
-  
+
   const handleOpenShiftSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -1029,7 +1040,7 @@ export default function POSPage() {
       setSelectedTable("");
       setCustomerName("");
       resetCart();
-      setView('meja');
+      navigateWorkspace(isTableManagementEnabled(storeSettings) ? 'meja' : 'kasir');
       await loadData();
     } catch (e: any) {
       alert(e.message || "Gagal mengosongkan meja");
@@ -1257,7 +1268,7 @@ export default function POSPage() {
         setSplitBillTargetOrder(null);
         resetCart();
         setSelectedTable("");
-        setView('meja');
+        navigateWorkspace(isTableManagementEnabled(storeSettings) ? 'meja' : 'kasir');
       } else {
         alert("Pembayaran Rp " + nominalToPay.toLocaleString('id-ID') + " berhasil disimpan! Sisa tagihan: Rp " + res.remainingBalance.toLocaleString('id-ID'));
         await openSplitBillForOrder(splitBillTargetOrder.id);
@@ -1279,20 +1290,12 @@ export default function POSPage() {
   const handleConfirmRefundPayment = async () => {
     if (!refundTargetPayment) return;
 
-    if (storeSettings.enablePin) {
-      if (!storeSettings.adminPin) {
-        alert("PIN Otorisasi Admin belum dikonfigurasi. Harap konfigurasi PIN di Pengaturan.");
-        return;
-      }
-      if (refundPinInput !== storeSettings.adminPin) {
-        alert("PIN Otorisasi Admin SALAH!");
-        return;
-      }
-    }
+    if (!refundPinInput) { alert("Masukkan PIN Admin untuk menyetujui refund."); return; }
 
     try {
       const res = await refundPartialPayment(refundTargetPayment.id, {
         reason: refundReasonInput || "Refund atas permintaan pelanggan",
+        adminPin: refundPinInput,
         operator: activeShift ? activeShift.operatorName : "Admin"
       });
 
@@ -1384,7 +1387,7 @@ export default function POSPage() {
 
   const addToCart = (item: any, customModifiers?: { groupName: string; optionName: string; harga: number }[], customPrice?: number) => {
     if (item.isSoldOut) return;
-    
+
     // Jika item memiliki modifier dan belum dipilih, buka modal pilihan
     if (!customModifiers && item.modifiers && item.modifiers.length > 0) {
       openModifierModal(item);
@@ -1504,7 +1507,7 @@ export default function POSPage() {
     setIsProcessingPayment(true);
     try {
       const { createOrder, updateOrder } = await import('@/lib/api');
-      
+
       let finalItems = cart;
       let finalTotal = totalPrice;
       let isRevision = false;
@@ -1547,7 +1550,7 @@ export default function POSPage() {
         if (!editingOrderId) {
           // Merge items for implicit addition
           const existingOrder = activeOrders.find(o => o.id === targetOrderId);
-          
+
           const cartFormattedOld = existingOrder.items.map((i: any) => {
             const mods = i.selectedModifiers || [];
             const modSignature = mods.map((m: any) => `${m.groupName}:${m.optionName}`).sort().join('|');
@@ -1561,20 +1564,20 @@ export default function POSPage() {
               itemKey: modSignature ? `${i.menuItemId}_${modSignature}` : `${i.menuItemId}`
             };
           });
-          
+
           cart.forEach(newItem => {
             const newKey = newItem.itemKey || `${newItem.id}`;
             const exIdx = cartFormattedOld.findIndex((i:any) => (i.itemKey || `${i.id}`) === newKey);
             if (exIdx >= 0) cartFormattedOld[exIdx].qty += newItem.qty;
             else cartFormattedOld.push(newItem);
           });
-          
+
           payload.items = cartFormattedOld;
           payload.total = cartFormattedOld.reduce((sum:number, item:any) => sum + (item.harga * item.qty), 0);
           finalItems = cartFormattedOld;
           finalTotal = payload.total;
         }
-        
+
         await updateOrder(targetOrderId, payload);
         resultId = targetOrderId;
       } else {
@@ -1632,14 +1635,14 @@ export default function POSPage() {
         items: finalItems,
         total: finalTotal
       };
-      
+
       setReceiptData(newReceipt);
       pushModalHistory("receipt");
 
       resetCart();
       setOrderType("Dine-in");
       setSelectedTable("");
-      setView('meja');
+      navigateWorkspace(isTableManagementEnabled(storeSettings) ? 'meja' : 'kasir');
       setIsPaymentModalOpen(false);
       setIsMobileCartOpen(false);
       setCartSheetDragY(0);
@@ -1689,12 +1692,12 @@ export default function POSPage() {
     if (receipt.tableName) txt += `Meja: ${receipt.tableName}\n`;
     if (receipt.notes) txt += `Catatan: ${receipt.notes}\n`;
     txt += "--------------------------------\n";
-    
+
     let total = 0;
     receipt.items.forEach((item: any) => {
       if (mode === 'food' && isDrinkCategory(item.kategori)) return;
       if (mode === 'drink' && !isDrinkCategory(item.kategori)) return;
-      
+
       let itemName = item.nama.substring(0, 20).padEnd(20, " ");
       let itemQtyStr = (item.qty + "x").padEnd(4, " ");
       let subtotal = item.qty * item.harga;
@@ -1714,7 +1717,7 @@ export default function POSPage() {
     const dataToPrint = autoReceiptData || receiptData;
     if (!dataToPrint) return;
     setPrintMode(mode);
-    
+
     try {
       const escposText = generateEscPosReceipt(dataToPrint, mode, storeSettings);
       const htmlContent = generateReceiptHtml(dataToPrint, mode, storeSettings);
@@ -1790,7 +1793,7 @@ export default function POSPage() {
                 <div className="text-center mt-6 flex flex-col items-center">
                   <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center text-3xl mb-3 border border-accent/40 shadow-sm"><LineIcon name="info" /></div>
                   <p className="font-extrabold text-base text-fg">Tagihan Meja Ini Sudah LUNAS</p>
-                  
+
                   <div className="bg-surface border border-line rounded-xl p-3.5 mt-3 text-xs text-slate-300 text-left w-full space-y-2">
                     <div className="flex justify-between items-center pb-2 border-b border-line">
                       <span className="text-muted font-medium">Pelanggan:</span>
@@ -1827,7 +1830,7 @@ export default function POSPage() {
                 </div>
               );
             })()}
-            
+
             {cart.length === 0 && selectedTableStatus !== 'lunas' && (
               <div className="text-center text-muted mt-12 flex flex-col items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-16 h-16 mb-4 opacity-50"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
@@ -1922,7 +1925,7 @@ export default function POSPage() {
                 <button 
                   type="button"
                   onClick={handleOpenSplitBillFromCart} 
-                  className="w-1/3 bg-slate-100 text-slate-800 hover:bg-slate-200 text-white py-3.5 rounded-xl font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
+                  className="w-1/3 bg-slate-100 text-slate-800 hover:bg-slate-200 py-3.5 rounded-xl font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
                 > Split Bill
                 </button>
               )}
@@ -2019,7 +2022,7 @@ export default function POSPage() {
                 <div className="text-center py-4 flex flex-col items-center">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-accent/20 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 border border-accent/40 shadow-sm"><LineIcon name="info" /></div>
                   <p className="font-extrabold text-sm sm:text-base text-fg">Tagihan Meja Ini Sudah LUNAS</p>
-                  
+
                   <div className="bg-surface border border-line rounded-xl p-3 mt-2 text-xs text-slate-300 text-left w-full space-y-1.5">
                     <div className="flex justify-between items-center pb-1.5 border-b border-line">
                       <span className="text-muted font-medium">Pelanggan:</span>
@@ -2049,7 +2052,7 @@ export default function POSPage() {
                 </div>
               );
             })()}
-            
+
             {cart.length === 0 && selectedTableStatus !== 'lunas' && (
               <div className="text-center text-muted py-8 flex flex-col items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-12 h-12 sm:w-16 sm:h-16 mb-2 opacity-50"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
@@ -2159,7 +2162,7 @@ export default function POSPage() {
                 <button 
                   type="button"
                   onClick={handleOpenSplitBillFromCart} 
-                  className="w-1/3 bg-slate-100 text-slate-800 hover:bg-slate-200 text-white py-2.5 sm:py-3.5 rounded-xl font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
+                  className="w-1/3 bg-slate-100 text-slate-800 hover:bg-slate-200 py-2.5 sm:py-3.5 rounded-xl font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
                 > Split
                 </button>
               )}
@@ -2176,6 +2179,36 @@ export default function POSPage() {
       </div>
     );
   };
+
+  const renderCashierOrders = () => (<MobileOrdersScreen
+              onResumeOrder={order => { loadOrderIntoCart(order); navigateWorkspace('kasir'); navigateMobile('home'); }}
+              allOrders={allOrders}
+              onReprintReceipt={(order) => {
+                const receiptDoc = {
+                  id: order.id,
+                  tableId: order.tableId,
+                  customerName: order.customerName,
+                  orderType: order.orderType,
+                  items: order.items,
+                  total: order.total,
+                  paymentMethod: order.paymentMethod,
+                  cashTendered: order.cashTendered,
+                  change: order.change,
+                  date: order.createdAt || new Date().toISOString(),
+                  tax: order.tax || 0,
+                  service: order.service || 0,
+                  discount: order.discount || 0,
+                  subtotal: order.subtotal || order.total,
+                };
+                handlePrint('all', receiptDoc);
+              }}
+              onOpenSplitBill={(order) => {
+                setSplitBillTargetOrder(order);
+                setIsSplitBillModalOpen(true);
+                pushModalHistory('splitbill');
+              }}
+            />);
+  const renderShiftPanel = () => <CashierShiftPanel shift={activeShift} onOpen={() => setIsOpenShiftModalOpen(true)} onCash={() => setIsCashMovementModalOpen(true)} onClose={openCloseShiftModal} />;
 
   if (isAccessChecking) {
     return (
@@ -2228,7 +2261,7 @@ export default function POSPage() {
           {/* Direct Activation Form Box (Primary & High-Contrast Light Blue) */}
           <div className="bg-white border-2 border-blue-300 rounded-3xl p-5 sm:p-6 mb-5 shadow-lg shadow-blue-900/5">
             <h2 className="text-sm sm:text-base font-black text-slate-900 mb-1.5 flex items-center gap-2">
-              
+
               <span>Punya Kode Lisensi / Lisensi Tester? Aktifkan Langsung:</span>
             </h2>
             <p className="text-xs text-slate-600 mb-4 leading-relaxed">
@@ -2577,7 +2610,7 @@ export default function POSPage() {
                           : ' border-line focus:border-accent'
                       }`}
                     />
-                    
+
                     {/* Tombol Cepat Pecahan Uang */}
                     <div className="grid grid-cols-5 gap-1.5 mt-2">
                       <button
@@ -2630,7 +2663,7 @@ export default function POSPage() {
             </div>
           </div>
           <div className="border-t border-line pt-3 mt-2 shrink-0 bg-card">
-            
+
               {cart.length > 0 && (discountAmount > 0 || serviceAmount > 0 || taxAmount > 0) && (
                 <div className="mb-3 p-3 bg-surface rounded-xl space-y-1 text-xs text-muted border border-line">
                   <div className="flex justify-between"><span>Subtotal</span><span>Rp {rawSubtotal.toLocaleString('id-ID')}</span></div>
@@ -2662,7 +2695,7 @@ export default function POSPage() {
                 <button 
                   type="button"
                   onClick={() => processPayment(true, 'unpaid')} 
-                  className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 text-white font-bold transition-all shadow-sm text-xs active:scale-95"
+                  className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 font-bold transition-all shadow-sm text-xs active:scale-95"
                 > Open Bill
                 </button>
               )}
@@ -2920,32 +2953,6 @@ export default function POSPage() {
           </div>
         </Link>
 
-        {/* Center: Switcher Meja / Menu */}
-        <div className="flex bg-surface rounded-xl p-1 border border-line shadow-inner">
-          {isTableManagementEnabled(storeSettings) && (
-            <button 
-              type="button"
-              onClick={() => setView('meja')} 
-              className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
-                view === 'meja' 
-                  ? 'bg-accent text-white shadow-sm' 
-                  : 'text-muted hover:text-fg'
-              }`}
-            > Meja
-            </button>
-          )}
-          <button 
-            type="button"
-            onClick={() => setView('menu')} 
-            className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
-              view === 'menu' 
-                ? 'bg-accent text-white shadow-sm' 
-                : 'text-muted hover:text-fg'
-            }`}
-          >{isTableManagementEnabled(storeSettings) ? 'Menu' : 'Kasir / Katalog'}
-          </button>
-        </div>
-
         {/* Right: Shift Status & Admin Button */}
         <div className="flex items-center space-x-2 md:space-x-3">
           {activeShift ? (
@@ -2964,7 +2971,7 @@ export default function POSPage() {
               <button 
                 type="button"
                 onClick={openCloseShiftModal}
-                className="text-[11px] font-bold text-rose-400 hover:underline"
+                className="text-[11px] font-bold text-rose-700 hover:underline"
                 title="Tutup Shift Kasir"
               >
                 [Tutup]
@@ -2977,19 +2984,14 @@ export default function POSPage() {
               className="flex items-center gap-1.5 bg-accent/20 border border-accent/40 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold text-accent-text hover:bg-accent/30 shadow-sm transition-transform active:scale-95 shrink-0"
               title="Buka Shift Kasir"
             >
-              
+
               <span className="">Buka Shift</span>
             </button>
           )}
 
-          <Link 
-            href="/admin" 
-            className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-surface border border-line text-xs font-bold text-fg hover:border-accent hover:text-accent-text transition-colors flex items-center gap-1.5"
-            title="Halaman Admin"
-          >
-            
-            <span className="">Admin</span>
-          </Link>
+          <CashierPrinter settings={storeSettings} />
+          <button type="button" onClick={enterAdmin} className="px-3 py-2 rounded-xl border border-line bg-card text-fg font-bold text-xs">Admin</button>
+
         </div>
       </header>
 
@@ -2997,74 +2999,26 @@ export default function POSPage() {
       <div className="flex-1 flex overflow-hidden w-full print:hidden">
         {/* Left Navigation Sidebar (Desktop) */}
         <aside className="hidden lg:flex flex-col w-52 bg-card border-r border-line p-3 justify-between shrink-0 select-none">
-          <div className="space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-muted px-2.5 py-1 block">Navigasi Utama</span>
-            <button
-              type="button"
-              onClick={() => setView('menu')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
-                view === 'menu'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-muted hover:text-fg hover:bg-surface'
-              }`}
-            >
-              <span className="text-sm"><LineIcon name="cashier" /></span>
-              <span>Kasir & Menu</span>
-            </button>
-            {isTableManagementEnabled(storeSettings) && (
-              <button
-                type="button"
-                onClick={() => setView('meja')}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
-                  view === 'meja'
-                    ? 'bg-accent text-white shadow-sm'
-                    : 'text-muted hover:text-fg hover:bg-surface'
-                }`}
-              >
-                <span className="text-sm"><LineIcon name="food" /></span>
-                <span>Kelola Meja</span>
-              </button>
-            )}
-            <Link
-              href={accessStatus.isDemo ? "/admin/transaksi?demo=true" : "/admin/transaksi"}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
-            >
-              <span className="text-sm"><LineIcon name="receipt" /></span>
-              <span>Riwayat Transaksi</span>
-            </Link>
-            <Link
-              href={accessStatus.isDemo ? "/admin/shift?demo=true" : "/admin/shift"}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
-            >
-              <span className="text-sm"><LineIcon name="shift" /></span>
-              <span>Shift & Kas Laci</span>
-            </Link>
-            <Link
-              href={accessStatus.isDemo ? "/admin/menu?demo=true" : "/admin/menu"}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
-            >
-              <span className="text-sm"><LineIcon name="shift" /></span>
-              <span>Katalog & Stok</span>
-            </Link>
-            <Link
-              href={accessStatus.isDemo ? "/admin/pengaturan?demo=true" : "/admin/pengaturan"}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
-            >
-              <span className="text-sm"><LineIcon name="settings" /></span>
-              <span>Pengaturan POS</span>
-            </Link>
-          </div>
+          <nav className="space-y-1" aria-label="Navigasi karyawan">
+            {[{ id: 'kasir', label: 'Kasir', icon: 'cashier' }, { id: 'menu', label: 'Menu', icon: 'food' },
+              ...(isTableManagementEnabled(storeSettings) ? [{ id: 'meja', label: 'Meja', icon: 'table' }] : []),
+              { id: 'pesanan', label: 'Pesanan', icon: 'receipt' }, { id: 'shift', label: 'Shift Saya', icon: 'shift' }].map(item =>
+              <button key={item.id} type="button" aria-current={view === item.id ? 'page' : undefined} onClick={() => navigateWorkspace(item.id as typeof view)} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-left ${view === item.id ? 'bg-accent text-white' : 'text-fg hover:bg-surface'}`}><LineIcon name={item.icon} />{item.label}</button>)}
+          </nav>
 
           <div className="pt-3 border-t border-line">
             <div className="px-2.5 py-2 rounded-xl bg-surface border border-line text-[11px] text-muted flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="font-semibold text-emerald-400">Siap Tanpa Internet</span>
+              <span className="font-semibold text-emerald-700">Siap Tanpa Internet</span>
             </div>
           </div>
         </aside>
 
         {/* Central Workspace */}
-        <div className="flex-1 flex flex-col h-full pb-20 lg:pb-0 overflow-hidden bg-surface transition-colors">
+        <div className="flex-1 min-w-0 flex flex-col h-full pb-20 lg:pb-0 overflow-hidden bg-surface transition-colors">
+          {view === 'kasir' && <><div className="p-4 border-b border-line flex flex-wrap gap-3 items-center justify-between"><h1 className="font-bold text-lg">Kasir</h1><button type="button" className="px-4 py-2 bg-accent text-white rounded-xl text-sm font-bold" onClick={() => navigateWorkspace('menu')}>Pilih Produk / Scan Barcode</button></div>{renderCartInner(false)}</>}
+          {view === 'pesanan' && renderCashierOrders()}
+          {view === 'shift' && renderShiftPanel()}
           {view === 'meja' && (
             <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-surface flex flex-col">
               {/* Meja Summary Bar */}
@@ -3079,7 +3033,7 @@ export default function POSPage() {
                   <span className="px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[10px]">
                     Tersedia: {tableData.filter(t => getTableStatus(t) === 'kosong').length}
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold text-[10px]">
+                  <span className="px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-700 font-bold text-[10px]">
                     Terisi: {tableData.filter(t => getTableStatus(t) === 'open').length}
                   </span>
                   <span className="px-2.5 py-0.5 rounded-full bg-accent/20 text-accent-text font-bold text-[10px]">
@@ -3100,9 +3054,9 @@ export default function POSPage() {
                   const name = activeTableOrder?.customerName;
                   const isSelected = selectedTable === (table.id != null ? table.id.toString() : '');
                   const style = tStatus === 'open' 
-                    ? { card: 'border-rose-500 bg-card shadow-rose-500/10', badge: 'bg-rose-600 text-white', label: 'Terisi (Open)', labelCls: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold' } 
+                    ? { card: 'border-rose-500 bg-card shadow-rose-500/10', badge: 'bg-rose-600 text-white', label: 'Terisi (Open)', labelCls: 'bg-rose-500/15 text-rose-600 dark:text-rose-700 font-bold' }
                     : tStatus === 'lunas' 
-                    ? { card: 'border-accent bg-card shadow-accent/10', badge: 'bg-accent text-white', label: 'Lunas', labelCls: 'bg-accent/15 text-accent-text font-bold' } 
+                    ? { card: 'border-accent bg-card shadow-accent/10', badge: 'bg-accent text-white', label: 'Lunas', labelCls: 'bg-accent/15 text-accent-text font-bold' }
                     : { card: 'border-line bg-card hover:border-accent/40', badge: 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-black', label: 'Kosong', labelCls: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold' };
                   return (
                     <div 
@@ -3122,7 +3076,7 @@ export default function POSPage() {
                           </span>
                         )}
                         {openOrder && (
-                          <span className="text-[11px] font-extrabold text-rose-400 mt-0.5">
+                          <span className="text-[11px] font-extrabold text-rose-700 mt-0.5">
                             Rp {(openOrder.total ?? 0).toLocaleString('id-ID')}
                           </span>
                         )}
@@ -3162,21 +3116,7 @@ export default function POSPage() {
               <div className="flex-1 flex flex-col h-full overflow-hidden">
                 <div className="p-4 md:p-6 pb-2 shrink-0">
                   <div className="flex flex-col space-y-3 mb-2">
-                    <div className="flex space-x-2 overflow-x-auto pb-1 no-scrollbar">
-                      {categories.map(cat => (
-                        <button 
-                          key={cat} 
-                          onClick={() => setActiveCategory(cat)} 
-                          className={`px-4 py-2 rounded-full whitespace-nowrap text-xs md:text-sm font-bold border transition-all ${
-                            activeCategory === cat 
-                              ? 'bg-accent border-accent text-white shadow-md shadow-accent/20' 
-                              : ' bg-card border-line text-slate-700 dark:text-slate-300 hover:text-fg hover:border-slate-400'
-                          }`}
-                        >
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
+                    <CategoryScroller categories={categories} value={activeCategory} onChange={setActiveCategory} />
                     <div className="flex gap-2">
                       <input 
                         type="text" 
@@ -3231,8 +3171,8 @@ export default function POSPage() {
                           >
                             {/* Culinary Thumbnail Image Box */}
                             <div className="h-24 sm:h-28 w-full bg-surface/70 flex items-center justify-center text-3xl sm:text-4xl relative border-b border-line group-hover:scale-105 transition-transform duration-200">
-                              <span>{getCategoryIcon(item.kategori, item.nama)}</span>
-                              
+                              <ProductPhoto product={item} />
+
                               {isSoldOut ? (
                                 <span className="absolute top-2 right-2 text-[10px] bg-red-950 text-red-400 border border-red-800 px-2 py-0.5 rounded-full font-bold">
                                   Habis
@@ -3257,7 +3197,7 @@ export default function POSPage() {
                                   {item.kategori}
                                 </span>
                               </div>
-                              
+
                               <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-line/60">
                                 <p className="text-accent-text font-black text-xs sm:text-sm">
                                   Rp {item.harga.toLocaleString('id-ID')}
@@ -3337,7 +3277,7 @@ export default function POSPage() {
         )}
 
         {/* Desktop Sidebar Cart */}
-        <div className="hidden lg:flex flex-col w-80 xl:w-96 bg-card border-l border-line shadow-2xl z-20 shrink-0">
+        <div className={`hidden ${view === 'menu' || view === 'meja' ? 'lg:flex' : ''} flex-col w-80 xl:w-96 bg-card border-l border-line shadow-2xl z-20 shrink-0`}>
           {renderCartInner(false)}
         </div>
       </div>
@@ -3352,6 +3292,7 @@ export default function POSPage() {
           storeSettings={storeSettings}
           activeShift={activeShift}
           currentShiftStats={currentShiftStats}
+          onAdmin={enterAdmin}
           onOpenCashMovement={() => setIsCashMovementModalOpen(true)}
           onOpenShiftModal={() => setIsOpenShiftModalOpen(true)}
           onOpenCloseShiftModal={openCloseShiftModal}
@@ -3359,24 +3300,7 @@ export default function POSPage() {
 
         {/* Mobile Active Screen Views */}
         <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-          {mobileTab === 'home' && (
-            <MobileHomeScreen
-              menuData={menuData}
-              activeShift={activeShift}
-              currentShiftStats={currentShiftStats}
-              tableData={tableData}
-              activeOrders={activeOrders}
-              onNavigate={(t) => setMobileTab(t)}
-              onAddToCart={(item) => addToCart(item)}
-              onOpenShiftModal={() => setIsOpenShiftModalOpen(true)}
-              onOpenCloseShiftModal={openCloseShiftModal}
-              onOpenCashMovement={() => setIsCashMovementModalOpen(true)}
-              onSearchFocus={(q) => {
-                setSearchQuery(q);
-                setMobileTab('menu');
-              }}
-            />
-          )}
+          {mobileTab === 'home' && <><div className="p-3 border-b border-line flex gap-3 items-center justify-between"><h1 className="font-bold">Kasir</h1><button type="button" onClick={() => navigateMobile('menu')} className="px-3 py-2 text-xs font-bold bg-accent text-white rounded-xl">Pilih Produk / Scan</button></div>{renderCartInner(true)}</>}
 
           {mobileTab === 'menu' && (
             <MobileCatalogScreen
@@ -3399,12 +3323,12 @@ export default function POSPage() {
               onSelectTable={(id) => setSelectedTable(id)}
               onTableAction={(table) => {
                 handleTableClick(table);
-                setMobileTab('menu');
+                navigateMobile('menu');
               }}
               onOpenNewOrderForTable={(tableId) => {
                 setSelectedTable(tableId);
                 setOrderType('Dine-in');
-                setMobileTab('menu');
+                navigateMobile('menu');
               }}
               onClearTable={async (tableId) => {
                 await clearTable(tableId);
@@ -3413,55 +3337,16 @@ export default function POSPage() {
             />
           )}
 
-          {mobileTab === 'nota' && (
-            <MobileOrdersScreen
-              allOrders={allOrders}
-              onReprintReceipt={(order) => {
-                const receiptDoc = {
-                  id: order.id,
-                  tableId: order.tableId,
-                  customerName: order.customerName,
-                  orderType: order.orderType,
-                  items: order.items,
-                  total: order.total,
-                  paymentMethod: order.paymentMethod,
-                  cashTendered: order.cashTendered,
-                  change: order.change,
-                  date: order.createdAt || new Date().toISOString(),
-                  tax: order.tax || 0,
-                  service: order.service || 0,
-                  discount: order.discount || 0,
-                  subtotal: order.subtotal || order.total,
-                };
-                handlePrint('all', receiptDoc);
-              }}
-              onOpenSplitBill={(order) => {
-                setSplitBillTargetOrder(order);
-                setIsSplitBillModalOpen(true);
-                pushModalHistory('splitbill');
-              }}
-            />
-          )}
+          {mobileTab === 'nota' && renderCashierOrders()}
 
-          {mobileTab === 'lainnya' && (
-            <MobileMoreScreen
-              showOnboarding={!isAccessChecking && canOpenStoreOnboarding(accessStatus)}
-              storeSettings={storeSettings}
-              activeShift={activeShift}
-              currentShiftStats={currentShiftStats}
-              onOpenShiftModal={() => setIsOpenShiftModalOpen(true)}
-              onOpenCloseShiftModal={openCloseShiftModal}
-              onOpenCashMovement={() => setIsCashMovementModalOpen(true)}
-              onOpenOnboarding={() => { if (canOpenStoreOnboarding(accessStatus)) setIsOnboardingOpen(true); }}
-            />
-          )}
+          {mobileTab === 'lainnya' && renderShiftPanel()}
 
           {/* Floating Cart Bar (appears when items exist in cart and cart sheet is closed) */}
-          {!isMobileCartOpen && (
+          {!isMobileCartOpen && mobileTab !== 'home' && (
             <MobileFloatingCartBar
               itemCount={cart.reduce((s, i) => s + i.qty, 0)}
               totalPrice={totalPrice}
-              onOpenCart={openMobileCart}
+              onOpenCart={() => navigateMobile('home')}
             />
           )}
         </div>
@@ -3469,7 +3354,7 @@ export default function POSPage() {
         {/* Mobile Bottom Navigation */}
         <MobileBottomNav
           currentTab={mobileTab}
-          onTabChange={setMobileTab}
+          onTabChange={navigateMobile}
           occupiedTablesCount={(tableData || []).filter((t) => t && (t.status === 'terisi' || t.status === 'open')).length}
           enableTables={isTableManagementEnabled(storeSettings)}
         />
@@ -3495,7 +3380,7 @@ export default function POSPage() {
         )}
       </div>
 
-      
+
       {/* --- MODAL BUKA SHIFT --- */}
       {isOpenShiftModalOpen && (
         <div 
@@ -3750,7 +3635,7 @@ export default function POSPage() {
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-13 h-13 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-3xl shrink-0">
-                  {getCategoryIcon(activeModItem.kategori, activeModItem.nama)}
+                  <ProductPhoto product={activeModItem} className="w-12 h-12 rounded-xl overflow-hidden" />
                 </div>
                 <div className="min-w-0">
                   <span className="text-[10px] font-extrabold tracking-widest text-blue-600 uppercase block">Pilihan Menu &amp; Varian</span>
@@ -3924,7 +3809,7 @@ export default function POSPage() {
                 ? ' bg-accent/40 border-accent/40 text-accent-text'
                 : (blindCloseResult.cashDifference || blindCloseResult.difference || 0) > 0
                 ? ' bg-amber-950/40 border-amber-700 text-amber-300'
-                : ' bg-rose-950/40 border-rose-700 text-rose-300'
+                : ' bg-rose-50 border-rose-200 text-rose-700'
             }`}>
               <p className="text-[11px] font-bold uppercase tracking-wider">Hasil Rekonsiliasi Kas Fisik</p>
               <p className="text-xl font-black mt-1">
@@ -3951,13 +3836,13 @@ export default function POSPage() {
                 </div>
               )}
               {blindCloseResult.cashOut > 0 && (
-                <div className="flex justify-between text-rose-400 font-medium">
+                <div className="flex justify-between text-rose-700 font-medium">
                   <span>- Kas Keluar (Biaya Operasional):</span>
                   <span>-Rp {blindCloseResult.cashOut?.toLocaleString('id-ID')}</span>
                 </div>
               )}
               {blindCloseResult.cashRefunds > 0 && (
-                <div className="flex justify-between text-rose-400 font-bold">
+                <div className="flex justify-between text-rose-700 font-bold">
                   <span>- Refund Tunai Pelanggan:</span>
                   <span>-Rp {blindCloseResult.cashRefunds?.toLocaleString('id-ID')}</span>
                 </div>
@@ -3972,7 +3857,7 @@ export default function POSPage() {
               </div>
               <div className="pt-2 border-t border-dashed border-line flex justify-between font-black text-sm">
                 <span>Selisih:</span>
-                <span className={(blindCloseResult.cashDifference || blindCloseResult.difference || 0) === 0 ? 'text-accent-text' : (blindCloseResult.cashDifference || blindCloseResult.difference || 0) > 0 ? 'text-amber-400' : 'text-rose-400'}>
+                <span className={(blindCloseResult.cashDifference || blindCloseResult.difference || 0) === 0 ? 'text-accent-text' : (blindCloseResult.cashDifference || blindCloseResult.difference || 0) > 0 ? 'text-amber-400' : 'text-rose-700'}>
                   Rp {(blindCloseResult.cashDifference !== undefined ? blindCloseResult.cashDifference : blindCloseResult.difference)?.toLocaleString('id-ID')}
                 </span>
               </div>
@@ -4043,7 +3928,7 @@ export default function POSPage() {
           >
             {/* Grab handle for mobile touch */}
             <div className="w-12 h-1.5 bg-slate-600 rounded-full mx-auto mb-3 sm:hidden" />
-            
+
             {/* Header Modal */}
             <div className="flex justify-between items-start pb-3 border-b border-line">
               <div>
@@ -4065,7 +3950,7 @@ export default function POSPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto pr-1 space-y-4 pt-3">
-              
+
               {/* Metric Card: Real-time Balances */}
               <div className="grid grid-cols-3 gap-2 bg-surface/60 p-3 rounded-2xl border border-line text-center">
                 <div>
@@ -4326,7 +4211,7 @@ export default function POSPage() {
                     {splitBillTargetOrder.payments.map((p: any, pIdx: number) => {
                       const isRef = p.status === 'refunded';
                       return (
-                        <div key={p.id || pIdx} className={'p-2.5 rounded-xl border text-xs flex justify-between items-center ' + (isRef ? ' bg-rose-950/20 border-rose-900/40' : ' bg-card border-line')}>
+                        <div key={p.id || pIdx} className={'p-2.5 rounded-xl border text-xs flex justify-between items-center ' + (isRef ? ' bg-rose-50 border-rose-200' : ' bg-card border-line')}>
                           <div>
                             <span className="font-bold text-fg">
                               #{pIdx + 1} • {p.paymentMethod} • Rp {p.amount.toLocaleString('id-ID')}
@@ -4335,7 +4220,7 @@ export default function POSPage() {
                               {p.paidAt ? new Date(p.paidAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'} • {p.splitType} • {p.operatorName}
                             </span>
                             {isRef && (
-                              <span className="text-[10px] font-bold text-rose-400 block mt-0.5">
+                              <span className="text-[10px] font-bold text-rose-700 block mt-0.5">
                                 [REFUNDED: {p.refundReason || 'Dibatalkan'}]
                               </span>
                             )}
@@ -4354,7 +4239,7 @@ export default function POSPage() {
                               <button
                                 type="button"
                                 onClick={() => handleRequestRefundPayment(p)}
-                                className="px-2 py-1 bg-rose-950 text-rose-400 hover:bg-rose-500/15 rounded-lg text-[10px] font-bold border border-rose-800"
+                                className="px-2 py-1 bg-rose-950 text-rose-700 hover:bg-rose-500/15 rounded-lg text-[10px] font-bold border border-rose-200"
                               > Refund
                               </button>
                             </div>
@@ -4401,7 +4286,7 @@ export default function POSPage() {
             className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-black text-rose-400 mb-2">Konfirmasi Refund Pembayaran</h3>
+            <h3 className="text-lg font-black text-rose-700 mb-2">Konfirmasi Refund Pembayaran</h3>
             <p className="text-xs text-slate-300 leading-relaxed mb-4">
               Anda akan mengembalikan dana sebesar <b>Rp {refundTargetPayment.amount.toLocaleString('id-ID')}</b> ({refundTargetPayment.paymentMethod}) kepada pelanggan. Sisa tagihan meja akan bertambah kembali.
             </p>
@@ -4418,7 +4303,7 @@ export default function POSPage() {
                 />
               </div>
 
-              {storeSettings.enablePin && (
+              {true && (
                 <div>
                   <label className="block text-[11px] font-bold text-muted mb-1">PIN Otorisasi Admin:</label>
                   <input
@@ -4464,7 +4349,7 @@ export default function POSPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-fg mb-3">Beri Diskon / Promo</h3>
-            
+
             <div className="flex rounded-xl bg-line p-1 mb-4">
               <button
                 type="button"
@@ -4613,8 +4498,8 @@ export default function POSPage() {
           <div
             className={`px-4 py-2.5 rounded-2xl text-xs font-black shadow-xl border backdrop-blur-md flex items-center gap-2 ${
               barcodeScanToast.type === 'success'
-                ? 'bg-emerald-900/90 border-emerald-500 text-emerald-100 shadow-emerald-950/40'
-                : 'bg-rose-900/90 border-rose-500 text-rose-100 shadow-rose-950/40'
+                ? 'bg-emerald-100 border-emerald-500 text-emerald-100 shadow-emerald-950/40'
+                : 'bg-rose-100 border-rose-500 text-rose-100 shadow-rose-950/40'
             }`}
           >
             <span>{barcodeScanToast.message}</span>

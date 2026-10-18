@@ -697,7 +697,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
           </div>
 
           {loginError && (
-            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-600 dark:text-rose-400 text-xs font-bold leading-relaxed">
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-600 dark:text-rose-700 text-xs font-bold leading-relaxed">
               {loginError}
             </div>
           )}
@@ -804,7 +804,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
           <button
             type="button"
             onClick={handleLogout}
-            className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold rounded-xl border border-rose-500/30 transition-colors"
+            className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-700 text-xs font-bold rounded-xl border border-rose-500/30 transition-colors"
           >
             Keluar
           </button>
@@ -815,7 +815,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
       <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full space-y-6">
         {/* Connection Failure Error Banner */}
         {loadError && (
-          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center justify-between gap-3">
+          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-700 text-xs font-bold flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <span><LineIcon name="warning" /></span>
               <span>{loadError}</span>
@@ -842,7 +842,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
           <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-sm space-y-1">
             <span className="text-[11px] font-bold text-muted">Pembayaran Berhasil</span>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
+            <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-700">
               {metrics.pembayaranBerhasil ?? orders.filter((o) => o.status === "lunas_lisensi_terbit").length}
             </div>
             <span className="text-[10px] font-bold text-emerald-500">
@@ -861,7 +861,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
           <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-sm space-y-1">
             <span className="text-[11px] font-bold text-muted">Menunggu Pembayaran</span>
             <div className="text-2xl sm:text-3xl font-black text-rose-500">{metrics.menungguVerifikasi}</div>
-            <span className="text-[10px] font-bold text-rose-400">
+            <span className="text-[10px] font-bold text-rose-700">
               {metrics.menungguVerifikasi === 0 ? "Tidak ada pesanan tertunda" : "Perlu cek mutasi BCA"}
             </span>
           </div>
@@ -1010,9 +1010,9 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
                               o.status === "lunas_lisensi_terbit"
-                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-700 border border-emerald-500/30"
                                 : o.status === "batal"
-                                ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30"
+                                ? "bg-rose-500/15 text-rose-600 dark:text-rose-700 border border-rose-500/30"
                                 : (o.status as any) === "arsip_uji"
                                 ? "bg-slate-500/15 text-slate-500 border border-slate-500/30"
                                 : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
@@ -1034,7 +1034,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
                       <div className="text-right">
                         <span className="text-xs text-muted block">Total Tagihan:</span>
-                        <strong className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                        <strong className="text-base font-black text-emerald-600 dark:text-emerald-700">
                           Rp {(o.amount || 50000).toLocaleString("id-ID")}
                         </strong>
                       </div>
@@ -1056,7 +1056,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                           href={`https://wa.me/62${o.whatsapp.replace(/^0/, "")}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+                          className="text-emerald-600 dark:text-emerald-700 font-bold hover:underline"
                         ><LineIcon name="info" />{o.whatsapp}
                         </a>
                       </div>
@@ -1087,7 +1087,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                           <div>
                             Status Perangkat:{" "}
                             {o.boundDeviceId ? (
-                              <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                              <span className="text-emerald-600 dark:text-emerald-700 font-bold">
                                  Terikat di {o.deviceName || "Perangkat Kasir"} ({o.boundDeviceId})
                               </span>
                             ) : (
@@ -1146,7 +1146,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
                       {o.status === "lunas_lisensi_terbit" && (
                         <>
-                          <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-black"><LineIcon name="success" />{o.paymentMethod?.includes("BCA") ? "Lunas (Transfer BCA)" : "Lunas (Midtrans Otomatis)"}
+                          <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-700 border border-emerald-500/30 text-xs font-black"><LineIcon name="success" />{o.paymentMethod?.includes("BCA") ? "Lunas (Transfer BCA)" : "Lunas (Midtrans Otomatis)"}
                           </span>
                           <button
                             type="button"
@@ -1403,7 +1403,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                               <button
                                 type="button"
                                 onClick={() => handleRejectBeta(b.registrationId || String(b.id))}
-                                className="px-3 py-1.5 rounded-xl bg-surface hover:bg-rose-500/15 text-rose-400 border border-line hover:border-rose-500/30 text-xs font-bold transition-colors"
+                                className="px-3 py-1.5 rounded-xl bg-surface hover:bg-rose-500/15 text-rose-700 border border-line hover:border-rose-500/30 text-xs font-bold transition-colors"
                               > Tolak
                               </button>
                             </>
@@ -1579,7 +1579,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                               href={`https://wa.me/62${o.whatsapp.replace(/^0/, "")}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+                              className="text-emerald-600 dark:text-emerald-700 font-bold hover:underline"
                             ><LineIcon name="info" />{o.whatsapp}
                             </a>
                           </td>
@@ -1588,7 +1588,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                           </td>
                           <td className="py-3 px-3">
                             {o.boundDeviceId ? (
-                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-500/30">
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-700 text-[10px] font-bold border border-emerald-500/30">
                                 Terikat ({o.boundDeviceId})
                               </span>
                             ) : (
@@ -1650,7 +1650,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                   activatedAt: null,
                   lastConnectedAt: o.lastSeenAt || null,
                   signature: "",
-                  appVersion: "v2.6.0",
+                  appVersion: "v2.6.7",
                   activeDays: 1,
                   licenseType: "berbayar" as const,
                   revoked: 0,
@@ -1678,14 +1678,14 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                         <div className="text-xs text-muted flex flex-wrap gap-x-4 gap-y-1">
                           <span>Pesanan: <strong className="font-mono">{l.orderId}</strong></span>
                           <span>Terbit: {l.issuedAt}</span>
-                          <span>Versi Kasir: <strong className="font-mono">{l.appVersion || "v2.6.0"}</strong></span>
+                          <span>Versi Kasir: <strong className="font-mono">{l.appVersion || "v2.6.7"}</strong></span>
                           <span>Aktivitas: {l.activeDays || 1} Hari Aktif</span>
                           {l.lastConnectedAt && <span>Terakhir Online: {l.lastConnectedAt}</span>}
                         </div>
 
                         <div className="text-[11px] text-muted">
                           Status Perangkat: {l.boundDeviceId ? (
-                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                            <span className="text-emerald-600 dark:text-emerald-700 font-bold">
                               Terikat pada {l.deviceName || "Perangkat Kasir"} ({l.boundDeviceId})
                             </span>
                           ) : (
@@ -1720,7 +1720,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                           <button
                             type="button"
                             onClick={() => handleRevokeCommercialLicense(l.licenseKey)}
-                            className="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 text-xs font-bold border border-rose-500/30 transition-colors"
+                            className="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-700 text-xs font-bold border border-rose-500/30 transition-colors"
                           >
                             Cabut
                           </button>
@@ -1841,7 +1841,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                             </span>
                             <strong className="text-sm font-black text-fg">{t.recipientName}</strong>
                             {isRevoked ? (
-                              <span className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 text-[10px] font-black border border-rose-500/30">
+                              <span className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-700 text-[10px] font-black border border-rose-500/30">
                                 Dicabut
                               </span>
                             ) : isExpired ? (
@@ -1849,14 +1849,14 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                                 Kedaluwarsa
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-black border border-emerald-500/30">
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-700 text-[10px] font-black border border-emerald-500/30">
                                 Aktif ({t.durationDays === 0 ? "Permanen" : `${t.durationDays} Hari`})
                               </span>
                             )}
                           </div>
 
                           <div className="text-xs text-muted flex flex-wrap gap-x-4 gap-y-1 pt-0.5">
-                            <span>WA: <a href={`https://wa.me/62${t.whatsapp.replace(/^0/, "")}`} target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"><LineIcon name="info" />{t.whatsapp}</a></span>
+                            <span>WA: <a href={`https://wa.me/62${t.whatsapp.replace(/^0/, "")}`} target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-700 font-bold hover:underline"><LineIcon name="info" />{t.whatsapp}</a></span>
                             {t.expiresAt && <span>Kedaluwarsa: {new Date(t.expiresAt).toLocaleDateString("id-ID")}</span>}
                             <span>Terbit: {new Date(t.createdAt).toLocaleDateString("id-ID")}</span>
                             {t.notes && <span>Catatan: <em>{t.notes}</em></span>}
@@ -1864,7 +1864,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
                           <div className="text-[11px] text-muted pt-0.5">
                             Status Perangkat: {t.boundDeviceId ? (
-                              <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                              <span className="text-emerald-600 dark:text-emerald-700 font-bold">
                                 Terikat pada {t.deviceName || "Perangkat Tester"} ({t.boundDeviceId})
                               </span>
                             ) : (
@@ -1899,7 +1899,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                             <button
                               type="button"
                               onClick={() => handleRevokeTester(t.licenseKey)}
-                              className="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 text-xs font-bold border border-rose-500/30 transition-colors"
+                              className="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-700 text-xs font-bold border border-rose-500/30 transition-colors"
                             >
                               Cabut
                             </button>
@@ -1979,7 +1979,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                     {Object.entries(downloadedSecrets).map(([k, v]) => (
                       <div key={k} className="flex gap-2">
                         <span className="text-purple-400">{k}=</span>
-                        <span className="text-emerald-400">"{v ? "Tersedia" : "Belum dikonfigurasi"}"</span>
+                        <span className="text-emerald-700">"{v ? "Tersedia" : "Belum dikonfigurasi"}"</span>
                       </div>
                     ))}
                   </div>
@@ -2067,7 +2067,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="p-3 rounded-xl bg-surface border border-line">
                       <span className="text-[10px] text-muted font-bold block">Versi Rilis</span>
-                      <strong className="font-mono text-fg text-sm">v2.6.0-stable</strong>
+                      <strong className="font-mono text-fg text-sm">v2.6.7-stable</strong>
                     </div>
                     <div className="p-3 rounded-xl bg-surface border border-line">
                       <span className="text-[10px] text-muted font-bold block">Git Commit</span>

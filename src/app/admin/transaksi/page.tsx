@@ -481,11 +481,11 @@ export default function AdminTransaksiPage() {
               className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
                 activeTab === 'voids'
                   ? "bg-rose-600 text-white shadow-sm font-black"
-                  : " text-rose-400"
+                  : " text-rose-700"
               }`}
             >
               <span>Void & Refund</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-rose-900 text-rose-200 text-[10px]">
+              <span className="px-1.5 py-0.2 rounded-full bg-rose-900 text-rose-700 text-[10px]">
                 {orders.filter(o => o.status === 'void').length}
               </span>
             </button>
@@ -825,7 +825,7 @@ export default function AdminTransaksiPage() {
                                     ? "bg-accent/60 text-accent-text"
                                     : vStatus === "menunggu_verifikasi"
                                     ? "bg-amber-950/60 text-amber-300 animate-pulse"
-                                    : "bg-rose-950/60 text-rose-300"
+                                    : "bg-rose-50 text-rose-700"
                                 }`}
                               >
                                 <span><LineIcon name={vStatus === "terverifikasi" ? "success" : vStatus === "menunggu_verifikasi" ? "waiting" : "warning"} /></span>
@@ -851,7 +851,7 @@ export default function AdminTransaksiPage() {
                           <span
                             className={`text-[10px] font-black px-2.5 py-0.5 rounded-full inline-block ${
                               isVoid
-                                ? "bg-rose-950/60 text-rose-300 line-through"
+                                ? "bg-rose-50 text-rose-700 line-through"
                                 : order.status === "paid"
                                 ? "bg-accent/60 text-accent-text"
                                 : "bg-amber-950/60 text-amber-300"
@@ -915,7 +915,7 @@ export default function AdminTransaksiPage() {
                   key={order.id}
                   className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-surface border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                     isVoid
-                      ? " border-rose-900/40 bg-rose-500/10"
+                      ? " border-rose-200 bg-rose-500/10"
                       : isSelected
                       ? "border-accent ring-2 ring-accent/20"
                       : " border-line hover:border-accent/40"
@@ -939,7 +939,7 @@ export default function AdminTransaksiPage() {
                         <span
                           className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
                             isVoid
-                              ? " bg-rose-950/60 text-rose-300 line-through"
+                              ? " bg-rose-50 text-rose-700 line-through"
                               : order.status === "paid"
                               ? " bg-accent/60 text-accent-text"
                               : " bg-amber-950/60 text-amber-300"
@@ -956,7 +956,7 @@ export default function AdminTransaksiPage() {
                                 ? " bg-accent/60 text-accent-text"
                                 : vStatus === "menunggu_verifikasi"
                                 ? " bg-amber-950/60 text-amber-300 animate-pulse"
-                                : " bg-rose-950/60 text-rose-300"
+                                : " bg-rose-50 text-rose-700"
                             }`}
                           >
                             <span><LineIcon name={vStatus === "terverifikasi" ? "success" : vStatus === "menunggu_verifikasi" ? "waiting" : "warning"} /></span>
@@ -984,7 +984,7 @@ export default function AdminTransaksiPage() {
                       </p>
 
                       {isVoid && order.voidReason && (
-                        <div className="mt-2 text-[11px] text-rose-400 bg-rose-950/40 px-2.5 py-1 rounded-lg">
+                        <div className="mt-2 text-[11px] text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg">
                           <span className="font-bold">Alasan Batal:</span> {order.voidReason}
                         </div>
                       )}
@@ -1102,7 +1102,7 @@ export default function AdminTransaksiPage() {
               <h3 className="font-black text-sm text-fg flex items-center gap-2">
                 <span>Rincian Transaksi Nota #{receiptData.id}</span>
                 {receiptData.status === "void" && (
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400">VOID</span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-700">VOID</span>
                 )}
               </h3>
               <button
@@ -1166,7 +1166,7 @@ export default function AdminTransaksiPage() {
                         {receiptData.proofs[0].status === 'terverifikasi' ? 'Terverifikasi' : ' Menunggu Verifikasi'}
                       </span>
                     ) : (
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400"> Belum Ada Bukti
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-700"> Belum Ada Bukti
                       </span>
                     )}
                   </div>
@@ -1375,7 +1375,7 @@ export default function AdminTransaksiPage() {
                 <div className="p-3.5 bg-card/60 rounded-2xl border border-line space-y-2">
                   <div className="flex justify-between items-center text-xs font-bold">
                     <span>Baris Valid: <strong className="text-accent-text">{parsedHistorical.validTransactions.length}</strong></span>
-                    <span>Gagal: <strong className="text-rose-400">{parsedHistorical.invalidRows.length}</strong></span>
+                    <span>Gagal: <strong className="text-rose-700">{parsedHistorical.invalidRows.length}</strong></span>
                   </div>
 
                   {parsedHistorical.validTransactions.length > 0 && (
@@ -1472,7 +1472,7 @@ export default function AdminTransaksiPage() {
                     <span>Hasil Pencocokan:</span>
                     <span>
                       <strong className="text-accent-text">{matchedProofResults.filter(m => m.matched).length} Cocok</strong> •{" "}
-                      <strong className="text-rose-400">{matchedProofResults.filter(m => !m.matched).length} Tidak Cocok</strong>
+                      <strong className="text-rose-700">{matchedProofResults.filter(m => !m.matched).length} Tidak Cocok</strong>
                     </span>
                   </div>
 
@@ -1483,7 +1483,7 @@ export default function AdminTransaksiPage() {
                         className={`p-3 rounded-xl border flex items-center gap-3 text-xs ${
                           m.matched
                             ? " bg-accent/20 border-accent/40"
-                            : " bg-rose-950/20 border-rose-800"
+                            : " bg-rose-50 border-rose-200"
                         }`}
                       >
                         {/* Thumbnail */}
@@ -1492,13 +1492,13 @@ export default function AdminTransaksiPage() {
 
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-fg truncate">{m.file.fileName}</p>
-                          <p className={`text-[10px] ${m.matched ? " text-accent-text" : " text-rose-300"}`}>
+                          <p className={`text-[10px] ${m.matched ? " text-accent-text" : " text-rose-700"}`}>
                             {m.reason}
                           </p>
                         </div>
 
                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${
-                          m.matched ? "bg-accent/15 text-accent-text" : "bg-rose-500/15 text-rose-400"
+                          m.matched ? "bg-accent/15 text-accent-text" : "bg-rose-500/15 text-rose-700"
                         }`}>
                           {m.matched ? "Cocok" : "× Gagal"}
                         </span>
@@ -1540,7 +1540,7 @@ export default function AdminTransaksiPage() {
             className=" bg-surface rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
+            <div className="w-12 h-12 bg-rose-50 text-rose-700 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg text-center">
               Batalkan Nota #{voidTargetOrder.id}?
             </h3>
@@ -1600,7 +1600,7 @@ export default function AdminTransaksiPage() {
                   required
                 />
                 {voidPinError && (
-                  <p className="text-[10px] font-bold text-rose-400 mt-1">{voidPinError}</p>
+                  <p className="text-[10px] font-bold text-rose-700 mt-1">{voidPinError}</p>
                 )}
               </div>
 

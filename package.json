@@ -1,6 +1,6 @@
 {
   "name": "angkringan-pos",
-  "version": "0.1.0",
+  "version": "2.6.7",
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
@@ -8,7 +8,7 @@
     "start": "next start -H 0.0.0.0",
     "lint": "eslint",
     "test": "tsx test_suite.ts",
-    "test:stability": "tsx --test tests/stability.test.ts tests/offline-worker.test.ts tests/waiter.test.ts",
+    "test:stability": "tsx --test tests/stability.test.ts tests/offline-worker.test.ts tests/waiter.test.ts tests/products-cashier.test.ts",
     "test:offline": "tsx test_offline_readiness.ts",
     "typecheck": "tsc --noEmit",
     "preview:local": "tsx scripts/preview-local.ts"

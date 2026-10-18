@@ -22,7 +22,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://sakunota.my.id"),
   title: {
-    default: "SakuNota - Kasir Jalan Tanpa Internet",
+    default: "SakuNota - Kasir Jalan Tanpa Internet.",
     template: "%s | SakuNota",
   },
   description: "Aplikasi kasir offline pintar untuk usaha kuliner (kafe, restoran, angkringan, warung makan, kedai kopi). Catat pesanan, kelola meja, cetak struk Bluetooth fisik, dan pantau omzet tanpa kuota internet.",
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "id_ID",
     url: "https://sakunota.my.id",
-    title: "SakuNota - Kasir Jalan Tanpa Internet",
+    title: "SakuNota - Kasir Jalan Tanpa Internet.",
     description: "Aplikasi kasir offline pintar untuk UMKM kuliner. Catat pesanan, kelola meja, cetak struk Bluetooth tanpa kuota internet.",
     siteName: "SakuNota",
     images: [
@@ -56,13 +56,13 @@ export const metadata: Metadata = {
         url: "/logo-sakunota.png",
         width: 720,
         height: 208,
-        alt: "SakuNota - Kasir Jalan Tanpa Internet",
+        alt: "SakuNota - Kasir Jalan Tanpa Internet.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "SakuNota - Kasir Jalan Tanpa Internet",
+    title: "SakuNota - Kasir Jalan Tanpa Internet.",
     description: "Aplikasi kasir offline pintar untuk usaha kuliner. Sekali bayar Rp50.000 aktif selamanya.",
     images: ["/logo-sakunota.png"],
   },

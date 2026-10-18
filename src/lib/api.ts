@@ -1,7 +1,16 @@
-import { db, MenuItem, Order, OrderItem, Payment, SelectedModifier, PaymentProof } from './dexie';
+import { db, MenuItem, Order, OrderItem, Payment, SelectedModifier, PaymentProof, ModifierGroup } from './dexie';
 import initialData from './initialData.json';
 import { getStoreSettings, SETTINGS_STORAGE_KEY } from './settings';
 import { applyOrderStock } from './inventory';
+import { requireMerchantAdmin } from './merchantAccess';
+import { cashierCanSeeOrder } from './cashierScope';
+import { validateProductPhoto } from './productPhoto';
+
+async function requireActiveCashierShift(shiftId: number) {
+  if (typeof window === 'undefined') return;
+  const active = await getActiveShift();
+  if (!active || active.id !== shiftId) await requireMerchantAdmin();
+}
 
 export function getDefaultModifiersForCategory(kategori: string, nama: string) {
   const cat = (kategori || '').toLowerCase();
@@ -208,7 +217,9 @@ export async function seedDemoMenus(type: string = 'angkringan') {
   return menusToInsert.length;
 }
 
-export async function createMenu(data: { sku?: string, nama: string, harga: number, kategori: string, isSoldOut?: boolean, modifiers?: any[] }) {
+export async function createMenu(data: { sku?: string, nama: string, harga: number, kategori: string, isSoldOut?: boolean, modifiers?: any[], imageData?: string | null }) {
+  await requireMerchantAdmin();
+  const imageData = validateProductPhoto(data.imageData);
   const cleanName = data.nama.trim();
   const cleanCategory = data.kategori.trim();
   const cleanSku = data.sku ? data.sku.trim() : '';
@@ -229,15 +240,18 @@ export async function createMenu(data: { sku?: string, nama: string, harga: numb
     kategori: cleanCategory,
     isSoldOut: Boolean(data.isSoldOut),
     urutan: count,
-    modifiers: data.modifiers || []
+    modifiers: data.modifiers || [],
+    imageData
   });
 }
 
 export async function deleteMenus(ids: number[]) {
+  await requireMerchantAdmin();
   await db.table('menuItems').bulkDelete(ids);
 }
 
 export async function reorderMenus(items: {id: number, urutan: number}[]) {
+  await requireMerchantAdmin();
   await db.transaction('rw', 'menuItems', async () => {
     for (const item of items) {
       await db.table('menuItems').update(item.id, { urutan: item.urutan });
@@ -245,7 +259,8 @@ export async function reorderMenus(items: {id: number, urutan: number}[]) {
   });
 }
 
-export async function updateMenu(id: number, data: { sku?: string; nama?: string; harga?: number; kategori?: string; isSoldOut?: boolean; modifiers?: any[] }) {
+export async function updateMenu(id: number, data: { sku?: string; nama?: string; harga?: number; kategori?: string; isSoldOut?: boolean; modifiers?: any[]; imageData?: string | null }) {
+  await requireMerchantAdmin();
   const updateData: any = {};
   if (data.sku !== undefined) {
     const cleanSku = data.sku.trim();
@@ -264,6 +279,7 @@ export async function updateMenu(id: number, data: { sku?: string; nama?: string
   if (data.kategori !== undefined) updateData.kategori = data.kategori.trim();
   if (data.isSoldOut !== undefined) updateData.isSoldOut = Boolean(data.isSoldOut);
   if (data.modifiers !== undefined) updateData.modifiers = data.modifiers;
+  if (data.imageData !== undefined) updateData.imageData = validateProductPhoto(data.imageData);
 
   const count = await db.table('menuItems').update(id, updateData);
   if (count === 0) {
@@ -382,6 +398,7 @@ export async function clearTable(tableId: number | string) {
 }
 
 export async function addTable(nomor: string) {
+  await requireMerchantAdmin();
   const name = nomor.trim();
   if (!name) throw new Error('Nama meja tidak boleh kosong.');
   const existing = await db.table('tables').toArray();
@@ -392,12 +409,14 @@ export async function addTable(nomor: string) {
 }
 
 export async function renameTable(id: number, nomor: string) {
+  await requireMerchantAdmin();
   const name = nomor.trim();
   if (!name) throw new Error('Nama meja tidak boleh kosong.');
   await db.table('tables').update(id, { nomor: name });
 }
 
 export async function deleteTable(id: number) {
+  await requireMerchantAdmin();
   const table = await db.table('tables').get(id);
   const unpaid = await countUnpaidOrdersForTable(id);
   if (unpaid > 0 || (table && table.status !== 'kosong' && table.status !== 'available')) {
@@ -408,8 +427,18 @@ export async function deleteTable(id: number) {
 
 // --- ORDER & TRANSAKSI DENGAN SNAPSHOTTING & ATOMIC TRANSACTIONS ---
 
-export async function getOrders() {
-  const orders = await db.table('orders').reverse().toArray();
+export async function getOrders(): Promise<any[]> {
+  await requireMerchantAdmin();
+  return readOrders(await db.table('orders').reverse().toArray());
+}
+
+export async function getCashierOrders() {
+  const shift = await getActiveShift();
+  const orders = await db.table('orders').filter(o => cashierCanSeeOrder(o, shift?.id)).reverse().toArray();
+  return readOrders(orders);
+}
+
+async function readOrders(orders: Order[]) {
   const orderItems = await db.table('orderItems').toArray();
   const menus = await db.table('menuItems').toArray();
   const payments = await db.table('payments').toArray();
@@ -818,7 +847,8 @@ export async function recordPayment(data: {
   });
 }
 
-export async function refundPartialPayment(paymentId: number, options: { reason: string, operator: string }) {
+export async function refundPartialPayment(paymentId: number, options: { reason: string, operator: string, adminPin?: string }) {
+  await requireMerchantAdmin(options.adminPin);
   return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'tables', 'auditLogs', 'shifts'], async () => {
     const payment = await db.table('payments').get(paymentId);
     if (!payment) throw new Error('Data pembayaran tidak ditemukan.');
@@ -898,14 +928,21 @@ export async function refundPartialPayment(paymentId: number, options: { reason:
 }
 
 export async function getOrderPayments(orderId: number) {
+  if (typeof window !== 'undefined') {
+    const order = await db.table('orders').get(orderId);
+    const shift = await getActiveShift();
+    if (!order || !cashierCanSeeOrder(order, shift?.id)) await requireMerchantAdmin();
+  }
   return await db.table('payments').where('orderId').equals(orderId).toArray();
 }
 
 export async function getAuditLogs() {
+  await requireMerchantAdmin();
   return await db.table('auditLogs').reverse().toArray();
 }
 
 export async function processVoidRefund(orderId: number, options: { reason: string, isRefunded: boolean, refundAmount: number, refundMethod: string, operator: string }) {
+  await requireMerchantAdmin();
   await db.transaction('rw', ['orders', 'orderItems', 'payments', 'tables', 'auditLogs', 'menuItems', 'inventoryMovements', 'shifts'], async () => {
     const order = await db.table('orders').get(orderId);
     if (!order) throw new Error('Nota tidak ditemukan.');
@@ -967,6 +1004,7 @@ export async function processVoidRefund(orderId: number, options: { reason: stri
 }
 
 export async function voidOrder(orderId: number, reason: string) {
+  await requireMerchantAdmin();
   return await processVoidRefund(orderId, {
     reason: reason,
     isRefunded: false,
@@ -977,6 +1015,7 @@ export async function voidOrder(orderId: number, reason: string) {
 }
 
 export async function deleteOrders(ids: number[]) {
+  await requireMerchantAdmin();
   await db.transaction('rw', ['orders', 'orderItems', 'payments', 'paymentProofs'], async () => {
     await db.table('orders').bulkDelete(ids);
     const items = await db.table('orderItems').toArray();
@@ -1060,6 +1099,7 @@ export async function uploadPaymentProof(data: {
 }
 
 export async function verifyPaymentProof(proofId: number, options: { operator: string, notes?: string }) {
+  await requireMerchantAdmin();
   return await db.transaction('rw', ['paymentProofs', 'payments', 'orders', 'auditLogs'], async () => {
     const proof = await db.table('paymentProofs').get(proofId);
     if (!proof) throw new Error('Bukti pembayaran tidak ditemukan.');
@@ -1091,6 +1131,7 @@ export async function verifyPaymentProof(proofId: number, options: { operator: s
 }
 
 export async function deletePaymentProof(proofId: number, options: { operator: string, reason: string }) {
+  await requireMerchantAdmin();
   return await db.transaction('rw', ['paymentProofs', 'payments', 'orders', 'auditLogs'], async () => {
     const proof = await db.table('paymentProofs').get(proofId);
     if (!proof) throw new Error('Bukti pembayaran tidak ditemukan.');
@@ -1130,6 +1171,7 @@ export async function matchBulkPaymentProofs(files: {
   fileSize: number;
   mimeType: string;
 }[]) {
+  await requireMerchantAdmin();
   const orders = await db.table('orders').toArray();
   const payments = await db.table('payments').toArray();
   const nonCashPayments = payments.filter((p: any) => p.paymentMethod !== 'Cash');
@@ -1216,7 +1258,18 @@ export async function bulkImportMenus(items: {
   harga: number;
   kategori?: string;
   isSoldOut?: boolean;
+  imageData?: string | null;
+  modifiers?: ModifierGroup[];
+  trackStock?: boolean;
+  stockQty?: number;
+  minimumStock?: number;
+  stockUnit?: string;
 }[], options: { mode: 'create_only' | 'update_existing' | 'upsert' }) {
+  await requireMerchantAdmin();
+  for (const item of items) {
+    if (item.imageData !== undefined) validateProductPhoto(item.imageData);
+    if (item.trackStock && (!Number.isInteger(item.stockQty) || item.stockQty! < 0 || !Number.isInteger(item.minimumStock ?? 0) || (item.minimumStock ?? 0) < 0)) throw new Error('Stok impor tidak valid.');
+  }
   const existing = await db.table('menuItems').toArray();
   let createdCount = 0;
   let updatedCount = 0;
@@ -1225,7 +1278,7 @@ export async function bulkImportMenus(items: {
 
   let maxUrutan = existing.reduce((max, m) => Math.max(max, m.urutan || 0), 0);
 
-  await db.transaction('rw', ['menuItems', 'auditLogs'], async () => {
+  await db.transaction('rw', ['menuItems', 'auditLogs', 'inventoryMovements'], async () => {
     for (let i = 0; i < items.length; i++) {
       const raw = items[i];
       const rowNum = i + 1;
@@ -1244,10 +1297,9 @@ export async function bulkImportMenus(items: {
       const cleanName = raw.nama.trim();
       const sku = raw.sku ? String(raw.sku).trim() : '';
 
-      const match = existing.find(m => 
-        (sku && m.sku && m.sku.toLowerCase() === sku.toLowerCase()) || 
-        (m.nama.toLowerCase() === cleanName.toLowerCase())
-      );
+      const match = sku
+        ? existing.find(m => (m.sku || '').toLowerCase() === sku.toLowerCase()) || existing.find(m => !m.sku && m.nama.toLowerCase() === cleanName.toLowerCase())
+        : existing.find(m => m.nama.toLowerCase() === cleanName.toLowerCase());
 
       if (match) {
         if (options.mode === 'create_only') {
@@ -1259,7 +1311,9 @@ export async function bulkImportMenus(items: {
           nama: cleanName,
           harga: harga,
           kategori: raw.kategori ? raw.kategori.trim() : match.kategori,
-          isSoldOut: raw.isSoldOut !== undefined ? Boolean(raw.isSoldOut) : match.isSoldOut
+          isSoldOut: match.trackStock ? match.isSoldOut : raw.isSoldOut !== undefined ? Boolean(raw.isSoldOut) : match.isSoldOut,
+          ...(raw.imageData !== undefined ? { imageData: validateProductPhoto(raw.imageData) } : {}),
+          ...(raw.modifiers !== undefined ? { modifiers: raw.modifiers } : {})
         });
         updatedCount++;
       } else {
@@ -1275,9 +1329,16 @@ export async function bulkImportMenus(items: {
           kategori: raw.kategori ? raw.kategori.trim() : 'Umum',
           isSoldOut: Boolean(raw.isSoldOut),
           urutan: maxUrutan,
-          modifiers: []
+          modifiers: raw.modifiers || [],
+          imageData: validateProductPhoto(raw.imageData),
+          trackStock: Boolean(raw.trackStock), stockQty: raw.trackStock ? raw.stockQty : 0,
+          minimumStock: raw.minimumStock ?? 0, stockUnit: raw.stockUnit || 'pcs'
         };
         const newId = await db.table('menuItems').add(newMenu) as number;
+        if (newMenu.trackStock) {
+          await db.table('menuItems').update(newId, { isSoldOut: newMenu.stockQty === 0 });
+          await db.table('inventoryMovements').add({ menuItemId: newId, productName: cleanName, type: 'opening', delta: newMenu.stockQty, balance: newMenu.stockQty, reason: 'Impor produk lengkap', operator: 'Admin', timestamp: new Date().toISOString() });
+        }
         existing.push({ id: newId, ...newMenu });
         createdCount++;
       }
@@ -1302,6 +1363,7 @@ export async function bulkImportMenus(items: {
 }
 
 export async function bulkUpdateMenuPrices(menuIds: number[], options: { type: 'nominal' | 'percent', value: number }) {
+  await requireMerchantAdmin();
   return await db.transaction('rw', ['menuItems', 'auditLogs'], async () => {
     let count = 0;
     for (const id of menuIds) {
@@ -1330,6 +1392,7 @@ export async function bulkUpdateMenuPrices(menuIds: number[], options: { type: '
 }
 
 export async function bulkUpdateMenuCategory(menuIds: number[], kategori: string) {
+  await requireMerchantAdmin();
   return await db.transaction('rw', ['menuItems', 'auditLogs'], async () => {
     let count = 0;
     for (const id of menuIds) {
@@ -1348,6 +1411,7 @@ export async function bulkUpdateMenuCategory(menuIds: number[], kategori: string
 }
 
 export async function bulkToggleMenuStock(menuIds: number[], isSoldOut: boolean) {
+  await requireMerchantAdmin();
   return await db.transaction('rw', ['menuItems', 'auditLogs'], async () => {
     for (const id of menuIds) {
       await db.table('menuItems').update(id, { isSoldOut });
@@ -1364,6 +1428,7 @@ export async function bulkToggleMenuStock(menuIds: number[], isSoldOut: boolean)
 }
 
 export async function bulkDeleteMenus(menuIds: number[]) {
+  await requireMerchantAdmin();
   return await db.transaction('rw', ['menuItems', 'orderItems', 'auditLogs'], async () => {
     const allOrderItems = await db.table('orderItems').toArray();
     const usedMenuIds = new Set(allOrderItems.map(oi => oi.menuItemId));
@@ -1403,6 +1468,7 @@ export async function bulkDeleteMenus(menuIds: number[]) {
 }
 
 export async function bulkCreateTables(params: { prefix?: string, startNum: number, count: number }) {
+  await requireMerchantAdmin();
   const prefix = params.prefix || 'Meja ';
   return await db.transaction('rw', ['tables', 'auditLogs'], async () => {
     const existing = await db.table('tables').toArray();
@@ -1435,6 +1501,7 @@ export async function bulkCreateTables(params: { prefix?: string, startNum: numb
 }
 
 export async function bulkRenameTables(tableIds: number[], pattern: string) {
+  await requireMerchantAdmin();
   return await db.transaction('rw', ['tables', 'auditLogs'], async () => {
     let idx = 1;
     for (const id of tableIds) {
@@ -1456,6 +1523,7 @@ export async function bulkRenameTables(tableIds: number[], pattern: string) {
 }
 
 export async function bulkDeleteEmptyTables(tableIds: number[]) {
+  await requireMerchantAdmin();
   return await db.transaction('rw', ['tables', 'orders', 'auditLogs'], async () => {
     const orders = await db.table('orders').toArray();
     const unpaidTableIds = new Set(orders.filter(o => o.status === 'unpaid' && o.tableId).map(o => o.tableId));
@@ -1499,6 +1567,7 @@ export async function importHistoricalTransactions(transactions: {
   paymentMethod: 'Cash' | 'QRIS' | 'Transfer';
   items?: { nama: string; qty: number; harga: number }[];
 }[]) {
+  await requireMerchantAdmin();
   return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'auditLogs'], async () => {
     let importedCount = 0;
     for (const t of transactions) {
@@ -1586,10 +1655,12 @@ export async function getActiveShift() {
 }
 
 export async function getAllShifts() {
+  await requireMerchantAdmin();
   return await db.table('shifts').reverse().toArray();
 }
 
 export async function getShiftLiveStats(shiftId: number) {
+  await requireActiveCashierShift(shiftId);
   const shift = await db.table('shifts').get(shiftId);
   if (!shift) throw new Error('Shift tidak ditemukan.');
 
@@ -1713,6 +1784,7 @@ export async function openShift(data: { operatorName: string, startingCash: numb
 }
 
 export async function closeShift(shiftId: number, data: { actualCash: number, notes?: string, operatorName?: string }) {
+  await requireActiveCashierShift(shiftId);
   if (!Number.isFinite(data.actualCash) || data.actualCash < 0) throw new Error('Jumlah uang fisik tidak valid.');
   return db.transaction('rw', ['shifts', 'orders', 'payments', 'cashMovements', 'auditLogs'], async () => {
   const stats = await getShiftLiveStats(shiftId);
@@ -1749,6 +1821,7 @@ export async function closeShift(shiftId: number, data: { actualCash: number, no
 }
 
 export async function addCashMovement(data: { shiftId: number, type: 'in' | 'out', amount: number, reason: string, operatorName: string }) {
+  await requireActiveCashierShift(data.shiftId);
   const movement = {
     shiftId: data.shiftId,
     type: data.type,
@@ -1772,6 +1845,7 @@ export async function addCashMovement(data: { shiftId: number, type: 'in' | 'out
 }
 
 export async function resetAllTransactions() {
+  await requireMerchantAdmin();
   await db.transaction('rw', ['orders', 'orderItems', 'payments', 'paymentProofs', 'tables', 'auditLogs', 'shifts', 'cashMovements'], async () => {
     await db.table('orderItems').clear();
     await db.table('orders').clear();
@@ -1828,6 +1902,7 @@ export async function resetDemoSandbox() {
 // --- FITUR CADANGAN (BACKUP) & PEMULIHAN (RESTORE) ---
 
 export async function exportAllData() {
+  await requireMerchantAdmin();
   return db.transaction('r', db.tables, async () => {
   const menus = await db.table('menuItems').toArray();
   const tables = await db.table('tables').toArray();
@@ -1948,12 +2023,14 @@ export function validateBackupSchema(data: any): {
 }
 
 export async function importAllData(data: any, options?: { skipPreBackup?: boolean }) {
+  await requireMerchantAdmin();
   const validation = validateBackupSchema(data);
   if (!validation.isValid) {
     throw new Error(validation.error || 'Format file cadangan tidak valid: Data menu tidak ditemukan.');
   }
   if (data.inventoryMovements !== undefined && !Array.isArray(data.inventoryMovements)) throw new Error('Riwayat stok tidak valid.');
   for (const product of data.menus) {
+    validateProductPhoto(product.imageData);
     if (product.trackStock && (!Number.isInteger(product.stockQty) || product.stockQty < 0 || !Number.isInteger(product.minimumStock ?? 0) || (product.minimumStock ?? 0) < 0)) throw new Error('Saldo stok dalam cadangan tidak valid.');
   }
 
@@ -2004,6 +2081,7 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
           isSoldOut: Boolean(m.isSoldOut),
           urutan: Number(m.urutan || 0),
           modifiers: m.modifiers || [],
+          imageData: validateProductPhoto(m.imageData),
           trackStock: Boolean(m.trackStock),
           stockQty: Number(m.stockQty) || 0,
           minimumStock: Number(m.minimumStock) || 0,
@@ -2186,6 +2264,7 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
 }
 
 export async function getPreRestoreSnapshot(): Promise<{ timestamp: string; data: any } | null> {
+  await requireMerchantAdmin();
   try {
     const entry = await db.table('settings').get('pre_restore_snapshot');
     if (entry && entry.value) {
@@ -2207,6 +2286,7 @@ export async function getPreRestoreSnapshot(): Promise<{ timestamp: string; data
 }
 
 export async function rollbackPreRestoreBackup(): Promise<boolean> {
+  await requireMerchantAdmin();
   const snapshotObj = await getPreRestoreSnapshot();
   if (!snapshotObj || !snapshotObj.data) {
     throw new Error('Tidak ada snapshot cadangan sebelum pemulihan yang tersimpan.');
@@ -2224,6 +2304,7 @@ export async function rollbackPreRestoreBackup(): Promise<boolean> {
 }
 
 export async function bulkExportTransactions(options: { startDate?: string, endDate?: string, paymentMethod?: string }) {
+  await requireMerchantAdmin();
   const orders = await getOrders();
   let filtered = orders;
 

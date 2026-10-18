@@ -128,7 +128,7 @@ export default function InstallGuideSection({
       {/* Direct Install Button or Status Banner */}
       <div className="max-w-xl mx-auto">
         {isInstalled ? (
-          <div className="flex items-center justify-center gap-3 p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm font-semibold shadow-sm">
+          <div className="flex items-center justify-center gap-3 p-3.5 bg-emerald-50 dark:bg-emerald-50 border border-emerald-200 dark:border-emerald-200 rounded-2xl text-emerald-800 dark:text-emerald-700 text-xs sm:text-sm font-semibold shadow-sm">
             <span className="text-lg"><LineIcon name="success" /></span>
             <span>SakuNota sudah terpasang di HP ini. Buka langsung melalui ikon di layar utama.</span>
           </div>
@@ -157,7 +157,7 @@ export default function InstallGuideSection({
         )}
 
         {installSuccess && (
-          <div className="mt-3 p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700 rounded-xl text-center text-xs text-emerald-800 dark:text-emerald-200 font-bold">
+          <div className="mt-3 p-3 bg-emerald-50 dark:bg-emerald-50 border border-emerald-300 dark:border-emerald-200 rounded-xl text-center text-xs text-emerald-800 dark:text-emerald-700 font-bold">
              Pemasangan berhasil! Cari ikon <strong>SakuNota</strong> di layar utama ponsel Anda.
           </div>
         )}
@@ -339,12 +339,12 @@ export default function InstallGuideSection({
 
         {offlineStatus ? (
           offlineStatus.isFullyPrecached ? (
-            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl space-y-1 text-emerald-800 dark:text-emerald-300 text-xs">
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-50 border border-emerald-200 dark:border-emerald-200 rounded-2xl space-y-1 text-emerald-800 dark:text-emerald-700 text-xs">
               <div className="font-extrabold flex items-center gap-1.5">
                 <span><LineIcon name="success" /></span>
                 <span>Kasir Siap Digunakan Tanpa Internet</span>
               </div>
-              <p className="text-[11px] text-emerald-700 dark:text-emerald-400 leading-relaxed">
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-700 leading-relaxed">
                 Seluruh {offlineStatus.cachedAssetsCount} berkas tampilan dan sistem kasir telah lengkap tersimpan di memori HP Anda. Anda dapat mematikan data internet atau mengaktifkan mode pesawat dan kasir tetap berfungsi normal.
               </p>
             </div>

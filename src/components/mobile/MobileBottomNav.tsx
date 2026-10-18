@@ -19,11 +19,11 @@ export default function MobileBottomNav({
   enableTables = true,
 }: MobileBottomNavProps) {
   const allTabs = [
-    { id: "home" as MobileTab, label: "Home", icon: "home" },
-    { id: "menu" as MobileTab, label: "Menu", icon: "cashier" },
+    { id: "home" as MobileTab, label: "Kasir", icon: "cashier" },
+    { id: "menu" as MobileTab, label: "Menu", icon: "food" },
     { id: "meja" as MobileTab, label: "Meja", icon: "table", badge: occupiedTablesCount > 0 ? occupiedTablesCount : undefined },
-    { id: "nota" as MobileTab, label: "Nota", icon: "receipt" },
-    { id: "lainnya" as MobileTab, label: "Lainnya", icon: "settings" },
+    { id: "nota" as MobileTab, label: "Pesanan", icon: "receipt" },
+    { id: "lainnya" as MobileTab, label: "Shift Saya", icon: "shift" },
   ];
 
   const tabs = enableTables ? allTabs : allTabs.filter(t => t.id !== "meja");

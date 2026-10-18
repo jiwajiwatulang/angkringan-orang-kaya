@@ -110,7 +110,7 @@ export default function PengaturanTentangPage() {
             <span className="text-[11px] font-bold text-muted uppercase tracking-wider block">
               Versi Aplikasi
             </span>
-            <strong className="text-base font-black text-fg">v2.6.0</strong>
+            <strong className="text-base font-black text-fg">v2.6.7</strong>
           </div>
 
           <div className="p-4 rounded-2xl bg-card border border-line space-y-1">

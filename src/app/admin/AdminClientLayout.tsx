@@ -12,6 +12,7 @@ import { saveStoreSettingsAsync } from "@/lib/settings";
 import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "@/lib/recovery";
 import { createAdminSession, verifyAdminSession, destroyAdminSession } from "@/lib/session";
 import { db } from "@/lib/dexie";
+import { verifyMerchantPin } from "@/lib/merchantAccess";
 
 const navItems = [
   { href: "/pos", label: "Kasir & Menu", icon: "cashier" },
@@ -34,6 +35,17 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const [isLainnyaOpen, setIsLainnyaOpen] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
+
+  useEffect(() => {
+    const recheck = async () => {
+      if (db.name === 'SakuNotaDemoDB') return;
+      if (!(await verifyAdminSession())) setIsAuthenticated(false);
+    };
+    window.addEventListener('focus', recheck);
+    document.addEventListener('visibilitychange', recheck);
+    const timer = window.setInterval(recheck, 30000);
+    return () => { window.removeEventListener('focus', recheck); document.removeEventListener('visibilitychange', recheck); clearInterval(timer); };
+  }, [setIsAuthenticated]);
 
   useEffect(() => {
     if (typeof document !== "undefined") {
@@ -119,7 +131,10 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       setPinError("PIN Admin belum dikonfigurasi pada perangkat ini.");
       return;
     }
-    if (passwordInput === storeSettings.adminPin) {
+    let pinValid = false;
+    try { pinValid = await verifyMerchantPin(passwordInput); }
+    catch (error) { setPinError((error as Error).message); return; }
+    if (pinValid) {
       try {
         await createAdminSession();
         setIsAuthenticated(true);
@@ -350,7 +365,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </div>
 
               {pinError && (
-                <p className="text-xs font-bold text-rose-400 animate-in fade-in"><LineIcon name="info" />{pinError}
+                <p className="text-xs font-bold text-rose-700 animate-in fade-in"><LineIcon name="info" />{pinError}
                 </p>
               )}
 
@@ -397,7 +412,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </div>
 
               {pinError && (
-                <p className="text-xs font-bold text-rose-400 text-center animate-in fade-in"><LineIcon name="info" />{pinError}
+                <p className="text-xs font-bold text-rose-700 text-center animate-in fade-in"><LineIcon name="info" />{pinError}
                 </p>
               )}
 
@@ -465,7 +480,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </div>
 
               {pinError && (
-                <p className="text-xs font-bold text-rose-400 text-center animate-in fade-in"><LineIcon name="info" />{pinError}
+                <p className="text-xs font-bold text-rose-700 text-center animate-in fade-in"><LineIcon name="info" />{pinError}
                 </p>
               )}
 

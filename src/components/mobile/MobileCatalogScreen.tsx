@@ -1,5 +1,7 @@
 "use client";
 import LineIcon from "@/components/LineIcon";
+import ProductPhoto from "@/components/ProductPhoto";
+import CategoryScroller from "@/components/CategoryScroller";
 
 import React, { useState } from "react";
 
@@ -153,25 +155,7 @@ export default function MobileCatalogScreen({
         </div>
 
         {/* 3. Compact 4-Grid Category Selector (Tanpa Geser / Slide) */}
-        <div className="grid grid-cols-4 gap-1.5">
-          {categories.map((cat) => {
-            const isActive = activeCategory === cat;
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => onSelectCategory(cat)}
-                className={`py-1.5 px-1.5 rounded-xl text-[11px] font-extrabold truncate text-center transition-all ${
-                  isActive
-                    ? "bg-blue-600 text-white shadow-xs border border-blue-600"
-                    : "bg-slate-50 border border-slate-200 text-slate-700 hover:text-blue-600 hover:border-blue-300"
-                }`}
-              >
-                {cat}
-              </button>
-            );
-          })}
-        </div>
+        <CategoryScroller categories={categories} value={activeCategory} onChange={onSelectCategory} />
       </div>
 
       {/* 4. Product Catalog Grid */}
@@ -212,7 +196,7 @@ export default function MobileCatalogScreen({
                     }`}
                   >
                     <div className="w-full h-11 rounded-lg bg-blue-50/70 flex items-center justify-center text-xl mb-1.5 border border-blue-100 relative">
-                      {getCategoryIcon(item.kategori, item.nama)}
+                      <ProductPhoto product={item} />
                       {hasModifiers && !isSoldOut && (
                         <span className="absolute top-0.5 right-0.5 bg-blue-600 text-white text-[8px] font-bold px-1 rounded">
                           +
@@ -245,7 +229,7 @@ export default function MobileCatalogScreen({
                 >
                   {/* Top: Compact Thumbnail / Icon container */}
                   <div className="w-full h-16 rounded-xl bg-blue-50/60 flex items-center justify-center text-2xl mb-2 border border-blue-100 relative overflow-hidden">
-                    {getCategoryIcon(item.kategori, item.nama)}
+                    <ProductPhoto product={item} />
 
                     {isSoldOut && (
                       <span className="absolute top-1.5 right-1.5 bg-rose-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-xs">

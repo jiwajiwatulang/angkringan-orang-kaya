@@ -136,7 +136,7 @@ export default function MobileCartSheet({
               <button
                 type="button"
                 onClick={onClearCart}
-                className="text-[11px] font-bold text-rose-400 hover:underline px-2 py-1"
+                className="text-[11px] font-bold text-rose-700 hover:underline px-2 py-1"
               >
                 Hapus Semua
               </button>
@@ -261,7 +261,7 @@ export default function MobileCartSheet({
                     <button
                       type="button"
                       onClick={() => onRemoveItem(item)}
-                      className="w-7 h-7 rounded-lg bg-card border border-line text-rose-400 hover:text-rose-300 font-bold text-xs flex items-center justify-center active:scale-90 ml-1"
+                      className="w-7 h-7 rounded-lg bg-card border border-line text-rose-700 hover:text-rose-700 font-bold text-xs flex items-center justify-center active:scale-90 ml-1"
                       title="Hapus Menu"
                     ><LineIcon name="delete" /></button>
                   </div>

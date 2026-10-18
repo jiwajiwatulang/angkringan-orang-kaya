@@ -58,7 +58,7 @@ export default function AdminPengaturanHubPage() {
       {/* Header */}
       <div className="pb-3 border-b border-line">
         <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
-          
+
           <span>Pusat Pengaturan SakuNota</span>
         </h2>
       </div>
@@ -102,8 +102,8 @@ export default function AdminPengaturanHubPage() {
               <LineIcon name="store" />
             </span>
             <div>
-              <h3 className="font-black text-sm text-fg">SakuNota - Kasir Tetap Jalan, Meski Tanpa Internet</h3>
-              <p className="text-xs text-muted">Aplikasi kasir praktis tanpa biaya bulanan. Solusi mandiri untuk UMKM.</p>
+              <h3 className="font-black text-sm text-fg">SakuNota - Kasir Jalan Tanpa Internet.</h3>
+
             </div>
           </div>
 

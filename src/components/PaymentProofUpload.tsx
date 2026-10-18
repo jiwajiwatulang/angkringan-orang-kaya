@@ -92,7 +92,7 @@ export default function PaymentProofUpload({
       )}
 
       {errorMessage && (
-        <div className="mb-2 p-2 bg-rose-950/40 text-rose-400 text-xs rounded-xl border border-rose-800"><LineIcon name="warning" />{errorMessage}
+        <div className="mb-2 p-2 bg-rose-50 text-rose-700 text-xs rounded-xl border border-rose-200"><LineIcon name="warning" />{errorMessage}
         </div>
       )}
 

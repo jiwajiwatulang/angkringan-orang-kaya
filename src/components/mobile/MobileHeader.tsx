@@ -3,12 +3,13 @@
 import React from "react";
 import Link from "next/link";
 import { StoreSettings } from "@/lib/settings";
-import ThemeToggle from "@/components/ThemeToggle";
+import CashierPrinter from "@/components/CashierPrinter";
 
 interface MobileHeaderProps {
   storeSettings: StoreSettings;
   activeShift: any;
   currentShiftStats: any;
+  onAdmin: () => void;
   onOpenCashMovement: () => void;
   onOpenShiftModal: () => void;
   onOpenCloseShiftModal: () => void;
@@ -19,6 +20,7 @@ export default function MobileHeader({
   activeShift,
   currentShiftStats,
   onOpenCashMovement,
+  onAdmin,
   onOpenShiftModal,
   onOpenCloseShiftModal,
 }: MobileHeaderProps) {
@@ -51,36 +53,8 @@ export default function MobileHeader({
 
       {/* Right Side: Shift Status & Quick Action */}
       <div className="flex items-center gap-1.5">
-        {activeShift ? (
-          <button
-            type="button"
-            onClick={onOpenCashMovement}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent/20 border border-accent/40 text-[11px] font-bold text-accent-text active:scale-95 transition-transform"
-            title="Catat Kas Masuk / Keluar"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-            <span>Shift aktif</span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onOpenShiftModal}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent text-white text-[11px] font-bold shadow-sm active:scale-95 transition-transform"
-          >
-            
-            <span>Buka Shift</span>
-          </button>
-        )}
-
-        {/* Quick Shift Close or Notification Icon */}
-        {activeShift && (
-          <button
-            type="button"
-            onClick={onOpenCloseShiftModal}
-            className="px-2.5 h-8 rounded-xl bg-card border border-line text-muted hover:text-rose-700 flex items-center justify-center text-xs font-bold active:scale-90 transition-all"
-            title="Tutup Shift Kasir"
-          >Tutup Shift</button>
-        )}
+        <CashierPrinter settings={storeSettings} />
+        <button type="button" onClick={onAdmin} className="px-2.5 py-2 bg-card border border-line text-fg rounded-xl text-xs font-bold">Admin</button>
       </div>
     </header>
   );

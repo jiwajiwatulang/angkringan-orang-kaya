@@ -42,7 +42,7 @@ export default function PosError({
   return (
     <div className="min-h-screen bg-slate-900 text-white flex flex-col justify-between p-4 sm:p-6 md:p-8">
       <div className="max-w-md w-full mx-auto my-auto py-8 text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30 mb-4 shadow-lg text-3xl"><LineIcon name="info" /></div>
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-rose-500/20 text-rose-700 border border-rose-500/30 mb-4 shadow-lg text-3xl"><LineIcon name="info" /></div>
         <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white mb-2">
           Halaman Kasir Mengalami Kendala
         </h1>
@@ -51,7 +51,7 @@ export default function PosError({
         </p>
 
         {error?.message && (
-          <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-left mb-6 font-mono text-[11px] text-rose-300 break-words max-h-32 overflow-y-auto">
+          <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-left mb-6 font-mono text-[11px] text-rose-700 break-words max-h-32 overflow-y-auto">
             {error.message}
           </div>
         )}

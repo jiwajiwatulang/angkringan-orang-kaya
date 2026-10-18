@@ -1,5 +1,6 @@
 "use client";
 import LineIcon from "@/components/LineIcon";
+import ProductPhoto from "@/components/ProductPhoto";
 
 import React, { useState } from "react";
 
@@ -239,7 +240,7 @@ export default function MobileHomeScreen({
               className="bg-white border border-slate-200 hover:border-blue-500 rounded-xl p-2 flex flex-col justify-between text-left shadow-2xs active:scale-95 transition-all"
             >
               <div className="w-full h-10 rounded-lg bg-blue-50/70 border border-blue-100 flex items-center justify-center text-lg mb-1.5">
-                {getCategoryIcon(item.kategori, item.nama)}
+                <ProductPhoto product={item} />
               </div>
               <div className="w-full">
                 <h4 className="font-extrabold text-[10px] text-slate-900 leading-tight line-clamp-2" title={item.nama}>

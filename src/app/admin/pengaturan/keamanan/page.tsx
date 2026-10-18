@@ -6,6 +6,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "../../AdminContext";
+import { requireMerchantAdmin } from "@/lib/merchantAccess";
 import { saveStoreSettingsAsync } from "@/lib/settings";
 import { generateRecoveryCode, hashRecoveryCode } from "@/lib/recovery";
 import { App } from "@capacitor/app";
@@ -85,6 +86,7 @@ export default function PengaturanKeamananPage() {
         failedRecoveryAttempts: 0,
         recoveryLockedUntil: ""
       };
+      await requireMerchantAdmin();
       await saveStoreSettingsAsync(updated);
       await refreshSettings();
       setCurrentPin("");
@@ -126,6 +128,7 @@ export default function PengaturanKeamananPage() {
         failedRecoveryAttempts: 0,
         recoveryLockedUntil: ""
       };
+      await requireMerchantAdmin();
       await saveStoreSettingsAsync(updated);
       await refreshSettings();
 
@@ -228,7 +231,7 @@ export default function PengaturanKeamananPage() {
           </div>
 
           {errorMessage && (
-            <p className="text-xs font-bold text-rose-400 p-2.5 rounded-xl bg-rose-950/40"><LineIcon name="info" />{errorMessage}
+            <p className="text-xs font-bold text-rose-700 p-2.5 rounded-xl bg-rose-50"><LineIcon name="info" />{errorMessage}
             </p>
           )}
 
@@ -253,7 +256,7 @@ export default function PengaturanKeamananPage() {
               Kunci darurat offline untuk mereset PIN Admin jika Anda lupa PIN atau data PIN terhapus.
             </p>
           </div>
-          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 shrink-0">
+          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
             {storeSettings.recoveryCodeHash ? "Aktif (SHA-256)" : "Belum Dibuat"}
           </span>
         </div>
@@ -306,7 +309,7 @@ export default function PengaturanKeamananPage() {
                 </button>
               </div>
               {regenError && (
-                <p className="text-xs font-bold text-rose-400"><LineIcon name="info" />{regenError}</p>
+                <p className="text-xs font-bold text-rose-700"><LineIcon name="info" />{regenError}</p>
               )}
             </form>
           )}

@@ -24,6 +24,7 @@ export interface MenuItem {
   isSoldOut: boolean;
   urutan: number;
   modifiers?: ModifierGroup[]; // Add-on & modifier menu
+  imageData?: string | null; // Compressed raster data URL; travels in JSON backups, no remote URL.
   trackStock?: boolean;
   stockQty?: number;
   minimumStock?: number;

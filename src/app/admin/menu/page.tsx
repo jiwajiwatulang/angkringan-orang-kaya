@@ -1,5 +1,9 @@
 "use client";
 import LineIcon from "@/components/LineIcon";
+import ProductPhoto from "@/components/ProductPhoto";
+import { compressPaymentProof } from "@/lib/imageUtils";
+import { validateProductPhoto, MAX_PRODUCT_PHOTO_BYTES } from "@/lib/productPhoto";
+import { makeProductExport, parseProductImport } from "@/lib/productTransfer";
 
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from 'next/navigation';
@@ -37,6 +41,8 @@ type MenuItem = {
   kategori: string;
   isSoldOut?: boolean;
   modifiers?: ModifierGroup[];
+  imageData?: string | null;
+  urutan?: number;
 };
 
 function CatalogPanel() {
@@ -85,6 +91,8 @@ function CatalogPanel() {
   // Bottom Sheet Form State (Tambah & Edit Single)
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingMenu, setEditingMenu] = useState<MenuItem | null>(null);
+  const [formImage, setFormImage] = useState<string | null>(null);
+  const [isPhotoProcessing, setIsPhotoProcessing] = useState(false);
   const [formSku, setFormSku] = useState("");
   const [isBarcodeScanOpen, setIsBarcodeScanOpen] = useState(false);
   const [formNama, setFormNama] = useState("");
@@ -229,6 +237,7 @@ function CatalogPanel() {
   // --- SINGLE MENU ACTIONS ---
   const handleOpenAdd = () => {
     setEditingMenu(null);
+    setFormImage(null);
     setFormSku(""); // SKU benar-benar opsional & kosong
     setFormNama("");
     setFormHarga("");
@@ -244,6 +253,7 @@ function CatalogPanel() {
 
   const handleOpenEdit = (menu: MenuItem) => {
     setEditingMenu(menu);
+    setFormImage(menu.imageData || null);
     setFormSku(menu.sku || "");
     setFormNama(menu.nama);
     setFormHarga(menu.harga.toString());
@@ -389,6 +399,7 @@ function CatalogPanel() {
         finalKat !== origKat ||
         formSku.trim() !== origSku ||
         formIsSoldOut !== Boolean(editingMenu.isSoldOut) ||
+        formImage !== (editingMenu.imageData || null) ||
         curMods !== origMods
       );
     } else {
@@ -396,6 +407,7 @@ function CatalogPanel() {
         formNama.trim() !== "" ||
         formHarga.trim() !== "" ||
         formSku.trim() !== "" ||
+        Boolean(formImage) ||
         formEnableModifiers ||
         formModifiers.length > 0
       );
@@ -403,6 +415,7 @@ function CatalogPanel() {
   };
 
   const handleCloseSheet = () => {
+    if (isPhotoProcessing || isSavingMenu) return;
     if (isFormDirty()) {
       setUnsavedConfirm({
         isOpen: true,
@@ -419,7 +432,7 @@ function CatalogPanel() {
 
   const handleSaveMenu = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSavingMenu) return;
+    if (isSavingMenu || isPhotoProcessing) return;
 
     const finalKat = isCustomKategori ? customKategori.trim() || "Lainnya" : formKategori.trim();
     const finalHarga = Number(formHarga);
@@ -469,6 +482,7 @@ function CatalogPanel() {
           kategori: finalKat,
           isSoldOut: formIsSoldOut,
           modifiers: finalModifiers,
+          imageData: formImage,
         });
         showToast(`Menu "${cleanNama}" berhasil diperbarui`, "success");
       } else {
@@ -479,6 +493,7 @@ function CatalogPanel() {
           kategori: finalKat,
           isSoldOut: formIsSoldOut,
           modifiers: finalModifiers,
+          imageData: formImage,
         });
         showToast(`Menu "${cleanNama}" berhasil ditambahkan`, "success");
       }
@@ -615,7 +630,9 @@ function CatalogPanel() {
     setImportFile(file);
     setIsParsing(true);
     try {
-      const result = await parseMenuFile(file);
+      if (file.size > 50 * 1024 * 1024) throw new Error("File maksimal 50 MB. Pisahkan produk menjadi beberapa file bila lebih besar.");
+      const products = file.name.toLowerCase().endsWith(".json") ? parseProductImport(JSON.parse(await file.text())) : null;
+      const result = products ? { validRows: products, invalidRows: [], duplicateSkus: [], totalRows: products.length } : await parseMenuFile(file);
       setImportResult(result);
     } catch (err: any) {
       alert("Gagal membaca file: " + err.message);
@@ -688,6 +705,7 @@ function CatalogPanel() {
             <span>Export Excel</span>
           </button>
 
+          <button type="button" onClick={() => downloadFile(JSON.stringify(makeProductExport(menus.map(p => ({ ...p, isSoldOut: Boolean(p.isSoldOut), urutan: p.urutan || 0 }))), null, 2), 'sakunota_produk_lengkap.json', 'application/json')} className="px-3.5 py-2.5 bg-card border border-line text-fg font-bold text-xs rounded-xl">Export Produk + Foto (.json)</button>
           {/* Import Button */}
           <button
             type="button"
@@ -700,7 +718,7 @@ function CatalogPanel() {
             title="Import menu secara massal dari Excel atau CSV"
           >
             <span><LineIcon name="import" /></span>
-            <span>Import Excel / CSV</span>
+            <span>Import Excel / CSV / JSON</span>
           </button>
 
           {/* Add Menu Button */}
@@ -907,14 +925,14 @@ function CatalogPanel() {
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-card border border-line flex items-center justify-center text-xl shrink-0 shadow-inner">
-                              {getCategoryIcon(menu.kategori, menu.nama)}
+                              <ProductPhoto product={menu} />
                             </div>
                             <div className="min-w-0">
                               <span className="font-black text-sm text-fg block leading-tight truncate">
                                 {menu.nama}
                               </span>
                               {menu.isSoldOut && (
-                                <span className="text-[10px] text-rose-400 font-bold">● Stok Habis</span>
+                                <span className="text-[10px] text-rose-700 font-bold">● Stok Habis</span>
                               )}
                             </div>
                           </div>
@@ -1012,7 +1030,7 @@ function CatalogPanel() {
                       isSelected
                         ? "border-accent bg-accent/20 ring-2 ring-accent/30"
                         : menu.isSoldOut
-                        ? " border-rose-900/40 bg-rose-500/10"
+                        ? " border-rose-200 bg-rose-500/10"
                         : " border-line hover:border-accent/50"
                     }`}
                   >
@@ -1026,6 +1044,7 @@ function CatalogPanel() {
                             onChange={() => {}} // handled by parent onClick
                             className="mt-0.5 w-4 h-4 text-accent-text rounded border-line focus:ring-accent cursor-pointer pointer-events-none"
                           />
+                          <ProductPhoto product={menu} className="w-12 h-12 rounded-lg overflow-hidden shrink-0" />
                           <div>
                             <h4 className="font-black text-sm text-fg leading-snug">
                               {menu.nama}
@@ -1414,7 +1433,7 @@ function CatalogPanel() {
             className=" bg-surface rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
+            <div className="w-12 h-12 bg-rose-50 text-rose-700 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg mb-1">
               Hapus {selectedMenuIds.length} Menu Terpilih?
             </h3>
@@ -1503,7 +1522,7 @@ function CatalogPanel() {
                 </label>
                 <input
                   type="file"
-                  accept=".xlsx, .xls, .csv"
+                  accept=".xlsx,.xls,.csv,.json"
                   onChange={handleFileChange}
                   disabled={isParsing || isImporting}
                   className="w-full text-xs text-muted file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-accent/60 file:text-accent-text hover:file:bg-accent/15 cursor-pointer border border-line rounded-2xl p-2"
@@ -1539,11 +1558,11 @@ function CatalogPanel() {
                       </div>
                     </div>
 
-                    <div className="p-2.5 bg-rose-950/40 rounded-xl border border-rose-900/40">
-                      <div className="text-[10px] text-rose-400 font-bold uppercase">
+                    <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-200">
+                      <div className="text-[10px] text-rose-700 font-bold uppercase">
                         Gagal / Invalid
                       </div>
-                      <div className="text-lg font-black text-rose-300">
+                      <div className="text-lg font-black text-rose-700">
                         {importResult.invalidRows.length} Baris
                       </div>
                     </div>
@@ -1560,7 +1579,7 @@ function CatalogPanel() {
 
                   {/* Invalid details if any */}
                   {importResult.invalidRows.length > 0 && (
-                    <div className="max-h-24 overflow-y-auto text-[11px] text-rose-400 bg-card p-2 rounded-xl border border-rose-900/50 space-y-1">
+                    <div className="max-h-24 overflow-y-auto text-[11px] text-rose-700 bg-card p-2 rounded-xl border border-rose-200 space-y-1">
                       {importResult.invalidRows.map((err, idx) => (
                         <div key={idx}>
                           Baris {err.row}: {err.reason}
@@ -1705,6 +1724,22 @@ function CatalogPanel() {
             </div>
 
             <form onSubmit={handleSaveMenu} className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <label htmlFor="product-photo" className="block text-xs font-bold">Foto Produk (opsional)</label>
+                <div className="flex items-center gap-4"><div className="w-20 h-20 rounded-xl border border-line overflow-hidden bg-surface shrink-0"><ProductPhoto product={{ nama: formNama, kategori: formKategori, imageData: formImage }} /></div>
+                  <div className="space-y-2 min-w-0"><input id="product-photo" type="file" accept="image/jpeg,image/png,image/webp" disabled={isSavingMenu || isPhotoProcessing} className="w-full text-xs" onChange={async e => {
+                    const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;
+                    setIsPhotoProcessing(true);
+                    try {
+                      if (file.size > 10 * 1024 * 1024) throw new Error('Gambar awal maksimal 10 MB.');
+                      const photo = await compressPaymentProof(file, undefined, { maxDim: 640, maxBytes: MAX_PRODUCT_PHOTO_BYTES });
+                      setFormImage(validateProductPhoto(photo.imageData));
+                    } catch (err) { showToast((err as Error).message, 'error'); } finally { setIsPhotoProcessing(false); }
+                  }} />
+                    {formImage && <button type="button" disabled={isSavingMenu || isPhotoProcessing} className="text-xs text-rose-700 underline" onClick={() => setFormImage(null)}>Hapus Foto</button>}
+                    <p className="text-xs text-muted" role="status">{isPhotoProcessing ? 'Mengompresi foto…' : 'JPG, PNG, atau WebP. Tanpa foto tetap memakai ikon kategori.'}</p>
+                  </div></div>
+              </div>
               {/* Nama Menu */}
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1">
@@ -1820,11 +1855,11 @@ function CatalogPanel() {
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
-                    disabled={isSavingMenu}
+                    disabled={isSavingMenu || isPhotoProcessing}
                     onClick={() => setFormIsSoldOut(false)}
                     className={`p-3 rounded-2xl border text-left transition-all ${
                       !formIsSoldOut
-                        ? "bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/30 text-emerald-300 shadow-md font-black"
+                        ? "bg-emerald-50 border-emerald-600 ring-2 ring-emerald-500/20 text-emerald-900 shadow-md font-black"
                         : "bg-card border-line text-muted hover:text-fg hover:border-slate-600"
                     }`}
                   >
@@ -1834,8 +1869,8 @@ function CatalogPanel() {
                         <span>Tersedia</span>
                       </span>
                       {!formIsSoldOut && (
-                        <span className="text-emerald-400 font-bold text-[10px] bg-emerald-900/60 px-1.5 py-0.5 rounded-md">
-                          Aktif
+                        <span className="text-emerald-900 font-bold text-[10px] bg-emerald-100 px-1.5 py-0.5 rounded-md">
+                          Dipilih
                         </span>
                       )}
                     </div>
@@ -1846,7 +1881,7 @@ function CatalogPanel() {
 
                   <button
                     type="button"
-                    disabled={isSavingMenu}
+                    disabled={isSavingMenu || isPhotoProcessing}
                     onClick={() => setFormIsSoldOut(true)}
                     className={`p-3 rounded-2xl border text-left transition-all ${
                       formIsSoldOut
@@ -1860,8 +1895,8 @@ function CatalogPanel() {
                         <span>Tidak Tersedia</span>
                       </span>
                       {formIsSoldOut && (
-                        <span className="text-rose-400 font-bold text-[10px] bg-rose-900/60 px-1.5 py-0.5 rounded-md">
-                          Aktif
+                        <span className="text-rose-900 font-bold text-[10px] bg-rose-100 px-1.5 py-0.5 rounded-md">
+                          Dipilih
                         </span>
                       )}
                     </div>
@@ -2090,7 +2125,7 @@ function CatalogPanel() {
                                     type="button"
                                     disabled={group.options.length <= 1}
                                     onClick={() => handleRemoveOption(gIdx, oIdx)}
-                                    className="w-7 h-7 rounded-lg bg-surface text-muted hover:text-rose-400 disabled:opacity-30 flex items-center justify-center text-xs font-bold"
+                                    className="w-7 h-7 rounded-lg bg-surface text-muted hover:text-rose-700 disabled:opacity-30 flex items-center justify-center text-xs font-bold"
                                     title="Hapus opsi ini"
                                   >
                                     ×
@@ -2129,14 +2164,14 @@ function CatalogPanel() {
                 <button
                   type="button"
                   onClick={handleCloseSheet}
-                  disabled={isSavingMenu}
+                  disabled={isSavingMenu || isPhotoProcessing}
                   className="flex-1 py-3 bg-card hover:bg-line text-slate-300 rounded-xl text-xs font-bold transition-colors disabled:opacity-50"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  disabled={isSavingMenu}
+                  disabled={isSavingMenu || isPhotoProcessing}
                   className="flex-[2] py-3 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white rounded-xl text-xs font-black shadow-lg shadow-accent/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
                 >
                   {isSavingMenu ? (
@@ -2161,7 +2196,7 @@ function CatalogPanel() {
             className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
+            <div className="w-12 h-12 bg-rose-50 text-rose-700 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg mb-1">
               Hapus Menu Ini?
             </h3>

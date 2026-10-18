@@ -1,3 +1,4 @@
+import { requireMerchantAdmin } from './merchantAccess';
 import { db } from './dexie';
 
 export const inventoryTables = ['menuItems', 'inventoryMovements'];
@@ -10,6 +11,7 @@ function quantity(value: number) {
 }
 
 export async function configureStock(menuItemId: number, stockQty: number, minimumStock = 0, stockUnit = 'pcs') {
+  await requireMerchantAdmin();
   quantity(stockQty); quantity(minimumStock);
   return db.transaction('rw', inventoryTables, async () => {
     const product = await db.table('menuItems').get(menuItemId);
@@ -21,6 +23,7 @@ export async function configureStock(menuItemId: number, stockQty: number, minim
 }
 
 export async function adjustStock(input: { menuItemId: number; type: 'in' | 'out' | 'count'; amount: number; reason: string; expectedBalance?: number }) {
+  await requireMerchantAdmin();
   quantity(input.amount);
   if (!input.reason.trim()) throw new Error('Alasan penyesuaian wajib diisi.');
   if (input.type !== 'count' && input.amount === 0) throw new Error('Jumlah barang harus lebih dari nol.');
