@@ -67,7 +67,7 @@ export default function MobileHeader({
             onClick={onOpenShiftModal}
             className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent text-white text-[11px] font-bold shadow-sm active:scale-95 transition-transform"
           >
-            <span>💼</span>
+            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 12v3h4v-3" /></svg></span>
             <span>Buka Shift</span>
           </button>
         )}
@@ -79,9 +79,7 @@ export default function MobileHeader({
             onClick={onOpenCloseShiftModal}
             className="w-8 h-8 rounded-xl bg-card border border-line text-muted hover:text-rose-400 flex items-center justify-center text-xs font-bold active:scale-90 transition-all"
             title="Tutup Shift Kasir"
-          >
-            🔔
-          </button>
+          ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg></button>
         )}
       </div>
     </header>

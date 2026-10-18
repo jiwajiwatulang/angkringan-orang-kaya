@@ -139,7 +139,7 @@ export default function PaymentProofUpload({
             <button
               type="button"
               onClick={() => onChange(null)}
-              className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-rose-950/40 text-rose-400 hover:bg-rose-500/15 transition-colors"
+              className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-500/15 transition-colors"
             >
               Hapus
             </button>
@@ -155,7 +155,7 @@ export default function PaymentProofUpload({
               disabled={disabled}
               className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-card border border-line text-slate-300 hover:bg-line text-xs font-bold transition-all shadow-sm active:scale-95"
             >
-              <span className="text-base">📷</span>
+              <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h5l2-3h4l2 3h5v15H3zM16 13a4 4 0 1 0-8 0 4 4 0 0 0 8 0" /></svg></span>
               <span>Ambil Foto</span>
             </button>
             <button
@@ -164,7 +164,7 @@ export default function PaymentProofUpload({
               disabled={disabled}
               className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-card border border-line text-slate-300 hover:bg-line text-xs font-bold transition-all shadow-sm active:scale-95"
             >
-              <span className="text-base">🖼️</span>
+              <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h5l2-3h4l2 3h5v15H3zM16 13a4 4 0 1 0-8 0 4 4 0 0 0 8 0" /></svg></span>
               <span>Dari Galeri</span>
             </button>
           </div>

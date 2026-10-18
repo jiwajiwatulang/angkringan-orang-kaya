@@ -330,7 +330,7 @@ export default function AntiGravityGalaxy() {
       <div className="hidden lg:block absolute inset-0 pointer-events-none">
         
         {/* Floating Item 1: Top-Left (Nota Penjualan Melayang) */}
-        <div className="absolute top-16 left-[4%] xl:left-[8%] animate-float-1 pointer-events-auto transition-transform hover:scale-105 duration-300">
+        <div className="absolute top-4 left-[4%] xl:left-[8%] animate-float-1 pointer-events-auto transition-transform hover:scale-105 duration-300">
           <div className="px-4 py-2.5 rounded-2xl bg-white/90 backdrop-blur-md border border-blue-200/80 shadow-xl shadow-blue-500/10 flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-sm shadow-xs">
               🧾
@@ -349,7 +349,7 @@ export default function AntiGravityGalaxy() {
         </div>
 
         {/* Floating Item 2: Bottom-Left (100% Offline Badge) */}
-        <div className="absolute bottom-14 left-[5%] xl:left-[10%] animate-float-2 pointer-events-auto transition-transform hover:scale-105 duration-300">
+        <div className="absolute bottom-0 left-[5%] xl:left-[10%] animate-float-2 pointer-events-auto transition-transform hover:scale-105 duration-300">
           <div className="px-4 py-2.5 rounded-2xl bg-white/90 backdrop-blur-md border border-blue-200/80 shadow-xl shadow-blue-500/10 flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-xs">
               📶
@@ -362,7 +362,7 @@ export default function AntiGravityGalaxy() {
         </div>
 
         {/* Floating Item 3: Top-Right (Bluetooth Thermal Printer Badge) */}
-        <div className="absolute top-20 right-[4%] xl:right-[8%] animate-float-3 pointer-events-auto transition-transform hover:scale-105 duration-300">
+        <div className="absolute top-4 right-[4%] xl:right-[8%] animate-float-3 pointer-events-auto transition-transform hover:scale-105 duration-300">
           <div className="px-4 py-2.5 rounded-2xl bg-white/90 backdrop-blur-md border border-blue-200/80 shadow-xl shadow-blue-500/10 flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs font-bold shadow-md shadow-blue-600/30">
               🖨️
@@ -375,7 +375,7 @@ export default function AntiGravityGalaxy() {
         </div>
 
         {/* Floating Item 4: Bottom-Right (Anti-Macet / 0% Komisi) */}
-        <div className="absolute bottom-16 right-[5%] xl:right-[10%] animate-float-1 pointer-events-auto transition-transform hover:scale-105 duration-300">
+        <div className="absolute bottom-0 right-[5%] xl:right-[10%] animate-float-1 pointer-events-auto transition-transform hover:scale-105 duration-300">
           <div className="px-4 py-2.5 rounded-2xl bg-white/90 backdrop-blur-md border border-blue-200/80 shadow-xl shadow-blue-500/10 flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-xs">
               ⚡

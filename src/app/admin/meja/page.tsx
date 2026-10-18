@@ -285,10 +285,10 @@ export default function AdminMejaPage() {
               setBulkCount("10");
               setIsBulkCreateOpen(true);
             }}
-            className="px-3.5 py-2.5 bg-accent/60 hover:bg-accent-hover/60 active:scale-95 text-accent-text font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all border border-accent/40"
+            className="px-3.5 py-2.5 bg-blue-50 hover:bg-blue-100 active:scale-95 text-accent-text font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all border border-blue-200"
             title="Tambah banyak meja sekaligus (contoh: Meja 1 sampai 20)"
           >
-            <span>⚡</span>
+            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 10-13h-7z" /></svg></span>
             <span>Tambah Massal</span>
           </button>
 
@@ -405,11 +405,9 @@ export default function AdminMejaPage() {
                   <button
                     type="button"
                     onClick={() => setTableToDelete(table)}
-                    className="w-8 h-8 rounded-xl bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 flex items-center justify-center text-xs font-bold transition-colors shrink-0"
+                    className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 flex items-center justify-center text-xs font-bold transition-colors shrink-0"
                     title="Hapus Meja"
-                  >
-                    🗑️
-                  </button>
+                  ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg></button>
                 </div>
               </div>
             );
@@ -441,9 +439,9 @@ export default function AdminMejaPage() {
                 setRenamePattern("Meja {N}");
                 setIsBulkRenameOpen(true);
               }}
-              className="flex-1 py-2 bg-line hover:bg-slate-600 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              className="flex-1 py-2 bg-slate-100 text-slate-800 hover:bg-slate-200 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
             >
-              <span>✏️</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20l4-1 12-12-3-3L5 16zM14 7l3 3" /></svg></span>
               <span>Rename Massal</span>
             </button>
 
@@ -451,9 +449,9 @@ export default function AdminMejaPage() {
             <button
               type="button"
               onClick={() => setIsBulkDeleteOpen(true)}
-              className="flex-1 py-2 bg-rose-800/80 hover:bg-rose-700 text-rose-200 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              className="flex-1 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
             >
-              <span>🗑️</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg></span>
               <span>Hapus Terpilih</span>
             </button>
           </div>

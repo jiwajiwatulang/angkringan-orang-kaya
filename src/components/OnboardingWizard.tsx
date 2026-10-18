@@ -233,7 +233,7 @@ export default function OnboardingWizard({
                       : " bg-card/60 border-line"
                   }`}
                 >
-                  <span className="text-2xl">🌟</span>
+                  <span className="text-2xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 10-13h-7z" /></svg></span>
                   <div className="flex-1">
                     <div className="text-xs font-bold text-fg flex items-center justify-between">
                       <span>Gunakan Contoh Menu SakuNota</span>
@@ -256,7 +256,7 @@ export default function OnboardingWizard({
                       : " bg-card/60 border-line"
                   }`}
                 >
-                  <span className="text-2xl">📄</span>
+                  <span className="text-2xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
                   <div className="flex-1">
                     <div className="text-xs font-bold text-fg flex items-center justify-between">
                       <span>Mulai dari Bersih (Kosong / Import Excel)</span>
@@ -347,7 +347,7 @@ export default function OnboardingWizard({
               disabled={isSubmitting}
               className="px-6 py-2.5 rounded-xl bg-accent hover:bg-accent-hover active:scale-95 text-white text-xs font-bold shadow-lg shadow-accent/20 transition-all flex items-center gap-1.5"
             >
-              {isSubmitting ? "Menyiapkan Toko..." : "Mulai Kasir SakuNota 🚀"}
+              {isSubmitting ? "Menyiapkan Toko..." : "Mulai Kasir SakuNota "}
             </button>
           )}
         </div>

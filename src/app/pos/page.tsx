@@ -1751,7 +1751,7 @@ export default function POSPage() {
                   <button 
                     type="button"
                     onClick={handleReleaseTable} 
-                    className="text-xs font-bold hover:bg-red-500/15 bg-red-950/40 text-red-400 px-3 py-1.5 rounded-full transition-colors"
+                    className="text-xs font-bold hover:bg-red-500/15 bg-red-50 text-red-700 px-3 py-1.5 rounded-full transition-colors"
                   >
                     Lepas Meja
                   </button>
@@ -1818,7 +1818,7 @@ export default function POSPage() {
                     onClick={() => { handleClearTable(); setIsMobileCartOpen(false); }} 
                     className="w-full mt-4 py-3.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-extrabold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
                   >
-                    <span>🔄</span>
+                    <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
                     <span>Kosongkan Meja (Lepas)</span>
                   </button>
                 </div>
@@ -1914,15 +1914,14 @@ export default function POSPage() {
             </div>
             <div className="flex gap-2">
               {editingOrderId && (
-                <button onClick={handleShowDraftBill} className="w-1/4 bg-card border border-line text-fg py-3.5 rounded-xl font-bold text-xs shadow-sm active:scale-95 transition-all">📝 Draft</button>
+                <button onClick={handleShowDraftBill} className="w-1/4 bg-card border border-line text-fg py-3.5 rounded-xl font-bold text-xs shadow-sm active:scale-95 transition-all"> Draft</button>
               )}
               {(editingOrderId || (orderType === "Dine-in" && selectedTable && activeOrders.some(o => o.tableId === parseInt(selectedTable)))) && (
                 <button 
                   type="button"
                   onClick={handleOpenSplitBillFromCart} 
-                  className="w-1/3 bg-line hover:bg-slate-600 text-white py-3.5 rounded-xl font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
-                >
-                  ✂️ Split Bill
+                  className="w-1/3 bg-slate-100 text-slate-800 hover:bg-slate-200 text-white py-3.5 rounded-xl font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
+                > Split Bill
                 </button>
               )}
               <button 
@@ -1975,7 +1974,7 @@ export default function POSPage() {
                   <button 
                     type="button"
                     onClick={handleReleaseTable} 
-                    className="text-[11px] sm:text-xs font-bold hover:bg-red-500/15 bg-red-950/40 text-red-400 px-2.5 py-1 rounded-full transition-colors"
+                    className="text-[11px] sm:text-xs font-bold hover:bg-red-500/15 bg-red-50 text-red-700 px-2.5 py-1 rounded-full transition-colors"
                   >
                     Lepas Meja
                   </button>
@@ -2042,7 +2041,7 @@ export default function POSPage() {
                     onClick={() => { handleClearTable(); setIsMobileCartOpen(false); }} 
                     className="w-full mt-3 py-2.5 sm:py-3.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-extrabold text-xs sm:text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
                   >
-                    <span>🔄</span>
+                    <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
                     <span>Kosongkan Meja (Lepas)</span>
                   </button>
                 </div>
@@ -2153,15 +2152,14 @@ export default function POSPage() {
             </button>
             <div className="flex gap-2">
               {editingOrderId && (
-                <button onClick={handleShowDraftBill} className="w-1/4 bg-card border border-line text-fg py-2.5 sm:py-3.5 rounded-xl font-bold text-xs shadow-sm active:scale-95 transition-all">📝 Draft</button>
+                <button onClick={handleShowDraftBill} className="w-1/4 bg-card border border-line text-fg py-2.5 sm:py-3.5 rounded-xl font-bold text-xs shadow-sm active:scale-95 transition-all"> Draft</button>
               )}
               {(editingOrderId || (orderType === "Dine-in" && selectedTable && activeOrders.some(o => o.tableId === parseInt(selectedTable)))) && (
                 <button 
                   type="button"
                   onClick={handleOpenSplitBillFromCart} 
-                  className="w-1/3 bg-line hover:bg-slate-600 text-white py-2.5 sm:py-3.5 rounded-xl font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
-                >
-                  ✂️ Split
+                  className="w-1/3 bg-slate-100 text-slate-800 hover:bg-slate-200 text-white py-2.5 sm:py-3.5 rounded-xl font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
+                > Split
                 </button>
               )}
               <button 
@@ -2249,7 +2247,7 @@ export default function POSPage() {
                   disabled={isActivatingKey || !activationInputKey.trim()}
                   className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black px-6 py-3 rounded-xl text-xs sm:text-sm transition-all whitespace-nowrap shadow-md shadow-blue-600/25 active:scale-95"
                 >
-                  {isActivatingKey ? 'Memeriksa...' : '🚀 Aktifkan Kasir'}
+                  {isActivatingKey ? 'Memeriksa...' : ' Aktifkan Kasir'}
                 </button>
               </div>
               {activationNotice && (
@@ -2296,7 +2294,7 @@ export default function POSPage() {
                     onClick={handleExportBackupFromPos}
                     className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-bold px-4 py-2 rounded-xl text-xs transition-colors"
                   >
-                    <span>📥</span> Unduh Cadangan Data (.JSON)
+                    <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span> Unduh Cadangan Data (.JSON)
                   </button>
                   {backupSuccessNotice && (
                     <span className="text-xs text-emerald-700 font-bold">{backupSuccessNotice}</span>
@@ -2312,28 +2310,28 @@ export default function POSPage() {
               href="/?beli=true"
               className="bg-blue-600 hover:bg-blue-700 text-white font-black p-3 rounded-xl text-xs transition-colors flex flex-col items-center justify-center gap-1 shadow-xs"
             >
-              <span className="text-base">💳</span>
+              <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 5h20v14H2zM2 9h20M6 15h4" /></svg></span>
               <span>Beli Lisensi Rp50rb</span>
             </Link>
             <Link
               href="/?beta=register"
               className="bg-white hover:bg-blue-50 border border-slate-200 text-slate-800 font-bold p-3 rounded-xl text-xs transition-colors flex flex-col items-center justify-center gap-1"
             >
-              <span className="text-base">📝</span>
+              <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20l4-1 12-12-3-3L5 16zM14 7l3 3" /></svg></span>
               <span>Trial 7 Hari</span>
             </Link>
             <Link
               href="/panduan"
               className="bg-white hover:bg-blue-50 border border-slate-200 text-slate-800 font-bold p-3 rounded-xl text-xs transition-colors flex flex-col items-center justify-center gap-1"
             >
-              <span className="text-base">📖</span>
+              <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v16M12 5C9 2 4 3 2 4v15c4-1 7-1 10 2 3-3 6-3 10-2V4c-2-1-7-2-10 1" /></svg></span>
               <span>Buku Panduan</span>
             </Link>
             <Link
               href="/tentang"
               className="bg-white hover:bg-blue-50 border border-slate-200 text-slate-800 font-bold p-3 rounded-xl text-xs transition-colors flex flex-col items-center justify-center gap-1"
             >
-              <span className="text-base">🏢</span>
+              <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" /></svg></span>
               <span>Tentang Kami</span>
             </Link>
           </div>
@@ -2463,7 +2461,7 @@ export default function POSPage() {
                         onClick={() => setOrderType(type)}
                         className={`flex-1 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border ${orderType === type ? 'bg-accent border-accent text-white shadow-sm' : ' bg-surface border-line text-muted'}`}
                       >
-                        {type === 'Dine-in' ? '🍽️ Dine-in (Makan di Tempat)' : '🥡 Takeaway (Bungkus)'}
+                        {type === 'Dine-in' ? ' Dine-in (Makan di Tempat)' : ' Takeaway (Bungkus)'}
                       </button>
                     ))}
                   </div>
@@ -2550,7 +2548,7 @@ export default function POSPage() {
                       onClick={handleOpenSplitBillFromPaymentModal}
                       className="text-xs font-bold text-accent-text hover:text-accent-text hover:underline flex items-center gap-1"
                     >
-                      <span>✂️ Split Bill / Cicil</span>
+                      <span> Split Bill / Cicil</span>
                     </button>
                   </div>
                 </div>
@@ -2664,9 +2662,8 @@ export default function POSPage() {
                 <button 
                   type="button"
                   onClick={() => processPayment(true, 'unpaid')} 
-                  className="flex-1 py-3 rounded-xl bg-line hover:bg-slate-600 text-white font-bold transition-all shadow-sm text-xs active:scale-95"
-                >
-                  📥 Open Bill
+                  className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 text-white font-bold transition-all shadow-sm text-xs active:scale-95"
+                > Open Bill
                 </button>
               )}
               <button 
@@ -2934,8 +2931,7 @@ export default function POSPage() {
                   ? 'bg-accent text-white shadow-sm' 
                   : 'text-muted hover:text-fg'
               }`}
-            >
-              🍽️ Meja
+            > Meja
             </button>
           )}
           <button 
@@ -2946,8 +2942,7 @@ export default function POSPage() {
                 ? 'bg-accent text-white shadow-sm' 
                 : 'text-muted hover:text-fg'
             }`}
-          >
-            ☕ {isTableManagementEnabled(storeSettings) ? 'Menu' : 'Kasir / Katalog'}
+          ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8h14v10H3zM17 9h4v5h-4M2 21h17M6 2v3M11 2v3" /></svg>{isTableManagementEnabled(storeSettings) ? 'Menu' : 'Kasir / Katalog'}
           </button>
         </div>
 
@@ -2982,7 +2977,7 @@ export default function POSPage() {
               className="flex items-center gap-1.5 bg-accent/20 border border-accent/40 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold text-accent-text hover:bg-accent/30 shadow-sm transition-transform active:scale-95 shrink-0"
               title="Buka Shift Kasir"
             >
-              <span>💼</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 12v3h4v-3" /></svg></span>
               <span className="hidden sm:inline">Buka Shift</span>
             </button>
           )}
@@ -2992,7 +2987,7 @@ export default function POSPage() {
             className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-surface border border-line text-xs font-bold text-fg hover:border-accent hover:text-accent-text transition-colors flex items-center gap-1.5"
             title="Halaman Admin"
           >
-            <span>⚙️</span>
+            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3l1 4 4 1 2 4-3 3v4l-4 2-3-3-4 1-3-4 2-3-1-4 4-2zM14 12a2 2 0 1 0-4 0 2 2 0 0 0 4 0" /></svg></span>
             <span className="hidden sm:inline">Admin</span>
           </Link>
         </div>
@@ -3013,7 +3008,7 @@ export default function POSPage() {
                   : 'text-muted hover:text-fg hover:bg-surface'
               }`}
             >
-              <span className="text-sm">☕</span>
+              <span className="text-sm"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8h14v10H3zM17 9h4v5h-4M2 21h17M6 2v3M11 2v3" /></svg></span>
               <span>Kasir & Menu</span>
             </button>
             {isTableManagementEnabled(storeSettings) && (
@@ -3026,7 +3021,7 @@ export default function POSPage() {
                     : 'text-muted hover:text-fg hover:bg-surface'
                 }`}
               >
-                <span className="text-sm">🍽️</span>
+                <span className="text-sm"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12h13M10 8c2-4 8-4 10 0l1 4H8zM2 3v6M5 3v6M2 6h3M3.5 9v12M8 16h13" /></svg></span>
                 <span>Kelola Meja</span>
               </button>
             )}
@@ -3034,28 +3029,28 @@ export default function POSPage() {
               href={accessStatus.isDemo ? "/admin/transaksi?demo=true" : "/admin/transaksi"}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
             >
-              <span className="text-sm">🧾</span>
+              <span className="text-sm"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
               <span>Riwayat Transaksi</span>
             </Link>
             <Link
               href={accessStatus.isDemo ? "/admin/shift?demo=true" : "/admin/shift"}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
             >
-              <span className="text-sm">💼</span>
+              <span className="text-sm"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 12v3h4v-3" /></svg></span>
               <span>Shift & Kas Laci</span>
             </Link>
             <Link
               href={accessStatus.isDemo ? "/admin/menu?demo=true" : "/admin/menu"}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
             >
-              <span className="text-sm">📦</span>
+              <span className="text-sm"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 12v3h4v-3" /></svg></span>
               <span>Katalog & Stok</span>
             </Link>
             <Link
               href={accessStatus.isDemo ? "/admin/pengaturan?demo=true" : "/admin/pengaturan"}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-fg hover:bg-surface transition-all"
             >
-              <span className="text-sm">⚙️</span>
+              <span className="text-sm"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3l1 4 4 1 2 4-3 3v4l-4 2-3-3-4 1-3-4 2-3-1-4 4-2zM14 12a2 2 0 1 0-4 0 2 2 0 0 0 4 0" /></svg></span>
               <span>Pengaturan POS</span>
             </Link>
           </div>
@@ -3147,8 +3142,7 @@ export default function POSPage() {
                             handleClearTable(table.id);
                           }}
                           className="w-full py-1 text-[11px] font-bold bg-accent hover:bg-accent-hover text-white rounded-lg transition-transform active:scale-95 shadow-sm"
-                        >
-                          🔄 Lepas Meja
+                        > Lepas Meja
                         </button>
                       ) : (
                         <div className="h-5" />
@@ -3547,7 +3541,7 @@ export default function POSPage() {
                       key={amt}
                       type="button"
                       onClick={() => setShiftStartingCash(amt.toString())}
-                      className="py-1 px-2 text-xs bg-line hover:bg-slate-600 rounded-lg text-fg font-semibold transition-colors"
+                      className="py-1 px-2 text-xs bg-slate-100 text-slate-800 hover:bg-slate-200 rounded-lg text-fg font-semibold transition-colors"
                     >
                       {amt / 1000}rb
                     </button>
@@ -3594,15 +3588,13 @@ export default function POSPage() {
                   type="button"
                   onClick={() => setCashMovementType('out')}
                   className={'flex-1 py-2 rounded-lg text-xs font-bold transition-all ' + (cashMovementType === 'out' ? 'bg-rose-600 text-white shadow' : ' text-slate-300')}
-                >
-                  🔴 Kas Keluar (Biaya)
+                > Kas Keluar (Biaya)
                 </button>
                 <button
                   type="button"
                   onClick={() => setCashMovementType('in')}
                   className={'flex-1 py-2 rounded-lg text-xs font-bold transition-all ' + (cashMovementType === 'in' ? 'bg-accent text-white shadow' : ' text-slate-300')}
-                >
-                  🔵 Kas Masuk (+)
+                > Kas Masuk (+)
                 </button>
               </div>
 
@@ -4016,9 +4008,9 @@ export default function POSPage() {
                     const zReceiptText = generateZReportReceipt(blindCloseResult, storeSettings);
                     printReceiptText(zReceiptText, 'Z_Report_Tutup_Shift');
                   }}
-                  className="flex-1 py-3 bg-line hover:bg-slate-600 text-fg rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow"
+                  className="flex-1 py-3 bg-slate-100 text-slate-800 hover:bg-slate-200 text-fg rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow"
                 >
-                  <span>🖨️ Cetak Z-Report</span>
+                  <span> Cetak Z-Report</span>
                 </button>
                 <button
                   type="button"
@@ -4033,7 +4025,7 @@ export default function POSPage() {
                 onClick={handleExportBackupFromPos}
                 className="w-full py-2.5 bg-accent/40 hover:bg-accent-hover/40 text-accent-text border border-accent/40 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
               >
-                <span>💾 Cadangkan Data Kasir (Unduh JSON)</span>
+                <span> Cadangkan Data Kasir (Unduh JSON)</span>
               </button>
               {backupSuccessNotice && (
                 <p className="text-[11px] font-bold text-center text-accent-text animate-in fade-in">
@@ -4108,22 +4100,19 @@ export default function POSPage() {
                   type="button"
                   onClick={() => setSplitTab('item')}
                   className={'flex-1 py-2 rounded-xl text-xs font-bold transition-all ' + (splitTab === 'item' ? ' bg-card text-amber-400 shadow-sm' : 'text-muted hover:text-fg')}
-                >
-                  🍱 Split per Menu
+                > Split per Menu
                 </button>
                 <button
                   type="button"
                   onClick={() => setSplitTab('equal')}
                   className={'flex-1 py-2 rounded-xl text-xs font-bold transition-all ' + (splitTab === 'equal' ? ' bg-card text-amber-400 shadow-sm' : 'text-muted hover:text-fg')}
-                >
-                  👥 Bagi Rata
+                > Bagi Rata
                 </button>
                 <button
                   type="button"
                   onClick={() => setSplitTab('partial')}
                   className={'flex-1 py-2 rounded-xl text-xs font-bold transition-all ' + (splitTab === 'partial' ? ' bg-card text-amber-400 shadow-sm' : 'text-muted hover:text-fg')}
-                >
-                  💵 Cicil / Parsial
+                > Cicil / Parsial
                 </button>
               </div>
 
@@ -4369,15 +4358,13 @@ export default function POSPage() {
                                   printReceiptText(partialText, 'Bukti_Bayar_Parsial');
                                 }}
                                 className="px-2 py-1 bg-line hover:bg-line text-fg rounded-lg text-[10px] font-bold"
-                              >
-                                🖨️ Struk
+                              > Struk
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleRequestRefundPayment(p)}
                                 className="px-2 py-1 bg-rose-950 text-rose-400 hover:bg-rose-500/15 rounded-lg text-[10px] font-bold border border-rose-800"
-                              >
-                                ❌ Refund
+                              > Refund
                               </button>
                             </div>
                           )}
@@ -4405,7 +4392,7 @@ export default function POSPage() {
                 disabled={isSplitProcessing}
                 className="flex-[2] py-3 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-black shadow-lg shadow-accent/20 flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-50"
               >
-                {isSplitProcessing ? 'Memproses...' : '💰 Proses Pembayaran Split'}
+                {isSplitProcessing ? 'Memproses...' : ' Proses Pembayaran Split'}
               </button>
             </div>
 
@@ -4590,7 +4577,7 @@ export default function POSPage() {
                 type="button"
                 aria-label="Batal"
                 onClick={() => setUnsavedConfirm(null)}
-                className="flex-1 py-2.5 bg-line hover:bg-slate-600 text-fg rounded-xl text-xs font-bold transition-colors"
+                className="flex-1 py-2.5 bg-slate-100 text-slate-800 hover:bg-slate-200 text-fg rounded-xl text-xs font-bold transition-colors"
               >
                 Batal
               </button>

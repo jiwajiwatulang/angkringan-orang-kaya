@@ -183,7 +183,7 @@ export default function MobileHomeScreen({
             onClick={() => onNavigate("menu")}
             className="p-2.5 rounded-xl bg-card border border-line hover:border-accent active:scale-95 transition-all text-center flex flex-col items-center"
           >
-            <span className="text-base mb-1">🍽️</span>
+            <span className="text-base mb-1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12h13M10 8c2-4 8-4 10 0l1 4H8zM2 3v6M5 3v6M2 6h3M3.5 9v12M8 16h13" /></svg></span>
             <span className="text-[11px] font-bold text-fg">Menu</span>
           </button>
 
@@ -192,7 +192,7 @@ export default function MobileHomeScreen({
             onClick={() => onNavigate("meja")}
             className="p-2.5 rounded-xl bg-card border border-line hover:border-accent active:scale-95 transition-all text-center flex flex-col items-center"
           >
-            <span className="text-base mb-1">🪑</span>
+            <span className="text-base mb-1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3h14v10H5zM3 13h18v4H3zM5 17v5M19 17v5" /></svg></span>
             <span className="text-[11px] font-bold text-fg">Meja</span>
           </button>
 
@@ -201,7 +201,7 @@ export default function MobileHomeScreen({
             onClick={() => onNavigate("nota")}
             className="p-2.5 rounded-xl bg-card border border-line hover:border-accent active:scale-95 transition-all text-center flex flex-col items-center"
           >
-            <span className="text-base mb-1">🧾</span>
+            <span className="text-base mb-1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
             <span className="text-[11px] font-bold text-fg">Nota</span>
           </button>
 
@@ -210,7 +210,7 @@ export default function MobileHomeScreen({
             onClick={() => onNavigate("lainnya")}
             className="p-2.5 rounded-xl bg-card border border-line hover:border-accent active:scale-95 transition-all text-center flex flex-col items-center"
           >
-            <span className="text-base mb-1">⚙️</span>
+            <span className="text-base mb-1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3l1 4 4 1 2 4-3 3v4l-4 2-3-3-4 1-3-4 2-3-1-4 4-2zM14 12a2 2 0 1 0-4 0 2 2 0 0 0 4 0" /></svg></span>
             <span className="text-[11px] font-bold text-fg">Lainnya</span>
           </button>
         </div>

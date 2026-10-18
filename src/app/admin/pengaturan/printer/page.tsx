@@ -188,7 +188,7 @@ export default function PengaturanPrinterPage() {
             onClick={() => setIsPreviewOpen(true)}
             className="px-3.5 py-2.5 bg-card hover:bg-line text-fg font-bold text-xs rounded-xl border border-line transition-all flex items-center gap-1.5"
           >
-            <span>👁️</span>
+            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12c5-10 15-10 20 0-5 10-15 10-20 0M15 12a3 3 0 1 0-6 0 3 3 0 0 0 6 0" /></svg></span>
             <span>Pratinjau Struk</span>
           </button>
 
@@ -198,7 +198,7 @@ export default function PengaturanPrinterPage() {
             disabled={isPrintingTest}
             className="px-4 py-2.5 bg-accent hover:bg-accent-hover text-white font-black text-xs rounded-xl shadow-lg shadow-accent/20 active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
           >
-            <span>🖨️</span>
+            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 8V3h10v5M7 17H3V8h18v9h-4M7 14h10v7H7zM17 11h1" /></svg></span>
             <span>{isPrintingTest ? "Mencetak Dokumen..." : "Tes Cetak Struk"}</span>
           </button>
         </div>
@@ -244,7 +244,7 @@ export default function PengaturanPrinterPage() {
               <button
                 type="button"
                 onClick={handleDisconnectPrinter}
-                className="px-3 py-2 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-800/50 rounded-xl text-xs font-bold transition-all"
+                className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-800/50 rounded-xl text-xs font-bold transition-all"
               >
                 Putuskan Printer
               </button>
@@ -256,7 +256,7 @@ export default function PengaturanPrinterPage() {
               disabled={isScanning}
               className="px-4 py-2.5 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 shrink-0 disabled:opacity-50 border border-line"
             >
-              <span>🔍</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 15l6 6M17 10a7 7 0 1 0-14 0 7 7 0 0 0 14 0" /></svg></span>
               <span>{isScanning ? "Memindai..." : "Pindai Bluetooth"}</span>
             </button>
           </div>
@@ -562,7 +562,7 @@ export default function PengaturanPrinterPage() {
                 disabled={isPrintingTest}
                 className="px-4 py-2 bg-accent hover:bg-accent-hover text-white text-xs font-black rounded-xl transition-all shadow-md shadow-accent/20 flex items-center gap-1.5 disabled:opacity-50"
               >
-                <span>🖨️</span>
+                <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 8V3h10v5M7 17H3V8h18v9h-4M7 14h10v7H7zM17 11h1" /></svg></span>
                 <span>{isPrintingTest ? "Mencetak..." : "Cetak Dokumen Ini Sekarang"}</span>
               </button>
             </div>

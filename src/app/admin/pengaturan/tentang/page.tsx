@@ -186,7 +186,7 @@ export default function PengaturanTentangPage() {
               disabled={isPreparingOffline}
               className="px-4 py-2.5 bg-accent hover:bg-accent-hover text-white text-xs font-bold rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50 shrink-0"
             >
-              {isPreparingOffline ? "Menyiapkan..." : "⚡ Siapkan Kasir Tanpa Internet"}
+              {isPreparingOffline ? "Menyiapkan..." : " Siapkan Kasir Tanpa Internet"}
             </button>
           </div>
         </div>
@@ -201,7 +201,7 @@ export default function PengaturanTentangPage() {
           className="p-4 rounded-2xl bg-surface border border-line hover:border-emerald-500 transition-colors flex items-center justify-between group"
         >
           <div className="flex items-center gap-3">
-            <span className="text-2xl">💬</span>
+            <span className="text-2xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg></span>
             <div>
               <strong className="text-fg block group-hover:text-emerald-500 transition-colors">
                 Bantuan WhatsApp
@@ -217,7 +217,7 @@ export default function PengaturanTentangPage() {
           className="p-4 rounded-2xl bg-surface border border-line hover:border-accent transition-colors flex items-center justify-between group"
         >
           <div className="flex items-center gap-3">
-            <span className="text-2xl">📖</span>
+            <span className="text-2xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v16M12 5C9 2 4 3 2 4v15c4-1 7-1 10 2 3-3 6-3 10-2V4c-2-1-7-2-10 1" /></svg></span>
             <div>
               <strong className="text-fg block group-hover:text-accent transition-colors">
                 Buku Panduan

@@ -666,7 +666,7 @@ export default function AdminDashboardPage() {
                 onClick={handleOpenWhatsAppUrl}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5"
               >
-                <span>💬</span>
+                <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg></span>
                 <span>Buka WhatsApp</span>
               </button>
             </div>

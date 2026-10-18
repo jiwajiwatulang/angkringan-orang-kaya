@@ -165,7 +165,7 @@ export default function MobileCartSheet({
                     : "bg-card border border-line text-muted"
                 }`}
               >
-                {type === "Dine-in" ? "🍽️ Dine-in (Di Tempat)" : "🥡 Takeaway (Bungkus)"}
+                {type === "Dine-in" ? " Dine-in (Di Tempat)" : " Takeaway (Bungkus)"}
               </button>
             ))}
           </div>
@@ -263,9 +263,7 @@ export default function MobileCartSheet({
                       onClick={() => onRemoveItem(item)}
                       className="w-7 h-7 rounded-lg bg-card border border-line text-rose-400 hover:text-rose-300 font-bold text-xs flex items-center justify-center active:scale-90 ml-1"
                       title="Hapus Menu"
-                    >
-                      🗑️
-                    </button>
+                    ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg></button>
                   </div>
                 </div>
               );
@@ -309,7 +307,7 @@ export default function MobileCartSheet({
                 onClick={onOpenDiscountModal}
                 className="py-2.5 rounded-xl bg-card border border-line text-xs font-bold text-fg hover:border-slate-500 active:scale-95 transition-all text-center flex items-center justify-center gap-1"
               >
-                <span>🏷️</span>
+                <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
                 <span>{discountAmount > 0 ? "Ubah Diskon" : "Tambah Diskon"}</span>
               </button>
 
@@ -319,7 +317,7 @@ export default function MobileCartSheet({
                   onClick={onSaveToTable}
                   className="py-2.5 rounded-xl bg-surface border border-line text-xs font-bold text-accent-text hover:bg-line active:scale-95 transition-all text-center flex items-center justify-center gap-1"
                 >
-                  <span>💾</span>
+                  <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span>
                   <span>Simpan ke Meja</span>
                 </button>
               ) : (

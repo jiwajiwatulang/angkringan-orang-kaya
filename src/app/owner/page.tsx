@@ -799,9 +799,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
             disabled={isLoadingOrders}
             className="p-2 bg-card hover:bg-line text-xs font-bold text-fg rounded-xl border border-line transition-colors"
             title="Segarkan Data"
-          >
-            🔄
-          </button>
+          ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></button>
           <button
             type="button"
             onClick={handleLogout}
@@ -1058,8 +1056,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
-                        >
-                          💬 {o.whatsapp}
+                        ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg>{o.whatsapp}
                         </a>
                       </div>
                     </div>
@@ -1138,7 +1135,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                                 onClick={() => handleSyncMidtrans(o.orderId)}
                                 className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
                               >
-                                <span>🔄</span>
+                                <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
                                 <span>Cek Status Midtrans Live</span>
                               </button>
                             </div>
@@ -1156,7 +1153,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                             onClick={() => handleCopyLicenseMessage(o)}
                             className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 text-purple-700 dark:text-purple-300 text-xs font-bold border border-purple-300 dark:border-purple-800 transition-colors flex items-center gap-1.5"
                           >
-                            <span>📋</span>
+                            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
                             <span>Salin Pesan Lisensi</span>
                           </button>
                           <a
@@ -1165,7 +1162,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                             rel="noopener noreferrer"
                             className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
                           >
-                            <span>💬</span>
+                            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg></span>
                             <span>Kirim via WhatsApp</span>
                           </a>
                         </>
@@ -1401,15 +1398,13 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                                 type="button"
                                 onClick={() => handleApproveBeta(b.registrationId || String(b.id))}
                                 className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors shadow-sm"
-                              >
-                                ✅ Setujui & Terbitkan Trial
+                              > Setujui & Terbitkan Trial
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleRejectBeta(b.registrationId || String(b.id))}
                                 className="px-3 py-1.5 rounded-xl bg-surface hover:bg-rose-500/15 text-rose-400 border border-line hover:border-rose-500/30 text-xs font-bold transition-colors"
-                              >
-                                ❌ Tolak
+                              > Tolak
                               </button>
                             </>
                           )}
@@ -1420,7 +1415,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                               onClick={() => handleCopyBetaInvite(b)}
                               className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5"
                             >
-                              <span>📲</span> Salin & Buka WA
+                              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2h12v20H6zM10 18h4" /></svg></span> Salin & Buka WA
                             </button>
                           )}
 
@@ -1433,8 +1428,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                                   setExtendDays(7);
                                 }}
                                 className="px-3 py-1.5 rounded-xl bg-surface hover:bg-card text-muted hover:text-fg border border-line text-xs font-bold transition-colors"
-                              >
-                                ⏳ Perpanjang Trial
+                              > Perpanjang Trial
                               </button>
 
                               {b.boundDeviceId && (
@@ -1442,8 +1436,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                                   type="button"
                                   onClick={() => handleUnbindBeta(b.registrationId || String(b.id))}
                                   className="px-3 py-1.5 rounded-xl bg-surface hover:bg-amber-500/15 text-amber-500 border border-line hover:border-amber-500/30 text-xs font-bold transition-colors"
-                                >
-                                  📱 Lepas Perangkat
+                                > Lepas Perangkat
                                 </button>
                               )}
 
@@ -1453,7 +1446,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                                   onClick={() => handleConvertBetaToPaid(b.registrationId || String(b.id))}
                                   className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
                                 >
-                                  <span>💎</span> Konversi Berbayar (Rp50rb)
+                                  <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 10-13h-7z" /></svg></span> Konversi Berbayar (Rp50rb)
                                 </button>
                               )}
 
@@ -1461,8 +1454,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                                 type="button"
                                 onClick={() => handleRevokeBeta(b.registrationId || String(b.id))}
                                 className="px-3 py-1.5 rounded-xl bg-surface hover:bg-rose-500/15 text-rose-500 border border-line hover:border-rose-500/30 text-xs font-bold transition-colors"
-                              >
-                                🚫 Cabut Akses
+                              > Cabut Akses
                               </button>
                             </>
                           )}
@@ -1588,8 +1580,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
-                            >
-                              💬 {o.whatsapp}
+                            ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg>{o.whatsapp}
                             </a>
                           </td>
                           <td className="py-3 px-3 font-mono font-bold text-fg select-all">
@@ -1865,7 +1856,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                           </div>
 
                           <div className="text-xs text-muted flex flex-wrap gap-x-4 gap-y-1 pt-0.5">
-                            <span>WA: <a href={`https://wa.me/62${t.whatsapp.replace(/^0/, "")}`} target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">💬 {t.whatsapp}</a></span>
+                            <span>WA: <a href={`https://wa.me/62${t.whatsapp.replace(/^0/, "")}`} target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg>{t.whatsapp}</a></span>
                             {t.expiresAt && <span>Kedaluwarsa: {new Date(t.expiresAt).toLocaleDateString("id-ID")}</span>}
                             <span>Terbit: {new Date(t.createdAt).toLocaleDateString("id-ID")}</span>
                             {t.notes && <span>Catatan: <em>{t.notes}</em></span>}
@@ -2067,7 +2058,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                 onClick={() => setShowDevDrawer(!showDevDrawer)}
                 className="w-full p-4 bg-card/60 hover:bg-card flex items-center justify-between text-xs font-bold text-muted hover:text-fg transition-colors"
               >
-                <span>🔧 Developer Mode & Status Arsitektur Cloudflare D1 (Khusus Pemeliharaan)</span>
+                <span> Developer Mode & Status Arsitektur Cloudflare D1 (Khusus Pemeliharaan)</span>
                 <span>{showDevDrawer ? "▲ Tutup" : "▼ Buka"}</span>
               </button>
 

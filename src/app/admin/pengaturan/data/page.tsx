@@ -334,7 +334,7 @@ export default function PengaturanDataPage() {
           disabled={isExporting}
           className="px-4 py-2.5 bg-accent hover:bg-accent-hover active:scale-95 text-white text-xs font-black rounded-xl shadow-md transition-all shrink-0 flex items-center justify-center gap-1.5 disabled:opacity-50"
         >
-          <span>📥</span>
+          <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span>
           <span>{isExporting ? "Menyiapkan File..." : "Cadangkan Sekarang"}</span>
         </button>
       </div>
@@ -386,7 +386,7 @@ export default function PengaturanDataPage() {
               disabled={isExporting}
               className="w-full py-3 bg-accent hover:bg-accent-hover text-white text-xs font-black rounded-2xl shadow-md shadow-accent/20 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
             >
-              <span>💾</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span>
               <span>{isExporting ? "Menyiapkan File..." : "Cadangkan Sekarang"}</span>
             </button>
             <p className="text-[10px] text-muted text-center leading-tight">
@@ -447,7 +447,7 @@ export default function PengaturanDataPage() {
               onClick={() => setIsMigrateModalOpen(true)}
               className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white text-xs font-black rounded-2xl shadow-md shadow-purple-600/20 transition-all flex items-center justify-center gap-2 active:scale-95"
             >
-              <span>✨</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 10-13h-7z" /></svg></span>
               <span>Mulai Pindah Perangkat</span>
             </button>
             <p className="text-[10px] text-muted text-center leading-tight">
@@ -635,7 +635,7 @@ export default function PengaturanDataPage() {
                     disabled={isExporting}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent/20 hover:bg-accent/30 text-accent-text font-bold text-xs mt-1 transition-colors"
                   >
-                    <span>📥</span>
+                    <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span>
                     <span>{isExporting ? "Menyiapkan File..." : "Unduh File Cadangan Sekarang"}</span>
                   </button>
                 </div>

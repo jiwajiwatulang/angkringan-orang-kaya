@@ -232,7 +232,7 @@ export default function AdminShiftPage() {
                           onClick={() => handlePrintZReport(shift)}
                           className="px-3 py-1.5 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors flex items-center gap-1"
                         >
-                          <span>🖨️</span>
+                          <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 8V3h10v5M7 17H3V8h18v9h-4M7 14h10v7H7zM17 11h1" /></svg></span>
                           <span>Cetak Z-Report</span>
                         </button>
                       </div>

@@ -681,7 +681,7 @@ export default function AdminMenuPage() {
             className="px-3.5 py-2.5 bg-card hover:bg-line active:scale-95 text-fg font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-sm"
             title="Download seluruh daftar menu dalam file Excel"
           >
-            <span>📥</span>
+            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span>
             <span>Export Excel</span>
           </button>
 
@@ -693,10 +693,10 @@ export default function AdminMenuPage() {
               setImportResult(null);
               setIsImportOpen(true);
             }}
-            className="px-3.5 py-2.5 bg-accent/60 hover:bg-accent-hover/60 active:scale-95 text-accent-text font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all border border-accent/40"
+            className="px-3.5 py-2.5 bg-blue-50 hover:bg-blue-100 active:scale-95 text-accent-text font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all border border-blue-200"
             title="Import menu secara massal dari Excel atau CSV"
           >
-            <span>📊</span>
+            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16M7 16v-4M12 16V5M17 16V9" /></svg></span>
             <span>Import Excel / CSV</span>
           </button>
 
@@ -823,7 +823,7 @@ export default function AdminMenuPage() {
                     viewMode === "table" ? "bg-accent text-white shadow-sm" : "text-muted hover:text-fg"
                   }`}
                 >
-                  <span>📋</span>
+                  <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
                   <span>Tabel</span>
                 </button>
                 <button
@@ -833,7 +833,7 @@ export default function AdminMenuPage() {
                     viewMode === "grid" ? "bg-accent text-white shadow-sm" : "text-muted hover:text-fg"
                   }`}
                 >
-                  <span>🔲</span>
+                  <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" /></svg></span>
                   <span>Grid</span>
                 </button>
               </div>
@@ -957,7 +957,7 @@ export default function AdminMenuPage() {
                               }`}
                               title={!menu.isSoldOut ? "Menu sedang tersedia (bisa dipesan)" : "Ubah status ke Tersedia"}
                             >
-                              <span>🟢 Tersedia</span>
+                              <span> Tersedia</span>
                             </button>
                             <button
                               type="button"
@@ -970,7 +970,7 @@ export default function AdminMenuPage() {
                               }`}
                               title={menu.isSoldOut ? "Menu sedang tidak tersedia (habis)" : "Ubah status ke Tidak Tersedia"}
                             >
-                              <span>🔴 Habis</span>
+                              <span> Habis</span>
                             </button>
                           </div>
                         </td>
@@ -981,17 +981,13 @@ export default function AdminMenuPage() {
                               onClick={() => handleOpenEdit(menu)}
                               className="w-8 h-8 rounded-xl bg-card hover:bg-line text-slate-300 flex items-center justify-center text-xs font-bold transition-colors"
                               title="Edit Menu"
-                            >
-                              ✏️
-                            </button>
+                            ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20l4-1 12-12-3-3L5 16zM14 7l3 3" /></svg></button>
                             <button
                               type="button"
                               onClick={() => setMenuToDelete(menu)}
-                              className="w-8 h-8 rounded-xl bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 flex items-center justify-center text-xs font-bold transition-colors"
+                              className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 flex items-center justify-center text-xs font-bold transition-colors"
                               title="Hapus Menu"
-                            >
-                              🗑️
-                            </button>
+                            ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg></button>
                           </div>
                         </td>
                       </tr>
@@ -1067,7 +1063,7 @@ export default function AdminMenuPage() {
                           }`}
                           title={!menu.isSoldOut ? "Menu sedang tersedia" : "Ubah status ke Tersedia"}
                         >
-                          <span>🟢 Tersedia</span>
+                          <span> Tersedia</span>
                         </button>
                         <button
                           type="button"
@@ -1080,7 +1076,7 @@ export default function AdminMenuPage() {
                           }`}
                           title={menu.isSoldOut ? "Menu sedang tidak tersedia (habis)" : "Ubah status ke Tidak Tersedia"}
                         >
-                          <span>🔴 Habis</span>
+                          <span> Habis</span>
                         </button>
                       </div>
 
@@ -1090,17 +1086,13 @@ export default function AdminMenuPage() {
                           onClick={() => handleOpenEdit(menu)}
                           className="w-8 h-8 rounded-xl bg-card hover:bg-line text-slate-300 flex items-center justify-center text-xs font-bold transition-colors"
                           title="Edit Menu"
-                        >
-                          ✏️
-                        </button>
+                        ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20l4-1 12-12-3-3L5 16zM14 7l3 3" /></svg></button>
                         <button
                           type="button"
                           onClick={() => setMenuToDelete(menu)}
-                          className="w-8 h-8 rounded-xl bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 flex items-center justify-center text-xs font-bold transition-colors"
+                          className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 flex items-center justify-center text-xs font-bold transition-colors"
                           title="Hapus Menu"
-                        >
-                          🗑️
-                        </button>
+                        ><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg></button>
                       </div>
                     </div>
                   </div>
@@ -1188,9 +1180,9 @@ export default function AdminMenuPage() {
                 setBulkPriceValue("");
                 setIsBulkPriceOpen(true);
               }}
-              className="px-2.5 py-1.5 bg-line hover:bg-slate-600 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
+              className="px-2.5 py-1.5 bg-slate-100 text-slate-800 hover:bg-slate-200 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
             >
-              <span>💲</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 5h20v14H2zM2 9h20M6 15h4" /></svg></span>
               <span>Ubah Harga</span>
             </button>
 
@@ -1203,9 +1195,9 @@ export default function AdminMenuPage() {
                 setCustomBulkCategory("");
                 setIsBulkCategoryOpen(true);
               }}
-              className="px-2.5 py-1.5 bg-line hover:bg-slate-600 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
+              className="px-2.5 py-1.5 bg-slate-100 text-slate-800 hover:bg-slate-200 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
             >
-              <span>🏷️</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
               <span>Ubah Kategori</span>
             </button>
 
@@ -1213,9 +1205,9 @@ export default function AdminMenuPage() {
             <button
               type="button"
               onClick={() => handleBulkToggleStock(false)}
-              className="px-2.5 py-1.5 bg-accent/80 hover:bg-accent-hover text-blue-200 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
+              className="px-2.5 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
             >
-              <span>🟢</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12a8 8 0 1 0-16 0 8 8 0 0 0 16 0M8 12l3 3 5-6" /></svg></span>
               <span>Tersedia</span>
             </button>
 
@@ -1225,7 +1217,7 @@ export default function AdminMenuPage() {
               onClick={() => handleBulkToggleStock(true)}
               className="px-2.5 py-1.5 bg-amber-800/80 hover:bg-amber-700 text-amber-200 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
             >
-              <span>🔴</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12a8 8 0 1 0-16 0 8 8 0 0 0 16 0M8 12l3 3 5-6" /></svg></span>
               <span>Habis</span>
             </button>
 
@@ -1233,9 +1225,9 @@ export default function AdminMenuPage() {
             <button
               type="button"
               onClick={() => setIsBulkDeleteOpen(true)}
-              className="px-2.5 py-1.5 bg-rose-800/80 hover:bg-rose-700 text-rose-200 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all ml-auto"
+              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all ml-auto"
             >
-              <span>🗑️</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg></span>
               <span>Hapus</span>
             </button>
           </div>
@@ -1492,15 +1484,15 @@ export default function AdminMenuPage() {
                     onClick={() => downloadMenuTemplate("xlsx")}
                     className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                   >
-                    <span>📥</span>
+                    <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span>
                     <span>Download Template Excel (.xlsx)</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => downloadMenuTemplate("csv")}
-                    className="px-3 py-1.5 bg-line hover:bg-slate-600 text-fg rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
+                    className="px-3 py-1.5 bg-slate-100 text-slate-800 hover:bg-slate-200 text-fg rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
                   >
-                    <span>📄</span>
+                    <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
                     <span>Download Template CSV</span>
                   </button>
                 </div>
@@ -1840,7 +1832,7 @@ export default function AdminMenuPage() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs flex items-center gap-1.5">
-                        <span>🟢</span>
+                        <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12a8 8 0 1 0-16 0 8 8 0 0 0 16 0M8 12l3 3 5-6" /></svg></span>
                         <span>Tersedia</span>
                       </span>
                       {!formIsSoldOut && (
@@ -1860,13 +1852,13 @@ export default function AdminMenuPage() {
                     onClick={() => setFormIsSoldOut(true)}
                     className={`p-3 rounded-2xl border text-left transition-all ${
                       formIsSoldOut
-                        ? "bg-rose-950/40 border-rose-500 ring-2 ring-rose-500/30 text-rose-300 shadow-md font-black"
+                        ? "bg-rose-50 border-rose-500 ring-2 ring-rose-500/30 text-rose-700 shadow-md font-black"
                         : "bg-card border-line text-muted hover:text-fg hover:border-slate-600"
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs flex items-center gap-1.5">
-                        <span>🔴</span>
+                        <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12a8 8 0 1 0-16 0 8 8 0 0 0 16 0M8 12l3 3 5-6" /></svg></span>
                         <span>Tidak Tersedia</span>
                       </span>
                       {formIsSoldOut && (
@@ -1927,7 +1919,7 @@ export default function AdminMenuPage() {
                               : "bg-surface border-line text-muted hover:text-fg"
                           }`}
                         >
-                          <span>🌶️</span>
+                          <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12h13M10 8c2-4 8-4 10 0l1 4H8zM2 3v6M5 3v6M2 6h3M3.5 9v12M8 16h13" /></svg></span>
                           <span>Tingkat Pedas</span>
                         </button>
 
@@ -1940,7 +1932,7 @@ export default function AdminMenuPage() {
                               : "bg-surface border-line text-muted hover:text-fg"
                           }`}
                         >
-                          <span>🥗</span>
+                          <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12h13M10 8c2-4 8-4 10 0l1 4H8zM2 3v6M5 3v6M2 6h3M3.5 9v12M8 16h13" /></svg></span>
                           <span>Tambah Lalapan (+2k)</span>
                         </button>
 
@@ -1953,7 +1945,7 @@ export default function AdminMenuPage() {
                               : "bg-surface border-line text-muted hover:text-fg"
                           }`}
                         >
-                          <span>🍯</span>
+                          <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12h13M10 8c2-4 8-4 10 0l1 4H8zM2 3v6M5 3v6M2 6h3M3.5 9v12M8 16h13" /></svg></span>
                           <span>Tingkat Manis</span>
                         </button>
 
@@ -1966,7 +1958,7 @@ export default function AdminMenuPage() {
                               : "bg-surface border-line text-muted hover:text-fg"
                           }`}
                         >
-                          <span>🧊</span>
+                          <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12h13M10 8c2-4 8-4 10 0l1 4H8zM2 3v6M5 3v6M2 6h3M3.5 9v12M8 16h13" /></svg></span>
                           <span>Es / Hangat</span>
                         </button>
                       </div>
@@ -1998,10 +1990,9 @@ export default function AdminMenuPage() {
                               <button
                                 type="button"
                                 onClick={() => handleRemoveGroup(gIdx)}
-                                className="px-2.5 py-1.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/50 text-rose-400 text-xs font-bold transition-colors shrink-0"
+                                className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-colors shrink-0"
                                 title="Hapus grup pilihan ini"
-                              >
-                                🗑️ Hapus
+                              > Hapus
                               </button>
                             </div>
 
@@ -2128,7 +2119,7 @@ export default function AdminMenuPage() {
                       onClick={handleAddCustomGroup}
                       className="w-full py-2.5 bg-card hover:bg-line border border-dashed border-line text-xs font-bold text-fg rounded-2xl transition-all flex items-center justify-center gap-1.5"
                     >
-                      <span>➕</span>
+                      <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18M3 12h18" /></svg></span>
                       <span>Buat Grup Pilihan Baru (Kustom)</span>
                     </button>
                   </div>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import AntiGravityGalaxy from "@/components/AntiGravityGalaxy";
 import { 
   CustomerOrder, 
   submitBuyerOrder, 
@@ -561,7 +562,7 @@ export default function SakuNotaLandingPage() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
                   >
-                    <span className="text-base">⚡</span>
+                    <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 10-13h-7z" /></svg></span>
                     <span className="text-[11px] font-extrabold">Fitur</span>
                   </a>
                   <a 
@@ -569,7 +570,7 @@ export default function SakuNotaLandingPage() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
                   >
-                    <span className="text-base">🏪</span>
+                    <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" /></svg></span>
                     <span className="text-[11px] font-extrabold">Usaha</span>
                   </a>
                   <a 
@@ -577,7 +578,7 @@ export default function SakuNotaLandingPage() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
                   >
-                    <span className="text-base">🏷️</span>
+                    <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
                     <span className="text-[11px] font-extrabold">Harga</span>
                   </a>
                   <Link 
@@ -585,7 +586,7 @@ export default function SakuNotaLandingPage() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
                   >
-                    <span className="text-base">📖</span>
+                    <span className="text-base"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v16M12 5C9 2 4 3 2 4v15c4-1 7-1 10 2 3-3 6-3 10-2V4c-2-1-7-2-10 1" /></svg></span>
                     <span className="text-[11px] font-extrabold">Panduan</span>
                   </Link>
                 </div>
@@ -645,7 +646,7 @@ export default function SakuNotaLandingPage() {
       {/* 2. Hero Section with Galaxy Background (Without "Anti-Gravity Offline Engine" text) */}
       <section className="relative pt-14 pb-16 px-4 sm:px-8 overflow-hidden bg-white min-h-[520px] flex items-center justify-center">
         {/* Interactive Galaxy Background */}
-        <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#eaf2ff_0%,#ffffff_65%)]" />
+        <AntiGravityGalaxy />
         
         <div className="relative z-10 max-w-4xl mx-auto text-center space-y-6">
           {/* Top Pill Slogan Badge */}
@@ -1175,8 +1176,7 @@ export default function SakuNotaLandingPage() {
                     type="button"
                     onClick={() => handleOpenLicenseModal("direct_license")}
                     className="text-blue-600 hover:text-blue-800 underline font-extrabold transition-colors"
-                  >
-                    🔑 Sudah Punya Kode Lisensi? Aktifkan
+                  > Sudah Punya Kode Lisensi? Aktifkan
                   </button>
                   <button
                     type="button"
@@ -1456,8 +1456,7 @@ export default function SakuNotaLandingPage() {
               type="button"
               onClick={() => handleOpenLicenseModal("direct_license")}
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-blue-50 text-blue-700 font-extrabold text-xs border border-blue-200 shadow-xs transition-all"
-            >
-              🔑 Aktivasi Kode Lisensi / Tester
+            > Aktivasi Kode Lisensi / Tester
             </button>
           </div>
         </div>
@@ -2157,7 +2156,7 @@ export default function SakuNotaLandingPage() {
                     rel="noopener noreferrer"
                     className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
                   >
-                    <span>💬</span>
+                    <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg></span>
                     <span>Konfirmasi Cepat via WhatsApp</span>
                   </a>
                   <button
@@ -2219,8 +2218,7 @@ export default function SakuNotaLandingPage() {
                             if (chk.success && chk.order) setCreatedOrder(chk.order);
                           }}
                           className="block mx-auto mt-2 text-xs font-bold text-blue-600 underline"
-                        >
-                          🔄 Muat Ulang Lisensi
+                        > Muat Ulang Lisensi
                         </button>
                       </div>
                     )}
@@ -2238,7 +2236,7 @@ export default function SakuNotaLandingPage() {
                         }}
                         className="flex-1 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors flex items-center justify-center gap-1.5"
                       >
-                        <span>{copiedLicense ? "✓ Berhasil Disalin!" : "📋 Salin Nomor Lisensi"}</span>
+                        <span>{copiedLicense ? "✓ Berhasil Disalin!" : " Salin Nomor Lisensi"}</span>
                       </button>
                     </div>
                   </div>
@@ -2280,7 +2278,7 @@ export default function SakuNotaLandingPage() {
                       onClick={() => handleActivateOnThisDevice(createdOrder.licenseKey!)}
                       className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      <span>🚀</span>
+                      <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 10-13h-7z" /></svg></span>
                       <span>{isActivatingHere ? "Mengaktifkan Lisensi..." : "Aktifkan di Perangkat Ini"}</span>
                     </button>
                   )}
@@ -2291,14 +2289,14 @@ export default function SakuNotaLandingPage() {
                       onClick={() => setIsBuyModalOpen(false)}
                       className="py-2.5 px-3 bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 text-xs font-bold rounded-xl text-center transition-colors flex items-center justify-center gap-1.5"
                     >
-                      <span>📱</span>
+                      <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2h12v20H6zM10 18h4" /></svg></span>
                       <span>Pasang di HP</span>
                     </a>
                     <Link
                       href="/pos"
                       className="py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl text-center shadow-sm transition-all flex items-center justify-center gap-1.5"
                     >
-                      <span>🏪</span>
+                      <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" /></svg></span>
                       <span>Buka Kasir →</span>
                     </Link>
                   </div>
@@ -2307,8 +2305,7 @@ export default function SakuNotaLandingPage() {
                     href="/panduan"
                     target="_blank"
                     className="block text-center text-[11px] text-slate-600 hover:text-blue-600 font-semibold pt-1 underline"
-                  >
-                    📖 Baca Panduan Aktivasi &amp; Pemasangan di HP
+                  > Baca Panduan Aktivasi &amp; Pemasangan di HP
                   </Link>
 
                   <button
@@ -2521,7 +2518,7 @@ export default function SakuNotaLandingPage() {
                             }}
                             className="flex-1 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors flex items-center justify-center gap-1.5"
                           >
-                            <span>{copiedLicense ? "✓ Tersalin!" : "📋 Salin Lisensi"}</span>
+                            <span>{copiedLicense ? "✓ Tersalin!" : " Salin Lisensi"}</span>
                           </button>
                         </div>
 
@@ -2549,7 +2546,7 @@ export default function SakuNotaLandingPage() {
                             onClick={() => handleActivateOnThisDevice(searchResult.licenseKey!)}
                             className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
                           >
-                            <span>🚀</span>
+                            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 10-13h-7z" /></svg></span>
                             <span>{isActivatingHere ? "Mengaktifkan..." : "Aktifkan di Perangkat Ini"}</span>
                           </button>
                         )}
@@ -2559,8 +2556,7 @@ export default function SakuNotaLandingPage() {
                             href="#panduan"
                             onClick={() => setIsCheckStatusModalOpen(false)}
                             className="py-2 px-3 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-700 hover:text-slate-900 text-center transition-colors"
-                          >
-                            📱 Pasang di HP
+                          > Pasang di HP
                           </a>
                           <Link
                             href="/pos"
@@ -2603,7 +2599,7 @@ export default function SakuNotaLandingPage() {
                           }}
                           className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
                         >
-                          <span>🔄</span>
+                          <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
                           <span>{isSearchingOrder ? "Menyinkronkan..." : "Sinkronkan Status Pembayaran"}</span>
                         </button>
 
@@ -2613,7 +2609,7 @@ export default function SakuNotaLandingPage() {
                           rel="noopener noreferrer"
                           className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold rounded-xl border border-blue-200 transition-all flex items-center justify-center gap-1.5"
                         >
-                          <span>💬</span>
+                          <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v14H8l-5 4zM7 7h10M7 12h7" /></svg></span>
                           <span>Konfirmasi via WhatsApp SakuNota</span>
                         </a>
                       </div>

@@ -24,9 +24,7 @@ export default function MobileFloatingCartBar({
           className="w-full bg-accent hover:bg-accent-hover active:scale-98 text-white p-3 rounded-2xl shadow-xl shadow-accent/30 border border-accent-hover/40 flex items-center justify-between transition-all"
         >
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-sm font-black">
-              🛒
-            </div>
+            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-sm font-black"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h3l3 12h11l3-9H6M10 20h.01M18 20h.01" /></svg></div>
             <div className="text-left">
               <span className="text-xs font-black block leading-tight">
                 {itemCount} Menu Dipilih

@@ -270,7 +270,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 }}
                 className="px-4 py-2 rounded-xl bg-card border border-line text-xs font-bold text-fg hover:border-accent flex items-center gap-2 transition-all"
               >
-                <span>{codeCopied ? "✓ Berhasil Disalin" : "📋 Salin Kode"}</span>
+                <span>{codeCopied ? "✓ Berhasil Disalin" : " Salin Kode"}</span>
               </button>
             </div>
 
@@ -301,8 +301,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                   ? "bg-accent hover:bg-accent-hover text-white active:scale-95 shadow-accent/20 cursor-pointer"
                   : "bg-line text-muted cursor-not-allowed"
               }`}
-            >
-              Selesai & Buka Backoffice 🚀
+            >Selesai & Buka Backoffice 
             </button>
           </div>
         </div>
@@ -371,8 +370,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                     setAuthView("verify_recovery");
                   }}
                   className="text-xs font-bold text-accent-text hover:underline transition-colors"
-                >
-                  🔑 Lupa PIN Admin?
+                > Lupa PIN Admin?
                 </button>
               </div>
             </form>
@@ -408,8 +406,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               <button
                 type="submit"
                 className="w-full py-3 bg-accent hover:bg-accent-hover active:scale-95 text-white font-black rounded-xl text-xs shadow-lg shadow-accent/20 transition-all"
-              >
-                Verifikasi Hak Pemilik 🛡️
+              >Verifikasi Hak Pemilik 
               </button>
 
               {storeSettings.adminPin && (
@@ -534,7 +531,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 }`}
               >
                 {item.icon.startsWith("/") ? (
-                  <img src={item.icon} alt={item.label} className="w-5 h-5 object-contain shrink-0" />
+                  <img src={item.icon} alt="" aria-hidden="true" className={`w-5 h-5 object-contain shrink-0 ${active ? "brightness-0 invert" : ""}`} />
                 ) : (
                   <span className="text-lg">{item.icon}</span>
                 )}
@@ -555,9 +552,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
           <button
             onClick={logout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-950/40 transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-700 hover:bg-rose-50 transition-colors"
           >
-            <span>🚪</span>
+            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H3v18h6M9 12h12M16 7l5 5-5 5" /></svg></span>
             <span>Keluar Admin</span>
           </button>
         </div>
@@ -663,7 +660,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               : " text-muted"
           }`}
         >
-          <span className="text-lg">📊</span>
+          <span className="text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16M7 16v-4M12 16V5M17 16V9" /></svg></span>
           <span className="truncate w-full text-center">Dashboard</span>
         </Link>
 
@@ -675,7 +672,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               : " text-muted"
           }`}
         >
-          <span className="text-lg">🍽️</span>
+          <span className="text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12h13M10 8c2-4 8-4 10 0l1 4H8zM2 3v6M5 3v6M2 6h3M3.5 9v12M8 16h13" /></svg></span>
           <span className="truncate w-full text-center">Menu</span>
         </Link>
 
@@ -687,7 +684,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               : " text-muted"
           }`}
         >
-          <span className="text-lg">🧾</span>
+          <span className="text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
           <span className="truncate w-full text-center">Transaksi</span>
         </Link>
 
@@ -700,7 +697,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               : " text-muted"
           }`}
         >
-          <span className="text-lg">⚙️</span>
+          <span className="text-lg"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3l1 4 4 1 2 4-3 3v4l-4 2-3-3-4 1-3-4 2-3-1-4 4-2zM14 12a2 2 0 1 0-4 0 2 2 0 0 0 4 0" /></svg></span>
           <span className="truncate w-full text-center">Lainnya</span>
         </button>
       </div>
@@ -720,14 +717,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
             <div className="grid grid-cols-1 gap-2 mb-4">
               <Link href="/admin/stok" onClick={() => setIsLainnyaOpen(false)} className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-line text-fg">
-                <span className="text-xl">📦</span><div><div className="font-bold text-sm">Stok & Opname</div><div className="text-xs text-muted">Jumlah barang, barang masuk/keluar, dan hitungan fisik</div></div>
+                <span className="text-xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 12v3h4v-3" /></svg></span><div><div className="font-bold text-sm">Stok & Opname</div><div className="text-xs text-muted">Jumlah barang, barang masuk/keluar, dan hitungan fisik</div></div>
               </Link>
               <Link
                 href="/admin/meja"
                 onClick={() => setIsLainnyaOpen(false)}
                 className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
-                <span className="text-xl">🪑</span>
+                <span className="text-xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3h14v10H5zM3 13h18v4H3zM5 17v5M19 17v5" /></svg></span>
                 <div className="flex-1">
                   <div className="font-bold text-sm">Kelola Meja</div>
                   <div className="text-[10px] text-muted">Atur nomor meja dan status dine-in</div>
@@ -740,7 +737,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 onClick={() => setIsLainnyaOpen(false)}
                 className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
-                <span className="text-xl">💼</span>
+                <span className="text-xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 12v3h4v-3" /></svg></span>
                 <div className="flex-1">
                   <div className="font-bold text-sm">Shift & Kas Laci</div>
                   <div className="text-[10px] text-muted">Laporan Z-Report, uang fisik, dan kas operasional</div>
@@ -753,7 +750,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 onClick={() => setIsLainnyaOpen(false)}
                 className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
-                <span className="text-xl">⚙️</span>
+                <span className="text-xl"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3l1 4 4 1 2 4-3 3v4l-4 2-3-3-4 1-3-4 2-3-1-4 4-2zM14 12a2 2 0 1 0-4 0 2 2 0 0 0 4 0" /></svg></span>
                 <div className="flex-1">
                   <div className="font-bold text-sm">Pengaturan POS</div>
                   <div className="text-[10px] text-muted">Profil, Printer Bluetooth, Pajak, PIN, & Backup</div>
@@ -769,7 +766,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                   setIsLainnyaOpen(false);
                   logout();
                 }}
-                className="flex-1 py-3 rounded-2xl bg-rose-950/40 text-rose-400 font-bold text-xs text-center"
+                className="flex-1 py-3 rounded-2xl bg-rose-50 text-rose-700 font-bold text-xs text-center"
               >
                 Keluar Admin
               </button>

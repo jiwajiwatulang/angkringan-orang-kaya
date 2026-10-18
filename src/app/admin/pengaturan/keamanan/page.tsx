@@ -271,8 +271,7 @@ export default function PengaturanKeamananPage() {
                 setRegenError("");
               }}
               className="px-4 py-2 bg-card hover:bg-card/80 border border-line text-xs font-bold text-fg rounded-xl transition-all"
-            >
-              🔄 Buat Ulang Kode Pemulihan Baru
+            > Buat Ulang Kode Pemulihan Baru
             </button>
           ) : (
             <form onSubmit={handleRegenerateRecoveryCode} className="space-y-3 pt-2">
@@ -345,7 +344,7 @@ export default function PengaturanKeamananPage() {
                 }}
                 className="px-4 py-2 rounded-xl bg-card border border-line text-xs font-bold text-fg hover:border-accent flex items-center gap-2 transition-all"
               >
-                <span>{codeCopied ? "✓ Berhasil Disalin" : "📋 Salin Kode"}</span>
+                <span>{codeCopied ? "✓ Berhasil Disalin" : " Salin Kode"}</span>
               </button>
             </div>
 

@@ -141,7 +141,7 @@ export default function InstallGuideSection({
               onClick={handleTriggerInstall}
               className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-extrabold text-sm rounded-xl shadow-md transition-all inline-flex items-center justify-center gap-2"
             >
-              <span>📲</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2h12v20H6zM10 18h4" /></svg></span>
               <span>Pasang SakuNota Sekarang</span>
             </button>
             <p className="text-[11px] text-muted">
@@ -174,7 +174,7 @@ export default function InstallGuideSection({
                 : "bg-surface hover:bg-card text-muted hover:text-fg border border-line"
             }`}
           >
-            <span>🤖</span>
+            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2h12v20H6zM10 18h4" /></svg></span>
             <span>Android (Google Chrome)</span>
           </button>
           <button
@@ -186,7 +186,7 @@ export default function InstallGuideSection({
                 : "bg-surface hover:bg-card text-muted hover:text-fg border border-line"
             }`}
           >
-            <span>🍎</span>
+            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2h12v20H6zM10 18h4" /></svg></span>
             <span>iPhone (Safari)</span>
           </button>
         </div>
@@ -331,7 +331,7 @@ export default function InstallGuideSection({
             disabled={isAuditing}
             className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
           >
-            <span>🔄</span>
+            <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
             <span>{isAuditing ? "Memeriksa..." : "Periksa Ulang"}</span>
           </button>
         </div>
@@ -362,7 +362,7 @@ export default function InstallGuideSection({
                 disabled={isDownloading}
                 className="px-4 py-2 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold rounded-xl text-xs transition-all shadow-sm"
               >
-                {isDownloading ? "Menyimpan Berkas..." : "💾 Simpan Berkas Kasir Sekarang"}
+                {isDownloading ? "Menyimpan Berkas..." : " Simpan Berkas Kasir Sekarang"}
               </button>
               {downloadMsg && (
                 <p className="text-[11px] font-semibold text-amber-900 dark:text-amber-200">

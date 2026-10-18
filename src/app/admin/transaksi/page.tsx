@@ -497,7 +497,7 @@ export default function AdminTransaksiPage() {
               onClick={() => handleBulkExport('xlsx')}
               className="px-3 py-2 bg-accent/40 text-accent-text border border-accent/40 hover:bg-accent/15 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
             >
-              <span>📤</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span>
               <span>Export Excel</span>
             </button>
 
@@ -506,7 +506,7 @@ export default function AdminTransaksiPage() {
               onClick={() => setIsHistoricalModalOpen(true)}
               className="px-3 py-2 bg-accent/40 text-accent-text border border-accent/40 hover:bg-accent/15 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
             >
-              <span>📥</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span>
               <span>Import Historis</span>
             </button>
 
@@ -515,7 +515,7 @@ export default function AdminTransaksiPage() {
               onClick={() => setIsBulkProofModalOpen(true)}
               className="px-3 py-2 bg-amber-950/40 text-amber-300 border border-amber-800 hover:bg-amber-500/15 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
             >
-              <span>📷</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h5l2-3h4l2 3h5v15H3zM16 13a4 4 0 1 0-8 0 4 4 0 0 0 8 0" /></svg></span>
               <span>Bulk Bukti Bayar</span>
             </button>
           </div>
@@ -644,7 +644,7 @@ export default function AdminTransaksiPage() {
               onClick={handleBulkReprint}
               className="px-3 py-1.5 bg-card text-accent-text hover:bg-accent/10 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95"
             >
-              <span>🖨️</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 8V3h10v5M7 17H3V8h18v9h-4M7 14h10v7H7zM17 11h1" /></svg></span>
               <span>Cetak Terpilih</span>
             </button>
             <button
@@ -652,7 +652,7 @@ export default function AdminTransaksiPage() {
               onClick={() => handleBulkExport('xlsx')}
               className="px-3 py-1.5 bg-accent text-white hover:bg-accent-hover rounded-xl text-xs font-bold transition-all flex items-center gap-1"
             >
-              <span>📤</span>
+              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v6h16v-6M12 3v12M7 10l5 5 5-5" /></svg></span>
               <span>Export (.xlsx)</span>
             </button>
             <button
@@ -704,7 +704,7 @@ export default function AdminTransaksiPage() {
                     viewMode === "table" ? "bg-accent text-white shadow-sm" : "text-muted hover:text-fg"
                   }`}
                 >
-                  <span>📋</span>
+                  <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14v14H5zM9 9h6M9 13h6M9 17h3" /></svg></span>
                   <span>Tabel</span>
                 </button>
                 <button
@@ -714,7 +714,7 @@ export default function AdminTransaksiPage() {
                     viewMode === "card" ? "bg-accent text-white shadow-sm" : "text-muted hover:text-fg"
                   }`}
                 >
-                  <span>🔲</span>
+                  <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" /></svg></span>
                   <span>Kartu</span>
                 </button>
               </div>
@@ -868,7 +868,7 @@ export default function AdminTransaksiPage() {
                               className="px-2.5 py-1.5 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
                               title="Lihat detail & cetak ulang"
                             >
-                              <span>🔍</span>
+                              <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 15l6 6M17 10a7 7 0 1 0-14 0 7 7 0 0 0 14 0" /></svg></span>
                               <span>Rincian</span>
                             </button>
 
@@ -882,7 +882,7 @@ export default function AdminTransaksiPage() {
                                   setVoidPinInput("");
                                   setVoidPinError("");
                                 }}
-                                className="px-2.5 py-1.5 bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 rounded-xl text-xs font-bold transition-colors shadow-sm"
+                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition-colors shadow-sm"
                                 title="Batalkan nota (Void)"
                               >
                                 Void
@@ -1007,7 +1007,7 @@ export default function AdminTransaksiPage() {
                         onClick={() => setReceiptData(order)}
                         className="px-3 py-2 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors flex items-center gap-1"
                       >
-                        <span>🔍</span>
+                        <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 15l6 6M17 10a7 7 0 1 0-14 0 7 7 0 0 0 14 0" /></svg></span>
                         <span>Rincian & Bukti</span>
                       </button>
 
@@ -1021,7 +1021,7 @@ export default function AdminTransaksiPage() {
                             setVoidPinInput("");
                             setVoidPinError("");
                           }}
-                          className="px-3 py-2 bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 rounded-xl text-xs font-bold transition-colors"
+                          className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition-colors"
                         >
                           Void
                         </button>
@@ -1221,7 +1221,7 @@ export default function AdminTransaksiPage() {
                           <button
                             type="button"
                             onClick={() => handleDeleteProof(pr.id)}
-                            className="py-1.5 px-3 rounded-lg bg-rose-950/40 text-rose-400 text-xs font-bold hover:bg-rose-500/15 transition-colors"
+                            className="py-1.5 px-3 rounded-lg bg-rose-50 text-rose-700 text-xs font-bold hover:bg-rose-500/15 transition-colors"
                           >
                             Hapus Bukti
                           </button>
@@ -1244,7 +1244,7 @@ export default function AdminTransaksiPage() {
                         disabled={isUploadingDetailProof}
                         className="w-full py-2.5 px-4 bg-accent hover:bg-accent-hover active:scale-95 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-accent/20 flex items-center justify-center gap-1.5"
                       >
-                        <span>📷</span>
+                        <span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h5l2-3h4l2 3h5v15H3zM16 13a4 4 0 1 0-8 0 4 4 0 0 0 8 0" /></svg></span>
                         <span>{isUploadingDetailProof ? "Mengompresi..." : "Upload Bukti Pembayaran Sekarang"}</span>
                       </button>
                       <p className="text-[10px] text-muted mt-1.5">
@@ -1262,23 +1262,20 @@ export default function AdminTransaksiPage() {
                 type="button"
                 onClick={() => handlePrint('all')}
                 className="w-full py-2.5 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-bold shadow-md shadow-accent/20 active:scale-95 transition-all"
-              >
-                🖨️ Cetak Ulang Struk Tamu
+              > Cetak Ulang Struk Tamu
               </button>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => handlePrint('food')}
                   className="flex-1 py-2 bg-amber-950/40 hover:bg-amber-500/15 text-amber-300 rounded-xl text-[11px] font-bold"
-                >
-                  🍳 Struk Dapur
+                > Struk Dapur
                 </button>
                 <button
                   type="button"
                   onClick={() => handlePrint('drink')}
                   className="flex-1 py-2 bg-accent/40 hover:bg-accent/15 text-accent-text rounded-xl text-[11px] font-bold"
-                >
-                  ☕ Struk Bar
+                > Struk Bar
                 </button>
               </div>
             </div>
