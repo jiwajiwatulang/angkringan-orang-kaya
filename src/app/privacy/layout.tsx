@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from '@/lib/publicMetadata';
 
-export const metadata: Metadata = {
-  title: "Kebijakan Privasi - SakuNota",
-  description:
-    "Kebijakan privasi SakuNota. Data transaksi dan keuangan usaha tersimpan mandiri di perangkat lokal Anda tanpa pengumpulan ke server pusat.",
-};
+export const metadata = publicPageMetadata(
+  'Kebijakan Privasi',
+  'Pelajari kebijakan privasi SakuNota, penyimpanan data transaksi lokal di perangkat, serta penggunaan data untuk pembelian dan aktivasi lisensi.',
+  '/privacy',
+);
 
 export default function PrivacyLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;

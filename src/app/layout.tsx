@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { siteDescription } from "@/lib/publicMetadata";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -25,13 +26,16 @@ export const metadata: Metadata = {
     default: "SakuNota - Kasir Jalan Tanpa Internet.",
     template: "%s | SakuNota",
   },
-  description: "Aplikasi kasir offline pintar untuk usaha kuliner (kafe, restoran, angkringan, warung makan, kedai kopi). Catat pesanan, kelola meja, cetak struk Bluetooth fisik, dan pantau omzet tanpa kuota internet.",
+  description: siteDescription,
   keywords: [
     "aplikasi kasir offline",
     "kasir tanpa internet",
     "pos offline",
     "sakunota",
     "aplikasi kasir umkm",
+    "kasir retail",
+    "scan barcode",
+    "stok opname",
     "kasir restoran",
     "kasir warung makan",
     "kasir kedai kopi",
@@ -49,7 +53,7 @@ export const metadata: Metadata = {
     locale: "id_ID",
     url: "https://sakunota.my.id",
     title: "SakuNota - Kasir Jalan Tanpa Internet.",
-    description: "Aplikasi kasir offline pintar untuk UMKM kuliner. Catat pesanan, kelola meja, cetak struk Bluetooth tanpa kuota internet.",
+    description: siteDescription,
     siteName: "SakuNota",
     images: [
       {
@@ -63,7 +67,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "SakuNota - Kasir Jalan Tanpa Internet.",
-    description: "Aplikasi kasir offline pintar untuk usaha kuliner. Sekali bayar Rp50.000 aktif selamanya.",
+    description: siteDescription,
     images: ["/logo-sakunota.png"],
   },
   robots: {
@@ -113,7 +117,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               "name": "SakuNota",
               "operatingSystem": "Web, Android, iOS",
               "applicationCategory": "BusinessApplication",
-              "description": "Aplikasi kasir offline pintar untuk usaha kuliner (kafe, restoran, angkringan, warung makan, kedai kopi). Berjalan tanpa kuota internet.",
+              "description": siteDescription,
               "url": "https://sakunota.my.id",
               "image": "https://sakunota.my.id/logo-sakunota.png",
               "offers": {
