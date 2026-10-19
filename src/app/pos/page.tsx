@@ -5052,14 +5052,14 @@ export default function POSPage() {
               <button
                 type="button"
                 onClick={() => setDiscountType('percent')}
-                className={'flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ' + (discountType === 'percent' ? ' bg-card text-accent-text shadow-sm' : 'text-muted hover:text-slate-200')}
+                className={'flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ' + (discountType === 'percent' ? ' bg-card text-accent-text shadow-sm' : 'text-muted hover:text-fg hover:bg-card/50')}
               >
                 Persen (%)
               </button>
               <button
                 type="button"
                 onClick={() => setDiscountType('nominal')}
-                className={'flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ' + (discountType === 'nominal' ? ' bg-card text-accent-text shadow-sm' : 'text-muted hover:text-slate-200')}
+                className={'flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ' + (discountType === 'nominal' ? ' bg-card text-accent-text shadow-sm' : 'text-muted hover:text-fg hover:bg-card/50')}
               >
                 Nominal (Rp)
               </button>

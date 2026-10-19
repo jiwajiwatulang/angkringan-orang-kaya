@@ -80,6 +80,18 @@ body {
   color: #475569 !important; /* slate-600 */
 }
 
+/* Global interactive cursor: ensure all buttons and links always show pointer cursor */
+button,
+a,
+[role="button"] {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 /* Consistent keyboard focus indicator across every interactive element */
 :where(button, a, input, select, textarea, [role="button"], [tabindex]):focus-visible {
   outline: 2px solid var(--color-accent-hover);
