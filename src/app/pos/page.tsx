@@ -2562,12 +2562,11 @@ export default function POSPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-muted mb-1.5 mt-2">Metode Pembayaran</label>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     {[
                       { id: "Cash", label: "Tunai" },
                       { id: "QRIS", label: "QRIS" },
-                      { id: "Transfer", label: "Transfer" },
-                      { id: "E-Wallet", label: "E-Wallet" }
+                      { id: "Transfer", label: "Transfer" }
                     ].map((method) => (
                       <button 
                         key={method.id}
@@ -2665,8 +2664,8 @@ export default function POSPage() {
                   </div>
                 )}
 
-                {/* Upload Bukti Pembayaran untuk QRIS, Transfer, atau E-Wallet */}
-                {(paymentMethod === "QRIS" || paymentMethod === "Transfer" || paymentMethod === "E-Wallet") && (
+                {/* Upload Bukti Pembayaran untuk QRIS atau Transfer */}
+                {(paymentMethod === "QRIS" || paymentMethod === "Transfer") && (
                   <PaymentProofUpload
                     proof={checkoutProof}
                     onChange={setCheckoutProof}

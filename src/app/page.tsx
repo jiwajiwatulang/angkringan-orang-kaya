@@ -1507,7 +1507,7 @@ export default function SakuNotaLandingPage() {
           {/* Col 3: Support */}
           <div className="space-y-3">
             <span className="text-slate-900 font-extrabold text-xs uppercase tracking-wider block">
-              Bantuan &amp; Lisensi
+              Bantuan
             </span>
             <ul className="space-y-2 text-xs font-medium">
               <li><Link href="/panduan" className="hover:text-blue-600 transition-colors">Panduan</Link></li>
