@@ -272,7 +272,7 @@ export default function PengaturanPrinterPage() {
               <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
                 isNative 
                   ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800' 
-                  : 'bg-card text-fg border border-line font-bold'
+                  : 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold'
               }`}>
                 {isNative ? 'Android APK Native' : 'PWA / Web Browser'}
               </span>
@@ -281,25 +281,29 @@ export default function PengaturanPrinterPage() {
             <div className="flex items-center gap-2.5">
               <span
                 className={`w-3.5 h-3.5 rounded-full shrink-0 ${
-                  selectedMac ? "bg-emerald-500 shadow-md shadow-emerald-500/30 animate-pulse" : "bg-amber-500"
+                  isNative
+                    ? (selectedMac ? "bg-emerald-500 shadow-md shadow-emerald-500/30 animate-pulse" : "bg-amber-500")
+                    : "bg-emerald-500 shadow-md shadow-emerald-500/30 animate-pulse"
                 }`}
               />
               <h3 className="text-base font-black text-fg">
-                {selectedMac 
-                  ? `${selectedDeviceName ? `${selectedDeviceName} ` : ''}(${selectedMac})`
-                  : "Belum Ada Printer Bluetooth Dipilih"}
+                {isNative
+                  ? (selectedMac 
+                      ? `${selectedDeviceName ? `${selectedDeviceName} ` : ''}(${selectedMac})`
+                      : "Belum Ada Printer Bluetooth Dipilih")
+                  : "Sistem Cetak Siap (Web / PWA)"}
               </h3>
             </div>
 
-            {statusMessage && (
-              <p className="text-xs text-muted mt-1">
-                {statusMessage}
-              </p>
-            )}
+            <p className="text-xs text-muted mt-1">
+              {isNative
+                ? (statusMessage || "Pindai dan pilih printer Bluetooth Anda di bawah.")
+                : (statusMessage || "Printer Bluetooth, USB, atau WiFi yang terpasang di perangkat Anda dapat langsung digunakan melalui dialog cetak sistem.")}
+            </p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {selectedMac && (
+            {isNative && selectedMac && (
               <button
                 type="button"
                 onClick={handleDisconnectPrinter}
@@ -309,15 +313,27 @@ export default function PengaturanPrinterPage() {
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={scanBluetooth}
-              disabled={isScanning}
-              className="px-4 py-2.5 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 shrink-0 disabled:opacity-50 border border-line"
-            >
-              <span><LineIcon name="search" /></span>
-              <span>{isScanning ? "Memindai..." : "Pindai Bluetooth"}</span>
-            </button>
+            {isNative ? (
+              <button
+                type="button"
+                onClick={scanBluetooth}
+                disabled={isScanning}
+                className="px-4 py-2.5 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 shrink-0 disabled:opacity-50 border border-line"
+              >
+                <span><LineIcon name="search" /></span>
+                <span>{isScanning ? "Memindai..." : "Pindai Bluetooth"}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleTestPrint}
+                disabled={isPrintingTest}
+                className="px-4 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 shrink-0 shadow-sm disabled:opacity-50 active:scale-95"
+              >
+                <span><LineIcon name="printer" /></span>
+                <span>{isPrintingTest ? "Mencetak..." : "Tes Cetak Struk"}</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -502,92 +518,145 @@ export default function PengaturanPrinterPage() {
         </div>
       </div>
 
-      {/* Scanned / Paired Devices List */}
-      <div className="bg-surface rounded-3xl p-5 border border-line shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-black text-fg flex items-center gap-2">
-            
-            <span>Daftar Perangkat Bluetooth Ditemukan</span>
-          </h4>
-          <span className="text-[11px] text-muted">
-            {btDevices.length > 0 ? `${btDevices.length} perangkat terdeteksi` : "0 perangkat"}
-          </span>
-        </div>
-
-        {btDevices.length === 0 ? (
-          <div className="py-8 text-center text-muted text-xs space-y-2 border border-dashed border-line/60 rounded-2xl p-4">
-            <div className="text-3xl"><LineIcon name="printer" /></div>
-            <p className="font-bold text-fg">Belum ada printer yang dipindai.</p>
-            <p className="max-w-md mx-auto text-[11px] leading-relaxed">
-              Nyalakan Bluetooth HP dan printer thermal Anda. Pastikan printer sudah di-pairing (dipasangkan) di menu Pengaturan Bluetooth HP Android, lalu tekan tombol <strong>"Pindai Bluetooth"</strong> di atas.
-            </p>
+      {/* Panduan Alur Cetak Web / PWA vs Daftar Perangkat APK */}
+      {!isNative ? (
+        <div className="bg-surface rounded-3xl p-5 sm:p-6 border border-line shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line">
+            <h4 className="text-sm font-black text-fg flex items-center gap-2">
+              <span><LineIcon name="guide" /></span>
+              <span>Alur Cetak Struk Kasir (Mode Web / PWA)</span>
+            </h4>
+            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 w-fit">
+              Kompatibel Semua Printer (Bluetooth, USB, WiFi)
+            </span>
           </div>
-        ) : (
-          <div className="divide-y divide-line">
-            {btDevices.map((dev, idx) => {
-              const isSelected = selectedMac === dev.address;
-              return (
-                <div
-                  key={idx}
-                  className="py-3 flex items-center justify-between gap-3 text-xs"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl"><LineIcon name="printer" /></span>
-                    <div>
-                      <span className="font-bold text-fg text-sm block">
-                        {dev.name || "Perangkat Thermal Tanpa Nama"}
-                      </span>
-                      <span className="text-[11px] font-mono text-muted">
-                        MAC: {dev.address}
-                      </span>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="p-4 rounded-2xl bg-card border border-line space-y-2">
+              <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 text-xs font-black flex items-center justify-center">1</div>
+              <h5 className="text-xs font-bold text-fg">Sambungkan Printer ke Perangkat</h5>
+              <p className="text-[11px] text-muted leading-relaxed">
+                Sambungkan printer thermal ke HP, tablet, atau komputer kasir Anda via menu <strong>Bluetooth perangkat</strong> atau colokkan kabel USB / OTG.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-card border border-line space-y-2">
+              <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 text-xs font-black flex items-center justify-center">2</div>
+              <h5 className="text-xs font-bold text-fg">Tentukan Ukuran Kertas & Slogan</h5>
+              <p className="text-[11px] text-muted leading-relaxed">
+                Pilih ukuran kertas (<strong>58mm</strong> untuk printer mini kasir atau <strong>80mm</strong> untuk printer lebar) serta kustomisasi header/footer nota di atas.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-card border border-line space-y-2">
+              <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 text-xs font-black flex items-center justify-center">3</div>
+              <h5 className="text-xs font-bold text-fg">Cetak Otomatis Saat Transaksi</h5>
+              <p className="text-[11px] text-muted leading-relaxed">
+                Saat kasir menekan tombol bayar / cetak, jendela cetak browser akan terbuka. Pilih nama printer thermal Anda satu kali, dan browser akan otomatis mengingatnya.
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-2 text-center sm:text-left">
+            <button
+              type="button"
+              onClick={handleTestPrint}
+              disabled={isPrintingTest}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-black shadow-sm transition-all active:scale-95 disabled:opacity-50"
+            >
+              <span><LineIcon name="printer" /></span>
+              <span>{isPrintingTest ? "Mencetak..." : "Uji Coba Cetak Sekarang"}</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Scanned / Paired Devices List (Khusus Native APK) */}
+          <div className="bg-surface rounded-3xl p-5 border border-line shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-black text-fg flex items-center gap-2">
+                <span>Daftar Perangkat Bluetooth Ditemukan</span>
+              </h4>
+              <span className="text-[11px] text-muted">
+                {btDevices.length > 0 ? `${btDevices.length} perangkat terdeteksi` : "0 perangkat"}
+              </span>
+            </div>
+
+            {btDevices.length === 0 ? (
+              <div className="py-8 text-center text-muted text-xs space-y-2 border border-dashed border-line/60 rounded-2xl p-4">
+                <div className="text-3xl"><LineIcon name="printer" /></div>
+                <p className="font-bold text-fg">Belum ada printer yang dipindai.</p>
+                <p className="max-w-md mx-auto text-[11px] leading-relaxed">
+                  Nyalakan Bluetooth HP dan printer thermal Anda. Pastikan printer sudah di-pairing (dipasangkan) di menu Pengaturan Bluetooth HP Android, lalu tekan tombol <strong>"Pindai Bluetooth"</strong> di atas.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-line">
+                {btDevices.map((dev, idx) => {
+                  const isSelected = selectedMac === dev.address;
+                  return (
+                    <div
+                      key={idx}
+                      className="py-3 flex items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl"><LineIcon name="printer" /></span>
+                        <div>
+                          <span className="font-bold text-fg text-sm block">
+                            {dev.name || "Perangkat Thermal Tanpa Nama"}
+                          </span>
+                          <span className="text-[11px] font-mono text-muted">
+                            MAC: {dev.address}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSelectPrinter(dev.address, dev.name)}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          isSelected
+                            ? "bg-accent text-white font-black shadow-md shadow-accent/20"
+                            : "bg-card text-fg hover:border-accent hover:text-accent-text border border-line"
+                        }`}
+                      >
+                        {isSelected ? "Sedang Digunakan" : "Gunakan Printer Ini"}
+                      </button>
                     </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSelectPrinter(dev.address, dev.name)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      isSelected
-                        ? "bg-accent text-white font-black shadow-md shadow-accent/20"
-                        : "bg-card text-fg hover:border-accent hover:text-accent-text border border-line"
-                    }`}
-                  >
-                    {isSelected ? "Sedang Digunakan" : "Gunakan Printer Ini"}
-                  </button>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Manual Input Fallback */}
-      <div className="bg-surface rounded-3xl p-5 border border-line shadow-sm space-y-3">
-        <h4 className="text-sm font-black text-fg flex items-center gap-2">
-          
-          <span>Input Manual MAC Address (Alternatif Tambahan)</span>
-        </h4>
-        <p className="text-xs text-muted leading-relaxed">
-          Jika printer Bluetooth kasir Anda sudah terpasang (paired) di pengaturan sistem Android namun tidak muncul di hasil pemindaian di atas, masukkan alamat MAC printer secara manual (contoh: <code>66:22:BB:77:88:99</code>):
-        </p>
+          {/* Manual Input Fallback */}
+          <div className="bg-surface rounded-3xl p-5 border border-line shadow-sm space-y-3">
+            <h4 className="text-sm font-black text-fg flex items-center gap-2">
+              <span>Input Manual MAC Address (Alternatif Tambahan)</span>
+            </h4>
+            <p className="text-xs text-muted leading-relaxed">
+              Jika printer Bluetooth kasir Anda sudah terpasang (paired) di pengaturan sistem Android namun tidak muncul di hasil pemindaian di atas, masukkan alamat MAC printer secara manual (contoh: <code>66:22:BB:77:88:99</code>):
+            </p>
 
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="66:22:BB:77:88:99"
-            value={selectedMac}
-            onChange={(e) => setSelectedMac(e.target.value.trim())}
-            className="flex-1 bg-card border border-line rounded-xl p-2.5 text-xs font-mono font-bold text-fg outline-none focus:border-accent"
-          />
-          <button
-            type="button"
-            onClick={() => handleSelectPrinter(selectedMac, "Printer Manual")}
-            className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
-          >
-            Simpan MAC
-          </button>
-        </div>
-      </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="66:22:BB:77:88:99"
+                value={selectedMac}
+                onChange={(e) => setSelectedMac(e.target.value.trim())}
+                className="flex-1 bg-card border border-line rounded-xl p-2.5 text-xs font-mono font-bold text-fg outline-none focus:border-accent"
+              />
+              <button
+                type="button"
+                onClick={() => handleSelectPrinter(selectedMac, "Printer Manual")}
+                className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
+              >
+                Simpan MAC
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Receipt Preview Modal */}
       {isPreviewOpen && (
