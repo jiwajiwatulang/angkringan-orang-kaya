@@ -1895,205 +1895,219 @@ export default function POSPage() {
   };
 
 
-  const renderCartInner = (isMobile: boolean) => {
-    const isWideCart = posCartWidth >= 420;
-    const isVeryWideCart = posCartWidth >= 520;
+  const renderCartInner = (isMobile: boolean, isFullWorkspace: boolean = false) => {
+    const isWideCart = isFullWorkspace || posCartWidth >= 420;
+    const isVeryWideCart = isFullWorkspace || posCartWidth >= 520;
 
     if (!isMobile) {
       return (
-        <div className="flex flex-col h-full">
-          <div className="p-3 sm:p-4 lg:p-5 border-b border-line bg-surface rounded-t-3xl md:rounded-none">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <h2 className={`${isWideCart ? 'text-lg lg:text-2xl' : 'text-base sm:text-lg lg:text-xl'} font-bold text-fg tracking-tight`}>{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
-                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold transition-colors ${
-                  cart.length === 0
-                    ? "bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-bold"
-                    : "bg-blue-600 text-white font-black shadow-xs"
-                }`}>
-                  {cart.reduce((sum, item) => sum + item.qty, 0)} item
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {selectedTable && (
-                  <button 
-                    type="button"
-                    onClick={handleReleaseTable} 
-                    className="text-xs font-bold hover:bg-red-500/15 bg-red-50 text-red-700 px-3 py-1.5 rounded-full transition-colors"
-                  >
-                    Lepas Meja
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {selectedTableObj && (
-              <div className="mt-3 flex flex-wrap gap-2 items-center">
-                <div className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm ${selectedTableStatus === 'open' ? 'bg-amber-50 text-amber-950 border border-amber-300' : selectedTableStatus === 'lunas' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-card text-fg border border-line'}`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" /></svg>
-                  {selectedTableObj.nomor.replace(/^Meja\s*/i, '')}
-                  <span className="opacity-70 ml-1">({selectedTableStatus === 'open' ? 'Open Bill' : selectedTableStatus === 'lunas' ? 'Lunas' : 'Kosong'})</span>
-                </div>
-                {customerName && (
-                  <div className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-line text-fg border border-line shadow-sm"><LineIcon name="info" />{customerName}
-                  </div>
-                )}
-              </div>
-            )}
-
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5 space-y-2.5 sm:space-y-4 bg-card">
-            {cart.length === 0 && selectedTableStatus === 'lunas' && (() => {
-              const paidOrder = allOrders
-                .filter(o => o.tableId === selectedTableObj?.id && o.status === 'paid')
-                .sort((a, b) => (b.id || 0) - (a.id || 0))[0];
-              const displayCustomer = customerName || paidOrder?.customerName || (selectedTableObj ? `Meja ${selectedTableObj.nomor.replace(/^Meja\s*/i, '')}` : "Tamu");
-
-              return (
-                <div className="text-center mt-6 flex flex-col items-center">
-                  <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center text-3xl mb-3 border border-accent/40 shadow-sm"><LineIcon name="info" /></div>
-                  <p className="font-extrabold text-base text-fg">Tagihan Meja Ini Sudah LUNAS</p>
-
-                  <div className="bg-surface border border-line rounded-xl p-3.5 mt-3 text-xs text-fg text-left w-full space-y-2">
-                    <div className="flex justify-between items-center pb-2 border-b border-line">
-                      <span className="text-muted font-medium">Pelanggan:</span>
-                      <span className="font-bold text-accent-text text-sm"><LineIcon name="info" />{displayCustomer}</span>
-                    </div>
-                    {paidOrder && (
-                      <>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-muted">No. Nota:</span>
-                          <span className="font-mono text-fg font-semibold">#{paidOrder.id}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-muted">Total Bayar:</span>
-                          <span className="font-extrabold text-fg">Rp {paidOrder.total.toLocaleString('id-ID')}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-muted">Metode:</span>
-                          <span className="font-semibold text-fg">{paidOrder.paymentMethod || 'Cash'}</span>
-                        </div>
-                      </>
-                    )}
-                    <p className="text-[11px] text-muted pt-1 leading-snug">
-                      Meja siap dikosongkan untuk tamu berikutnya, atau pilih menu di samping untuk membuat pesanan baru.
-                    </p>
-                  </div>
-
-                  <button 
-                    onClick={() => { handleClearTable(); setIsMobileCartOpen(false); }} 
-                    className="w-full mt-4 py-3.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-extrabold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    <span><LineIcon name="receipt" /></span>
-                    <span>Kosongkan Meja (Lepas)</span>
-                  </button>
-                </div>
-              );
-            })()}
-
-            {cart.length === 0 && selectedTableStatus !== 'lunas' && (
-              <div className="text-center text-muted mt-12 flex flex-col items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-16 h-16 mb-4 opacity-50"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
-                <p className="font-medium text-sm">Belum ada pesanan.</p>
-              </div>
-            )}
-
-            {cart.map(item => (
-              <div key={item.itemKey || item.id} className="flex justify-between items-start border-b border-line pb-3 sm:pb-4">
-                <div className="flex-1 pr-3">
-                  <h4 className={`font-bold text-fg leading-tight transition-all ${isWideCart ? 'text-base sm:text-lg' : 'text-sm md:text-base'}`}>{item.nama}</h4>
-                  {item.selectedModifiers && item.selectedModifiers.length > 0 && (
-                    <div className="mt-1 space-y-0.5">
-                      {item.selectedModifiers.map((m: any, mIdx: number) => (
-                        <div key={mIdx} className={`${isWideCart ? 'text-xs' : 'text-[11px]'} text-muted flex items-center gap-1`}>
-                          <span>•</span>
-                          <span>{m.optionName}</span>
-                          {m.harga > 0 && <span className="font-bold text-accent-text">(+Rp {m.harga.toLocaleString('id-ID')})</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <p className={`text-accent-text font-extrabold mt-1 transition-all ${isWideCart ? 'text-base sm:text-lg' : 'text-sm'}`}>Rp {item.harga.toLocaleString('id-ID')}</p>
-                </div>
-                <div className={`flex items-center bg-surface rounded-xl border border-line shadow-sm shrink-0 transition-all ${isWideCart ? 'p-1.5 gap-1' : 'p-1'}`}>
-                  <button onClick={() => updateQty(item.itemKey || item.id, -1)} className={`${isWideCart ? 'w-9 h-9 text-base' : 'w-8 h-8 text-sm'} rounded-lg bg-card text-fg hover:bg-card flex items-center justify-center font-black transition-colors`}>-</button>
-                  <span className={`${isWideCart ? 'w-9 text-base' : 'w-8 text-sm'} text-center font-bold text-fg`}>{item.qty}</span>
-                  <button onClick={() => updateQty(item.itemKey || item.id, 1)} className={`${isWideCart ? 'w-9 h-9 text-base' : 'w-8 h-8 text-sm'} rounded-lg bg-accent hover:bg-accent-hover text-white flex items-center justify-center font-black transition-colors`}>+</button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="p-3 sm:p-4 lg:p-5 bg-surface border-t border-line shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
-            {cart.length > 0 && (
-              <div className="mb-2.5 sm:mb-3 space-y-1 sm:space-y-1.5 text-xs text-muted border-b border-line pb-2.5 sm:pb-3">
-                <div className="flex justify-between items-center">
-                  <span>Subtotal:</span>
-                  <span className="font-semibold text-fg">Rp {rawSubtotal.toLocaleString('id-ID')}</span>
+        <div className={`flex ${isFullWorkspace ? 'flex-col sm:flex-row landscape:flex-row' : 'flex-col'} flex-1 min-h-0 h-full overflow-hidden`}>
+          {/* Left Column (or Top+Middle in sidebar): Header + Scrollable Cart Items */}
+          <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
+            <div className="p-3 sm:p-4 lg:p-5 max-lg:landscape:px-3 max-lg:landscape:py-2 border-b border-line bg-surface rounded-t-3xl md:rounded-none shrink-0">
+              <div className="flex justify-between items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h2 className={`${isWideCart ? 'text-base sm:text-lg lg:text-xl' : 'text-sm sm:text-base lg:text-lg'} max-lg:landscape:text-sm font-bold text-fg tracking-tight truncate`}>
+                    {editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}
+                  </h2>
+                  <span className={`text-xs max-lg:landscape:text-[11px] px-2.5 py-0.5 rounded-full font-bold shrink-0 transition-colors ${
+                    cart.length === 0
+                      ? "bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-bold"
+                      : "bg-blue-600 text-white font-black shadow-xs"
+                  }`}>
+                    {cart.reduce((sum, item) => sum + item.qty, 0)} item
+                  </span>
                 </div>
 
-                <div className="flex justify-between items-center">
-                  {discountAmount > 0 ? (
-                    <div className="flex items-center gap-1.5">
-                      <span className=" text-accent-text font-bold"> Diskon ({discountType === 'percent' ? discountValue + '%' : 'Rp'}):
-                      </span>
-                      <button 
-                        onClick={() => { setDiscountValue(0); setTempDiscountVal(""); }}
-                        className="text-red-500 hover:text-red-400 text-[10px] underline"
-                      >
-                        Hapus
-                      </button>
-                    </div>
-                  ) : (
+                <div className="flex items-center gap-2 shrink-0">
+                  {selectedTable && (
                     <button 
-                      onClick={() => setIsDiscountModalOpen(true)}
-                      className=" text-accent-text font-bold hover:underline flex items-center gap-1"
+                      type="button"
+                      onClick={handleReleaseTable} 
+                      className="text-xs max-lg:landscape:text-[11px] font-bold hover:bg-red-500/15 bg-red-50 text-red-700 px-2.5 py-1 rounded-full transition-colors"
                     >
-                      + Tambah Diskon / Promo
+                      Lepas Meja
                     </button>
                   )}
-                  {discountAmount > 0 && (
-                    <span className="font-bold text-accent-text">-Rp {discountAmount.toLocaleString('id-ID')}</span>
+                  {isFullWorkspace && (
+                    <button
+                      type="button"
+                      onClick={() => navigateWorkspace('menu')}
+                      className="px-3 py-1.5 sm:px-3.5 sm:py-2 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95"
+                    >
+                      Pilih Produk / Scan Barcode
+                    </button>
                   )}
                 </div>
-
-                {storeSettings.enableService && serviceAmount > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span>Layanan ({storeSettings.servicePercent}%):</span>
-                    <span>Rp {serviceAmount.toLocaleString('id-ID')}</span>
-                  </div>
-                )}
-
-                {storeSettings.enableTax && taxAmount > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span>Pajak Resto ({storeSettings.taxPercent}%):</span>
-                    <span>Rp {taxAmount.toLocaleString('id-ID')}</span>
-                  </div>
-                )}
               </div>
-            )}
 
-            <div className="flex justify-between items-end mb-2.5 sm:mb-4">
-              <span className={`text-muted font-bold uppercase tracking-wider ${isWideCart ? 'text-xs sm:text-sm' : 'text-[11px] sm:text-xs'}`}>Total Pembayaran</span>
-              <span className={`font-black text-fg leading-none tracking-tight transition-all ${isVeryWideCart ? 'text-2xl sm:text-3xl lg:text-4xl' : (isWideCart ? 'text-xl sm:text-2xl lg:text-3xl' : 'text-xl sm:text-2xl')}`}>Rp {totalPrice.toLocaleString('id-ID')}</span>
+              {selectedTableObj && (
+                <div className="mt-2 max-lg:landscape:mt-1.5 flex flex-wrap gap-2 items-center">
+                  <div className={`inline-flex items-center gap-1.5 text-xs max-lg:landscape:text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm ${selectedTableStatus === 'open' ? 'bg-amber-50 text-amber-950 border border-amber-300' : selectedTableStatus === 'lunas' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-card text-fg border border-line'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" /></svg>
+                    {selectedTableObj.nomor.replace(/^Meja\s*/i, '')}
+                    <span className="opacity-70 ml-1">({selectedTableStatus === 'open' ? 'Open Bill' : selectedTableStatus === 'lunas' ? 'Lunas' : 'Kosong'})</span>
+                  </div>
+                  {customerName && (
+                    <div className="inline-flex items-center gap-1.5 text-xs max-lg:landscape:text-[11px] font-bold px-2.5 py-1 rounded-full bg-line text-fg border border-line shadow-sm"><LineIcon name="info" />{customerName}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 lg:p-5 max-lg:landscape:px-3 max-lg:landscape:py-2 space-y-2.5 sm:space-y-3.5 max-lg:landscape:space-y-2 bg-card">
+              {cart.length === 0 && selectedTableStatus === 'lunas' && (() => {
+                const paidOrder = allOrders
+                  .filter(o => o.tableId === selectedTableObj?.id && o.status === 'paid')
+                  .sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+                const displayCustomer = customerName || paidOrder?.customerName || (selectedTableObj ? `Meja ${selectedTableObj.nomor.replace(/^Meja\s*/i, '')}` : "Tamu");
+
+                return (
+                  <div className="text-center mt-4 max-lg:landscape:mt-1 flex flex-col items-center">
+                    <div className="w-12 h-12 max-lg:landscape:w-9 max-lg:landscape:h-9 rounded-full bg-accent/20 flex items-center justify-center text-2xl mb-2 border border-accent/40 shadow-sm"><LineIcon name="info" /></div>
+                    <p className="font-extrabold text-sm sm:text-base text-fg">Tagihan Meja Ini Sudah LUNAS</p>
+
+                    <div className="bg-surface border border-line rounded-xl p-3 mt-2 text-xs text-fg text-left w-full space-y-1.5">
+                      <div className="flex justify-between items-center pb-1.5 border-b border-line">
+                        <span className="text-muted font-medium">Pelanggan:</span>
+                        <span className="font-bold text-accent-text text-xs"><LineIcon name="info" />{displayCustomer}</span>
+                      </div>
+                      {paidOrder && (
+                        <>
+                          <div className="flex justify-between items-center text-[11px]">
+                            <span className="text-muted">No. Nota:</span>
+                            <span className="font-mono text-fg font-semibold">#{paidOrder.id}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-[11px]">
+                            <span className="text-muted">Total Bayar:</span>
+                            <span className="font-extrabold text-fg">Rp {paidOrder.total.toLocaleString('id-ID')}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <button 
+                      onClick={() => { handleClearTable(); setIsMobileCartOpen(false); }} 
+                      className="w-full mt-3 py-2.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-extrabold text-xs sm:text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <span><LineIcon name="receipt" /></span>
+                      <span>Kosongkan Meja (Lepas)</span>
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {cart.length === 0 && selectedTableStatus !== 'lunas' && (
+                <div className="text-center text-muted py-8 max-lg:landscape:py-4 flex flex-col items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-12 h-12 max-lg:landscape:w-9 max-lg:landscape:h-9 mb-2 opacity-50"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
+                  <p className="font-medium text-xs sm:text-sm">Belum ada pesanan.</p>
+                </div>
+              )}
+
+              {cart.map(item => (
+                <div key={item.itemKey || item.id} className="flex justify-between items-start border-b border-line pb-2.5 sm:pb-3.5 max-lg:landscape:pb-2 gap-2">
+                  <div className="flex-1 pr-2 min-w-0">
+                    <h4 className={`font-bold text-fg leading-tight transition-all ${isWideCart ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'} max-lg:landscape:text-xs`}>{item.nama}</h4>
+                    {item.selectedModifiers && item.selectedModifiers.length > 0 && (
+                      <div className="mt-0.5 space-y-0.5">
+                        {item.selectedModifiers.map((m: any, mIdx: number) => (
+                          <div key={mIdx} className="text-[11px] max-lg:landscape:text-[10px] text-muted flex items-center gap-1">
+                            <span>•</span>
+                            <span className="truncate">{m.optionName}</span>
+                            {m.harga > 0 && <span className="font-bold text-accent-text shrink-0">(+Rp {m.harga.toLocaleString('id-ID')})</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className={`text-accent-text font-extrabold mt-0.5 transition-all ${isWideCart ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'} max-lg:landscape:text-xs`}>Rp {item.harga.toLocaleString('id-ID')}</p>
+                  </div>
+                  <div className={`flex items-center bg-surface rounded-xl border border-line shadow-sm shrink-0 transition-all ${isWideCart ? 'p-1 gap-1' : 'p-0.5'} max-lg:landscape:p-0.5`}>
+                    <button onClick={() => updateQty(item.itemKey || item.id, -1)} className={`${isWideCart ? 'w-8 h-8 text-sm' : 'w-7 h-7 text-xs'} max-lg:landscape:w-7 max-lg:landscape:h-7 max-lg:landscape:text-xs rounded-lg bg-card text-fg hover:bg-card flex items-center justify-center font-black transition-colors`}>-</button>
+                    <span className={`${isWideCart ? 'w-8 text-sm' : 'w-7 text-xs'} max-lg:landscape:w-6 max-lg:landscape:text-xs text-center font-bold text-fg`}>{item.qty}</span>
+                    <button onClick={() => updateQty(item.itemKey || item.id, 1)} className={`${isWideCart ? 'w-8 h-8 text-sm' : 'w-7 h-7 text-xs'} max-lg:landscape:w-7 max-lg:landscape:h-7 max-lg:landscape:text-xs rounded-lg bg-accent hover:bg-accent-hover text-white flex items-center justify-center font-black transition-colors`}>+</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right Column in Full Workspace (or Bottom Footer in Sidebar): Payment Summary & Actions */}
+          <div className={`${
+            isFullWorkspace
+              ? 'w-full sm:w-72 md:w-80 lg:w-96 landscape:w-72 border-t sm:border-t-0 sm:border-l landscape:border-t-0 landscape:border-l p-3.5 sm:p-5 max-lg:landscape:p-3 flex flex-col justify-between shrink-0 overflow-y-auto'
+              : 'p-3 sm:p-4 lg:p-5 max-lg:landscape:px-3 max-lg:landscape:py-2 border-t shrink-0'
+          } bg-surface border-line shadow-[0_-4px_10px_rgba(0,0,0,0.02)]`}>
+            <div>
+              {cart.length > 0 && (
+                <div className="mb-2.5 sm:mb-3 max-lg:landscape:mb-1.5 space-y-1 max-lg:landscape:space-y-0.5 text-xs max-lg:landscape:text-[11px] text-muted border-b border-line pb-2 sm:pb-3 max-lg:landscape:pb-1.5">
+                  <div className="flex justify-between items-center">
+                    <span>Subtotal:</span>
+                    <span className="font-semibold text-fg">Rp {rawSubtotal.toLocaleString('id-ID')}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    {discountAmount > 0 ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-accent-text font-bold">Diskon ({discountType === 'percent' ? discountValue + '%' : 'Rp'}):</span>
+                        <button 
+                          onClick={() => { setDiscountValue(0); setTempDiscountVal(""); }}
+                          className="text-red-500 hover:text-red-400 text-[10px] underline"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => setIsDiscountModalOpen(true)}
+                        className="text-accent-text font-bold hover:underline flex items-center gap-1"
+                      >
+                        + Tambah Diskon / Promo
+                      </button>
+                    )}
+                    {discountAmount > 0 && (
+                      <span className="font-bold text-accent-text">-Rp {discountAmount.toLocaleString('id-ID')}</span>
+                    )}
+                  </div>
+
+                  {storeSettings.enableService && serviceAmount > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span>Layanan ({storeSettings.servicePercent}%):</span>
+                      <span>Rp {serviceAmount.toLocaleString('id-ID')}</span>
+                    </div>
+                  )}
+
+                  {storeSettings.enableTax && taxAmount > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span>Pajak Resto ({storeSettings.taxPercent}%):</span>
+                      <span>Rp {taxAmount.toLocaleString('id-ID')}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-between items-end mb-2.5 sm:mb-4 max-lg:landscape:mb-2">
+                <span className={`text-muted font-bold uppercase tracking-wider ${isWideCart ? 'text-xs' : 'text-[11px]'} max-lg:landscape:text-[10px]`}>Total Pembayaran</span>
+                <span className={`font-black text-fg leading-none tracking-tight transition-all ${isVeryWideCart ? 'text-2xl sm:text-3xl' : (isWideCart ? 'text-xl sm:text-2xl' : 'text-xl')} max-lg:landscape:text-lg`}>Rp {totalPrice.toLocaleString('id-ID')}</span>
+              </div>
+            </div>
+
             <div className="flex gap-2">
               {editingOrderId && (
-                <button onClick={handleShowDraftBill} className="w-1/4 bg-card border border-line text-fg py-2.5 sm:py-3.5 rounded-xl font-bold text-xs shadow-sm active:scale-95 transition-all"> Draft</button>
+                <button onClick={handleShowDraftBill} className="w-1/4 bg-card border border-line text-fg py-2.5 sm:py-3 max-lg:landscape:py-2 rounded-xl font-bold text-xs shadow-sm active:scale-95 transition-all">Draft</button>
               )}
               {(editingOrderId || (orderType === "Dine-in" && selectedTable && activeOrders.some(o => o.tableId === parseInt(selectedTable)))) && (
                 <button 
                   type="button"
                   onClick={handleOpenSplitBillFromCart} 
-                  className="w-1/3 bg-slate-100 text-slate-800 hover:bg-slate-200 py-2.5 sm:py-3.5 rounded-xl font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
-                > Split Bill
+                  className="w-1/3 bg-slate-100 text-slate-800 hover:bg-slate-200 py-2.5 sm:py-3 max-lg:landscape:py-2 rounded-xl font-bold text-xs shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
+                >
+                  Split Bill
                 </button>
               )}
               <button
                 onClick={openPaymentModal}
-                className={`flex-1 bg-accent hover:bg-accent-hover text-white rounded-xl font-extrabold shadow-lg shadow-accent/25 active:scale-95 transition-all disabled:opacity-40 ${isWideCart ? 'py-3.5 sm:py-4 text-base sm:text-lg' : 'py-2.5 sm:py-3.5 text-sm md:text-base'}`}
+                className={`flex-1 bg-accent hover:bg-accent-hover text-white rounded-xl font-extrabold shadow-lg shadow-accent/25 active:scale-95 transition-all disabled:opacity-40 ${isWideCart ? 'py-3 sm:py-3.5 text-sm sm:text-base' : 'py-2.5 sm:py-3 text-sm'} max-lg:landscape:py-2 max-lg:landscape:text-xs`}
                 disabled={cart.length === 0}
               >
                 Lanjut ke Pembayaran →
@@ -2654,9 +2668,9 @@ export default function POSPage() {
     <div id="main-app-container" className="flex flex-col h-screen font-sans relative bg-surface text-fg transition-colors duration-200 overflow-hidden">
       {/* Demo Kasir Alert Banner with 4 Business Switcher */}
       {accessStatus.isDemo && (
-        <div className="bg-amber-100/90 dark:bg-amber-950/80 border-b border-amber-300 dark:border-amber-800 px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between text-xs text-amber-950 dark:text-amber-100 font-medium shrink-0 z-40 gap-2">
+        <div className="bg-amber-100/90 dark:bg-amber-950/80 border-b border-amber-300 dark:border-amber-800 px-3 sm:px-4 py-2 max-lg:landscape:py-1 flex flex-wrap items-center justify-between text-xs text-amber-950 dark:text-amber-100 font-medium shrink-0 z-40 gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-black bg-amber-400 dark:bg-amber-500 text-amber-950 px-2.5 py-1 rounded-md text-[10px] tracking-wider uppercase shadow-xs border border-amber-500/30">
+            <span className="font-black bg-amber-400 dark:bg-amber-500 text-amber-950 px-2.5 py-1 max-lg:landscape:py-0.5 rounded-md text-[10px] tracking-wider uppercase shadow-xs border border-amber-500/30">
               DEMO KASIR
             </span>
             <span className="hidden md:inline text-[11px] font-black text-amber-950 dark:text-amber-200">
@@ -2691,13 +2705,13 @@ export default function POSPage() {
             <button
               type="button"
               onClick={handleExitDemo}
-              className="text-amber-950 dark:text-amber-100 hover:underline font-bold text-xs px-2.5 py-1 rounded-lg bg-amber-200 dark:bg-amber-900/80 hover:bg-amber-300 transition-colors border border-amber-300 dark:border-amber-700"
+              className="text-amber-950 dark:text-amber-100 hover:underline font-bold text-xs px-2.5 py-1 max-lg:landscape:py-0.5 rounded-lg bg-amber-200 dark:bg-amber-900/80 hover:bg-amber-300 transition-colors border border-amber-300 dark:border-amber-700"
             >
               Keluar Demo
             </button>
             <Link
               href="/?beli=true"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1 rounded-lg shadow-xs"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1 max-lg:landscape:py-0.5 rounded-lg shadow-xs"
             >
               Beli Lisensi Rp50.000 →
             </Link>
@@ -2707,7 +2721,7 @@ export default function POSPage() {
 
       {/* Trial Expiry Countdown Banner */}
       {!accessStatus.isDemo && accessStatus.licenseType === "trial" && (
-        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 flex flex-wrap items-center justify-between text-xs text-blue-950 font-medium shrink-0 z-40">
+        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 max-lg:landscape:py-1 flex flex-wrap items-center justify-between text-xs text-blue-950 font-medium shrink-0 z-40">
           <div className="flex items-center gap-2">
             <span className="font-black bg-blue-600 text-white px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase shadow-xs">CLOSED BETA TRIAL</span>
             <span>Sisa waktu: <strong>{accessStatus.daysRemaining ?? 7} hari</strong> ({accessStatus.hoursRemaining ?? 168} jam). Usaha: <strong>{accessStatus.businessName}</strong></span>
@@ -2729,11 +2743,11 @@ export default function POSPage() {
       {/* Payment Modal */}
       {isPaymentModalOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4 max-lg:landscape:p-2 overflow-y-auto animate-in fade-in duration-200"
           onClick={handleClosePaymentModal}
         >
           <div 
-            className=" bg-card p-4 sm:p-6 md:p-8 landscape:p-3 rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl relative flex flex-col max-h-[90vh] landscape:max-h-[96dvh] transition-transform ease-out"
+            className="bg-card p-4 sm:p-6 md:p-8 max-lg:landscape:p-3.5 rounded-t-3xl sm:rounded-2xl w-full max-w-md max-lg:landscape:max-w-xl shadow-2xl relative flex flex-col max-h-[90vh] landscape:max-h-[95dvh] transition-transform ease-out"
             style={{
               transform: paymentSheetDragY > 0 ? `translateY(${paymentSheetDragY}px)` : undefined,
               touchAction: 'pan-y'
@@ -2742,7 +2756,7 @@ export default function POSPage() {
           >
             {/* Grab handle for mobile touch */}
             <div 
-              className="flex flex-col items-center justify-center pt-1 pb-2 cursor-pointer select-none sm:hidden touch-none"
+              className="flex flex-col items-center justify-center pt-1 pb-2 cursor-pointer select-none sm:hidden landscape:hidden touch-none"
               onTouchStart={handlePaymentTouchStart}
               onTouchMove={handlePaymentTouchMove}
               onTouchEnd={handlePaymentTouchEnd}
@@ -2755,24 +2769,24 @@ export default function POSPage() {
             </div>
 
             <div 
-              className="flex justify-between items-center mb-4"
+              className="flex justify-between items-center mb-4 max-lg:landscape:mb-2 shrink-0"
               onTouchStart={handlePaymentTouchStart}
               onTouchMove={handlePaymentTouchMove}
               onTouchEnd={handlePaymentTouchEnd}
             >
-              <h2 className="text-xl font-bold text-fg">Selesaikan Pembayaran</h2>
+              <h2 className="text-xl max-lg:landscape:text-base font-bold text-fg">Selesaikan Pembayaran</h2>
               <button 
                 type="button"
                 onClick={handleClosePaymentModal}
-                className="w-9 h-9 rounded-full bg-line text-muted hover:text-fg flex items-center justify-center text-sm font-bold active:scale-90 transition-all"
+                className="w-9 h-9 max-lg:landscape:w-7 max-lg:landscape:h-7 rounded-full bg-line text-muted hover:text-fg flex items-center justify-center text-sm font-bold active:scale-90 transition-all"
               >
                 ×
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-1">
-              {/* Prominent Total Tagihan at TOP */}
-              <div className="bg-surface border border-line rounded-2xl p-4 text-center mb-4 shadow-inner">
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+              {/* Prominent Total Tagihan at TOP (Hidden in compact landscape because bottom bar already shows Total Pembayaran) */}
+              <div className="bg-surface border border-line rounded-2xl p-4 text-center mb-4 shadow-inner max-lg:landscape:hidden">
                 <span className="text-[11px] uppercase tracking-wider text-muted font-bold block">Total Tagihan</span>
                 <span className="text-3xl font-black text-accent-text tracking-tight">
                   Rp {totalPrice.toLocaleString('id-ID')}
@@ -2784,7 +2798,7 @@ export default function POSPage() {
                 )}
               </div>
 
-              <div className="space-y-4 mb-4">
+              <div className="space-y-4 max-lg:landscape:space-y-2.5 mb-4 max-lg:landscape:mb-2">
                 {isTableManagementEnabled(storeSettings) ? (
                   <div>
                     <label className="block text-xs font-bold text-muted mb-1.5">Tipe Pesanan</label>
@@ -3017,10 +3031,10 @@ export default function POSPage() {
                 )}
             </div>
           </div>
-          <div className="border-t border-line pt-3 mt-2 shrink-0 bg-card">
+          <div className="border-t border-line pt-3 mt-2 max-lg:landscape:pt-2 max-lg:landscape:mt-1 shrink-0 bg-card">
 
               {cart.length > 0 && (discountAmount > 0 || serviceAmount > 0 || taxAmount > 0) && (
-                <div className="mb-3 p-3 bg-surface rounded-xl space-y-1 text-xs text-muted border border-line">
+                <div className="mb-3 max-lg:landscape:mb-1.5 p-3 max-lg:landscape:p-2 bg-surface rounded-xl space-y-1 max-lg:landscape:space-y-0.5 text-xs max-lg:landscape:text-[11px] text-muted border border-line">
                   <div className="flex justify-between"><span>Subtotal</span><span>Rp {rawSubtotal.toLocaleString('id-ID')}</span></div>
                   {discountAmount > 0 && (
                     <div className="flex justify-between text-accent-text font-semibold"><span>Diskon</span><span>-Rp {discountAmount.toLocaleString('id-ID')}</span></div>
@@ -3034,15 +3048,15 @@ export default function POSPage() {
                 </div>
               )}
 
-            <div className="flex justify-between items-center mb-4">
-              <span className=" text-muted font-bold text-sm">Total Pembayaran</span>
-              <span className="text-2xl font-black text-accent-text">Rp {totalPrice.toLocaleString('id-ID')}</span>
+            <div className="flex justify-between items-center mb-4 max-lg:landscape:mb-2">
+              <span className="text-muted font-bold text-sm max-lg:landscape:text-xs">Total Pembayaran</span>
+              <span className="text-2xl max-lg:landscape:text-lg font-black text-accent-text">Rp {totalPrice.toLocaleString('id-ID')}</span>
             </div>
             <div className="flex space-x-2">
               <button 
                 type="button"
                 onClick={handleClosePaymentModal} 
-                className="px-4 py-3 rounded-xl bg-line text-fg hover:bg-line font-bold text-xs transition-colors"
+                className="px-4 py-3 max-lg:landscape:py-2 rounded-xl bg-line text-fg hover:bg-line font-bold text-xs transition-colors"
               >
                 Batal
               </button>
@@ -3050,7 +3064,7 @@ export default function POSPage() {
                 <button 
                   type="button"
                   onClick={() => processPayment(true, 'unpaid')} 
-                  className="flex-1 py-3 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 hover:bg-slate-300 dark:hover:bg-slate-700 font-bold transition-all shadow-sm text-xs active:scale-95"
+                  className="flex-1 py-3 max-lg:landscape:py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 hover:bg-slate-300 dark:hover:bg-slate-700 font-bold transition-all shadow-sm text-xs active:scale-95"
                 > Open Bill
                 </button>
               )}
@@ -3067,7 +3081,7 @@ export default function POSPage() {
                   }
                   processPayment(false, paymentMethod === 'Kasbon' ? 'unpaid' : 'paid');
                 }} 
-                className={`flex-1 py-3 rounded-xl text-white font-extrabold transition-all shadow-md text-xs sm:text-sm active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
+                className={`flex-1 py-3 max-lg:landscape:py-2 rounded-xl text-white font-extrabold transition-all shadow-md text-xs sm:text-sm active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
                   paymentMethod === 'Kasbon'
                     ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
                     : 'bg-accent hover:bg-accent-hover'
@@ -3290,27 +3304,27 @@ export default function POSPage() {
       {/* ======================================================== */}
       <div className="hidden md:flex landscape:flex flex-col h-full w-full overflow-hidden">
         {/* Top Application Header (Full Width) */}
-        <header className="h-14 sm:h-16 landscape:h-13 bg-card border-b border-line px-4 sm:px-6 flex items-center justify-between shrink-0 z-30 transition-colors shadow-xs">
+        <header className="h-14 sm:h-16 max-lg:landscape:h-11 bg-card border-b border-line px-4 sm:px-6 max-lg:landscape:px-3 flex items-center justify-between shrink-0 z-30 transition-colors shadow-xs">
         {/* Left: Brand & Store Name */}
         <Link href="/" className="flex items-center space-x-2 md:space-x-3 hover:opacity-85 transition-opacity" title="Kembali ke Beranda SakuNota">
           {storeSettings.storeLogo ? (
             <img
               src={storeSettings.storeLogo}
               alt="Logo Toko"
-              className="w-8 h-8 md:w-10 md:h-10 rounded-xl object-contain bg-surface border border-line shadow-sm flex-shrink-0 p-0.5"
+              className="w-8 h-8 md:w-10 md:h-10 max-lg:landscape:w-7 max-lg:landscape:h-7 rounded-xl object-contain bg-surface border border-line shadow-sm flex-shrink-0 p-0.5"
             />
           ) : (
             <img
               src="/icon.png"
               alt="SakuNota"
-              className="w-8 h-8 md:w-10 md:h-10 rounded-xl object-contain shadow-md shadow-accent/20 flex-shrink-0"
+              className="w-8 h-8 md:w-10 md:h-10 max-lg:landscape:w-7 max-lg:landscape:h-7 rounded-xl object-contain shadow-md shadow-accent/20 flex-shrink-0"
             />
           )}
           <div className="min-w-0">
             <h1 className="text-xs md:text-sm lg:text-base font-black text-fg leading-tight truncate">
               {storeSettings.storeName || 'SakuNota'}
             </h1>
-            <span className="text-[10px] md:text-[11px] text-muted font-medium line-clamp-1 hidden sm:block">
+            <span className="text-[10px] md:text-[11px] text-muted font-medium line-clamp-1 hidden sm:block max-lg:landscape:hidden">
               {storeSettings.storeAddress || 'Kasir Jalan Tanpa Internet'}
             </span>
           </div>
@@ -3319,7 +3333,7 @@ export default function POSPage() {
         {/* Right: Shift Status & Admin Button */}
         <div className="flex items-center space-x-2 md:space-x-3">
           {activeShift ? (
-            <div className="flex items-center gap-1.5 bg-accent/20 border border-accent/40 px-3 py-1.5 rounded-full text-xs shadow-sm">
+            <div className="flex items-center gap-1.5 bg-accent/20 border border-accent/40 px-3 py-1.5 max-lg:landscape:py-1 max-lg:landscape:px-2.5 rounded-full text-xs shadow-sm">
               <span className="w-2 h-2 rounded-full bg-accent animate-pulse shrink-0"></span>
               <span className="font-bold text-accent-text truncate max-w-[80px] md:max-w-none">{activeShift.operatorName}</span>
               <span className="hidden md:inline text-muted">|</span>
@@ -3344,7 +3358,7 @@ export default function POSPage() {
             <button 
               type="button"
               onClick={() => setIsOpenShiftModalOpen(true)}
-              className="flex items-center gap-1.5 bg-accent/20 border border-accent/40 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold text-accent-text hover:bg-accent/30 shadow-sm transition-transform active:scale-95 shrink-0"
+              className="flex items-center gap-1.5 bg-accent/20 border border-accent/40 px-2.5 sm:px-3 py-1.5 max-lg:landscape:py-1 rounded-full text-xs font-bold text-accent-text hover:bg-accent/30 shadow-sm transition-transform active:scale-95 shrink-0"
               title="Buka Shift Kasir"
             >
 
@@ -3353,7 +3367,7 @@ export default function POSPage() {
           )}
 
           <CashierPrinter settings={storeSettings} />
-          <button type="button" onClick={enterAdmin} className="px-3 py-2 rounded-xl border border-line bg-card text-fg font-bold text-xs hover:bg-line/80 hover:border-accent/40 cursor-pointer transition-all duration-150 active:scale-95 shadow-xs">Admin</button>
+          <button type="button" onClick={enterAdmin} className="px-3 py-2 max-lg:landscape:py-1 max-lg:landscape:px-2.5 rounded-xl border border-line bg-card text-fg font-bold text-xs hover:bg-line/80 hover:border-accent/40 cursor-pointer transition-all duration-150 active:scale-95 shadow-xs">Admin</button>
 
         </div>
       </header>
@@ -3361,8 +3375,8 @@ export default function POSPage() {
       {/* Main Horizontal Workspace Below Top Header */}
       <div ref={workspaceContainerRef} className="flex-1 flex overflow-hidden w-full print:hidden">
         {/* Left Navigation Sidebar (Desktop, Tablet & Landscape) */}
-        <aside className="flex flex-col w-14 md:w-16 lg:w-52 bg-card border-r border-line p-1.5 md:p-2 lg:p-3 justify-between shrink-0 select-none">
-          <nav className="space-y-1" aria-label="Navigasi karyawan">
+        <aside className="flex flex-col w-14 md:w-16 lg:w-52 max-lg:landscape:w-12 bg-card border-r border-line p-1.5 md:p-2 lg:p-3 max-lg:landscape:p-1 justify-between shrink-0 select-none">
+          <nav className="space-y-1 max-lg:landscape:space-y-0.5" aria-label="Navigasi karyawan">
             {[{ id: 'kasir', label: 'Kasir', icon: 'cashier' }, { id: 'menu', label: 'Menu', icon: 'food' },
               ...(isTableManagementEnabled(storeSettings) ? [{ id: 'meja', label: 'Meja', icon: 'table' }] : []),
               { id: 'pesanan', label: 'Pesanan', icon: 'receipt' }, { id: 'shift', label: 'Shift Saya', icon: 'shift' }].map(item =>
@@ -3371,16 +3385,16 @@ export default function POSPage() {
                 type="button"
                 aria-current={view === item.id ? 'page' : undefined}
                 onClick={() => navigateWorkspace(item.id as typeof view)}
-                className={`w-full flex items-center justify-center lg:justify-start gap-2.5 px-2 lg:px-3 py-2.5 lg:py-3 rounded-xl text-xs lg:text-sm font-bold text-left transition-colors ${view === item.id ? 'bg-accent text-white' : 'text-fg hover:bg-surface'}`}
+                className={`w-full flex items-center justify-center lg:justify-start gap-2.5 px-2 lg:px-3 py-2.5 lg:py-3 max-lg:landscape:py-1.5 rounded-xl text-xs lg:text-sm font-bold text-left transition-colors ${view === item.id ? 'bg-accent text-white' : 'text-fg hover:bg-surface'}`}
                 title={item.label}
               >
-                <LineIcon name={item.icon} className="w-5 h-5 shrink-0" />
+                <LineIcon name={item.icon} className="w-5 h-5 max-lg:landscape:w-4 max-lg:landscape:h-4 shrink-0" />
                 <span className="hidden lg:inline truncate">{item.label}</span>
               </button>)}
           </nav>
 
-          <div className="pt-2 lg:pt-3 border-t border-line hidden sm:block">
-            <div className="px-1.5 lg:px-2.5 py-1.5 lg:py-2 rounded-xl bg-surface border border-line text-[10px] lg:text-[11px] text-muted flex items-center justify-center lg:justify-start gap-1.5">
+          <div className="pt-2 lg:pt-3 max-lg:landscape:pt-1 border-t border-line hidden sm:block">
+            <div className="px-1.5 lg:px-2.5 py-1.5 lg:py-2 max-lg:landscape:py-1 rounded-xl bg-surface border border-line text-[10px] lg:text-[11px] text-muted flex items-center justify-center lg:justify-start gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
               <span className="font-semibold text-emerald-700 hidden lg:inline truncate">Siap Tanpa Internet</span>
             </div>
@@ -3389,7 +3403,7 @@ export default function POSPage() {
 
         {/* Central Workspace */}
         <div className="flex-1 min-w-0 flex flex-col h-full pb-0 overflow-hidden bg-surface transition-colors">
-          {view === 'kasir' && <><div className="p-4 border-b border-line flex flex-wrap gap-3 items-center justify-between"><h1 className="font-bold text-lg">Kasir</h1><button type="button" className="px-4 py-2 bg-accent text-white rounded-xl text-sm font-bold" onClick={() => navigateWorkspace('menu')}>Pilih Produk / Scan Barcode</button></div>{renderCartInner(false)}</>}
+          {view === 'kasir' && renderCartInner(false, true)}
           {view === 'pesanan' && renderCashierOrders()}
           {view === 'shift' && renderShiftPanel()}
           {view === 'meja' && (() => {
@@ -3400,12 +3414,12 @@ export default function POSPage() {
             });
 
             return (
-              <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-surface flex flex-col">
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 max-lg:landscape:p-2.5 bg-surface flex flex-col">
                 {/* Meja Summary & Zone Filter Bar */}
-                <div className="mb-4 p-3.5 bg-card rounded-2xl border border-line space-y-3">
+                <div className="mb-4 max-lg:landscape:mb-2 p-3.5 max-lg:landscape:p-2.5 bg-card rounded-2xl border border-line space-y-3 max-lg:landscape:space-y-1.5">
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="font-black text-fg text-sm">Denah Meja Visual</span>
+                      <span className="font-black text-fg text-sm max-lg:landscape:text-xs">Denah Meja Visual</span>
                       <span className="text-[11px] text-muted">
                         Total {tableData.length} Meja
                       </span>
@@ -3425,14 +3439,14 @@ export default function POSPage() {
 
                   {/* Zone Filter Tabs */}
                   {posZones.length > 0 && (
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar pt-2 border-t border-line/40 text-xs">
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar pt-2 max-lg:landscape:pt-1.5 border-t border-line/40 text-xs">
                       <span className="text-[10px] font-bold text-muted uppercase tracking-wider shrink-0 mr-1">
                         Zona:
                       </span>
                       <button
                         type="button"
                         onClick={() => setPosZoneFilter("Semua")}
-                        className={`px-3 py-1 rounded-full font-bold whitespace-nowrap transition-all text-xs border ${
+                        className={`px-3 py-1 max-lg:landscape:py-0.5 rounded-full font-bold whitespace-nowrap transition-all text-xs border ${
                           posZoneFilter === "Semua"
                             ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 border-slate-900"
                             : "bg-surface border-line text-muted hover:text-fg"
@@ -3447,7 +3461,7 @@ export default function POSPage() {
                             key={z}
                             type="button"
                             onClick={() => setPosZoneFilter(z)}
-                            className={`px-3 py-1 rounded-full font-bold whitespace-nowrap transition-all text-xs border ${
+                            className={`px-3 py-1 max-lg:landscape:py-0.5 rounded-full font-bold whitespace-nowrap transition-all text-xs border ${
                               posZoneFilter === z
                                 ? "bg-accent border-accent text-white shadow-sm"
                                 : "bg-surface border-line text-muted hover:text-fg"
@@ -3461,7 +3475,7 @@ export default function POSPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-4 max-lg:landscape:gap-2.5">
                   {(posFilteredTables || []).map(table => {
                     if (!table || table.id == null) return null;
                     const tStatus = getTableStatus(table);
@@ -3481,7 +3495,7 @@ export default function POSPage() {
                       <div 
                         key={table.id} 
                         onClick={() => handleTableClick(table)} 
-                        className={`relative rounded-2xl border-2 ${style.card} p-3.5 h-44 flex flex-col items-center justify-between shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer ${isSelected ? 'ring-4 ring-accent/70' : ''}`}
+                        className={`relative rounded-2xl border-2 ${style.card} p-3.5 h-44 max-lg:landscape:h-32 max-lg:landscape:p-2.5 flex flex-col items-center justify-between shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer ${isSelected ? 'ring-4 ring-accent/70' : ''}`}
                       >
                         {/* Top Shape & Zone info */}
                         <div className="flex items-center justify-between w-full px-1 text-muted text-[10px]">
@@ -3493,19 +3507,19 @@ export default function POSPage() {
                         </div>
 
                         {/* Name and Status */}
-                        <div className="flex flex-col items-center text-center w-full px-1 my-1">
-                          <h4 className="font-black text-sm text-fg truncate max-w-full">
+                        <div className="flex flex-col items-center text-center w-full px-1 my-1 max-lg:landscape:my-0.5">
+                          <h4 className="font-black text-sm max-lg:landscape:text-xs text-fg truncate max-w-full">
                             {table.nomor}
                           </h4>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full mt-1 ${style.labelCls}`}>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full mt-1 max-lg:landscape:mt-0.5 ${style.labelCls}`}>
                             {style.label}
                           </span>
                           {name && (
-                            <span className={`mt-1 text-xs font-bold truncate max-w-full ${tStatus === 'lunas' ? 'text-accent-text' : 'text-fg'}`}><LineIcon name="info" />{name}
+                            <span className={`mt-1 max-lg:landscape:mt-0.5 text-xs max-lg:landscape:text-[10px] font-bold truncate max-w-full ${tStatus === 'lunas' ? 'text-accent-text' : 'text-fg'}`}><LineIcon name="info" />{name}
                             </span>
                           )}
                           {openOrder && (
-                            <span className="text-[11px] font-extrabold text-rose-700 mt-0.5">
+                            <span className="text-[11px] max-lg:landscape:text-[10px] font-extrabold text-rose-700 mt-0.5">
                               Rp {(openOrder.total ?? 0).toLocaleString('id-ID')}
                             </span>
                           )}
@@ -3523,7 +3537,7 @@ export default function POSPage() {
                               e.stopPropagation();
                               handleClearTable(table.id);
                             }}
-                            className="w-full py-1.5 text-[11px] font-bold bg-accent hover:bg-accent-hover text-white rounded-lg transition-transform active:scale-95 shadow-sm"
+                            className="w-full py-1.5 max-lg:landscape:py-1 text-[11px] max-lg:landscape:text-[10px] font-bold bg-accent hover:bg-accent-hover text-white rounded-lg transition-transform active:scale-95 shadow-sm"
                           > Lepas Meja
                           </button>
                         ) : (
@@ -3546,8 +3560,8 @@ export default function POSPage() {
 
             return (
               <div className="flex-1 flex flex-col h-full overflow-hidden">
-                <div className="p-4 md:p-6 pb-2 shrink-0">
-                  <div className="flex flex-col space-y-3 mb-2">
+                <div className="p-4 md:p-6 pb-2 max-lg:landscape:px-3 max-lg:landscape:pt-2 max-lg:landscape:pb-1.5 shrink-0">
+                  <div className="flex flex-col space-y-3 max-lg:landscape:space-y-1.5 mb-2 max-lg:landscape:mb-1">
                     <CategoryScroller categories={categories} value={activeCategory} onChange={setActiveCategory} />
                     <div className="flex gap-2 items-center">
                       <input 
@@ -3555,23 +3569,23 @@ export default function POSPage() {
                         placeholder="Cari menu makanan, minuman, atau kode barcode..." 
                         value={searchQuery} 
                         onChange={e => setSearchQuery(e.target.value)} 
-                        className="flex-1 bg-card border border-line rounded-xl p-3 text-sm text-fg focus:border-accent outline-none transition-colors shadow-sm" 
+                        className="flex-1 min-w-0 bg-card border border-line rounded-xl p-3 max-lg:landscape:p-2 text-sm max-lg:landscape:text-xs text-fg focus:border-accent outline-none transition-colors shadow-sm" 
                       />
                       <button
                         type="button"
                         onClick={() => setIsBarcodeScanOpen(true)}
-                        className="px-3.5 py-3 rounded-xl bg-card border border-line hover:border-accent text-fg hover:text-accent-text font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0"
+                        className="px-3.5 py-3 max-lg:landscape:px-2.5 max-lg:landscape:py-2 rounded-xl bg-card border border-line hover:border-accent text-fg hover:text-accent-text font-bold text-xs sm:text-sm max-lg:landscape:text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0"
                         title="Pindai Barcode Produk (Kamera / Barcode Gun)"
                       >
                         Pindai Barcode
                       </button>
 
                       {/* Density Controls (S / M / L) */}
-                      <div className="hidden sm:flex items-center gap-1 bg-card border border-line rounded-xl p-1 shrink-0 shadow-xs" title="Ukuran Tombol Menu Kasir">
+                      <div className="hidden sm:flex items-center gap-1 bg-card border border-line rounded-xl p-1 max-lg:landscape:p-0.5 shrink-0 shadow-xs" title="Ukuran Tombol Menu Kasir">
                         <button
                           type="button"
                           onClick={() => handleSetCatalogDensity('S')}
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          className={`px-2.5 py-1.5 max-lg:landscape:px-2 max-lg:landscape:py-1 rounded-lg text-xs font-bold transition-all ${
                             posCatalogDensity === 'S'
                               ? 'bg-accent text-white shadow-xs'
                               : 'text-muted hover:text-fg hover:bg-surface'
@@ -3583,7 +3597,7 @@ export default function POSPage() {
                         <button
                           type="button"
                           onClick={() => handleSetCatalogDensity('M')}
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          className={`px-2.5 py-1.5 max-lg:landscape:px-2 max-lg:landscape:py-1 rounded-lg text-xs font-bold transition-all ${
                             posCatalogDensity === 'M'
                               ? 'bg-accent text-white shadow-xs'
                               : 'text-muted hover:text-fg hover:bg-surface'
@@ -3595,7 +3609,7 @@ export default function POSPage() {
                         <button
                           type="button"
                           onClick={() => handleSetCatalogDensity('L')}
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          className={`px-2.5 py-1.5 max-lg:landscape:px-2 max-lg:landscape:py-1 rounded-lg text-xs font-bold transition-all ${
                             posCatalogDensity === 'L'
                               ? 'bg-accent text-white shadow-xs'
                               : 'text-muted hover:text-fg hover:bg-surface'
@@ -3609,14 +3623,14 @@ export default function POSPage() {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-6">
+                <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-6 max-lg:landscape:px-3 max-lg:landscape:pb-3">
                   {paginatedMenu.length === 0 ? (
                     <div className="h-64 flex flex-col items-center justify-center text-center p-8 bg-card rounded-2xl border border-line">
                       <p className="text-sm font-bold text-fg">Tidak ada menu yang sesuai</p>
                       <p className="text-xs text-muted mt-1">Coba kata kunci lain atau pilih kategori Semua.</p>
                     </div>
                   ) : (
-                    <div className={`grid gap-3 md:gap-4 transition-all ${
+                    <div className={`grid gap-3 md:gap-4 max-lg:landscape:gap-2.5 transition-all ${
                       posCatalogDensity === 'S'
                         ? 'grid-cols-2 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 md:gap-2.5'
                         : posCatalogDensity === 'L'
@@ -3650,10 +3664,10 @@ export default function POSPage() {
                             {/* Culinary Thumbnail Image Box */}
                             <div className={`w-full bg-surface/70 flex items-center justify-center relative border-b border-line group-hover:scale-105 transition-transform duration-200 ${
                               posCatalogDensity === 'L'
-                                ? 'h-32 sm:h-36 text-4xl'
+                                ? 'h-32 sm:h-36 max-lg:landscape:h-20 text-4xl'
                                 : posCatalogDensity === 'S'
-                                ? 'h-16 sm:h-20 text-2xl'
-                                : 'h-24 sm:h-28 text-3xl'
+                                ? 'h-16 sm:h-20 max-lg:landscape:h-12 text-2xl'
+                                : 'h-24 sm:h-28 max-lg:landscape:h-14 text-3xl'
                             }`}>
                               <ProductPhoto product={item} />
 
@@ -3672,14 +3686,14 @@ export default function POSPage() {
                               ) : null}
                             </div>
 
-                            <div className={`${posCatalogDensity === 'S' ? 'p-2' : 'p-3'} flex-1 flex flex-col justify-between`}>
+                            <div className={`${posCatalogDensity === 'S' ? 'p-2' : 'p-3 max-lg:landscape:p-2'} flex-1 flex flex-col justify-between`}>
                               <div>
                                 <h3 className={`font-bold leading-tight text-fg ${
                                   posCatalogDensity === 'L'
                                     ? 'text-sm sm:text-base line-clamp-2'
                                     : posCatalogDensity === 'S'
                                     ? 'text-[11px] sm:text-xs line-clamp-1'
-                                    : 'text-xs sm:text-sm line-clamp-1'
+                                    : 'text-xs sm:text-sm max-lg:landscape:text-xs line-clamp-1'
                                 }`}>
                                   {item.nama}
                                 </h3>
@@ -3688,23 +3702,23 @@ export default function POSPage() {
                                 </span>
                               </div>
 
-                              <div className={`flex items-center justify-between pt-2 border-t border-line/60 ${posCatalogDensity === 'S' ? 'mt-1.5' : 'mt-2.5'}`}>
+                              <div className={`flex items-center justify-between pt-2 max-lg:landscape:pt-1.5 border-t border-line/60 ${posCatalogDensity === 'S' ? 'mt-1.5' : 'mt-2.5 max-lg:landscape:mt-1.5'}`}>
                                 <p className={`text-accent-text font-black ${
                                   posCatalogDensity === 'L'
                                     ? 'text-sm sm:text-base'
                                     : posCatalogDensity === 'S'
                                     ? 'text-[11px] sm:text-xs'
-                                    : 'text-xs sm:text-sm'
+                                    : 'text-xs sm:text-sm max-lg:landscape:text-xs'
                                 }`}>
                                   Rp {item.harga.toLocaleString('id-ID')}
                                 </p>
                                 {!isSoldOut && (
                                   <span className={`rounded-lg bg-accent text-white flex items-center justify-center font-bold shadow-sm group-hover:scale-110 transition-transform ${
                                     posCatalogDensity === 'L'
-                                      ? 'w-8 h-8 text-sm'
+                                      ? 'w-8 h-8 max-lg:landscape:w-6 max-lg:landscape:h-6 text-sm'
                                       : posCatalogDensity === 'S'
                                       ? 'w-5 h-5 text-[11px]'
-                                      : 'w-6 h-6 text-xs'
+                                      : 'w-6 h-6 max-lg:landscape:w-5 max-lg:landscape:h-5 text-xs'
                                   }`}>
                                     +
                                   </span>
@@ -3720,7 +3734,7 @@ export default function POSPage() {
 
                 {/* Catalog Pagination Footer */}
                 {filteredMenu.length > menuItemsPerPage && (
-                  <div className="p-3 border-t border-line flex items-center justify-between text-xs bg-card shrink-0">
+                  <div className="p-3 max-lg:landscape:py-1.5 max-lg:landscape:px-3 border-t border-line flex items-center justify-between text-xs bg-card shrink-0">
                     <span className="text-muted font-semibold">
                       Menampilkan {((menuPage - 1) * menuItemsPerPage) + 1} - {Math.min(menuPage * menuItemsPerPage, filteredMenu.length)} dari {filteredMenu.length} menu
                     </span>
@@ -3729,7 +3743,7 @@ export default function POSPage() {
                         type="button"
                         disabled={menuPage === 1}
                         onClick={() => setMenuPage(p => Math.max(1, p - 1))}
-                        className="px-3 py-1.5 rounded-xl bg-surface border border-line font-bold disabled:opacity-40 hover:border-accent text-fg transition-colors"
+                        className="px-3 py-1.5 max-lg:landscape:py-1 rounded-xl bg-surface border border-line font-bold disabled:opacity-40 hover:border-accent text-fg transition-colors"
                       >
                         ← Prev
                       </button>
@@ -3740,7 +3754,7 @@ export default function POSPage() {
                         type="button"
                         disabled={menuPage === totalMenuPages}
                         onClick={() => setMenuPage(p => Math.min(totalMenuPages, p + 1))}
-                        className="px-3 py-1.5 rounded-xl bg-surface border border-line font-bold disabled:opacity-40 hover:border-accent text-fg transition-colors"
+                        className="px-3 py-1.5 max-lg:landscape:py-1 rounded-xl bg-surface border border-line font-bold disabled:opacity-40 hover:border-accent text-fg transition-colors"
                       >
                         Next →
                       </button>
@@ -3816,7 +3830,7 @@ export default function POSPage() {
         {/* POS Sidebar Cart (Desktop, Tablet & Landscape) */}
         <div 
           style={{ width: `${posCartWidth}px` }}
-          className={`hidden ${view === 'menu' || view === 'meja' ? 'md:flex landscape:flex' : ''} flex-col bg-card border-l border-line shadow-2xl z-20 shrink-0 transition-none`}
+          className={`hidden ${view === 'menu' || view === 'meja' ? 'md:flex landscape:flex' : ''} max-lg:landscape:max-w-[265px] flex-col bg-card border-l border-line shadow-2xl z-20 shrink-0 transition-none`}
         >
           {renderCartInner(false)}
         </div>
