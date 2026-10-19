@@ -431,6 +431,10 @@ export default function POSPage() {
       try {
         const fresh = await loadStoreSettingsAsync();
         setStoreSettings(fresh);
+        if (!isTableManagementEnabled(fresh)) {
+          setOrderType("Direct");
+          setSelectedTable("");
+        }
         const access = await checkCashierAccess();
         if (canOpenStoreOnboarding(access) && (fresh.onboardingCompleted === false || window.location.search.includes('onboarding=true'))) {
           setIsOnboardingOpen(true);
@@ -443,6 +447,10 @@ export default function POSPage() {
 
     unsubscribe = subscribeStoreSettings((updated) => {
       setStoreSettings(updated);
+      if (!isTableManagementEnabled(updated)) {
+        setOrderType("Direct");
+        setSelectedTable("");
+      }
     });
 
     return () => {
@@ -1739,7 +1747,7 @@ export default function POSPage() {
 
       resetCart();
       setCustomerPhone("");
-      setOrderType("Dine-in");
+      setOrderType(isTableManagementEnabled(storeSettings) ? "Dine-in" : "Direct");
       setSelectedTable("");
       navigateWorkspace(isTableManagementEnabled(storeSettings) ? 'meja' : 'kasir');
       setIsPaymentModalOpen(false);
@@ -1852,7 +1860,7 @@ export default function POSPage() {
                 <h2 className={`${isWideCart ? 'text-lg lg:text-2xl' : 'text-base sm:text-lg lg:text-xl'} font-bold text-fg tracking-tight`}>{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
                 <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold transition-colors ${
                   cart.length === 0
-                    ? "bg-slate-100 text-slate-600 border border-slate-200"
+                    ? "bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-bold"
                     : "bg-blue-600 text-white font-black shadow-xs"
                 }`}>
                   {cart.reduce((sum, item) => sum + item.qty, 0)} item
@@ -1900,7 +1908,7 @@ export default function POSPage() {
                   <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center text-3xl mb-3 border border-accent/40 shadow-sm"><LineIcon name="info" /></div>
                   <p className="font-extrabold text-base text-fg">Tagihan Meja Ini Sudah LUNAS</p>
 
-                  <div className="bg-surface border border-line rounded-xl p-3.5 mt-3 text-xs text-slate-300 text-left w-full space-y-2">
+                  <div className="bg-surface border border-line rounded-xl p-3.5 mt-3 text-xs text-fg text-left w-full space-y-2">
                     <div className="flex justify-between items-center pb-2 border-b border-line">
                       <span className="text-muted font-medium">Pelanggan:</span>
                       <span className="font-bold text-accent-text text-sm"><LineIcon name="info" />{displayCustomer}</span>
@@ -2081,7 +2089,7 @@ export default function POSPage() {
                 <h2 className="text-base sm:text-xl font-bold text-fg tracking-tight">{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
                 <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold transition-colors ${
                   cart.length === 0
-                    ? "bg-slate-100 text-slate-600 border border-slate-200"
+                    ? "bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-bold"
                     : "bg-blue-600 text-white font-black shadow-xs"
                 }`}>
                   {cart.reduce((sum, item) => sum + item.qty, 0)} item
@@ -2102,7 +2110,7 @@ export default function POSPage() {
                 <button
                   type="button"
                   onClick={closeMobileCart}
-                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-card hover:bg-line text-slate-300 flex items-center justify-center text-sm sm:text-base font-bold shadow-sm transition-all active:scale-90"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-card hover:bg-line text-muted hover:text-fg border border-line flex items-center justify-center text-sm sm:text-base font-bold shadow-sm transition-all active:scale-90"
                   aria-label="Tutup keranjang"
                   title="Tutup dan kembali ke daftar menu"
                 >
@@ -2137,7 +2145,7 @@ export default function POSPage() {
                   <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-accent/20 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 border border-accent/40 shadow-sm"><LineIcon name="info" /></div>
                   <p className="font-extrabold text-sm sm:text-base text-fg">Tagihan Meja Ini Sudah LUNAS</p>
 
-                  <div className="bg-surface border border-line rounded-xl p-3 mt-2 text-xs text-slate-300 text-left w-full space-y-1.5">
+                  <div className="bg-surface border border-line rounded-xl p-3 mt-2 text-xs text-fg text-left w-full space-y-1.5">
                     <div className="flex justify-between items-center pb-1.5 border-b border-line">
                       <span className="text-muted font-medium">Pelanggan:</span>
                       <span className="font-bold text-accent-text text-sm"><LineIcon name="info" />{displayCustomer}</span>
@@ -2507,15 +2515,15 @@ export default function POSPage() {
     <div id="main-app-container" className="flex flex-col h-screen font-sans relative bg-surface text-fg transition-colors duration-200 overflow-hidden">
       {/* Demo Kasir Alert Banner with 4 Business Switcher */}
       {accessStatus.isDemo && (
-        <div className="bg-amber-50 border-b border-amber-200 px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between text-xs text-amber-950 font-medium shrink-0 z-40 gap-2">
+        <div className="bg-amber-100/90 dark:bg-amber-950/80 border-b border-amber-300 dark:border-amber-800 px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between text-xs text-amber-950 dark:text-amber-100 font-medium shrink-0 z-40 gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-black bg-amber-500 text-white px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase shadow-xs">
+            <span className="font-black bg-amber-400 dark:bg-amber-500 text-amber-950 px-2.5 py-1 rounded-md text-[10px] tracking-wider uppercase shadow-xs border border-amber-500/30">
               DEMO KASIR
             </span>
-            <span className="hidden md:inline text-[11px] font-bold text-amber-900">
+            <span className="hidden md:inline text-[11px] font-black text-amber-950 dark:text-amber-200">
               Preset Usaha:
             </span>
-            <div className="inline-flex rounded-lg p-0.5 bg-amber-200/60 border border-amber-300 gap-0.5">
+            <div className="inline-flex rounded-lg p-0.5 bg-amber-200 dark:bg-amber-900 border border-amber-300 dark:border-amber-700 gap-0.5">
               {(["warung", "restoran", "kafe", "retail"] as const).map((t) => {
                 const label = t === "warung" ? "Warung" : t === "restoran" ? "Resto" : t === "kafe" ? "Kafe" : "Retail";
                 const isCurrent = (storeSettings.businessType || "warung") === t;
@@ -2531,7 +2539,7 @@ export default function POSPage() {
                     className={`px-2 py-0.5 rounded text-[11px] font-black transition-all ${
                       isCurrent
                         ? "bg-amber-600 text-white shadow-xs"
-                        : "text-amber-950 hover:bg-amber-300/80"
+                        : "text-amber-950 dark:text-amber-100 hover:bg-amber-300/80 dark:hover:bg-amber-800"
                     }`}
                   >
                     {label}
@@ -2544,7 +2552,7 @@ export default function POSPage() {
             <button
               type="button"
               onClick={handleExitDemo}
-              className="text-amber-900 hover:text-amber-950 font-bold text-xs px-2.5 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300 transition-colors"
+              className="text-amber-950 dark:text-amber-100 hover:underline font-bold text-xs px-2.5 py-1 rounded-lg bg-amber-200 dark:bg-amber-900/80 hover:bg-amber-300 transition-colors border border-amber-300 dark:border-amber-700"
             >
               Keluar Demo
             </button>
@@ -2638,22 +2646,44 @@ export default function POSPage() {
               </div>
 
               <div className="space-y-4 mb-4">
-                <div>
-                  <label className="block text-xs font-bold text-muted mb-1.5">Tipe Pesanan</label>
-                  <div className="flex space-x-2">
-                    {["Dine-in", "Takeaway"].map((type) => (
-                      <button 
-                        key={type}
-                        type="button"
-                        onClick={() => setOrderType(type)}
-                        className={`flex-1 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border ${orderType === type ? 'bg-accent border-accent text-white shadow-sm' : ' bg-surface border-line text-muted'}`}
-                      >
-                        {type === 'Dine-in' ? ' Dine-in (Makan di Tempat)' : ' Takeaway (Bungkus)'}
-                      </button>
-                    ))}
+                {isTableManagementEnabled(storeSettings) ? (
+                  <div>
+                    <label className="block text-xs font-bold text-muted mb-1.5">Tipe Pesanan</label>
+                    <div className="flex space-x-2">
+                      {["Dine-in", "Takeaway"].map((type) => (
+                        <button 
+                          key={type}
+                          type="button"
+                          onClick={() => setOrderType(type)}
+                          className={`flex-1 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border ${orderType === type ? 'bg-accent border-accent text-white shadow-sm' : ' bg-surface border-line text-muted'}`}
+                        >
+                          {type === 'Dine-in' ? ' Dine-in (Makan di Tempat)' : ' Takeaway (Bungkus)'}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                {orderType === "Dine-in" && (
+                ) : (
+                  <div>
+                    <label className="block text-xs font-bold text-muted mb-1.5">Layanan Pesanan</label>
+                    <div className="flex space-x-2">
+                      {[
+                        { type: "Direct", label: "Kasir Langsung" },
+                        { type: "Takeaway", label: "Takeaway (Bungkus)" }
+                      ].map((item) => (
+                        <button 
+                          key={item.type}
+                          type="button"
+                          onClick={() => setOrderType(item.type)}
+                          className={`flex-1 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border ${orderType === item.type ? 'bg-accent border-accent text-white shadow-sm' : ' bg-surface border-line text-muted'}`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {isTableManagementEnabled(storeSettings) && orderType === "Dine-in" && (
                   <div>
                     <label className="block text-xs font-bold text-muted mb-1.5">Pilih Meja</label>
                     <div className="grid grid-cols-4 gap-2 max-h-36 overflow-y-auto p-1">
@@ -2664,7 +2694,7 @@ export default function POSPage() {
                           ? 'bg-rose-500/10 text-rose-500 border-rose-500/30' 
                           : tStatus === 'lunas' 
                           ? 'bg-accent/10 text-accent-text border-accent/30' 
-                          : ' bg-card text-slate-300 border-line';
+                          : ' bg-card text-fg border-line hover:border-accent font-bold';
                         return (
                           <button
                             key={table.id}
@@ -2772,7 +2802,7 @@ export default function POSPage() {
                 {paymentMethod === "Cash" && (
                   <div className="mt-2 p-3.5 bg-surface/80 rounded-2xl border border-line">
                     <div className="flex justify-between items-center mb-1.5">
-                      <label className="text-xs font-bold text-slate-300">Uang Diterima (Rp)</label>
+                      <label className="text-xs font-bold text-fg">Uang Diterima (Rp)</label>
                       <button 
                         type="button"
                         onClick={() => setCashTendered(totalPrice.toString())}
@@ -2873,11 +2903,11 @@ export default function POSPage() {
               >
                 Batal
               </button>
-              {orderType === "Dine-in" && selectedTable && paymentMethod !== "Kasbon" && (
+              {isTableManagementEnabled(storeSettings) && orderType === "Dine-in" && selectedTable && paymentMethod !== "Kasbon" && (
                 <button 
                   type="button"
                   onClick={() => processPayment(true, 'unpaid')} 
-                  className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 font-bold transition-all shadow-sm text-xs active:scale-95"
+                  className="flex-1 py-3 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 hover:bg-slate-300 dark:hover:bg-slate-700 font-bold transition-all shadow-sm text-xs active:scale-95"
                 > Open Bill
                 </button>
               )}
@@ -3117,7 +3147,7 @@ export default function POSPage() {
       {/* ======================================================== */}
       <div className="hidden md:flex landscape:flex flex-col h-full w-full overflow-hidden">
         {/* Top Application Header (Full Width) */}
-        <header className="h-10 md:h-12 lg:h-14 landscape:h-10 bg-card border-b border-line px-3 md:px-4 flex items-center justify-between shrink-0 z-30 transition-colors">
+        <header className="h-14 sm:h-16 landscape:h-13 bg-card border-b border-line px-4 sm:px-6 flex items-center justify-between shrink-0 z-30 transition-colors shadow-xs">
         {/* Left: Brand & Store Name */}
         <Link href="/" className="flex items-center space-x-2 md:space-x-3 hover:opacity-85 transition-opacity" title="Kembali ke Beranda SakuNota">
           {storeSettings.storeLogo ? (
@@ -3774,7 +3804,7 @@ export default function POSPage() {
 
             <form onSubmit={handleOpenShiftSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">Nama Kasir / Operator:</label>
+                <label className="block text-xs font-bold text-fg mb-1">Nama Kasir / Operator:</label>
                 <input 
                   type="text" 
                   value={shiftOperatorName}
@@ -3786,7 +3816,7 @@ export default function POSPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">Modal Awal Laci Kas (Rp):</label>
+                <label className="block text-xs font-bold text-fg mb-1">Modal Awal Laci Kas (Rp):</label>
                 <input 
                   type="number" 
                   value={shiftStartingCash}
@@ -3855,14 +3885,14 @@ export default function POSPage() {
                 <button
                   type="button"
                   onClick={() => setCashMovementType('out')}
-                  className={'flex-1 py-2 rounded-lg text-xs font-bold transition-all ' + (cashMovementType === 'out' ? 'bg-rose-600 text-white shadow' : ' text-slate-300')}
+                  className={'flex-1 py-2 rounded-lg text-xs font-bold transition-all ' + (cashMovementType === 'out' ? 'bg-rose-600 text-white shadow' : ' text-muted hover:text-fg')}
                 >
                   Kas Keluar (Biaya)
                 </button>
                 <button
                   type="button"
                   onClick={() => setCashMovementType('in')}
-                  className={'flex-1 py-2 rounded-lg text-xs font-bold transition-all ' + (cashMovementType === 'in' ? 'bg-accent text-white shadow' : ' text-slate-300')}
+                  className={'flex-1 py-2 rounded-lg text-xs font-bold transition-all ' + (cashMovementType === 'in' ? 'bg-accent text-white shadow' : ' text-muted hover:text-fg')}
                 >
                   Kas Masuk (+)
                 </button>
@@ -3903,7 +3933,7 @@ export default function POSPage() {
               )}
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">Nominal (Rp):</label>
+                <label className="block text-xs font-bold text-fg mb-1">Nominal (Rp):</label>
                 <input 
                   type="number" 
                   min="1"
@@ -3941,7 +3971,7 @@ export default function POSPage() {
 
               {cashMovementType === 'out' && (
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Kategori Pengeluaran:</label>
+                  <label className="block text-xs font-bold text-fg mb-1">Kategori Pengeluaran:</label>
                   <select
                     value={cashMovementCategory}
                     onChange={(e) => setCashMovementCategory(e.target.value)}
@@ -3957,7 +3987,7 @@ export default function POSPage() {
               )}
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">Sumber Dana:</label>
+                <label className="block text-xs font-bold text-fg mb-1">Sumber Dana:</label>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <button
                     type="button"
@@ -3985,7 +4015,7 @@ export default function POSPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">Alasan / Keperluan:</label>
+                <label className="block text-xs font-bold text-fg mb-1">Alasan / Keperluan:</label>
                 <input 
                   type="text" 
                   placeholder="Keterangan pengeluaran / pemasukan kas"
@@ -4782,7 +4812,7 @@ export default function POSPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-black text-rose-700 mb-2">Konfirmasi Refund Pembayaran</h3>
-            <p className="text-xs text-slate-300 leading-relaxed mb-4">
+            <p className="text-xs text-muted leading-relaxed mb-4">
               Anda akan mengembalikan dana sebesar <b>Rp {refundTargetPayment.amount.toLocaleString('id-ID')}</b> ({refundTargetPayment.paymentMethod}) kepada pelanggan. Sisa tagihan meja akan bertambah kembali.
             </p>
 

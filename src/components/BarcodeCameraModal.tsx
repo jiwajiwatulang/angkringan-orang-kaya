@@ -192,7 +192,7 @@ export default function BarcodeCameraModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -203,27 +203,27 @@ export default function BarcodeCameraModal({
         onClick={onClose}
         aria-label="Tutup Pemindai"
         title="Tutup Pemindai Barcode"
-        className="fixed top-2.5 right-2.5 z-[60] w-10 h-10 rounded-full bg-slate-800/95 hover:bg-slate-700 text-white border border-slate-700 shadow-2xl flex items-center justify-center text-base font-black transition-all active:scale-95 cursor-pointer backdrop-blur-md"
+        className="fixed top-2.5 right-2.5 z-[60] w-10 h-10 rounded-full bg-card hover:bg-surface text-fg border border-line shadow-2xl flex items-center justify-center text-base font-black transition-all active:scale-95 cursor-pointer backdrop-blur-md"
       >
         ✕
       </button>
 
       <div
-        className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md landscape:max-w-2xl w-full overflow-hidden shadow-2xl flex flex-col text-white max-h-[96dvh] landscape:max-h-[94dvh]"
+        className="bg-card border border-line rounded-3xl max-w-md landscape:max-w-2xl w-full overflow-hidden shadow-2xl flex flex-col text-fg max-h-[96dvh] landscape:max-h-[94dvh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header (Hidden or compact in landscape to save vertical space) */}
-        <div className="p-3.5 sm:p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
+        {/* Header */}
+        <div className="p-3.5 sm:p-4 border-b border-line flex items-center justify-between shrink-0 bg-surface/50">
           <div>
-            <h3 className="font-black text-sm text-white">{title}</h3>
-            <p className="text-[11px] text-slate-400">
+            <h3 className="font-black text-sm text-fg">{title}</h3>
+            <p className="text-[11px] text-muted">
               Arahkan kamera ke barcode produk atau ketik SKU manual.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-card hover:bg-surface text-muted hover:text-fg border border-line flex items-center justify-center text-xs font-bold transition-colors cursor-pointer"
           >
             ×
           </button>
@@ -232,7 +232,7 @@ export default function BarcodeCameraModal({
         {/* Content Container (Split 2-columns in landscape) */}
         <div className="flex-1 flex flex-col landscape:grid landscape:grid-cols-2 overflow-y-auto">
           {/* Viewfinder Video Area */}
-          <div className="relative aspect-4/3 landscape:aspect-auto landscape:h-full w-full bg-black overflow-hidden flex items-center justify-center min-h-[180px]">
+          <div className="relative aspect-4/3 landscape:aspect-auto landscape:h-full w-full bg-neutral-950 overflow-hidden flex items-center justify-center min-h-[200px]">
             {hasCamera && !errorMessage ? (
               <>
                 <video
@@ -244,9 +244,9 @@ export default function BarcodeCameraModal({
 
                 {/* Viewfinder Overlay Frame */}
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center p-4 sm:p-8">
-                  <div className="relative w-52 sm:w-64 h-32 sm:h-40 rounded-2xl border-2 border-blue-500/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
+                  <div className="relative w-52 sm:w-64 h-32 sm:h-40 rounded-2xl border-2 border-accent shadow-[0_0_0_9999px_rgba(0,0,0,0.55)]">
                     {/* Laser Scan line animation */}
-                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-400 shadow-[0_0_8px_#38bdf8] animate-pulse" />
+                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-accent shadow-[0_0_8px_#3b82f6] animate-pulse" />
 
                     {/* Corner accents */}
                     <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-white rounded-tl" />
@@ -261,34 +261,34 @@ export default function BarcodeCameraModal({
                   <button
                     type="button"
                     onClick={toggleTorch}
-                    className="absolute bottom-2.5 right-2.5 px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-slate-700 text-[11px] font-bold text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                    className="absolute bottom-2.5 right-2.5 px-3 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-[11px] font-bold text-white hover:bg-black/90 transition-colors cursor-pointer"
                   >
                     {isTorchOn ? "Matikan Lampu" : "Nyalakan Lampu"}
                   </button>
                 )}
               </>
             ) : (
-              <div className="p-6 text-center text-xs text-slate-400 space-y-2">
-                <p className="font-bold text-slate-200">
-                  {errorMessage || "Kamera tidak aktif"}
+              <div className="p-6 text-center text-xs space-y-2 bg-surface text-fg w-full h-full flex flex-col items-center justify-center">
+                <p className="font-bold text-fg text-sm">
+                  {errorMessage || "Kamera Tidak Aktif"}
                 </p>
-                <p className="text-[11px]">
-                  Silakan ketik kode barcode produk secara manual di samping.
+                <p className="text-[11px] text-muted max-w-xs">
+                  Silakan ketik kode barcode atau SKU produk secara manual pada kolom di bawah.
                 </p>
               </div>
             )}
 
             {!isDetectorSupported && hasCamera && !errorMessage && (
-              <div className="absolute top-2 left-2 right-2 bg-amber-500/90 text-slate-950 font-bold text-[10px] p-1.5 sm:p-2 rounded-xl text-center">
+              <div className="absolute top-2 left-2 right-2 bg-amber-500 text-slate-950 font-bold text-[10px] p-2 rounded-xl text-center shadow">
                 Browser ini belum auto-deteksi. Ketik kode manual di samping atau gunakan Barcode Scanner fisik.
               </div>
             )}
           </div>
 
           {/* Manual Input Fallback & Action Buttons */}
-          <div className="p-3 sm:p-4 bg-slate-900 border-t landscape:border-t-0 landscape:border-l border-slate-800 flex flex-col justify-between space-y-3">
+          <div className="p-3.5 sm:p-4 bg-card border-t landscape:border-t-0 landscape:border-l border-line flex flex-col justify-between space-y-3">
             <div className="space-y-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              <span className="text-[10px] font-bold text-muted uppercase tracking-wider block">
                 Input Kode Manual / Barcode Gun:
               </span>
               <form onSubmit={handleManualSubmit} className="flex gap-2">
@@ -297,24 +297,24 @@ export default function BarcodeCameraModal({
                   placeholder="Ketik / tembak kode barcode..."
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
-                  className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-white placeholder-slate-500 outline-none focus:border-blue-500"
+                  className="flex-1 bg-surface border border-line rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-fg placeholder:text-muted/60 outline-none focus:border-accent"
                   autoFocus
                 />
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-black text-xs transition-all shrink-0 shadow-sm cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-accent hover:bg-accent-hover active:scale-95 text-white font-black text-xs transition-all shrink-0 shadow-sm cursor-pointer"
                 >
                   Masukkan
                 </button>
               </form>
             </div>
 
-            <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
-              <span className="text-[10px] text-slate-400">Tekan ESC atau tombol Tutup untuk kembali</span>
+            <div className="pt-2.5 border-t border-line flex items-center justify-between gap-2">
+              <span className="text-[10px] text-muted">Tekan ESC atau Tutup untuk kembali</span>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className="px-3.5 py-2 bg-surface hover:bg-line active:scale-95 text-fg rounded-xl text-xs font-bold transition-all border border-line cursor-pointer"
               >
                 Tutup Pemindai
               </button>

@@ -228,7 +228,7 @@ export default function MobileCartSheet({
                     {item.selectedModifiers && item.selectedModifiers.length > 0 && (
                       <div className="text-[10px] text-muted space-x-1 mt-0.5">
                         {item.selectedModifiers.map((m, mIdx) => (
-                          <span key={mIdx} className="inline-block bg-line/60 px-1.5 py-0.2 rounded text-slate-300">
+                          <span key={mIdx} className="inline-block bg-line/60 px-1.5 py-0.2 rounded text-slate-700 dark:text-slate-300 font-medium">
                             +{m.optionName} {m.harga > 0 ? `(Rp ${m.harga.toLocaleString("id-ID")})` : ""}
                           </span>
                         ))}

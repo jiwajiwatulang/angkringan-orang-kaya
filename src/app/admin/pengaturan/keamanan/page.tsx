@@ -171,7 +171,7 @@ export default function PengaturanKeamananPage() {
         <form onSubmit={handleUpdatePin} className="space-y-4">
           {hasExistingPin ? (
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-fg mb-1">
                 PIN Saat Ini:
               </label>
               <input
@@ -194,7 +194,7 @@ export default function PengaturanKeamananPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-fg mb-1">
                 PIN Baru (4-6 digit):
               </label>
               <input
@@ -212,7 +212,7 @@ export default function PengaturanKeamananPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-fg mb-1">
                 Ulangi PIN Baru:
               </label>
               <input
@@ -278,7 +278,7 @@ export default function PengaturanKeamananPage() {
             </button>
           ) : (
             <form onSubmit={handleRegenerateRecoveryCode} className="space-y-3 pt-2">
-              <label className="block text-[11px] font-bold text-slate-300">
+              <label className="block text-[11px] font-bold text-fg">
                 Masukkan PIN Admin saat ini untuk otorisasi:
               </label>
               <div className="flex gap-2">
@@ -349,7 +349,7 @@ export default function PengaturanKeamananPage() {
               </button>
             </div>
 
-            <label className="flex items-start gap-2.5 text-left text-xs text-slate-300 font-bold mb-5 cursor-pointer">
+            <label className="flex items-start gap-2.5 text-left text-xs text-fg font-bold mb-5 cursor-pointer">
               <input
                 type="checkbox"
                 checked={acknowledgedCode}

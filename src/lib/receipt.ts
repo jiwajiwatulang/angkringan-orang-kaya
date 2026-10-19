@@ -128,18 +128,23 @@ export function generateEscPosReceipt(
   txt += lineTwoCols(`Tgl: ${dateStr}`, "");
   
   const orderIdLabel = receipt.orderId ? `No: A-${receipt.orderId}` : receipt.id ? `No: A-${receipt.id}` : "No: -";
-  const tableOrType = receipt.tableName 
-    ? `Meja: ${String(receipt.tableName).replace(/^Meja\s*/i, '')}` 
-    : `[${receipt.orderType || 'Dine-in'}]`;
+  let tableOrType = "";
+  if (cfg.receiptShowTable !== false) {
+    if (receipt.tableName) {
+      tableOrType = `Meja: ${String(receipt.tableName).replace(/^Meja\s*/i, '')}`;
+    } else if (receipt.orderType && receipt.orderType !== 'Dine-in' && receipt.orderType !== 'Direct') {
+      tableOrType = `[${receipt.orderType}]`;
+    }
+  }
   txt += lineTwoCols(orderIdLabel, tableOrType);
 
-  if (receipt.customerName) {
+  if (receipt.customerName && cfg.receiptShowCustomer !== false) {
     txt += lineTwoCols(`Pelanggan: ${receipt.customerName}`, "");
   }
-  if (receipt.operatorName || receipt.kasirName) {
+  if ((receipt.operatorName || receipt.kasirName) && cfg.receiptShowCashier !== false) {
     txt += lineTwoCols(`Kasir: ${receipt.operatorName || receipt.kasirName}`, "");
   }
-  if (receipt.notes) {
+  if (receipt.notes && cfg.receiptShowNotes !== false) {
     txt += `Catatan: ${receipt.notes}\n`;
   }
 
@@ -258,6 +263,14 @@ export function generateEscPosReceipt(
     if (cfg.receiptFooter) {
       const lines = cfg.receiptFooter.split("\n");
       lines.forEach(l => {
+        if (l.trim()) txt += center(l.trim());
+      });
+    }
+
+    // Catatan Tambahan (WiFi, Medsos, dll)
+    if (cfg.receiptCustomNote) {
+      const noteLines = cfg.receiptCustomNote.split("\n");
+      noteLines.forEach(l => {
         if (l.trim()) txt += center(l.trim());
       });
     }
@@ -579,7 +592,7 @@ export function generateReceiptHtml(
       </style>
     </head>
     <body>
-      ${cfg.storeLogo && mode === 'all' ? `
+      ${cfg.storeLogo && cfg.receiptShowLogo !== false && mode === 'all' ? `
         <div class="logo-box">
           <img src="${cfg.storeLogo}" alt="Logo Toko" />
         </div>
@@ -590,6 +603,7 @@ export function generateReceiptHtml(
         ${mode === 'all' ? `
           ${cfg.storeAddress ? `<div class="store-sub">${cfg.storeAddress}</div>` : ''}
           ${cfg.storePhone ? `<div class="store-sub">Telp: ${cfg.storePhone}</div>` : ''}
+          ${cfg.receiptHeader ? `<div class="store-sub bold" style="margin-top: 2px;">${cfg.receiptHeader}</div>` : ''}
         ` : ''}
       </div>
 
@@ -597,17 +611,19 @@ export function generateReceiptHtml(
 
       <div class="order-banner">
         <div class="order-num">No: ${orderIdLabel}</div>
-        <div class="bold">${receipt.customerName ? `An. ${receipt.customerName}` : 'Tamu'}</div>
-        <div style="margin-top: 3px;">
-          <span class="badge">${tableOrType}</span>
-        </div>
-        ${receipt.notes ? `<div style="text-align: left; border: 1px solid #000; padding: 3px; margin-top: 4px; font-size: 10px; font-weight: bold;">Catatan: ${receipt.notes}</div>` : ''}
+        ${cfg.receiptShowCustomer !== false ? `<div class="bold">${receipt.customerName ? `An. ${receipt.customerName}` : 'Tamu'}</div>` : ''}
+        ${cfg.receiptShowTable !== false && (receipt.tableName || (receipt.orderType && receipt.orderType !== 'Dine-in' && receipt.orderType !== 'Direct')) ? `
+          <div style="margin-top: 3px;">
+            <span class="badge">${tableOrType}</span>
+          </div>
+        ` : ''}
+        ${receipt.notes && cfg.receiptShowNotes !== false ? `<div style="text-align: left; border: 1px solid #000; padding: 3px; margin-top: 4px; font-size: 10px; font-weight: bold;">Catatan: ${receipt.notes}</div>` : ''}
       </div>
 
       <div class="divider"></div>
       <div class="row" style="font-size: 10px;">
         <span>Tgl: ${dateStr}</span>
-        <span>${receipt.operatorName || receipt.kasirName ? `Kasir: ${receipt.operatorName || receipt.kasirName}` : ''}</span>
+        <span>${(receipt.operatorName || receipt.kasirName) && cfg.receiptShowCashier !== false ? `Kasir: ${receipt.operatorName || receipt.kasirName}` : ''}</span>
       </div>
       <div class="divider"></div>
 
@@ -665,6 +681,7 @@ export function generateReceiptHtml(
         ` : ''}
 
         ${cfg.receiptFooter ? `<div class="footer-text">${cfg.receiptFooter}</div>` : ''}
+        ${cfg.receiptCustomNote ? `<div class="footer-text" style="font-style: italic; margin-top: 4px;">${cfg.receiptCustomNote}</div>` : ''}
         ${cfg.enableWatermark ? `<div class="watermark">[ SakuNota - Solusi Kasir UMKM ]</div>` : ''}
       ` : `
         <div class="divider"></div>

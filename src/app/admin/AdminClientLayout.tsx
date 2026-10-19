@@ -502,7 +502,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           {authView === "verify_recovery" && (
             <form onSubmit={handleVerifyRecovery} className="space-y-4 text-left">
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                <label className="block text-[11px] font-bold text-fg mb-1">
                   Masukkan Kode Pemulihan Pemilik:
                 </label>
                 <input
@@ -551,7 +551,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           {(authView === "reset_pin" || authView === "setup_initial") && (
             <form onSubmit={handleSaveNewPin} className="space-y-3 text-left">
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                <label className="block text-[11px] font-bold text-fg mb-1">
                   Buat PIN Admin Baru:
                 </label>
                 <input
@@ -570,7 +570,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                <label className="block text-[11px] font-bold text-fg mb-1">
                   Konfirmasi PIN Baru:
                 </label>
                 <input

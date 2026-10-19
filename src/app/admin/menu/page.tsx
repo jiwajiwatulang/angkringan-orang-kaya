@@ -869,7 +869,7 @@ function CatalogPanel() {
       ) : sortedMenus.length === 0 ? (
         <div className="py-12 text-center bg-surface rounded-3xl border border-line p-8">
           <div className="text-4xl mb-2"><LineIcon name="cashier" /></div>
-          <h3 className="text-sm font-bold text-slate-300">Tidak ada menu yang cocok</h3>
+          <h3 className="text-sm font-bold text-fg">Tidak ada menu yang cocok</h3>
           <p className="text-xs text-muted mt-1">Coba ganti kata kunci pencarian atau kategori filter.</p>
         </div>
       ) : (
@@ -1275,7 +1275,7 @@ function CatalogPanel() {
 
             <form onSubmit={handleBulkPriceSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-fg mb-1.5">
                   Tipe Penyesuaian:
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -1285,7 +1285,7 @@ function CatalogPanel() {
                     className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
                       bulkPriceType === "nominal"
                         ? "bg-accent text-white border-accent shadow-sm"
-                        : " bg-card text-slate-300 border-line"
+                        : " bg-card text-fg border-line hover:border-accent/40"
                     }`}
                   >
                     Nominal (+/- Rp)
@@ -1296,7 +1296,7 @@ function CatalogPanel() {
                     className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
                       bulkPriceType === "percent"
                         ? "bg-accent text-white border-accent shadow-sm"
-                        : " bg-card text-slate-300 border-line"
+                        : " bg-card text-fg border-line hover:border-accent/40"
                     }`}
                   >
                     Persentase (+/- %)
@@ -1305,7 +1305,7 @@ function CatalogPanel() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-fg mb-1">
                   {bulkPriceType === "nominal"
                     ? "Nilai Rupiah (Gunakan minus '-' untuk diskon):"
                     : "Nilai Persentase (Contoh: 10 untuk +10%, -10 untuk -10%):"}
@@ -1365,7 +1365,7 @@ function CatalogPanel() {
 
             <form onSubmit={handleBulkCategorySubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-fg mb-1">
                   Pilih Kategori Tujuan:
                 </label>
                 <select
@@ -1437,7 +1437,7 @@ function CatalogPanel() {
             <h3 className="text-base font-black text-fg mb-1">
               Hapus {selectedMenuIds.length} Menu Terpilih?
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed mb-4 text-left bg-card/60 p-3 rounded-xl border border-line/60"><LineIcon name="info" /><strong>Fitur Pengaman Finansial:</strong> Menu yang pernah memiliki riwayat transaksi/nota tidak akan dihapus dari database, melainkan otomatis dinonaktifkan (Status Habis) agar seluruh laporan penjualan masa lalu tetap akurat.
+            <p className="text-xs text-fg/80 leading-relaxed mb-4 text-left bg-card/60 p-3 rounded-xl border border-line/60"><LineIcon name="info" /><strong>Fitur Pengaman Finansial:</strong> Menu yang pernah memiliki riwayat transaksi/nota tidak akan dihapus dari database, melainkan otomatis dinonaktifkan (Status Habis) agar seluruh laporan penjualan masa lalu tetap akurat.
             </p>
             <div className="flex space-x-2">
               <button
@@ -1517,7 +1517,7 @@ function CatalogPanel() {
 
               {/* Step 2: Choose File */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-fg mb-1.5">
                   Langkah 2: Pilih File Excel atau CSV yang Sudah Diisi:
                 </label>
                 <input
@@ -1590,7 +1590,7 @@ function CatalogPanel() {
 
                   {/* Import Mode Options */}
                   <div className="pt-2 border-t border-accent/40">
-                    <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                    <label className="block text-xs font-bold text-fg mb-1.5">
                       Metode Penggabungan (Mode Import):
                     </label>
                     <div className="space-y-1.5 text-xs">
@@ -1648,7 +1648,7 @@ function CatalogPanel() {
                   </div>
 
                   {/* Auto-backup Checkbox */}
-                  <label className="flex items-center gap-2 pt-2 text-xs font-bold text-slate-300 cursor-pointer select-none">
+                  <label className="flex items-center gap-2 pt-2 text-xs font-bold text-fg cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={importAutoBackup}
@@ -1742,7 +1742,7 @@ function CatalogPanel() {
               </div>
               {/* Nama Menu */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-fg mb-1">
                   Nama Menu *
                 </label>
                 <input
@@ -1758,7 +1758,7 @@ function CatalogPanel() {
 
               {/* Harga Jual */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-fg mb-1">
                   Harga Jual (Rp) *
                 </label>
                 <input
@@ -1774,7 +1774,7 @@ function CatalogPanel() {
 
               {/* Kategori Menu */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-fg mb-1">
                   Kategori Menu *
                 </label>
                 <select
@@ -1815,7 +1815,7 @@ function CatalogPanel() {
               {/* SKU / Kode Barcode */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-300">
+                  <label className="block text-xs font-bold text-fg">
                     Kode Barcode / SKU (opsional)
                   </label>
                   <button
@@ -1849,7 +1849,7 @@ function CatalogPanel() {
 
               {/* Ketersediaan Menu (Stok) */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-fg mb-1.5">
                   Ketersediaan Menu
                 </label>
                 <div className="grid grid-cols-2 gap-2.5">
@@ -2200,8 +2200,8 @@ function CatalogPanel() {
             <h3 className="text-base font-black text-fg mb-1">
               Hapus Menu Ini?
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed mb-5">
-              Menu <strong>"{menuToDelete.nama}"</strong> akan dihapus permanen dari daftar kasir.
+            <p className="text-xs text-muted leading-relaxed mb-5">
+              Menu <strong className="text-fg">"{menuToDelete.nama}"</strong> akan dihapus permanen dari daftar kasir.
             </p>
             <div className="flex space-x-2">
               <button

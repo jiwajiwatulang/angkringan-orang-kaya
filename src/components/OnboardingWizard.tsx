@@ -111,7 +111,7 @@ export default function OnboardingWizard({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-fg mb-1">
                   Nama Toko / Usaha <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -124,7 +124,7 @@ export default function OnboardingWizard({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-fg mb-1">
                   Alamat Usaha / Cabang
                 </label>
                 <input
@@ -137,7 +137,7 @@ export default function OnboardingWizard({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-fg mb-1">
                   Nomor Telepon / WhatsApp
                 </label>
                 <input
@@ -197,7 +197,7 @@ export default function OnboardingWizard({
                     className={`flex items-start gap-3 p-3.5 rounded-2xl text-left border transition-all ${
                       businessType === type.id
                         ? " bg-accent/40 border-accent ring-2 ring-accent/20 text-blue-100"
-                        : " bg-card/60 border-line text-slate-300"
+                        : " bg-card/60 border-line text-muted hover:text-fg"
                     }`}
                   >
                     <span className="text-2xl"><LineIcon name={type.icon} className="w-6 h-6" /></span>
@@ -293,7 +293,7 @@ export default function OnboardingWizard({
               </div>
 
               <div className="p-4 bg-card/60 rounded-2xl border border-line">
-                <label className="block text-xs font-bold text-slate-300 mb-2">
+                <label className="block text-xs font-bold text-fg mb-2">
                   Jumlah Meja Awal: <span className="text-accent-text font-black">{tableCount} Meja</span>
                 </label>
                 <div className="grid grid-cols-4 gap-2">
@@ -305,7 +305,7 @@ export default function OnboardingWizard({
                       className={`py-2 text-xs font-bold rounded-xl border transition-all ${
                         tableCount === num
                           ? "bg-accent text-white border-accent shadow"
-                          : " bg-line border-line text-slate-300"
+                          : " bg-line border-line text-fg hover:border-accent"
                       }`}
                     >
                       {num === 0 ? "Tanpa Meja" : `${num} Meja`}
@@ -331,7 +331,7 @@ export default function OnboardingWizard({
               type="button"
               onClick={() => setStep((s) => s - 1)}
               disabled={isSubmitting}
-              className="px-4 py-2.5 rounded-xl border border-line text-xs font-bold text-slate-300 hover:bg-card transition-colors"
+              className="px-4 py-2.5 rounded-xl border border-line text-xs font-bold text-fg hover:bg-card transition-colors"
             >
               ← Kembali
             </button>

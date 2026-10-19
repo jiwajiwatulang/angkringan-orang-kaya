@@ -185,7 +185,7 @@ export default function PengaturanProfilPage() {
           <div className=" bg-surface p-5 rounded-3xl border border-line shadow-sm space-y-4">
             {/* Logo Usaha */}
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-2">
+              <label className="block text-xs font-bold text-fg mb-2">
                 Logo Usaha / Struk:
               </label>
               <div className="flex items-center gap-4">
@@ -224,7 +224,7 @@ export default function PengaturanProfilPage() {
 
             {/* Jenis Usaha & Alur Kasir */}
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1.5">
+              <label className="block text-xs font-bold text-fg mb-1.5">
                 Jenis Usaha & Alur Kasir:
               </label>
               <p className="text-[11px] text-muted mb-2.5">
@@ -256,7 +256,7 @@ export default function PengaturanProfilPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-fg mb-1">
                 Nama Usaha / Toko:
               </label>
               <input
@@ -270,7 +270,7 @@ export default function PengaturanProfilPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-fg mb-1">
                 Alamat Cabang:
               </label>
               <input
@@ -283,7 +283,7 @@ export default function PengaturanProfilPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-fg mb-1">
                 Nomor Telepon / WhatsApp:
               </label>
               <input
@@ -296,7 +296,7 @@ export default function PengaturanProfilPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-fg mb-1">
                 Lebar Kertas Printer Kasir:
               </label>
               <div className="flex gap-2">
@@ -306,7 +306,7 @@ export default function PengaturanProfilPage() {
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${
                     paperWidth === "58mm"
                       ? "bg-accent text-white border-accent shadow-sm"
-                      : " bg-card text-slate-300 border-line"
+                      : " bg-card text-muted hover:text-fg border-line"
                   }`}
                 >
                   58mm (Printer Mini Standar)
@@ -317,7 +317,7 @@ export default function PengaturanProfilPage() {
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${
                     paperWidth === "80mm"
                       ? "bg-accent text-white border-accent shadow-sm"
-                      : " bg-card text-slate-300 border-line"
+                      : " bg-card text-muted hover:text-fg border-line"
                   }`}
                 >
                   80mm (Printer Lebar)
@@ -326,7 +326,7 @@ export default function PengaturanProfilPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-fg mb-1">
                 Catatan Kaki Struk (Footer):
               </label>
               <textarea
@@ -408,7 +408,7 @@ export default function PengaturanProfilPage() {
             <h3 className="text-base font-black text-fg mb-1">
               Profil Belum Disimpan
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed mb-5">
+            <p className="text-xs text-muted leading-relaxed mb-5">
               Perubahan nama atau alamat toko yang Anda ketik belum disimpan secara permanen. Yakin ingin kembali?
             </p>
             <div className="flex space-x-2">

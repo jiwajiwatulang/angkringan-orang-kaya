@@ -158,7 +158,7 @@ export default function PengaturanPajakPage() {
 
             {enableTax && (
               <div className="pt-3 border-t border-line flex items-center gap-3">
-                <label className="text-xs font-bold text-slate-300">
+                <label className="text-xs font-bold text-fg">
                   Persentase Pajak (%):
                 </label>
                 <input
@@ -196,7 +196,7 @@ export default function PengaturanPajakPage() {
             {enableService && (
               <div className="pt-3 border-t border-line space-y-3">
                 <div className="flex items-center gap-3">
-                  <label className="text-xs font-bold text-slate-300">
+                  <label className="text-xs font-bold text-fg">
                     Persentase Layanan (%):
                   </label>
                   <input
@@ -211,7 +211,7 @@ export default function PengaturanPajakPage() {
                 </div>
 
                 <div className="flex items-center justify-between p-3 rounded-xl bg-card/60">
-                  <span className="text-xs text-slate-300">
+                  <span className="text-xs text-fg font-bold">
                     Pajak juga dikenakan pada Service Charge?
                   </span>
                   <input
@@ -282,7 +282,7 @@ export default function PengaturanPajakPage() {
             <h3 className="text-base font-black text-fg mb-1">
               Perubahan Pajak Belum Disimpan
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed mb-5">
+            <p className="text-xs text-muted leading-relaxed mb-5">
               Nilai persentase pajak atau biaya layanan yang baru saja Anda ubah belum disimpan. Yakin ingin keluar?
             </p>
             <div className="flex space-x-2">

@@ -76,7 +76,7 @@ export default function AdminPengaturanHubPage() {
                 <span className="w-12 h-12 rounded-2xl bg-accent/20 text-accent-text flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
                   <LineIcon name={cat.icon} className="w-6 h-6" />
                 </span>
-                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-card text-slate-300">
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-card border border-line text-slate-700 dark:text-slate-300">
                   {cat.badge}
                 </span>
               </div>

@@ -22,6 +22,14 @@ export interface StoreSettings {
   onboardingCompleted?: boolean; // Status penyelesaian onboarding toko baru
   businessType?: string; // Jenis usaha: 'warung' | 'restoran' | 'kafe' | 'retail' | 'angkringan'
   storeLogo?: string; // Base64 data URL untuk logo usaha / struk
+  // Kustomisasi Struk Kasir
+  receiptHeader?: string; // Slogan / Tagline header struk
+  receiptCustomNote?: string; // Catatan tambahan di struk (e.g. WiFi, Medsos)
+  receiptShowLogo?: boolean; // Tampilkan logo di struk
+  receiptShowCashier?: boolean; // Tampilkan nama kasir
+  receiptShowCustomer?: boolean; // Tampilkan nama pelanggan
+  receiptShowTable?: boolean; // Tampilkan nomor meja / tipe pesanan
+  receiptShowNotes?: boolean; // Tampilkan catatan item / pesanan
 }
 
 export const BUSINESS_TYPES = [
@@ -79,6 +87,13 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   onboardingCompleted: true, // Default true agar existing instalasi tidak terganggu
   businessType: "restoran",
   storeLogo: "",
+  receiptHeader: "",
+  receiptCustomNote: "",
+  receiptShowLogo: true,
+  receiptShowCashier: true,
+  receiptShowCustomer: true,
+  receiptShowTable: true,
+  receiptShowNotes: true,
 };
 
 export const SETTINGS_STORAGE_KEY = db.name === 'SakuNotaDemoDB' ? 'sakunota_demo_store_settings' : 'pos_store_settings';

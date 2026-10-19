@@ -347,7 +347,7 @@ export default function PanduanPage() {
                   <div className="w-10 h-10 rounded-xl bg-lime-50 text-lime-700 border border-lime-200/60 flex items-center justify-center group-hover:scale-105 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-200 transition-all">
                     <TopicIcon type={topic.iconType} />
                   </div>
-                  <span className="text-slate-300 text-sm font-semibold group-hover:text-blue-600 group-hover:translate-x-1 transition-all">
+                  <span className="text-slate-400 dark:text-slate-500 text-sm font-semibold group-hover:text-blue-600 group-hover:translate-x-1 transition-all">
                     →
                   </span>
                 </div>

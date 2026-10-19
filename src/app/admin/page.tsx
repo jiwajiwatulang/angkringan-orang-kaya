@@ -18,6 +18,7 @@ export default function AdminDashboardPage() {
 
   // Shopify-Style Date Range Filter
   const [timeRange, setTimeRange] = useState<"today" | "yesterday" | "7days" | "30days" | "thisMonth">("7days");
+  const [chartType, setChartType] = useState<"line" | "bar">("line");
   const [hoveredPoint, setHoveredPoint] = useState<{
     label: string;
     sublabel: string;
@@ -26,6 +27,22 @@ export default function AdminDashboardPage() {
     x: number;
     y: number;
   } | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("sakunota_admin_chart_type");
+      if (saved === "line" || saved === "bar") {
+        setChartType(saved);
+      }
+    } catch (_) {}
+  }, []);
+
+  const handleSelectChartType = (type: "line" | "bar") => {
+    setChartType(type);
+    try {
+      localStorage.setItem("sakunota_admin_chart_type", type);
+    } catch (_) {}
+  };
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -412,22 +429,49 @@ export default function AdminDashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line">
           <div>
             <h3 className="text-base font-black text-fg flex items-center gap-2">
-              
-              <span>Tren penjualan</span>
+              <span>Tren Penjualan</span>
             </h3>
             <p className="text-xs text-muted mt-0.5">
-              Penjualan lunas per interval • sentuh titik grafik untuk melihat detail
+              Penjualan lunas per interval • {chartType === 'line' ? 'sentuh titik garis' : 'sentuh pilar batang'} untuk melihat detail
             </p>
           </div>
 
-          <div className="text-right">
-            <span className="text-xs font-black text-accent-text bg-accent/10 px-3 py-1 rounded-xl">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Chart Type Switcher: Garis vs Batang */}
+            <div className="flex items-center bg-card border border-line p-1 rounded-xl text-xs font-bold shadow-xs">
+              <button
+                type="button"
+                onClick={() => handleSelectChartType('line')}
+                className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
+                  chartType === 'line'
+                    ? 'bg-accent text-white font-black shadow-xs'
+                    : 'text-muted hover:text-fg'
+                }`}
+              >
+                <span><LineIcon name="chart" /></span>
+                <span>Garis</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectChartType('bar')}
+                className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
+                  chartType === 'bar'
+                    ? 'bg-accent text-white font-black shadow-xs'
+                    : 'text-muted hover:text-fg'
+                }`}
+              >
+                <span><LineIcon name="chart" /></span>
+                <span>Batang</span>
+              </button>
+            </div>
+
+            <span className="text-xs font-black text-accent-text bg-accent/10 px-3 py-1.5 rounded-xl border border-accent/20">
               Akumulasi: Rp {currentGrossSales.toLocaleString("id-ID")}
             </span>
           </div>
         </div>
 
-        {/* Interactive SVG Area Chart */}
+        {/* Interactive SVG Area / Bar Chart */}
         <div className="relative pt-4 pb-2 select-none">
           {/* Subtle Horizontal Reference Grid Lines */}
           <div className="absolute inset-x-2 top-8 bottom-12 flex flex-col justify-between pointer-events-none opacity-30">
@@ -455,56 +499,126 @@ export default function AdminDashboardPage() {
                   <stop offset="60%" stopColor="#38BDF8" stopOpacity="0.10" />
                   <stop offset="100%" stopColor="#2563EB" stopOpacity="0.00" />
                 </linearGradient>
+                <linearGradient id="shopifyBarGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3B82F6" />
+                  <stop offset="100%" stopColor="#1D4ED8" />
+                </linearGradient>
+                <linearGradient id="shopifyBarHoverGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#60A5FA" />
+                  <stop offset="100%" stopColor="#2563EB" />
+                </linearGradient>
               </defs>
 
-              {/* Gradient Area Fill */}
-              {svgAreaD && (
-                <path
-                  d={svgAreaD}
-                  fill="url(#shopifyGradient)"
-                  className="transition-all duration-300"
-                />
-              )}
-
-              {/* Stroke Curve Line */}
-              {svgPathD && (
-                <path
-                  d={svgPathD}
-                  fill="none"
-                  stroke="#2563EB"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="transition-all duration-300"
-                />
-              )}
-
-              {/* Interactive Data Nodes */}
-              {svgCoords.map((coord, idx) => {
-                const isHovered = hoveredPoint?.label === coord.label && hoveredPoint?.sublabel === coord.sublabel;
-                return (
-                  <g
-                    key={idx}
-                    onMouseEnter={() => setHoveredPoint(coord)}
-                    onClick={() => setHoveredPoint(coord)}
-                    className="cursor-pointer"
-                  >
-                    {/* Hover hotspot hit-box */}
-                    <circle cx={coord.x} cy={coord.y} r="18" fill="transparent" />
-
-                    {/* Visible Node */}
-                    <circle
-                      cx={coord.x}
-                      cy={coord.y}
-                      r={isHovered ? "6" : coord.omzet > 0 ? "4" : "2.5"}
-                      fill={isHovered ? "#2563EB" : coord.omzet > 0 ? "#2563EB" : "#94A3B8"}
-                      stroke="#FFFFFF"
-                      strokeWidth={isHovered ? "2.5" : "1.5"}
-                      className="transition-all duration-150"
+              {chartType === 'line' ? (
+                <>
+                  {/* Gradient Area Fill */}
+                  {svgAreaD && (
+                    <path
+                      d={svgAreaD}
+                      fill="url(#shopifyGradient)"
+                      className="transition-all duration-300"
                     />
-                  </g>
-                );
-              })}
+                  )}
+
+                  {/* Stroke Curve Line */}
+                  {svgPathD && (
+                    <path
+                      d={svgPathD}
+                      fill="none"
+                      stroke="#2563EB"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="transition-all duration-300"
+                    />
+                  )}
+
+                  {/* Interactive Data Nodes */}
+                  {svgCoords.map((coord, idx) => {
+                    const isHovered = hoveredPoint?.label === coord.label && hoveredPoint?.sublabel === coord.sublabel;
+                    return (
+                      <g
+                        key={idx}
+                        onMouseEnter={() => setHoveredPoint(coord)}
+                        onClick={() => setHoveredPoint(coord)}
+                        className="cursor-pointer"
+                      >
+                        {/* Hover hotspot hit-box */}
+                        <circle cx={coord.x} cy={coord.y} r="18" fill="transparent" />
+
+                        {/* Visible Node */}
+                        <circle
+                          cx={coord.x}
+                          cy={coord.y}
+                          r={isHovered ? "6" : coord.omzet > 0 ? "4" : "2.5"}
+                          fill={isHovered ? "#2563EB" : coord.omzet > 0 ? "#2563EB" : "#94A3B8"}
+                          stroke="#FFFFFF"
+                          strokeWidth={isHovered ? "2.5" : "1.5"}
+                          className="transition-all duration-150"
+                        />
+                      </g>
+                    );
+                  })}
+                </>
+              ) : (
+                /* Bar Chart Columns */
+                <g>
+                  {(() => {
+                    const barWidth = Math.max(10, Math.min(36, (usableW / Math.max(1, svgCoords.length)) * 0.65));
+                    return svgCoords.map((coord, idx) => {
+                      const isHovered = hoveredPoint?.label === coord.label && hoveredPoint?.sublabel === coord.sublabel;
+                      const bHeight = Math.max(coord.omzet > 0 ? 6 : 2, (coord.omzet / chartCeiling) * usableH);
+                      const bY = paddingY + usableH - bHeight;
+                      const bX = coord.x - barWidth / 2;
+
+                      return (
+                        <g
+                          key={idx}
+                          onMouseEnter={() => setHoveredPoint(coord)}
+                          onClick={() => setHoveredPoint(coord)}
+                          className="cursor-pointer"
+                        >
+                          {/* Transparent full-height hit area */}
+                          <rect
+                            x={bX - 4}
+                            y={paddingY}
+                            width={barWidth + 8}
+                            height={usableH}
+                            fill="transparent"
+                          />
+                          {/* Column Bar with Rounded Top */}
+                          <rect
+                            x={bX}
+                            y={bY}
+                            width={barWidth}
+                            height={bHeight}
+                            rx="4"
+                            fill={
+                              isHovered
+                                ? "url(#shopifyBarHoverGradient)"
+                                : coord.omzet > 0
+                                ? "url(#shopifyBarGradient)"
+                                : "#CBD5E1"
+                            }
+                            className="transition-all duration-200"
+                          />
+                          {/* Highlight Top Cap when hovered */}
+                          {isHovered && (
+                            <rect
+                              x={bX}
+                              y={bY}
+                              width={barWidth}
+                              height="3"
+                              rx="1.5"
+                              fill="#FFFFFF"
+                            />
+                          )}
+                        </g>
+                      );
+                    });
+                  })()}
+                </g>
+              )}
             </svg>
 
             {/* Hover Tooltip Box */}

@@ -15,10 +15,11 @@ import {
   executePrintDocument,
   formatCurrency
 } from "@/lib/receipt";
+import { saveStoreSettingsAsync } from "@/lib/settings";
 
 export default function PengaturanPrinterPage() {
   const router = useRouter();
-  const { storeSettings, showToast } = useAdmin();
+  const { storeSettings, refreshSettings, showToast } = useAdmin();
 
   const [isNative, setIsNative] = useState(false);
   const [btDevices, setBtDevices] = useState<any[]>([]);
@@ -30,6 +31,17 @@ export default function PengaturanPrinterPage() {
   const [isPrintingTest, setIsPrintingTest] = useState(false);
   const [previewWidth, setPreviewWidth] = useState<'58mm' | '80mm'>(storeSettings.paperWidth || "58mm");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  // Kustomisasi Struk Kasir States
+  const [receiptHeader, setReceiptHeader] = useState(storeSettings.receiptHeader || "");
+  const [receiptFooter, setReceiptFooter] = useState(storeSettings.receiptFooter || "Terima Kasih atas Kunjungan Anda\nSilakan Datang Kembali");
+  const [receiptCustomNote, setReceiptCustomNote] = useState(storeSettings.receiptCustomNote || "");
+  const [receiptShowLogo, setReceiptShowLogo] = useState(storeSettings.receiptShowLogo !== false);
+  const [receiptShowCashier, setReceiptShowCashier] = useState(storeSettings.receiptShowCashier !== false);
+  const [receiptShowCustomer, setReceiptShowCustomer] = useState(storeSettings.receiptShowCustomer !== false);
+  const [receiptShowTable, setReceiptShowTable] = useState(storeSettings.receiptShowTable !== false);
+  const [receiptShowNotes, setReceiptShowNotes] = useState(storeSettings.receiptShowNotes !== false);
+  const [isSavingCustomization, setIsSavingCustomization] = useState(false);
 
   useEffect(() => {
     setIsNative(Capacitor.isNativePlatform());
@@ -44,7 +56,39 @@ export default function PengaturanPrinterPage() {
     if (storeSettings.paperWidth) {
       setPreviewWidth(storeSettings.paperWidth);
     }
-  }, [storeSettings.paperWidth]);
+    setReceiptHeader(storeSettings.receiptHeader || "");
+    setReceiptFooter(storeSettings.receiptFooter || "Terima Kasih atas Kunjungan Anda\nSilakan Datang Kembali");
+    setReceiptCustomNote(storeSettings.receiptCustomNote || "");
+    setReceiptShowLogo(storeSettings.receiptShowLogo !== false);
+    setReceiptShowCashier(storeSettings.receiptShowCashier !== false);
+    setReceiptShowCustomer(storeSettings.receiptShowCustomer !== false);
+    setReceiptShowTable(storeSettings.receiptShowTable !== false);
+    setReceiptShowNotes(storeSettings.receiptShowNotes !== false);
+  }, [storeSettings]);
+
+  const handleSaveReceiptSettings = async () => {
+    setIsSavingCustomization(true);
+    try {
+      await saveStoreSettingsAsync({
+        ...storeSettings,
+        paperWidth: previewWidth,
+        receiptHeader,
+        receiptFooter,
+        receiptCustomNote,
+        receiptShowLogo,
+        receiptShowCashier,
+        receiptShowCustomer,
+        receiptShowTable,
+        receiptShowNotes,
+      });
+      await refreshSettings();
+      showToast("Format kustom struk berhasil disimpan!", "success");
+    } catch (err: any) {
+      showToast("Gagal menyimpan format struk: " + (err?.message || "Terjadi kesalahan"), "error");
+    } finally {
+      setIsSavingCustomization(false);
+    }
+  };
 
   // Back button
   useEffect(() => {
@@ -131,22 +175,34 @@ export default function PengaturanPrinterPage() {
     showToast("Printer berhasil dilepas", "info");
   };
 
+  const currentReceiptConfig = {
+    ...storeSettings,
+    paperWidth: previewWidth,
+    receiptHeader,
+    receiptFooter,
+    receiptCustomNote,
+    receiptShowLogo,
+    receiptShowCashier,
+    receiptShowCustomer,
+    receiptShowTable,
+    receiptShowNotes,
+  };
+
   const handleTestPrint = async () => {
     setIsPrintingTest(true);
     setStatusMessage("Menyiapkan dokumen uji cetak...");
 
     // Siapkan data struk uji coba lengkap & terisolasi
-    const testSettings = { ...storeSettings, paperWidth: previewWidth };
-    const testData = generateTestReceiptData(testSettings);
-    const escposText = generateEscPosReceipt(testData, "all", testSettings);
-    const htmlContent = generateReceiptHtml(testData, "all", testSettings);
+    const testData = generateTestReceiptData(currentReceiptConfig);
+    const escposText = generateEscPosReceipt(testData, "all", currentReceiptConfig);
+    const htmlContent = generateReceiptHtml(testData, "all", currentReceiptConfig);
 
     try {
       const result = await executePrintDocument({
         title: "Tes_Print_SakuNota_Thermal",
         escposText,
         htmlContent,
-        settings: testSettings
+        settings: currentReceiptConfig
       });
 
       if (result.success) {
@@ -161,7 +217,7 @@ export default function PengaturanPrinterPage() {
     }
   };
 
-  const testReceiptData = generateTestReceiptData({ ...storeSettings, paperWidth: previewWidth });
+  const testReceiptData = generateTestReceiptData(currentReceiptConfig);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 max-w-4xl">
@@ -213,8 +269,10 @@ export default function PengaturanPrinterPage() {
               <span className="text-[10px] font-bold text-muted uppercase tracking-wider">
                 Status Printer Kasir
               </span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                isNative ? 'bg-blue-900/60 text-blue-200 border border-blue-700/50' : 'bg-slate-800 text-slate-300 border border-line'
+              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                isNative 
+                  ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800' 
+                  : 'bg-card text-fg border border-line font-bold'
               }`}>
                 {isNative ? 'Android APK Native' : 'PWA / Web Browser'}
               </span>
@@ -296,6 +354,151 @@ export default function PengaturanPrinterPage() {
           <span className="text-muted text-[11px]">
             Dokumen cetak terisolasi: tidak akan mencetak dashboard atau menu aplikasi.
           </span>
+        </div>
+      </div>
+
+      {/* Kustomisasi Format Struk Kasir */}
+      <div className="p-5 sm:p-6 rounded-3xl bg-surface border border-line shadow-sm space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line">
+          <div>
+            <h4 className="text-base font-black text-fg flex items-center gap-2">
+              <span><LineIcon name="receipt" /></span>
+              <span>Kustomisasi Format Struk Kasir</span>
+            </h4>
+            <p className="text-xs text-muted mt-0.5">
+              Sesuaikan teks header slogan, ucapan penutup, catatan kustom (WiFi/medsos), serta elemen nota cetak.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsPreviewOpen(true)}
+              className="px-3.5 py-2 bg-card hover:bg-line text-fg font-bold text-xs rounded-xl border border-line transition-all flex items-center gap-1.5"
+            >
+              <span><LineIcon name="eye" /></span>
+              <span>Pratinjau Hasil</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveReceiptSettings}
+              disabled={isSavingCustomization}
+              className="px-4 py-2 bg-accent hover:bg-accent-hover text-white font-black text-xs rounded-xl shadow-md shadow-accent/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <span><LineIcon name="check" /></span>
+              <span>{isSavingCustomization ? "Menyimpan..." : "Simpan Format Struk"}</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Header Slogan */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-fg">
+              Slogan / Tagline Header Struk
+            </label>
+            <input
+              type="text"
+              value={receiptHeader}
+              onChange={(e) => setReceiptHeader(e.target.value)}
+              placeholder="Contoh: Nikmatnya Kopi Tradisional & Angkringan"
+              className="w-full bg-card border border-line rounded-xl px-3.5 py-2.5 text-xs text-fg font-semibold placeholder:text-muted/60 outline-none focus:border-accent"
+            />
+            <p className="text-[11px] text-muted">
+              Dicetak di bawah nama dan alamat toko pada bagian atas struk.
+            </p>
+          </div>
+
+          {/* Footer Message */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-fg">
+              Ucapan Terima Kasih (Kaki Struk)
+            </label>
+            <textarea
+              rows={2}
+              value={receiptFooter}
+              onChange={(e) => setReceiptFooter(e.target.value)}
+              placeholder="Contoh: Terima Kasih atas Kunjungan Anda&#10;Silakan Datang Kembali"
+              className="w-full bg-card border border-line rounded-xl px-3.5 py-2 text-xs text-fg font-semibold placeholder:text-muted/60 outline-none focus:border-accent resize-none"
+            />
+            <p className="text-[11px] text-muted">
+              Pesan penutup di bagian bawah sebelum batas potong kertas.
+            </p>
+          </div>
+
+          {/* Custom Note (WiFi, Instagram, Sosmed) */}
+          <div className="space-y-1.5 md:col-span-2">
+            <label className="block text-xs font-bold text-fg">
+              Catatan Kustom Tambahan (WiFi, Akun Medsos, Info Promo)
+            </label>
+            <textarea
+              rows={2}
+              value={receiptCustomNote}
+              onChange={(e) => setReceiptCustomNote(e.target.value)}
+              placeholder="Contoh: WiFi: SakuNota-Hotspot (Pass: ngopienak123)&#10;Follow IG: @tokokami • Tag story untuk diskon 10%!"
+              className="w-full bg-card border border-line rounded-xl px-3.5 py-2 text-xs text-fg font-semibold placeholder:text-muted/60 outline-none focus:border-accent resize-none"
+            />
+            <p className="text-[11px] text-muted">
+              Bebas diisi info WiFi toko, akun medsos, atau catatan promosi lainnya.
+            </p>
+          </div>
+        </div>
+
+        {/* Visibility Toggles */}
+        <div className="pt-3 border-t border-line space-y-2.5">
+          <label className="block text-xs font-bold text-fg">
+            Elemen Yang Ditampilkan Pada Struk
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+            <label className="flex items-center gap-2.5 p-2.5 bg-card border border-line rounded-xl cursor-pointer hover:border-accent/40 transition-colors">
+              <input
+                type="checkbox"
+                checked={receiptShowLogo}
+                onChange={(e) => setReceiptShowLogo(e.target.checked)}
+                className="w-4 h-4 rounded text-accent focus:ring-accent accent-accent"
+              />
+              <span className="text-xs font-bold text-fg">Logo Usaha</span>
+            </label>
+
+            <label className="flex items-center gap-2.5 p-2.5 bg-card border border-line rounded-xl cursor-pointer hover:border-accent/40 transition-colors">
+              <input
+                type="checkbox"
+                checked={receiptShowCashier}
+                onChange={(e) => setReceiptShowCashier(e.target.checked)}
+                className="w-4 h-4 rounded text-accent focus:ring-accent accent-accent"
+              />
+              <span className="text-xs font-bold text-fg">Nama Kasir / Operator</span>
+            </label>
+
+            <label className="flex items-center gap-2.5 p-2.5 bg-card border border-line rounded-xl cursor-pointer hover:border-accent/40 transition-colors">
+              <input
+                type="checkbox"
+                checked={receiptShowCustomer}
+                onChange={(e) => setReceiptShowCustomer(e.target.checked)}
+                className="w-4 h-4 rounded text-accent focus:ring-accent accent-accent"
+              />
+              <span className="text-xs font-bold text-fg">Nama Pelanggan</span>
+            </label>
+
+            <label className="flex items-center gap-2.5 p-2.5 bg-card border border-line rounded-xl cursor-pointer hover:border-accent/40 transition-colors">
+              <input
+                type="checkbox"
+                checked={receiptShowTable}
+                onChange={(e) => setReceiptShowTable(e.target.checked)}
+                className="w-4 h-4 rounded text-accent focus:ring-accent accent-accent"
+              />
+              <span className="text-xs font-bold text-fg">Nomor Meja / Tipe Pesanan</span>
+            </label>
+
+            <label className="flex items-center gap-2.5 p-2.5 bg-card border border-line rounded-xl cursor-pointer hover:border-accent/40 transition-colors">
+              <input
+                type="checkbox"
+                checked={receiptShowNotes}
+                onChange={(e) => setReceiptShowNotes(e.target.checked)}
+                className="w-4 h-4 rounded text-accent focus:ring-accent accent-accent"
+              />
+              <span className="text-xs font-bold text-fg">Catatan Item Menu</span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -442,17 +645,20 @@ export default function PengaturanPrinterPage() {
               >
                 {/* Store Branding */}
                 <div className="text-center mb-3">
-                  {storeSettings.storeLogo && (
+                  {currentReceiptConfig.receiptShowLogo !== false && currentReceiptConfig.storeLogo && (
                     <div className="flex justify-center mb-2">
-                      <img src={storeSettings.storeLogo} alt="Logo" className="max-h-12 max-w-[100px] object-contain" />
+                      <img src={currentReceiptConfig.storeLogo} alt="Logo" className="max-h-12 max-w-[100px] object-contain" />
                     </div>
                   )}
-                  <h4 className="font-black text-sm uppercase">{storeSettings.storeName || "SAKUNOTA"}</h4>
-                  {storeSettings.storeAddress && (
-                    <p className="text-[10px] leading-tight text-neutral-700 mt-0.5">{storeSettings.storeAddress}</p>
+                  <h4 className="font-black text-sm uppercase">{currentReceiptConfig.storeName || "SAKUNOTA"}</h4>
+                  {currentReceiptConfig.storeAddress && (
+                    <p className="text-[10px] leading-tight text-neutral-700 mt-0.5">{currentReceiptConfig.storeAddress}</p>
                   )}
-                  {storeSettings.storePhone && (
-                    <p className="text-[10px] text-neutral-700">Telp: {storeSettings.storePhone}</p>
+                  {currentReceiptConfig.storePhone && (
+                    <p className="text-[10px] text-neutral-700">Telp: {currentReceiptConfig.storePhone}</p>
+                  )}
+                  {currentReceiptConfig.receiptHeader && (
+                    <p className="text-[10px] font-bold text-neutral-900 mt-1">{currentReceiptConfig.receiptHeader}</p>
                   )}
                 </div>
 
@@ -462,15 +668,25 @@ export default function PengaturanPrinterPage() {
                 <div className="text-[11px] space-y-0.5 mb-2">
                   <div className="flex justify-between">
                     <span>No: A-999</span>
-                    <span className="font-bold">[Meja Tes #01]</span>
+                    {currentReceiptConfig.receiptShowTable !== false && (
+                      <span className="font-bold">[Meja Tes #01]</span>
+                    )}
                   </div>
-                  <div className="flex justify-between">
-                    <span>Pelanggan: Budi Santoso</span>
-                    <span>Dine-in</span>
+                  {currentReceiptConfig.receiptShowCustomer !== false && (
+                    <div className="flex justify-between">
+                      <span>Pelanggan: Budi Santoso</span>
+                      {currentReceiptConfig.receiptShowTable !== false && <span>Dine-in</span>}
+                    </div>
+                  )}
+                  <div className="flex justify-between text-[10px] text-neutral-600">
+                    <span>Tgl: {testReceiptData.date}</span>
+                    {currentReceiptConfig.receiptShowCashier !== false && <span>Kasir: Kasir Toko</span>}
                   </div>
-                  <div className="text-[10px] text-neutral-600">
-                    Tgl: {testReceiptData.date}
-                  </div>
+                  {currentReceiptConfig.receiptShowNotes !== false && (
+                    <div className="text-[10px] text-left border border-black p-1 my-1 font-bold">
+                      Catatan: Jangan terlalu manis
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-t border-dashed border-black my-2" />
@@ -531,15 +747,21 @@ export default function PengaturanPrinterPage() {
 
                 <div className="border-t-2 border-dashed border-black my-2" />
 
-                <div className="text-center font-black text-xs py-1 border border-black my-1"> LUNAS
+                <div className="text-center font-black text-xs py-1 border border-black my-1">
+                  LUNAS
                 </div>
 
-                {storeSettings.receiptFooter && (
+                {currentReceiptConfig.receiptFooter && (
                   <p className="text-[10px] text-center mt-2 whitespace-pre-line text-neutral-700">
-                    {storeSettings.receiptFooter}
+                    {currentReceiptConfig.receiptFooter}
                   </p>
                 )}
-                {storeSettings.enableWatermark && (
+                {currentReceiptConfig.receiptCustomNote && (
+                  <p className="text-[10px] text-center mt-1.5 whitespace-pre-line text-neutral-800 italic border-t border-dashed border-neutral-300 pt-1.5">
+                    {currentReceiptConfig.receiptCustomNote}
+                  </p>
+                )}
+                {currentReceiptConfig.enableWatermark && (
                   <p className="text-[9px] text-center mt-1 text-neutral-500">
                     [ SakuNota - Solusi Kasir UMKM ]
                   </p>

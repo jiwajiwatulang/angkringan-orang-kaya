@@ -1103,7 +1103,7 @@ export default function AdminTransaksiPage() {
       ) : filteredOrders.length === 0 ? (
         <div className=" bg-surface rounded-3xl p-12 text-center border border-line">
           <span className="text-4xl block mb-2"><LineIcon name="info" /></span>
-          <p className="text-sm font-bold text-slate-300">Tidak ada nota ditemukan</p>
+          <p className="text-sm font-bold text-fg">Tidak ada nota ditemukan</p>
           <p className="text-xs text-muted mt-1">Coba sesuaikan filter pencarian atau rentang tanggal Anda.</p>
         </div>
       ) : (
@@ -1475,7 +1475,7 @@ export default function AdminTransaksiPage() {
                   type="button"
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="px-3 py-1.5 rounded-xl bg-card border border-line disabled:opacity-40 font-bold text-slate-300 hover:bg-card transition-all active:scale-95"
+                  className="px-3 py-1.5 rounded-xl bg-card border border-line disabled:opacity-40 font-bold text-fg hover:border-accent hover:text-accent-text transition-all active:scale-95"
                 >
                   ← Sebelumnya
                 </button>
@@ -1495,7 +1495,7 @@ export default function AdminTransaksiPage() {
                           className={`w-8 h-8 rounded-xl font-black text-xs transition-all ${
                             currentPage === p
                               ? "bg-accent text-white shadow-md shadow-accent/20"
-                              : " bg-card border border-line text-slate-300 hover:bg-card"
+                              : " bg-card border border-line text-fg hover:border-accent hover:text-accent-text"
                           }`}
                         >
                           {p}
@@ -1508,7 +1508,7 @@ export default function AdminTransaksiPage() {
                   type="button"
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  className="px-3 py-1.5 rounded-xl bg-card border border-line disabled:opacity-40 font-bold text-slate-300 hover:bg-card transition-all active:scale-95"
+                  className="px-3 py-1.5 rounded-xl bg-card border border-line disabled:opacity-40 font-bold text-fg hover:border-accent hover:text-accent-text transition-all active:scale-95"
                 >
                   Berikutnya →
                 </button>
@@ -1625,7 +1625,7 @@ export default function AdminTransaksiPage() {
                               Ukuran: {formatBytes(pr.fileSize)} • Unggah: {new Date(pr.uploadedAt).toLocaleTimeString()}
                             </p>
                             <p className="text-[10px] text-muted">
-                              Oleh: <span className="font-semibold text-slate-300">{pr.uploadedBy}</span>
+                              Oleh: <span className="font-bold text-fg">{pr.uploadedBy}</span>
                             </p>
                             {pr.verifiedAt && (
                               <p className="text-[10px] text-accent-text font-bold">

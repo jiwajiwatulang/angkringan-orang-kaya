@@ -970,7 +970,7 @@ export default function AdminMejaPage() {
 
             <form onSubmit={handleBulkCreateSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-fg mb-1">
                   Awalan / Prefix Meja:
                 </label>
                 <input
@@ -984,7 +984,7 @@ export default function AdminMejaPage() {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-fg mb-1">
                     Nomor Mulai:
                   </label>
                   <input
@@ -997,7 +997,7 @@ export default function AdminMejaPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-fg mb-1">
                     Jumlah Meja:
                   </label>
                   <input
@@ -1062,7 +1062,7 @@ export default function AdminMejaPage() {
 
             <form onSubmit={handleBulkRenameSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-fg mb-1">
                   Pola Penamaan (Gunakan `{"{N}"}` untuk nomor urut):
                 </label>
                 <input
@@ -1076,7 +1076,7 @@ export default function AdminMejaPage() {
                 />
               </div>
 
-              <div className="p-3 bg-card rounded-xl border border-line text-xs text-slate-300 space-y-1">
+              <div className="p-3 bg-card rounded-xl border border-line text-xs text-fg space-y-1">
                 <span className="text-[10px] uppercase font-bold text-muted block">
                   Contoh Hasil Penamaan:
                 </span>
@@ -1121,7 +1121,7 @@ export default function AdminMejaPage() {
             <h3 className="text-base font-black text-fg mb-1">
               Hapus {selectedTableIds.length} Meja Terpilih?
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed mb-4 text-left bg-card/60 p-3 rounded-xl border border-line/60">
+            <p className="text-xs text-muted leading-relaxed mb-4 text-left bg-card/60 p-3 rounded-xl border border-line/60">
               <LineIcon name="info" />
               <strong>Fitur Pengaman Tagihan:</strong> Meja yang sedang memiliki pesanan/tagihan aktif (Status Open Bill atau Terisi) tidak akan dapat dihapus untuk mencegah kehilangan data keuangan kasir.
             </p>
@@ -1159,7 +1159,7 @@ export default function AdminMejaPage() {
               <LineIcon name="info" />
             </div>
             <h3 className="text-base font-black text-fg mb-1">Hapus Meja Ini?</h3>
-            <p className="text-xs text-slate-300 leading-relaxed mb-5">
+            <p className="text-xs text-muted leading-relaxed mb-5">
               Apakah Anda yakin ingin menghapus <strong>"{tableToDelete.nomor}"</strong>? Pastikan meja tidak sedang memiliki tagihan aktif.
             </p>
             <div className="flex space-x-2">

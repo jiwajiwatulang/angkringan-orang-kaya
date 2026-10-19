@@ -542,7 +542,7 @@ export default function PengaturanDataPage() {
                     </p>
                   </div>
 
-                  <p className="text-xs text-slate-300 leading-relaxed pt-1">
+                  <p className="text-xs text-muted leading-relaxed pt-1">
                     {preset.description}
                   </p>
 
