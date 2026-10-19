@@ -36,6 +36,27 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const [isLainnyaOpen, setIsLainnyaOpen] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("sakunota_admin_sidebar_collapsed");
+      if (saved === "true") {
+        setIsSidebarCollapsed(true);
+      }
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("sakunota_admin_sidebar_collapsed", String(next));
+      }
+      return next;
+    });
+  };
+
   useEffect(() => { preserveDemoUrl(); }, [pathname]);
 
   useEffect(() => {
@@ -515,54 +536,127 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-app text-fg flex flex-col md:flex-row">
       {/* --- DESKTOP & TABLET SIDEBAR --- */}
-      <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-surface border-r border-line shrink-0 select-none">
-        {/* Brand */}
-        <div className="p-4 border-b border-line flex items-center justify-between">
-          <Link href="/admin" className="flex items-center gap-2.5">
-            <img
-              src="/logo-sakunota.png"
-              alt="SakuNota - Admin Backoffice"
-              className="h-8 w-auto object-contain"
-            />
+      <aside
+        className={`hidden md:flex flex-col bg-surface border-r border-line shrink-0 select-none transition-all duration-300 ease-in-out ${
+          isSidebarCollapsed ? "w-20" : "w-64 lg:w-72"
+        }`}
+      >
+        {/* Brand & Collapse Toggle */}
+        <div
+          className={`p-4 border-b border-line flex items-center ${
+            isSidebarCollapsed ? "flex-col justify-center gap-3" : "justify-between gap-2"
+          }`}
+        >
+          <Link
+            href="/admin"
+            className="flex items-center gap-2.5 overflow-hidden"
+            title="SakuNota - Admin Backoffice"
+          >
+            {isSidebarCollapsed ? (
+              <img
+                src="/icon.png"
+                alt="SakuNota"
+                className="w-8 h-8 rounded-xl object-contain shadow-xs shrink-0"
+              />
+            ) : (
+              <img
+                src="/logo-sakunota.png"
+                alt="SakuNota - Admin Backoffice"
+                className="h-8 w-auto object-contain"
+              />
+            )}
           </Link>
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            title={isSidebarCollapsed ? "Perlebar Menu" : "Perkecil Menu"}
+            className="p-1.5 rounded-xl border border-line bg-card/60 hover:bg-card text-muted hover:text-fg transition-all active:scale-95 shrink-0"
+          >
+            <svg
+              className={`w-4 h-4 transition-transform duration-300 ${
+                isSidebarCollapsed ? "rotate-180" : ""
+              }`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
         </div>
 
         {/* Navigation Links */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {navItems.filter(item => !['/admin/meja', '/admin/pelayan'].includes(item.href) || storeSettings.serviceMode === 'resto').map((item) => {
-            const active = isActiveLink(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={isDemo ? `${item.href}${item.href.includes('?') ? '&' : '?'}demo=true` : item.href}
-                className={`flex items-center gap-3.5 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
-                  active
-                    ? "bg-accent text-white shadow-lg shadow-accent/20"
-                    : " text-muted hover:bg-card/60 hover:text-fg"
-                }`}
-              >
-                <LineIcon name={item.icon} className="w-5 h-5 shrink-0" />
-                <span className="text-sm font-bold">{item.label}</span>
-              </Link>
-            );
-          })}
+          {navItems
+            .filter(
+              (item) =>
+                !["/admin/meja", "/admin/pelayan"].includes(item.href) ||
+                storeSettings.serviceMode === "resto"
+            )
+            .map((item) => {
+              const active = isActiveLink(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={
+                    isDemo
+                      ? `${item.href}${item.href.includes("?") ? "&" : "?"}demo=true`
+                      : item.href
+                  }
+                  title={isSidebarCollapsed ? item.label : undefined}
+                  className={`flex items-center rounded-2xl font-bold transition-all ${
+                    isSidebarCollapsed
+                      ? "justify-center p-3 text-xs"
+                      : "gap-3.5 px-3.5 py-3 text-xs"
+                  } ${
+                    active
+                      ? "bg-accent text-white shadow-lg shadow-accent/20"
+                      : "text-muted hover:bg-card/60 hover:text-fg"
+                  }`}
+                >
+                  <LineIcon name={item.icon} className="w-5 h-5 shrink-0" />
+                  {!isSidebarCollapsed && (
+                    <span className="text-sm font-bold truncate">{item.label}</span>
+                  )}
+                </Link>
+              );
+            })}
         </nav>
 
         {/* Sidebar Footer */}
         <div className="p-3 border-t border-line space-y-2">
-          <div className="px-3.5 py-2.5 rounded-2xl bg-card/40 border border-line/50">
-            <span className="text-[10px] text-muted uppercase font-bold tracking-wider block">Toko Aktif</span>
-            <span className="text-xs font-bold text-fg truncate block">
-              {storeSettings.storeName || "Toko SakuNota"}
-            </span>
-          </div>
+          {isSidebarCollapsed ? (
+            <div
+              className="p-2.5 rounded-2xl bg-card/40 border border-line/50 flex items-center justify-center"
+              title={`Toko Aktif: ${storeSettings.storeName || "Toko SakuNota"}`}
+            >
+              <LineIcon name="store" className="w-4 h-4 text-muted" />
+            </div>
+          ) : (
+            <div className="px-3.5 py-2.5 rounded-2xl bg-card/40 border border-line/50">
+              <span className="text-[10px] text-muted uppercase font-bold tracking-wider block">
+                Toko Aktif
+              </span>
+              <span className="text-xs font-bold text-fg truncate block">
+                {storeSettings.storeName || "Toko SakuNota"}
+              </span>
+            </div>
+          )}
 
           <button
             onClick={logout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-700 hover:bg-rose-50 transition-colors"
+            title={isSidebarCollapsed ? "Keluar Admin" : undefined}
+            className={`w-full flex items-center rounded-xl text-xs font-bold text-rose-700 hover:bg-rose-50 transition-colors ${
+              isSidebarCollapsed
+                ? "justify-center p-2.5"
+                : "justify-center gap-2 px-3 py-2.5"
+            }`}
           >
-            <span><LineIcon name="logout" /></span>
-            <span>Keluar Admin</span>
+            <LineIcon name="logout" className="w-4 h-4 shrink-0" />
+            {!isSidebarCollapsed && <span>Keluar Admin</span>}
           </button>
         </div>
       </aside>
