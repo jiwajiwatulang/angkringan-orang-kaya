@@ -525,7 +525,7 @@ export default function PanduanPage() {
                   className="h-8 w-auto object-contain brightness-0 invert"
                 />
               </Link>
-              <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
+              <p className="text-xs text-neutral-300 leading-relaxed max-w-sm">
                 Aplikasi kasir modern untuk UMKM, angkringan, kafe, dan retail. 100% jalan offline tanpa biaya langganan bulanan.
               </p>
               <div className="pt-1">
@@ -533,7 +533,7 @@ export default function PanduanPage() {
                   href="https://www.instagram.com/sakunota/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+                  className="inline-flex items-center justify-center text-neutral-300 hover:text-white transition-colors"
                   title="Instagram @sakunota"
                   aria-label="Instagram SakuNota"
                 >
@@ -549,7 +549,7 @@ export default function PanduanPage() {
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">
                 Produk
               </h3>
-              <ul className="space-y-2 text-xs text-slate-400">
+              <ul className="space-y-2 text-xs text-neutral-300">
                 <li>
                   <Link href="/pos" className="hover:text-white transition-colors">
                     Kasir POS
@@ -583,7 +583,7 @@ export default function PanduanPage() {
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">
                 Perusahaan
               </h3>
-              <ul className="space-y-2 text-xs text-slate-400">
+              <ul className="space-y-2 text-xs text-neutral-300">
                 <li>
                   <Link href="/tentang" className="hover:text-white transition-colors">
                     Tentang Kami
@@ -602,7 +602,7 @@ export default function PanduanPage() {
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">
                 Bantuan
               </h3>
-              <ul className="space-y-2 text-xs text-slate-400">
+              <ul className="space-y-2 text-xs text-neutral-300">
                 <li>
                   <Link href="/panduan" className="hover:text-white transition-colors">
                     Pusat Panduan
@@ -628,21 +628,22 @@ export default function PanduanPage() {
           </div>
 
           {/* Bottom Copyright & Legal Links */}
-          <div className="mt-12 pt-6 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+          <div className="mt-12 pt-6 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-400">
             <div>
               © 2026 SakuNota. Hak cipta dilindungi.
             </div>
             <div className="flex items-center gap-6">
-              <Link href="/privacy" className="hover:text-slate-300 transition-colors">
+              <Link href="/privacy" className="text-neutral-400 hover:text-white transition-colors">
                 Privasi
               </Link>
-              <Link href="/terms" className="hover:text-slate-300 transition-colors">
+              <Link href="/terms" className="text-neutral-400 hover:text-white transition-colors">
                 Terms
               </Link>
             </div>
           </div>
         </div>
       </footer>
+
     </div>
   );
 }
