@@ -9,13 +9,14 @@ import { App } from "@capacitor/app";
 import { AdminProvider, useAdmin } from "./AdminContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import LineIcon from "@/components/LineIcon";
-import { saveStoreSettingsAsync } from "@/lib/settings";
+import { saveStoreSettingsAsync, isTableManagementEnabled } from "@/lib/settings";
 import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "@/lib/recovery";
 import { createAdminSession, verifyAdminSession, destroyAdminSession } from "@/lib/session";
 import { db } from "@/lib/dexie";
 import { verifyMerchantPin } from "@/lib/merchantAccess";
 
 const navItems = [
+  { href: "/admin", label: "Dashboard", icon: "chart" },
   { href: "/pos", label: "Kasir & Menu", icon: "cashier" },
   { href: "/admin/meja", label: "Kelola Meja", icon: "tables" },
   { href: "/admin/transaksi", label: "Riwayat Transaksi", icon: "receipt" },
@@ -23,7 +24,6 @@ const navItems = [
   { href: "/admin/pelayan", label: "Waiter Floor", icon: "table" },
   { href: "/admin/menu", label: "Katalog & Stok", icon: "catalog" },
   { href: "/admin/pengaturan", label: "Pengaturan POS", icon: "settings" },
-  { href: "/admin", label: "Dashboard", icon: "chart" },
 ];
 
 function AdminShell({ children }: { children: React.ReactNode }) {
@@ -594,7 +594,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             .filter(
               (item) =>
                 !["/admin/meja", "/admin/pelayan"].includes(item.href) ||
-                storeSettings.serviceMode === "resto"
+                isTableManagementEnabled(storeSettings)
             )
             .map((item) => {
               const active = isActiveLink(item.href);
@@ -819,18 +819,20 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               <Link href="/admin/menu?tab=stock" onClick={() => setIsLainnyaOpen(false)} className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-line text-fg">
                 <span className="text-xl"><LineIcon name="catalog" /></span><div><div className="font-bold text-sm">Katalog &amp; Stok</div><div className="text-xs text-muted">Produk, persediaan, dan opname</div></div>
               </Link>
-              <Link
-                href="/admin/meja"
-                onClick={() => setIsLainnyaOpen(false)}
-                className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
-              >
-                <span className="text-xl"><LineIcon name="tables" /></span>
-                <div className="flex-1">
-                  <div className="font-bold text-sm">Kelola Meja</div>
-                  <div className="text-[10px] text-muted">Atur nomor meja dan status dine-in</div>
-                </div>
-                <span>→</span>
-              </Link>
+              {isTableManagementEnabled(storeSettings) && (
+                <Link
+                  href="/admin/meja"
+                  onClick={() => setIsLainnyaOpen(false)}
+                  className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
+                >
+                  <span className="text-xl"><LineIcon name="tables" /></span>
+                  <div className="flex-1">
+                    <div className="font-bold text-sm">Kelola Meja</div>
+                    <div className="text-[10px] text-muted">Atur nomor meja dan status dine-in</div>
+                  </div>
+                  <span>→</span>
+                </Link>
+              )}
 
               <Link
                 href="/admin/shift"
