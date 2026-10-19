@@ -201,8 +201,8 @@ export default function AdminShiftPage() {
                         <span
                           className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
                             isOpen
-                              ? " bg-accent/60 text-accent-text"
-                              : " bg-card text-muted"
+                              ? " bg-blue-100 text-blue-900 border border-blue-200"
+                              : " bg-card text-muted border border-line"
                           }`}
                         >
                           {isOpen ? "AKTIF" : "DITUTUP"}
@@ -218,10 +218,10 @@ export default function AdminShiftPage() {
                         <span
                           className={`text-xs font-black px-3 py-1 rounded-xl ${
                             isMatch
-                              ? " bg-accent/60 text-accent-text"
+                              ? " bg-emerald-100 text-emerald-900 border border-emerald-200"
                               : isOver
-                              ? " bg-amber-950/60 text-amber-300"
-                              : " bg-rose-50 text-rose-700"
+                              ? " bg-amber-100 text-amber-900 border border-amber-200"
+                              : " bg-rose-100 text-rose-900 border border-rose-200"
                           }`}
                         >
                           {isMatch ? "PAS / COCOK" : isOver ? `+Rp ${diff.toLocaleString("id-ID")} (LEBIH)` : `-Rp ${Math.abs(diff).toLocaleString("id-ID")} (KURANG)`}
@@ -313,8 +313,8 @@ export default function AdminShiftPage() {
                   <div
                     className={`w-9 h-9 rounded-xl flex items-center justify-center text-base font-black ${
                       m.type === 'in'
-                        ? ' bg-accent/60 text-accent-text'
-                        : ' bg-rose-50 text-rose-700'
+                        ? ' bg-emerald-100 text-emerald-900 border border-emerald-200'
+                        : ' bg-rose-100 text-rose-900 border border-rose-200'
                     }`}
                   >
                     {m.type === 'in' ? 'Masuk' : 'Keluar'}

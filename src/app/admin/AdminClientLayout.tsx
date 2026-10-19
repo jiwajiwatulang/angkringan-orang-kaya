@@ -14,6 +14,7 @@ import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "@/li
 import { createAdminSession, verifyAdminSession, destroyAdminSession } from "@/lib/session";
 import { db } from "@/lib/dexie";
 import { verifyMerchantPin } from "@/lib/merchantAccess";
+import { checkCashierAccess, CashierAccessStatus } from "@/lib/licenseGuard";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: "chart" },
@@ -37,6 +38,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const [isDemo, setIsDemo] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [licenseStatus, setLicenseStatus] = useState<CashierAccessStatus | null>(null);
+
+  useEffect(() => {
+    checkCashierAccess().then(setLicenseStatus).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -312,6 +318,49 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+
+  if (!isDemo && licenseStatus && !licenseStatus.isValid) {
+    return (
+      <div className="min-h-screen bg-app flex flex-col items-center justify-center p-4">
+        <div className="bg-surface border border-line rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center space-y-4 animate-in zoom-in-95 duration-200">
+          <div className="w-14 h-14 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center mx-auto mb-1">
+            <LockIcon />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-fg">Akses Admin Memerlukan Lisensi</h2>
+            <p className="text-xs text-muted leading-relaxed mt-1">
+              Perangkat ini belum memiliki lisensi berbayar, tester, atau masa uji coba aktif. Silakan aktivasi lisensi resmi untuk membuka Backoffice.
+            </p>
+          </div>
+
+          <div className="pt-2 space-y-2">
+            <Link
+              href="/pos"
+              className="w-full py-3.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>Aktivasi Kode Lisensi di Kasir</span>
+              <span>→</span>
+            </Link>
+
+            <Link
+              href="/pos?demo=true"
+              className="w-full py-3 px-4 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
+            >
+              <span>Buka Demo Kasir (Simulasi 30 Menit)</span>
+            </Link>
+
+            <Link
+              href="/"
+              className="w-full py-2.5 text-xs text-muted hover:text-fg font-bold block"
+            >
+              ← Kembali ke Beranda
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     // 1. MODAL TAMPILKAN RECOVERY CODE BARU KEPADA PEMILIK
     if (revealedCode) {

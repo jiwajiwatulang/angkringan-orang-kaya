@@ -1761,7 +1761,11 @@ export default function POSPage() {
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg lg:text-xl font-bold text-fg tracking-tight">{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-accent/60 text-accent-text font-extrabold">
+                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold transition-colors ${
+                  cart.length === 0
+                    ? "bg-slate-100 text-slate-600 border border-slate-200"
+                    : "bg-blue-600 text-white font-black shadow-xs"
+                }`}>
                   {cart.reduce((sum, item) => sum + item.qty, 0)} item
                 </span>
               </div>
@@ -1982,7 +1986,11 @@ export default function POSPage() {
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-xl font-bold text-fg tracking-tight">{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-accent/60 text-accent-text font-extrabold">
+                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold transition-colors ${
+                  cart.length === 0
+                    ? "bg-slate-100 text-slate-600 border border-slate-200"
+                    : "bg-blue-600 text-white font-black shadow-xs"
+                }`}>
                   {cart.reduce((sum, item) => sum + item.qty, 0)} item
                 </span>
               </div>
@@ -3002,7 +3010,7 @@ export default function POSPage() {
           )}
 
           <CashierPrinter settings={storeSettings} />
-          <button type="button" onClick={enterAdmin} className="px-3 py-2 rounded-xl border border-line bg-card text-fg font-bold text-xs">Admin</button>
+          <button type="button" onClick={enterAdmin} className="px-3 py-2 rounded-xl border border-line bg-card text-fg font-bold text-xs hover:bg-line/80 hover:border-accent/40 cursor-pointer transition-all duration-150 active:scale-95 shadow-xs">Admin</button>
 
         </div>
       </header>

@@ -21,7 +21,7 @@ export default function CashierPrinter({ settings }: { settings: StoreSettings }
     catch { setMessage('Uji cetak belum berhasil. Periksa printer dan sambungan.'); }
     finally { setBusy(false); }
   }
-  return <><button type="button" onClick={() => setOpen(true)} className="px-3 py-2 text-xs font-bold border border-line rounded-xl bg-card text-fg">Printer</button>
+  return <><button type="button" onClick={() => setOpen(true)} className="px-3 py-2 text-xs font-bold border border-line rounded-xl bg-card text-fg hover:bg-line/80 hover:border-accent/40 cursor-pointer transition-all duration-150 active:scale-95 shadow-xs">Printer</button>
     {open && <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="cashier-printer-title"><section className="bg-card text-fg rounded-2xl p-5 max-w-md w-full space-y-4">
       <div className="flex justify-between items-center"><h2 id="cashier-printer-title" className="text-lg font-bold">Printer Kasir</h2><button type="button" onClick={() => setOpen(false)} className="p-2 border border-line rounded-lg">Tutup</button></div>
       <p className="text-sm text-muted">{Capacitor.isNativePlatform() ? 'Pilih printer Bluetooth yang sudah dipasangkan ke HP ini.' : 'Gunakan printer yang tersedia melalui dialog cetak browser atau sistem.'}</p>

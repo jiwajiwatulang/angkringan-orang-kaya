@@ -371,13 +371,13 @@ export default function AdminMejaPage() {
                     <span
                       className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
                         isOpenBill
-                          ? " bg-rose-50 text-rose-700"
+                          ? " bg-blue-100 text-blue-900 border border-blue-200"
                           : isPaid
-                          ? " bg-accent/60 text-accent-text"
-                          : " bg-accent/60 text-accent-text"
+                          ? " bg-amber-100 text-amber-900 border border-amber-200"
+                          : " bg-emerald-100 text-emerald-900 border border-emerald-200"
                       }`}
                     >
-                      {isOpenBill ? "TERISI" : isPaid ? "LUNAS" : "KOSONG"}
+                      {isOpenBill ? "TERISI" : isPaid ? "TAGIHAN" : "KOSONG"}
                     </span>
                   </div>
 
