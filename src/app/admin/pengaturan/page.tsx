@@ -102,7 +102,7 @@ export default function AdminPengaturanHubPage() {
               <LineIcon name="store" />
             </span>
             <div>
-              <h3 className="font-black text-sm text-fg">SakuNota - Kasir Jalan Tanpa Internet.</h3>
+              <h3 className="font-black text-sm text-fg">SakuNota - Kasir Jalan Tanpa Internet</h3>
 
             </div>
           </div>
