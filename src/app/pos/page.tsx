@@ -7,7 +7,7 @@ import TableShapeIcon from "@/components/TableShapeIcon";
 import type { BusinessDemoType } from "@/lib/demoCatalog";
 
 import { useState, useEffect, useRef } from "react";
-import { isDemoMode, preserveDemoUrl } from '@/lib/demoMode';
+import { isDemoMode, preserveDemoUrl, restartDemoSession } from '@/lib/demoMode';
 import Link from "next/link";
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
@@ -169,7 +169,7 @@ export default function POSPage() {
   };
 
   const handleStartDemo = async () => {
-    sessionStorage.setItem('sakunota_demo_mode', 'true');
+    restartDemoSession();
     window.location.assign('/pos?demo=true');
   };
 
@@ -2501,7 +2501,11 @@ export default function POSPage() {
           {/* Header */}
           <div className="text-center mb-6">
             <div className="inline-flex items-center justify-center mb-3">
-              {accessStatus.status === 'trial_expired' ? (
+              {accessStatus.status === 'demo_expired' ? (
+                <svg className="w-10 h-10 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : accessStatus.status === 'trial_expired' ? (
                 <svg className="w-10 h-10 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -2521,7 +2525,9 @@ export default function POSPage() {
               <span className="font-bold text-blue-600 tracking-tight">Kasir Jalan Tanpa Internet</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-              {accessStatus.status === 'trial_expired'
+              {accessStatus.status === 'demo_expired'
+                ? 'Sesi Demo Kasir Berakhir'
+                : accessStatus.status === 'trial_expired'
                 ? 'Masa Coba 7 Hari Selesai'
                 : accessStatus.isClockTampered
                 ? 'Peringatan Waktu Perangkat Dimundurkan'
@@ -2576,8 +2582,14 @@ export default function POSPage() {
           <div className="bg-blue-50/80 border border-blue-200 rounded-2xl p-4 sm:p-5 mb-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
             <div className="flex items-center gap-3.5 text-left">
               <div>
-                <h3 className="text-xs sm:text-sm font-black text-slate-900">Ingin Mencoba Simulasi Kasir Tanpa Lisensi?</h3>
-                <p className="text-xs text-slate-600 mt-0.5">Buka Demo Kasir interaktif gratis untuk mencoba menu, meja, dan cetak struk.</p>
+                <h3 className="text-xs sm:text-sm font-black text-slate-900">
+                  {accessStatus.status === 'demo_expired' ? 'Ingin Mencoba Simulasi Demo Lagi?' : 'Ingin Mencoba Simulasi Kasir Tanpa Lisensi?'}
+                </h3>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  {accessStatus.status === 'demo_expired'
+                    ? 'Klik tombol di samping untuk memulai ulang sesi demo 30 menit secara gratis.'
+                    : 'Buka Demo Kasir interaktif gratis untuk mencoba menu, meja, dan cetak struk.'}
+                </p>
               </div>
             </div>
             <button
@@ -2585,7 +2597,7 @@ export default function POSPage() {
               onClick={handleStartDemo}
               className="w-full sm:w-auto px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs transition-all shadow-sm active:scale-95 shrink-0"
             >
-              Buka Demo Kasir →
+              {accessStatus.status === 'demo_expired' ? 'Mulai Ulang Demo Kasir →' : 'Buka Demo Kasir →'}
             </button>
           </div>
 

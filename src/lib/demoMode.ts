@@ -19,3 +19,10 @@ export function preserveDemoUrl(): void {
     window.history.replaceState(window.history.state, '', url.toString());
   }
 }
+
+export function restartDemoSession(): void {
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem('sakunota_demo_mode', 'true');
+    sessionStorage.setItem('sakunota_demo_started_at', String(Date.now()));
+  }
+}

@@ -11,7 +11,7 @@ let verification: Promise<Awaited<ReturnType<typeof verifyLicenseServer>>> | und
 export interface CashierAccessStatus {
   isValid: boolean;
   isDemo: boolean;
-  status: "unregistered" | "pending_approval" | "trial_active" | "trial_expired" | "paid_active" | "tester_active" | "tester_expired" | "revoked";
+  status: "unregistered" | "pending_approval" | "trial_active" | "trial_expired" | "demo_expired" | "paid_active" | "tester_active" | "tester_expired" | "revoked";
   licenseKey?: string;
   licenseType?: "berbayar" | "trial" | "tester";
   businessName?: string;
@@ -46,7 +46,7 @@ export async function checkCashierAccess(forceOnlineCheck: boolean = false): Pro
   if (typeof window === 'undefined') return denied('Perangkat belum tersedia.');
   if (isDemoMode()) {
     const valid = demoSessionValid();
-    return {isValid:valid,isDemo:true,status:valid?'trial_active':'trial_expired',businessName:'Demo SakuNota',error:valid?undefined:'Sesi demo 30 menit selesai. Keluar demo untuk mencoba ulang atau aktifkan lisensi.'};
+    return {isValid:valid,isDemo:true,status:valid?'trial_active':'demo_expired',businessName:'Demo SakuNota',error:valid?undefined:'Sesi simulasi demo 30 menit telah berakhir. Anda dapat mengulang demo kapan saja secara gratis atau aktifkan lisensi resmi.'};
   }
   const licenseKey = localStorage.getItem('sakunota_license_key') || '';
   let token = localStorage.getItem('sakunota_activation_token') || '';
