@@ -252,6 +252,72 @@ export default function POSPage() {
     }
   };
 
+  // --- RESIZABLE CASHIER UI & DENSITY CONTROLS ---
+  const [posCartWidth, setPosCartWidth] = useState<number>(380);
+  const [isResizingCart, setIsResizingCart] = useState<boolean>(false);
+  const [posCatalogDensity, setPosCatalogDensity] = useState<'S' | 'M' | 'L'>('M');
+  const [mobileSheetSnap, setMobileSheetSnap] = useState<'half' | 'full'>('full');
+  const workspaceContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedWidth = localStorage.getItem('sakunota_pos_cart_width');
+      if (savedWidth) {
+        const parsed = parseInt(savedWidth, 10);
+        if (!isNaN(parsed) && parsed >= 260 && parsed <= 750) {
+          setPosCartWidth(parsed);
+        }
+      }
+      const savedDensity = localStorage.getItem('sakunota_pos_catalog_density') as 'S' | 'M' | 'L' | null;
+      if (savedDensity && ['S', 'M', 'L'].includes(savedDensity)) {
+        setPosCatalogDensity(savedDensity);
+      }
+    }
+  }, []);
+
+  const handleSetCatalogDensity = (density: 'S' | 'M' | 'L') => {
+    setPosCatalogDensity(density);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sakunota_pos_catalog_density', density);
+    }
+  };
+
+  const startCartResize = (e: React.PointerEvent) => {
+    e.preventDefault();
+    setIsResizingCart(true);
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch (_) {}
+  };
+
+  const handleCartResizeMove = (e: React.PointerEvent) => {
+    if (!isResizingCart) return;
+    const container = workspaceContainerRef.current;
+    let newWidth: number;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      newWidth = rect.right - e.clientX;
+    } else {
+      newWidth = (typeof window !== 'undefined' ? window.innerWidth : 1200) - e.clientX;
+    }
+    const totalW = container ? container.clientWidth : (typeof window !== 'undefined' ? window.innerWidth : 1200);
+    const minW = Math.min(270, Math.floor(totalW * 0.35));
+    const maxW = Math.min(680, Math.max(minW + 50, totalW - 300));
+    const clamped = Math.max(minW, Math.min(newWidth, maxW));
+    setPosCartWidth(clamped);
+  };
+
+  const stopCartResize = (e: React.PointerEvent) => {
+    if (!isResizingCart) return;
+    setIsResizingCart(false);
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch (_) {}
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sakunota_pos_cart_width', posCartWidth.toString());
+    }
+  };
+
   // Modifier Bottom Sheet Drag State
   const [modSheetDragY, setModSheetDragY] = useState(0);
   const modSheetTouchStartRef = useRef<number | null>(null);
@@ -1774,13 +1840,16 @@ export default function POSPage() {
 
 
   const renderCartInner = (isMobile: boolean) => {
+    const isWideCart = posCartWidth >= 420;
+    const isVeryWideCart = posCartWidth >= 520;
+
     if (!isMobile) {
       return (
         <div className="flex flex-col h-full">
           <div className="p-3 sm:p-4 lg:p-5 border-b border-line bg-surface rounded-t-3xl md:rounded-none">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg lg:text-xl font-bold text-fg tracking-tight">{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
+                <h2 className={`${isWideCart ? 'text-lg lg:text-2xl' : 'text-base sm:text-lg lg:text-xl'} font-bold text-fg tracking-tight`}>{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
                 <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold transition-colors ${
                   cart.length === 0
                     ? "bg-slate-100 text-slate-600 border border-slate-200"
@@ -1876,13 +1945,13 @@ export default function POSPage() {
             )}
 
             {cart.map(item => (
-              <div key={item.itemKey || item.id} className="flex justify-between items-start border-b border-line pb-4">
+              <div key={item.itemKey || item.id} className="flex justify-between items-start border-b border-line pb-3 sm:pb-4">
                 <div className="flex-1 pr-3">
-                  <h4 className="font-bold text-fg text-sm md:text-base leading-tight">{item.nama}</h4>
+                  <h4 className={`font-bold text-fg leading-tight transition-all ${isWideCart ? 'text-base sm:text-lg' : 'text-sm md:text-base'}`}>{item.nama}</h4>
                   {item.selectedModifiers && item.selectedModifiers.length > 0 && (
                     <div className="mt-1 space-y-0.5">
                       {item.selectedModifiers.map((m: any, mIdx: number) => (
-                        <div key={mIdx} className="text-[11px] text-muted flex items-center gap-1">
+                        <div key={mIdx} className={`${isWideCart ? 'text-xs' : 'text-[11px]'} text-muted flex items-center gap-1`}>
                           <span>•</span>
                           <span>{m.optionName}</span>
                           {m.harga > 0 && <span className="font-bold text-accent-text">(+Rp {m.harga.toLocaleString('id-ID')})</span>}
@@ -1890,12 +1959,12 @@ export default function POSPage() {
                       ))}
                     </div>
                   )}
-                  <p className=" text-accent-text text-sm font-extrabold mt-1">Rp {item.harga.toLocaleString('id-ID')}</p>
+                  <p className={`text-accent-text font-extrabold mt-1 transition-all ${isWideCart ? 'text-base sm:text-lg' : 'text-sm'}`}>Rp {item.harga.toLocaleString('id-ID')}</p>
                 </div>
-                <div className="flex items-center bg-surface rounded-xl p-1 border border-line shadow-sm">
-                  <button onClick={() => updateQty(item.itemKey || item.id, -1)} className="w-8 h-8 rounded-lg bg-card text-fg hover:bg-card flex items-center justify-center font-black transition-colors">-</button>
-                  <span className="w-8 text-center font-bold text-fg text-sm">{item.qty}</span>
-                  <button onClick={() => updateQty(item.itemKey || item.id, 1)} className="w-8 h-8 rounded-lg bg-accent hover:bg-accent-hover text-white flex items-center justify-center font-black transition-colors">+</button>
+                <div className={`flex items-center bg-surface rounded-xl border border-line shadow-sm shrink-0 transition-all ${isWideCart ? 'p-1.5 gap-1' : 'p-1'}`}>
+                  <button onClick={() => updateQty(item.itemKey || item.id, -1)} className={`${isWideCart ? 'w-9 h-9 text-base' : 'w-8 h-8 text-sm'} rounded-lg bg-card text-fg hover:bg-card flex items-center justify-center font-black transition-colors`}>-</button>
+                  <span className={`${isWideCart ? 'w-9 text-base' : 'w-8 text-sm'} text-center font-bold text-fg`}>{item.qty}</span>
+                  <button onClick={() => updateQty(item.itemKey || item.id, 1)} className={`${isWideCart ? 'w-9 h-9 text-base' : 'w-8 h-8 text-sm'} rounded-lg bg-accent hover:bg-accent-hover text-white flex items-center justify-center font-black transition-colors`}>+</button>
                 </div>
               </div>
             ))}
@@ -1951,8 +2020,8 @@ export default function POSPage() {
             )}
 
             <div className="flex justify-between items-end mb-2.5 sm:mb-4">
-              <span className=" text-muted font-bold text-[11px] sm:text-xs uppercase tracking-wider">Total Pembayaran</span>
-              <span className="text-xl sm:text-2xl lg:text-3xl font-black text-fg leading-none tracking-tight">Rp {totalPrice.toLocaleString('id-ID')}</span>
+              <span className={`text-muted font-bold uppercase tracking-wider ${isWideCart ? 'text-xs sm:text-sm' : 'text-[11px] sm:text-xs'}`}>Total Pembayaran</span>
+              <span className={`font-black text-fg leading-none tracking-tight transition-all ${isVeryWideCart ? 'text-2xl sm:text-3xl lg:text-4xl' : (isWideCart ? 'text-xl sm:text-2xl lg:text-3xl' : 'text-xl sm:text-2xl')}`}>Rp {totalPrice.toLocaleString('id-ID')}</span>
             </div>
             <div className="flex gap-2">
               {editingOrderId && (
@@ -1968,7 +2037,7 @@ export default function POSPage() {
               )}
               <button
                 onClick={openPaymentModal}
-                className="flex-1 bg-accent hover:bg-accent-hover text-white py-2.5 sm:py-3.5 rounded-xl font-extrabold text-sm md:text-base shadow-lg shadow-accent/25 active:scale-95 transition-all disabled:opacity-40"
+                className={`flex-1 bg-accent hover:bg-accent-hover text-white rounded-xl font-extrabold shadow-lg shadow-accent/25 active:scale-95 transition-all disabled:opacity-40 ${isWideCart ? 'py-3.5 sm:py-4 text-base sm:text-lg' : 'py-2.5 sm:py-3.5 text-sm md:text-base'}`}
                 disabled={cart.length === 0}
               >
                 Lanjut ke Pembayaran →
@@ -1994,12 +2063,16 @@ export default function POSPage() {
             {/* Grab handle: ONLY visible in portrait mode, hidden in landscape to save vertical pixels */}
             <div 
               className="flex flex-col items-center justify-center -mt-1 mb-2 pt-1 pb-0.5 cursor-pointer select-none active:opacity-70 touch-none landscape:hidden"
-              onClick={closeMobileCart}
-              title="Ketuk atau tarik ke bawah untuk menutup"
+              onClick={() => {
+                setMobileSheetSnap(prev => prev === 'half' ? 'full' : 'half');
+              }}
+              title="Ketuk untuk ubah tinggi nota (Setengah / Penuh) atau tarik ke bawah untuk menutup"
             >
-              <div className="w-14 h-1.5 bg-slate-600 rounded-full mb-1"></div>
-              <span className="text-[10px] text-muted font-semibold flex items-center gap-1">
-                <span>↓</span> Tarik ke bawah atau ketuk untuk kembali
+              <div className="w-14 h-1.5 bg-slate-500 hover:bg-accent rounded-full mb-1 transition-colors"></div>
+              <span className="text-[10px] text-muted font-semibold flex items-center gap-1.5">
+                <span>{mobileSheetSnap === 'half' ? '▲ Perbesar Nota Penuh' : '▼ Perkecil ke Setengah'}</span>
+                <span className="opacity-40">•</span>
+                <span>Tarik ke bawah untuk tutup</span>
               </span>
             </div>
 
@@ -3113,7 +3186,7 @@ export default function POSPage() {
       </header>
 
       {/* Main Horizontal Workspace Below Top Header */}
-      <div className="flex-1 flex overflow-hidden w-full print:hidden">
+      <div ref={workspaceContainerRef} className="flex-1 flex overflow-hidden w-full print:hidden">
         {/* Left Navigation Sidebar (Desktop, Tablet & Landscape) */}
         <aside className="flex flex-col w-14 md:w-16 lg:w-52 bg-card border-r border-line p-1.5 md:p-2 lg:p-3 justify-between shrink-0 select-none">
           <nav className="space-y-1" aria-label="Navigasi karyawan">
@@ -3303,7 +3376,7 @@ export default function POSPage() {
                 <div className="p-4 md:p-6 pb-2 shrink-0">
                   <div className="flex flex-col space-y-3 mb-2">
                     <CategoryScroller categories={categories} value={activeCategory} onChange={setActiveCategory} />
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       <input 
                         type="text" 
                         placeholder="Cari menu makanan, minuman, atau kode barcode..." 
@@ -3314,11 +3387,51 @@ export default function POSPage() {
                       <button
                         type="button"
                         onClick={() => setIsBarcodeScanOpen(true)}
-                        className="px-4 py-3 rounded-xl bg-card border border-line hover:border-accent text-fg hover:text-accent-text font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0"
+                        className="px-3.5 py-3 rounded-xl bg-card border border-line hover:border-accent text-fg hover:text-accent-text font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0"
                         title="Pindai Barcode Produk (Kamera / Barcode Gun)"
                       >
                         Pindai Barcode
                       </button>
+
+                      {/* Density Controls (S / M / L) */}
+                      <div className="hidden sm:flex items-center gap-1 bg-card border border-line rounded-xl p-1 shrink-0 shadow-xs" title="Ukuran Tombol Menu Kasir">
+                        <button
+                          type="button"
+                          onClick={() => handleSetCatalogDensity('S')}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            posCatalogDensity === 'S'
+                              ? 'bg-accent text-white shadow-xs'
+                              : 'text-muted hover:text-fg hover:bg-surface'
+                          }`}
+                          title="Tampilan Padat / S (Muat Lebih Banyak Menu)"
+                        >
+                          S
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSetCatalogDensity('M')}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            posCatalogDensity === 'M'
+                              ? 'bg-accent text-white shadow-xs'
+                              : 'text-muted hover:text-fg hover:bg-surface'
+                          }`}
+                          title="Tampilan Standar / M"
+                        >
+                          M
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSetCatalogDensity('L')}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            posCatalogDensity === 'L'
+                              ? 'bg-accent text-white shadow-xs'
+                              : 'text-muted hover:text-fg hover:bg-surface'
+                          }`}
+                          title="Tampilan Besar / L (Tombol & Teks Lebih Lega untuk Layar Sentuh)"
+                        >
+                          L
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3330,7 +3443,13 @@ export default function POSPage() {
                       <p className="text-xs text-muted mt-1">Coba kata kunci lain atau pilih kategori Semua.</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+                    <div className={`grid gap-3 md:gap-4 transition-all ${
+                      posCatalogDensity === 'S'
+                        ? 'grid-cols-2 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 md:gap-2.5'
+                        : posCatalogDensity === 'L'
+                        ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5'
+                        : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4'
+                    }`}>
                       {paginatedMenu.map(item => {
                         const hasModifiers = item.modifiers && item.modifiers.length > 0;
                         const isSoldOut = item.isSoldOut;
@@ -3356,7 +3475,13 @@ export default function POSPage() {
                             }`}
                           >
                             {/* Culinary Thumbnail Image Box */}
-                            <div className="h-24 sm:h-28 w-full bg-surface/70 flex items-center justify-center text-3xl sm:text-4xl relative border-b border-line group-hover:scale-105 transition-transform duration-200">
+                            <div className={`w-full bg-surface/70 flex items-center justify-center relative border-b border-line group-hover:scale-105 transition-transform duration-200 ${
+                              posCatalogDensity === 'L'
+                                ? 'h-32 sm:h-36 text-4xl'
+                                : posCatalogDensity === 'S'
+                                ? 'h-16 sm:h-20 text-2xl'
+                                : 'h-24 sm:h-28 text-3xl'
+                            }`}>
                               <ProductPhoto product={item} />
 
                               {isSoldOut ? (
@@ -3374,22 +3499,40 @@ export default function POSPage() {
                               ) : null}
                             </div>
 
-                            <div className="p-3 flex-1 flex flex-col justify-between">
+                            <div className={`${posCatalogDensity === 'S' ? 'p-2' : 'p-3'} flex-1 flex flex-col justify-between`}>
                               <div>
-                                <h3 className="font-bold line-clamp-1 leading-tight text-xs sm:text-sm text-fg">
+                                <h3 className={`font-bold leading-tight text-fg ${
+                                  posCatalogDensity === 'L'
+                                    ? 'text-sm sm:text-base line-clamp-2'
+                                    : posCatalogDensity === 'S'
+                                    ? 'text-[11px] sm:text-xs line-clamp-1'
+                                    : 'text-xs sm:text-sm line-clamp-1'
+                                }`}>
                                   {item.nama}
                                 </h3>
-                                <span className="text-[10px] text-muted mt-0.5 block font-medium">
+                                <span className={`${posCatalogDensity === 'S' ? 'text-[9px]' : 'text-[10px]'} text-muted mt-0.5 block font-medium`}>
                                   {item.kategori}
                                 </span>
                               </div>
 
-                              <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-line/60">
-                                <p className="text-accent-text font-black text-xs sm:text-sm">
+                              <div className={`flex items-center justify-between pt-2 border-t border-line/60 ${posCatalogDensity === 'S' ? 'mt-1.5' : 'mt-2.5'}`}>
+                                <p className={`text-accent-text font-black ${
+                                  posCatalogDensity === 'L'
+                                    ? 'text-sm sm:text-base'
+                                    : posCatalogDensity === 'S'
+                                    ? 'text-[11px] sm:text-xs'
+                                    : 'text-xs sm:text-sm'
+                                }`}>
                                   Rp {item.harga.toLocaleString('id-ID')}
                                 </p>
                                 {!isSoldOut && (
-                                  <span className="w-6 h-6 rounded-lg bg-accent text-white flex items-center justify-center text-xs font-bold shadow-sm group-hover:scale-110 transition-transform">
+                                  <span className={`rounded-lg bg-accent text-white flex items-center justify-center font-bold shadow-sm group-hover:scale-110 transition-transform ${
+                                    posCatalogDensity === 'L'
+                                      ? 'w-8 h-8 text-sm'
+                                      : posCatalogDensity === 'S'
+                                      ? 'w-5 h-5 text-[11px]'
+                                      : 'w-6 h-6 text-xs'
+                                  }`}>
                                     +
                                   </span>
                                 )}
@@ -3462,8 +3605,46 @@ export default function POSPage() {
           </div>
         )}
 
+        {/* Draggable Splitter Divider between Workspace and Cart Sidebar */}
+        {(view === 'menu' || view === 'meja') && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Pengatur Lebar Nota Kasir"
+            onPointerDown={startCartResize}
+            onPointerMove={handleCartResizeMove}
+            onPointerUp={stopCartResize}
+            onPointerCancel={stopCartResize}
+            onDoubleClick={() => {
+              setPosCartWidth(380);
+              if (typeof window !== 'undefined') localStorage.setItem('sakunota_pos_cart_width', '380');
+            }}
+            className={`hidden ${view === 'menu' || view === 'meja' ? 'md:flex landscape:flex' : ''} w-2.5 hover:w-3.5 bg-line/60 hover:bg-accent cursor-col-resize items-center justify-center shrink-0 z-30 transition-all select-none touch-none group relative ${
+              isResizingCart ? 'bg-accent w-3.5 ring-2 ring-accent/30' : ''
+            }`}
+            title="Tahan & geser untuk mengubah lebar nota kasir (Klik 2x untuk reset ke 380px)"
+          >
+            {/* Visual Grip Handle */}
+            <div className="flex flex-col gap-1 items-center justify-center opacity-40 group-hover:opacity-100 transition-opacity">
+              <div className="w-1 h-3 rounded-full bg-fg" />
+              <div className="w-1 h-3 rounded-full bg-fg" />
+              <div className="w-1 h-3 rounded-full bg-fg" />
+            </div>
+
+            {/* Floating width indicator tooltip when hovering or dragging */}
+            <div className={`absolute top-4 -left-12 px-2 py-0.5 rounded-md bg-accent text-white text-[10px] font-bold shadow-md pointer-events-none whitespace-nowrap transition-opacity ${
+              isResizingCart ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            }`}>
+              {posCartWidth}px
+            </div>
+          </div>
+        )}
+
         {/* POS Sidebar Cart (Desktop, Tablet & Landscape) */}
-        <div className={`hidden ${view === 'menu' || view === 'meja' ? 'md:flex landscape:flex' : ''} flex-col w-64 sm:w-72 lg:w-80 xl:w-96 bg-card border-l border-line shadow-2xl z-20 shrink-0`}>
+        <div 
+          style={{ width: `${posCartWidth}px` }}
+          className={`hidden ${view === 'menu' || view === 'meja' ? 'md:flex landscape:flex' : ''} flex-col bg-card border-l border-line shadow-2xl z-20 shrink-0 transition-none`}
+        >
           {renderCartInner(false)}
         </div>
       </div>
@@ -3562,8 +3743,10 @@ export default function POSPage() {
               aria-label="Tutup keranjang"
             />
             <div 
-              className="relative bg-surface rounded-t-3xl landscape:rounded-none shadow-2xl flex flex-col max-h-[88vh] landscape:max-h-[100dvh] landscape:h-[100dvh] w-full animate-in slide-in-from-bottom-2 duration-200 transition-transform ease-out overflow-hidden"
+              className="relative bg-surface rounded-t-3xl landscape:rounded-none shadow-2xl flex flex-col landscape:max-h-[100dvh] landscape:h-[100dvh] w-full animate-in slide-in-from-bottom-2 duration-200 transition-all ease-out overflow-hidden"
               style={{
+                height: mobileSheetSnap === 'half' ? '55vh' : '90vh',
+                maxHeight: mobileSheetSnap === 'half' ? '55vh' : '90vh',
                 transform: cartSheetDragY > 0 ? `translateY(${cartSheetDragY}px)` : undefined,
                 touchAction: 'pan-y'
               }}
