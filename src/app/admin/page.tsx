@@ -473,13 +473,13 @@ export default function AdminDashboardPage() {
 
         {/* Interactive SVG Area / Bar Chart */}
         <div className="relative pt-4 pb-2 select-none">
-          {/* Subtle Horizontal Reference Grid Lines */}
-          <div className="absolute inset-x-2 top-8 bottom-12 flex flex-col justify-between pointer-events-none opacity-30">
+          {/* Subtle Horizontal Reference Grid Lines & Y-Axis Scale */}
+          <div className="absolute inset-x-2 top-8 bottom-12 flex flex-col justify-between pointer-events-none">
             {[1, 0.75, 0.5, 0.25, 0].map((ratio) => {
               const val = Math.round(chartCeiling * ratio);
               return (
-                <div key={ratio} className="border-b border-dashed border-line w-full flex justify-end">
-                  <span className="text-[9px] font-mono text-muted bg-surface px-1 -mt-2.5">
+                <div key={ratio} className="border-b border-dashed border-line/60 w-full flex justify-end">
+                  <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 bg-surface px-2 py-0.5 -mt-3 rounded border border-line/50 shadow-xs">
                     Rp {val >= 1000 ? `${Math.round(val / 1000)}k` : val}
                   </span>
                 </div>
@@ -630,27 +630,29 @@ export default function AdminDashboardPage() {
                 }}
                 className="absolute z-20 pointer-events-none -translate-x-1/2 -translate-y-full mb-3"
               >
-                <div className="bg-slate-900 text-white rounded-2xl px-3.5 py-2 shadow-2xl border border-slate-700 text-xs min-w-[140px] text-center space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
-                  <span className="text-[10px] text-slate-400 font-bold block">
+                <div className="bg-slate-900/95 dark:bg-slate-950 text-white rounded-2xl px-4 py-3 shadow-2xl border-2 border-blue-500/80 text-xs min-w-[160px] text-center space-y-1 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md">
+                  <span className="text-xs text-slate-100 font-extrabold block tracking-wide">
                     {hoveredPoint.sublabel} ({hoveredPoint.label})
                   </span>
-                  <div className="text-sm font-black text-sky-400">
+                  <div className="text-base font-black text-sky-300 tracking-tight">
                     Rp {hoveredPoint.omzet.toLocaleString("id-ID")}
                   </div>
-                  <span className="text-[10px] text-slate-300 font-semibold block">
-                    {hoveredPoint.count} pesanan
-                  </span>
+                  <div className="pt-0.5">
+                    <span className="inline-block px-3 py-1 rounded-full bg-blue-500/25 text-blue-200 border border-blue-400/40 text-xs font-bold shadow-xs">
+                      {hoveredPoint.count} pesanan
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
           {/* Bottom X-Axis Labels */}
-          <div className="flex justify-between items-center text-[10px] font-bold text-muted px-2 pt-2 border-t border-line">
+          <div className="flex justify-between items-center px-2 pt-2.5 border-t border-line">
             {chartPoints.map((p, idx) => (
-              <div key={idx} className="text-center flex-1 truncate">
-                <span className="block font-black text-fg truncate">{p.label}</span>
-                <span className="text-[9px] text-muted truncate">{p.sublabel}</span>
+              <div key={idx} className="text-center flex-1 truncate px-0.5">
+                <span className="block text-xs font-black text-fg truncate">{p.label}</span>
+                <span className="text-[11px] font-semibold text-muted truncate block">{p.sublabel}</span>
               </div>
             ))}
           </div>
