@@ -32,10 +32,17 @@ export interface MenuItem {
   stockUnit?: string;
 }
 
+export type TableShape = 'square' | 'round' | 'rect' | 'bar' | 'lesehan';
+
 export interface Table {
   id?: number;
   nomor: string;
   status: string; // 'kosong' | 'open' | 'lunas'
+  zone?: string;
+  shape?: TableShape;
+  capacity?: number;
+  posX?: number;
+  posY?: number;
 }
 
 export interface SelectedModifier {

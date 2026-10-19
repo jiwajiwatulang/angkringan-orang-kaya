@@ -3,6 +3,8 @@ import LockIcon from "@/components/LockIcon";
 import LineIcon from "@/components/LineIcon";
 import ProductPhoto from "@/components/ProductPhoto";
 import CategoryScroller from "@/components/CategoryScroller";
+import TableShapeIcon from "@/components/TableShapeIcon";
+import type { BusinessDemoType } from "@/lib/demoCatalog";
 
 import { useState, useEffect, useRef } from "react";
 import { isDemoMode, preserveDemoUrl } from '@/lib/demoMode';
@@ -324,6 +326,7 @@ export default function POSPage() {
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [orderType, setOrderType] = useState("Dine-in");
   const [selectedTable, setSelectedTable] = useState<string>("");
+  const [posZoneFilter, setPosZoneFilter] = useState<string>("Semua");
 
   const [receiptData, setReceiptData] = useState<any>(null);
   const [printMode, setPrintMode] = useState<'all' | 'food' | 'drink'>('all');
@@ -2412,16 +2415,55 @@ export default function POSPage() {
   return (
     <>
     <div id="main-app-container" className="flex flex-col h-screen font-sans relative bg-surface text-fg transition-colors duration-200 overflow-hidden">
-      {/* Demo Kasir Alert Banner */}
+      {/* Demo Kasir Alert Banner with 4 Business Switcher */}
       {accessStatus.isDemo && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex flex-wrap items-center justify-between text-xs text-amber-950 font-medium shrink-0 z-40">
-          <div className="flex items-center gap-2">
-            <span className="font-black bg-amber-500 text-white px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase shadow-xs">DEMO KASIR</span>
-            <span>Demo Kasir: 30 menit, maksimal 50 transaksi latihan. Data demo terpisah dari toko asli dan di-reset saat memulai sesi demo baru. Gunakan Trial atau Lisensi Resmi untuk usaha.</span>
+        <div className="bg-amber-50 border-b border-amber-200 px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between text-xs text-amber-950 font-medium shrink-0 z-40 gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-black bg-amber-500 text-white px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase shadow-xs">
+              DEMO KASIR
+            </span>
+            <span className="hidden md:inline text-[11px] font-bold text-amber-900">
+              Preset Usaha:
+            </span>
+            <div className="inline-flex rounded-lg p-0.5 bg-amber-200/60 border border-amber-300 gap-0.5">
+              {(["warung", "restoran", "kafe", "retail"] as const).map((t) => {
+                const label = t === "warung" ? "Warung" : t === "restoran" ? "Resto" : t === "kafe" ? "Kafe" : "Retail";
+                const isCurrent = (storeSettings.businessType || "warung") === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={async () => {
+                      if (isCurrent) return;
+                      await resetDemoSandbox(t);
+                      window.location.reload();
+                    }}
+                    className={`px-2 py-0.5 rounded text-[11px] font-black transition-all ${
+                      isCurrent
+                        ? "bg-amber-600 text-white shadow-xs"
+                        : "text-amber-950 hover:bg-amber-300/80"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="flex items-center gap-2 mt-1 sm:mt-0 font-bold">
-            <button type="button" onClick={handleExitDemo} className="text-amber-900 hover:text-amber-950 font-bold text-xs px-2.5 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300 transition-colors">Keluar Demo</button>
-            <Link href="/?beli=true" className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1 rounded-lg shadow-xs">Beli Lisensi Rp50.000 →</Link>
+          <div className="flex items-center gap-2 font-bold ml-auto sm:ml-0">
+            <button
+              type="button"
+              onClick={handleExitDemo}
+              className="text-amber-900 hover:text-amber-950 font-bold text-xs px-2.5 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300 transition-colors"
+            >
+              Keluar Demo
+            </button>
+            <Link
+              href="/?beli=true"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1 rounded-lg shadow-xs"
+            >
+              Beli Lisensi Rp50.000 →
+            </Link>
           </div>
         </div>
       )}
@@ -3049,93 +3091,152 @@ export default function POSPage() {
           {view === 'kasir' && <><div className="p-4 border-b border-line flex flex-wrap gap-3 items-center justify-between"><h1 className="font-bold text-lg">Kasir</h1><button type="button" className="px-4 py-2 bg-accent text-white rounded-xl text-sm font-bold" onClick={() => navigateWorkspace('menu')}>Pilih Produk / Scan Barcode</button></div>{renderCartInner(false)}</>}
           {view === 'pesanan' && renderCashierOrders()}
           {view === 'shift' && renderShiftPanel()}
-          {view === 'meja' && (
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-surface flex flex-col">
-              {/* Meja Summary Bar */}
-              <div className="mb-4 p-3 bg-card rounded-2xl border border-line flex flex-wrap items-center justify-between gap-2 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-fg text-sm">Denah Meja</span>
-                  <span className="text-[11px] text-muted">
-                    Total {tableData.length} Meja
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[10px]">
-                    Tersedia: {tableData.filter(t => getTableStatus(t) === 'kosong').length}
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-700 font-bold text-[10px]">
-                    Terisi: {tableData.filter(t => getTableStatus(t) === 'open').length}
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-accent/20 text-accent-text font-bold text-[10px]">
-                    Lunas: {tableData.filter(t => getTableStatus(t) === 'lunas').length}
-                  </span>
-                </div>
-              </div>
+          {view === 'meja' && (() => {
+            const posZones = Array.from(new Set((tableData || []).map((t: any) => t.zone?.trim() || "Ruang Utama")));
+            const posFilteredTables = (tableData || []).filter((t: any) => {
+              if (posZoneFilter === "Semua") return true;
+              return (t.zone?.trim() || "Ruang Utama") === posZoneFilter;
+            });
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-4">
-                {(tableData || []).map(table => {
-                  if (!table || table.id == null) return null;
-                  const tStatus = getTableStatus(table);
-                  const openOrder = (activeOrders || []).find(o => o && o.tableId === table.id && o.status !== 'paid' && o.status !== 'void');
-                  const paidOrder = tStatus === 'lunas' 
-                    ? (allOrders || []).filter(o => o && o.tableId === table.id && o.status === 'paid').sort((a, b) => (b.id || 0) - (a.id || 0))[0] 
-                    : null;
-                  const activeTableOrder = openOrder || paidOrder;
-                  const name = activeTableOrder?.customerName;
-                  const isSelected = selectedTable === (table.id != null ? table.id.toString() : '');
-                  const style = tStatus === 'open' 
-                    ? { card: 'border-rose-500 bg-card shadow-rose-500/10', badge: 'bg-rose-600 text-white', label: 'Terisi (Open)', labelCls: 'bg-rose-500/15 text-rose-600 dark:text-rose-700 font-bold' }
-                    : tStatus === 'lunas' 
-                    ? { card: 'border-accent bg-card shadow-accent/10', badge: 'bg-accent text-white', label: 'Lunas', labelCls: 'bg-accent/15 text-accent-text font-bold' }
-                    : { card: 'border-line bg-card hover:border-accent/40', badge: 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-black', label: 'Kosong', labelCls: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold' };
-                  return (
-                    <div 
-                      key={table.id} 
-                      onClick={() => handleTableClick(table)} 
-                      className={`relative rounded-2xl border-2 ${style.card} p-4 h-40 flex flex-col items-center justify-between shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer ${isSelected ? 'ring-4 ring-accent/70' : ''}`}
-                    >
-                      <span className={`w-12 h-12 rounded-full ${style.badge} text-xl flex items-center justify-center shadow-md mt-1`}>
-                        {(table.nomor || '').replace(/^Meja\s*/i, '')}
+            return (
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-surface flex flex-col">
+                {/* Meja Summary & Zone Filter Bar */}
+                <div className="mb-4 p-3.5 bg-card rounded-2xl border border-line space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-fg text-sm">Denah Meja Visual</span>
+                      <span className="text-[11px] text-muted">
+                        Total {tableData.length} Meja
                       </span>
-                      <div className="flex flex-col items-center text-center w-full px-1">
-                        <span className={`text-[11px] px-2 py-0.5 rounded-full ${style.labelCls}`}>
-                          {style.label}
-                        </span>
-                        {name && (
-                          <span className={`mt-1 text-xs font-bold truncate max-w-full ${tStatus === 'lunas' ? 'text-accent-text' : 'text-fg'}`}><LineIcon name="info" />{name}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[10px]">
+                        Tersedia: {tableData.filter(t => getTableStatus(t) === 'kosong').length}
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-700 font-bold text-[10px]">
+                        Terisi: {tableData.filter(t => getTableStatus(t) === 'open').length}
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-accent/20 text-accent-text font-bold text-[10px]">
+                        Lunas: {tableData.filter(t => getTableStatus(t) === 'lunas').length}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Zone Filter Tabs */}
+                  {posZones.length > 0 && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar pt-2 border-t border-line/40 text-xs">
+                      <span className="text-[10px] font-bold text-muted uppercase tracking-wider shrink-0 mr-1">
+                        Zona:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPosZoneFilter("Semua")}
+                        className={`px-3 py-1 rounded-full font-bold whitespace-nowrap transition-all text-xs border ${
+                          posZoneFilter === "Semua"
+                            ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 border-slate-900"
+                            : "bg-surface border-line text-muted hover:text-fg"
+                        }`}
+                      >
+                        Semua ({tableData.length})
+                      </button>
+                      {posZones.map((z) => {
+                        const count = tableData.filter((t: any) => (t.zone?.trim() || "Ruang Utama") === z).length;
+                        return (
+                          <button
+                            key={z}
+                            type="button"
+                            onClick={() => setPosZoneFilter(z)}
+                            className={`px-3 py-1 rounded-full font-bold whitespace-nowrap transition-all text-xs border ${
+                              posZoneFilter === z
+                                ? "bg-accent border-accent text-white shadow-sm"
+                                : "bg-surface border-line text-muted hover:text-fg"
+                            }`}
+                          >
+                            {z} ({count})
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-4">
+                  {(posFilteredTables || []).map(table => {
+                    if (!table || table.id == null) return null;
+                    const tStatus = getTableStatus(table);
+                    const openOrder = (activeOrders || []).find(o => o && o.tableId === table.id && o.status !== 'paid' && o.status !== 'void');
+                    const paidOrder = tStatus === 'lunas' 
+                      ? (allOrders || []).filter(o => o && o.tableId === table.id && o.status === 'paid').sort((a, b) => (b.id || 0) - (a.id || 0))[0] 
+                      : null;
+                    const activeTableOrder = openOrder || paidOrder;
+                    const name = activeTableOrder?.customerName;
+                    const isSelected = selectedTable === (table.id != null ? table.id.toString() : '');
+                    const style = tStatus === 'open' 
+                      ? { card: 'border-rose-500 bg-card shadow-rose-500/10', badge: 'bg-rose-600 text-white', label: 'Terisi (Open)', labelCls: 'bg-rose-500/15 text-rose-600 dark:text-rose-700 font-bold' }
+                      : tStatus === 'lunas' 
+                      ? { card: 'border-accent bg-card shadow-accent/10', badge: 'bg-accent text-white', label: 'Lunas', labelCls: 'bg-accent/15 text-accent-text font-bold' }
+                      : { card: 'border-line bg-card hover:border-accent/40', badge: 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-black', label: 'Kosong', labelCls: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold' };
+                    return (
+                      <div 
+                        key={table.id} 
+                        onClick={() => handleTableClick(table)} 
+                        className={`relative rounded-2xl border-2 ${style.card} p-3.5 h-44 flex flex-col items-center justify-between shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer ${isSelected ? 'ring-4 ring-accent/70' : ''}`}
+                      >
+                        {/* Top Shape & Zone info */}
+                        <div className="flex items-center justify-between w-full px-1 text-muted text-[10px]">
+                          <span className="flex items-center gap-1 font-semibold truncate max-w-[100px]">
+                            <TableShapeIcon shape={table.shape || 'square'} size={15} />
+                            <span className="truncate">{table.zone || 'Ruang Utama'}</span>
                           </span>
-                        )}
-                        {openOrder && (
-                          <span className="text-[11px] font-extrabold text-rose-700 mt-0.5">
-                            Rp {(openOrder.total ?? 0).toLocaleString('id-ID')}
+                          <span className="font-bold">{table.capacity || 4}p</span>
+                        </div>
+
+                        {/* Name and Status */}
+                        <div className="flex flex-col items-center text-center w-full px-1 my-1">
+                          <h4 className="font-black text-sm text-fg truncate max-w-full">
+                            {table.nomor}
+                          </h4>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full mt-1 ${style.labelCls}`}>
+                            {style.label}
                           </span>
-                        )}
-                        {paidOrder && (
-                          <span className="text-[10px] font-semibold text-muted mt-0.5 truncate max-w-full">
-                            Nota #{paidOrder.id} • Rp {(paidOrder.total ?? 0).toLocaleString('id-ID')}
+                          {name && (
+                            <span className={`mt-1 text-xs font-bold truncate max-w-full ${tStatus === 'lunas' ? 'text-accent-text' : 'text-fg'}`}><LineIcon name="info" />{name}
+                            </span>
+                          )}
+                          {openOrder && (
+                            <span className="text-[11px] font-extrabold text-rose-700 mt-0.5">
+                              Rp {(openOrder.total ?? 0).toLocaleString('id-ID')}
+                            </span>
+                          )}
+                          {paidOrder && (
+                            <span className="text-[10px] font-semibold text-muted mt-0.5 truncate max-w-full">
+                              Nota #{paidOrder.id} • Rp {(paidOrder.total ?? 0).toLocaleString('id-ID')}
+                            </span>
+                          )}
+                        </div>
+
+                        {tStatus === 'lunas' ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleClearTable(table.id);
+                            }}
+                            className="w-full py-1.5 text-[11px] font-bold bg-accent hover:bg-accent-hover text-white rounded-lg transition-transform active:scale-95 shadow-sm"
+                          > Lepas Meja
+                          </button>
+                        ) : (
+                          <span className="text-[10px] font-bold text-muted pb-0.5">
+                            {tStatus === 'open' ? 'Buka Tagihan' : '+ Pesanan Baru'}
                           </span>
                         )}
                       </div>
-
-                      {tStatus === 'lunas' ? (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleClearTable(table.id);
-                          }}
-                          className="w-full py-1 text-[11px] font-bold bg-accent hover:bg-accent-hover text-white rounded-lg transition-transform active:scale-95 shadow-sm"
-                        > Lepas Meja
-                        </button>
-                      ) : (
-                        <div className="h-5" />
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {view === 'menu' && (() => {
             const menuItemsPerPage = 12;

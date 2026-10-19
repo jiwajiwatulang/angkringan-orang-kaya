@@ -16,6 +16,7 @@ import {
 } from "@/lib/api";
 import { db } from "@/lib/dexie";
 import { App } from "@capacitor/app";
+import { applyBusinessDemoPreset, BUSINESS_DEMO_PRESETS, BusinessDemoType } from "@/lib/demoCatalog";
 
 export default function PengaturanDataPage() {
   const router = useRouter();
@@ -47,8 +48,37 @@ export default function PengaturanDataPage() {
   // Undo / Pre-restore Snapshot State
   const [preRestoreSnapshot, setPreRestoreSnapshot] = useState<{ timestamp: string; data: any } | null>(null);
   const [isRollingBack, setIsRollingBack] = useState(false);
+  const [loadingPresetType, setLoadingPresetType] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Muat Preset Demo 4 Jenis Usaha
+  const handleLoadPreset = async (type: BusinessDemoType) => {
+    const preset = BUSINESS_DEMO_PRESETS[type];
+    if (
+      !window.confirm(
+        `Yakin ingin memuat data contoh untuk "${preset.title}"?\n\nDaftar menu dan meja saat ini akan digantikan dengan paket contoh ini.`
+      )
+    ) {
+      return;
+    }
+    setLoadingPresetType(type);
+    try {
+      const res = await applyBusinessDemoPreset(type);
+      showToast(
+        `Contoh data "${res.preset.title}" berhasil dimuat (${res.menuCount} produk, ${res.tableCount} meja).`,
+        "success"
+      );
+      await refreshSettings();
+      setTimeout(() => {
+        window.location.reload();
+      }, 800);
+    } catch (err: any) {
+      showToast(err.message || "Gagal memuat contoh data usaha.", "error");
+    } finally {
+      setLoadingPresetType(null);
+    }
+  };
 
   // Load real business data counts & saved backup date
   const loadBusinessStats = async () => {
@@ -451,6 +481,96 @@ export default function PengaturanDataPage() {
               Panduan 4 langkah dari HP lama ke HP baru.
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Preset Sample Data Usaha (4 Jenis Usaha) */}
+      <div className="p-5 sm:p-6 rounded-3xl bg-surface border border-line space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line">
+          <div>
+            <h3 className="font-black text-lg text-fg tracking-tight flex items-center gap-2">
+              <LineIcon name="lightning" />
+              <span>Contoh Data Usaha (Preset 4 Jenis Usaha)</span>
+            </h3>
+            <p className="text-xs text-muted mt-0.5">
+              Ganti seluruh daftar menu, denah meja visual, dan pengaturan secara instan sesuai bidang usaha Anda.
+            </p>
+          </div>
+          <span className="text-[11px] font-bold text-accent-text bg-accent/15 px-3 py-1 rounded-full border border-accent/20 shrink-0 self-start sm:self-auto">
+            1-Klik Siap Pakai
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {(["warung", "restoran", "kafe", "retail"] as const).map((type) => {
+            const preset = BUSINESS_DEMO_PRESETS[type];
+            const isLoading = loadingPresetType === type;
+            const isCurrent = (storeSettings.businessType || "warung") === type;
+
+            const badgeMap = {
+              warung: "Kasir Cepat Counter",
+              restoran: "Denah Meja & Dapur",
+              kafe: "Kopi, Susu & Bar Seat",
+              retail: "Barcode & Stok Satuan",
+            };
+
+            return (
+              <div
+                key={type}
+                className={`p-4 rounded-2xl bg-card border flex flex-col justify-between transition-all ${
+                  isCurrent
+                    ? "border-accent ring-2 ring-accent/30 shadow-md"
+                    : "border-line/70 hover:border-accent/40"
+                }`}
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-accent/15 text-accent-text border border-accent/20">
+                      {badgeMap[type]}
+                    </span>
+                    {isCurrent && (
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        Aktif
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <h4 className="font-black text-sm text-fg">{preset.title}</h4>
+                    <p className="text-[11px] text-muted font-medium mt-0.5 leading-snug">
+                      {preset.subtitle}
+                    </p>
+                  </div>
+
+                  <p className="text-xs text-slate-300 leading-relaxed pt-1">
+                    {preset.description}
+                  </p>
+
+                  <div className="pt-2 text-[11px] text-muted space-y-0.5 border-t border-line/40">
+                    <div>• <strong>{preset.menus.length}</strong> produk contoh</div>
+                    <div>• <strong>{preset.tables.length}</strong> meja terpasang</div>
+                  </div>
+                </div>
+
+                <div className="pt-4 mt-2">
+                  <button
+                    type="button"
+                    disabled={Boolean(loadingPresetType)}
+                    onClick={() => handleLoadPreset(type)}
+                    className={`w-full py-2.5 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-sm ${
+                      isCurrent
+                        ? "bg-slate-200 dark:bg-slate-800 text-fg hover:bg-slate-300 dark:hover:bg-slate-700"
+                        : "bg-accent hover:bg-accent-hover text-white shadow-accent/20"
+                    } disabled:opacity-50`}
+                  >
+                    <span>
+                      {isLoading ? "Memuat..." : isCurrent ? "Muat Ulang Paket" : `Terapkan ${preset.title.split(" ")[0]}`}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

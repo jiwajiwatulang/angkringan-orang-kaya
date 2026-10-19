@@ -1,7 +1,7 @@
 "use client";
 import LineIcon from "@/components/LineIcon";
-
-import React, { useState } from "react";
+import TableShapeIcon from "@/components/TableShapeIcon";
+import React, { useState, useMemo } from "react";
 
 interface MobileTableScreenProps {
   tableData: any[];
@@ -23,6 +23,7 @@ export default function MobileTableScreen({
   onClearTable,
 }: MobileTableScreenProps) {
   const [filterStatus, setFilterStatus] = useState<"semua" | "kosong" | "terisi" | "lunas">("semua");
+  const [activeZone, setActiveZone] = useState<string>("Semua");
   const [activeSheetTable, setActiveSheetTable] = useState<any | null>(null);
 
   const getTableActiveOrder = (tableId: number | string) => {
@@ -33,8 +34,23 @@ export default function MobileTableScreen({
     );
   };
 
+  // Extract unique zones
+  const zones = useMemo(() => {
+    const set = new Set<string>();
+    (tableData || []).forEach((t) => {
+      if (t && t.zone && t.zone.trim()) set.add(t.zone.trim());
+    });
+    return Array.from(set);
+  }, [tableData]);
+
   const filteredTables = (tableData || []).filter((table) => {
     if (!table || table.id == null) return false;
+
+    // Filter zone
+    if (activeZone !== "Semua" && (table.zone || "Ruang Utama") !== activeZone) {
+      return false;
+    }
+
     const activeOrder = getTableActiveOrder(table.id);
     const isPaid = activeOrder && activeOrder.status === "paid";
     const isOccupied = activeOrder && activeOrder.status === "unpaid";
@@ -58,27 +74,74 @@ export default function MobileTableScreen({
     }
   };
 
+  const getDisplayName = (table: any) => {
+    return table?.nomor || table?.nomorMeja || table?.namaMeja || `Meja ${table?.id || ''}`;
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden select-none">
       {/* 1. Header Bar & Status Chips */}
-      <div className="p-4 pb-2 shrink-0 border-b border-line/40 bg-surface/50 backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-black text-fg flex items-center gap-2">
-            <span>Denah & Status Meja</span>
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-card text-muted border border-line">
+      <div className="p-3.5 pb-2 shrink-0 border-b border-line/40 bg-surface/50 backdrop-blur-sm space-y-2.5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base sm:text-lg font-black text-fg flex items-center gap-2">
+            <span>Denah Meja</span>
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-card text-muted border border-line">
               {tableData.length} Meja
             </span>
           </h2>
+
+          <div className="flex items-center gap-2 text-[11px] text-muted font-bold">
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+              <span>{tableData.filter(t => !getTableActiveOrder(t.id)).length} Kosong</span>
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+              <span>{tableData.filter(t => getTableActiveOrder(t.id)?.status === 'unpaid').length} Terisi</span>
+            </span>
+          </div>
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex space-x-2 overflow-x-auto pb-1 no-scrollbar">
+        {/* Zone Filter (If more than 1 zone exists) */}
+        {zones.length > 0 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar text-xs">
+            <button
+              type="button"
+              onClick={() => setActiveZone("Semua")}
+              className={`px-2.5 py-1 rounded-full font-bold whitespace-nowrap transition-all text-[11px] border ${
+                activeZone === "Semua"
+                  ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 border-slate-900"
+                  : "bg-card border-line text-muted hover:text-fg"
+              }`}
+            >
+              Semua Zona
+            </button>
+            {zones.map((z) => (
+              <button
+                key={z}
+                type="button"
+                onClick={() => setActiveZone(z)}
+                className={`px-2.5 py-1 rounded-full font-bold whitespace-nowrap transition-all text-[11px] border ${
+                  activeZone === z
+                    ? "bg-accent border-accent text-white shadow-sm"
+                    : "bg-card border-line text-muted hover:text-fg"
+                }`}
+              >
+                {z}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Status Filter Pills */}
+        <div className="flex space-x-1.5 overflow-x-auto pb-1 no-scrollbar">
           {(["semua", "kosong", "terisi", "lunas"] as const).map((status) => {
             const labelMap = {
-              semua: "Semua Meja",
+              semua: "Semua Status",
               kosong: "Kosong",
               terisi: "Terisi",
-              lunas: "Lunas / Lepas",
+              lunas: "Lunas",
             };
             const isActive = filterStatus === status;
             return (
@@ -86,9 +149,9 @@ export default function MobileTableScreen({
                 key={status}
                 type="button"
                 onClick={() => setFilterStatus(status)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all ${
                   isActive
-                    ? "bg-accent text-white shadow-md shadow-accent/20"
+                    ? "bg-accent text-white shadow-sm"
                     : "bg-card border border-line text-muted hover:text-fg"
                 }`}
               >
@@ -99,16 +162,18 @@ export default function MobileTableScreen({
         </div>
       </div>
 
-      {/* 2. Tables Grid (2-column on mobile, 3-column on tablet) */}
-      <div className="flex-1 overflow-y-auto p-4 pb-28">
+      {/* 2. Tables Grid (2-column on mobile, 3-column on landscape / tablet) */}
+      <div className="flex-1 overflow-y-auto p-3.5 pb-28">
         {filteredTables.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-muted">
-            <span className="text-4xl mb-2"><LineIcon name="info" /></span>
+            <span className="text-3xl mb-2 text-muted">
+              <LineIcon name="info" />
+            </span>
             <p className="text-sm font-bold text-fg">Tidak Ada Meja</p>
-            <p className="text-xs text-muted mt-1">Tidak ada meja dengan status filter ini.</p>
+            <p className="text-xs text-muted mt-1">Tidak ada meja dengan filter ini.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 landscape:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
             {filteredTables.map((table) => {
               const activeOrder = getTableActiveOrder(table.id);
               const isPaid = activeOrder && activeOrder.status === "paid";
@@ -116,17 +181,17 @@ export default function MobileTableScreen({
               const isSelected = selectedTable === table.id.toString();
 
               let statusLabel = "Kosong";
-              let badgeColor = "bg-line text-muted";
+              let badgeColor = "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700";
               let cardBorder = "border-line bg-card";
 
               if (isPaid) {
                 statusLabel = "Lunas";
-                badgeColor = "bg-emerald-50 text-emerald-800 border border-emerald-200";
+                badgeColor = "bg-emerald-50 text-emerald-800 border border-emerald-200 font-black";
                 cardBorder = "border-emerald-300 bg-card";
               } else if (isOccupied) {
                 statusLabel = "Terisi";
-                badgeColor = "bg-amber-50 text-amber-950 border border-amber-300";
-                cardBorder = "border-amber-400 bg-card";
+                badgeColor = "bg-rose-50 text-rose-900 border border-rose-300 font-black";
+                cardBorder = "border-rose-300 bg-card";
               }
 
               return (
@@ -134,19 +199,36 @@ export default function MobileTableScreen({
                   key={table.id}
                   type="button"
                   onClick={() => handleCardClick(table)}
-                  className={`p-3.5 rounded-2xl border flex flex-col justify-between text-left transition-all active:scale-95 relative shadow-sm ${cardBorder} ${
+                  className={`p-3 rounded-2xl border flex flex-col justify-between text-left transition-all active:scale-95 relative shadow-sm min-h-[96px] ${cardBorder} ${
                     isSelected ? "ring-2 ring-accent" : ""
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-sm font-black text-fg">{table.nomorMeja || table.namaMeja || `Meja ${table.id}`}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeColor}`}>
-                      {statusLabel}
-                    </span>
+                  <div>
+                    <div className="flex justify-between items-start gap-1 mb-1">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-muted shrink-0">
+                          <TableShapeIcon shape={table.shape || "square"} size={16} />
+                        </span>
+                        <span className="text-xs sm:text-sm font-black text-fg truncate">
+                          {getDisplayName(table)}
+                        </span>
+                      </div>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full shrink-0 ${badgeColor}`}>
+                        {statusLabel}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-[10px] text-muted">
+                      <span className="truncate max-w-[80px]">
+                        {table.zone || "Ruang Utama"}
+                      </span>
+                      <span>•</span>
+                      <span>{table.capacity || 4}p</span>
+                    </div>
                   </div>
 
                   {activeOrder ? (
-                    <div className="mt-1 pt-1.5 border-t border-line/40">
+                    <div className="mt-1.5 pt-1.5 border-t border-line/40">
                       <p className="text-[11px] font-bold text-fg truncate">
                         {activeOrder.customerName || "Tamu"}
                       </p>
@@ -155,8 +237,8 @@ export default function MobileTableScreen({
                       </p>
                     </div>
                   ) : (
-                    <div className="mt-1 pt-1.5 border-t border-line/20">
-                      <span className="text-[11px] text-muted flex items-center gap-1">
+                    <div className="mt-1.5 pt-1.5 border-t border-line/20">
+                      <span className="text-[10px] font-bold text-muted flex items-center gap-1">
                         <span>+</span> Buka Pesanan
                       </span>
                     </div>
@@ -179,11 +261,16 @@ export default function MobileTableScreen({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="text-base font-black text-fg">
-                  {activeSheetTable.nomorMeja || activeSheetTable.namaMeja || `Meja ${activeSheetTable.id}`}
-                </h3>
-                <span className="text-xs text-muted">Aksi Pesanan Meja</span>
+              <div className="flex items-center gap-2">
+                <TableShapeIcon shape={activeSheetTable.shape || "square"} size={20} />
+                <div>
+                  <h3 className="text-base font-black text-fg">
+                    {getDisplayName(activeSheetTable)}
+                  </h3>
+                  <span className="text-[11px] text-muted">
+                    {activeSheetTable.zone || "Ruang Utama"} • {activeSheetTable.capacity || 4} Kursi
+                  </span>
+                </div>
               </div>
               <button
                 type="button"
@@ -208,12 +295,18 @@ export default function MobileTableScreen({
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted">Total Tagihan:</span>
-                      <span className="font-black text-accent-text">Rp {(order.total || 0).toLocaleString("id-ID")}</span>
+                      <span className="font-black text-accent-text">
+                        Rp {(order.total || 0).toLocaleString("id-ID")}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted">Status:</span>
-                      <span className={`font-bold ${isPaid ? "text-emerald-700" : "text-amber-950"}`}>
-                        {isPaid ? "Lunas" : "Belum Bayar"}
+                      <span
+                        className={`font-bold ${
+                          isPaid ? "text-emerald-700" : "text-amber-800"
+                        }`}
+                      >
+                        {isPaid ? "Lunas" : "Belum Bayar (Open Bill)"}
                       </span>
                     </div>
                   </div>
@@ -227,7 +320,7 @@ export default function MobileTableScreen({
                       }}
                       className="py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl active:scale-95 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm"
                     >
-                      <span><LineIcon name="food" /></span>
+                      <LineIcon name="food" />
                       <span>{isPaid ? "Detail Pesanan" : "Bayar / Edit"}</span>
                     </button>
 
@@ -240,7 +333,7 @@ export default function MobileTableScreen({
                         }}
                         className="py-3 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl active:scale-95 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm"
                       >
-                        <span><LineIcon name="success" /></span>
+                        <LineIcon name="success" />
                         <span>Lepas Meja</span>
                       </button>
                     ) : (

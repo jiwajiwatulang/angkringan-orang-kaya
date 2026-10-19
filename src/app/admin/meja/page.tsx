@@ -1,29 +1,56 @@
 "use client";
 import LineIcon from "@/components/LineIcon";
-
-import React, { useState, useEffect } from "react";
+import TableShapeIcon from "@/components/TableShapeIcon";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAdmin } from "../AdminContext";
 import {
   getTables,
   addTable,
+  updateTable,
   renameTable,
   deleteTable,
   bulkCreateTables,
   bulkRenameTables,
   bulkDeleteEmptyTables,
 } from "@/lib/api";
+import type { TableShape } from "@/lib/dexie";
 import { App } from "@capacitor/app";
 
 interface TableItem {
   id: number;
   nomor: string;
   status: string;
+  zone?: string;
+  shape?: TableShape;
+  capacity?: number;
+  posX?: number;
+  posY?: number;
 }
+
+const TABLE_SHAPES: Array<{ id: TableShape; label: string; desc: string }> = [
+  { id: "square", label: "Kotak", desc: "Meja standar 2-4 kursi" },
+  { id: "round", label: "Bundar", desc: "Meja bulat / keluarga" },
+  { id: "rect", label: "Panjang / Sofa", desc: "Meja komunal & rombongan" },
+  { id: "bar", label: "Bar Stool", desc: "Kursi tinggi barista / bar" },
+  { id: "lesehan", label: "Lesehan", desc: "Saung bambu & alas tatami" },
+];
+
+const DEFAULT_ZONES = [
+  "Ruang Utama",
+  "Outdoor / Teras",
+  "Saung & Lesehan",
+  "Bar Counter",
+  "Ruang VIP",
+];
 
 export default function AdminMejaPage() {
   const { showToast } = useAdmin();
   const [tables, setTables] = useState<TableItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // View Mode: 'cards' or 'floorplan'
+  const [viewMode, setViewMode] = useState<"cards" | "floorplan">("cards");
+  const [activeZone, setActiveZone] = useState<string>("Semua");
 
   // Multi-select state
   const [selectedTableIds, setSelectedTableIds] = useState<number[]>([]);
@@ -31,6 +58,9 @@ export default function AdminMejaPage() {
   // Single Add Modal
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newTableName, setNewTableName] = useState("");
+  const [newTableZone, setNewTableZone] = useState("Ruang Utama");
+  const [newTableShape, setNewTableShape] = useState<TableShape>("square");
+  const [newTableCapacity, setNewTableCapacity] = useState("4");
 
   // Bulk Create Modal
   const [isBulkCreateOpen, setIsBulkCreateOpen] = useState(false);
@@ -45,9 +75,12 @@ export default function AdminMejaPage() {
   // Bulk Delete Confirm Modal
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
-  // Single Edit / Rename Modal
+  // Single Edit Modal
   const [tableToEdit, setTableToEdit] = useState<TableItem | null>(null);
   const [tableEditName, setTableEditName] = useState("");
+  const [tableEditZone, setTableEditZone] = useState("Ruang Utama");
+  const [tableEditShape, setTableEditShape] = useState<TableShape>("square");
+  const [tableEditCapacity, setTableEditCapacity] = useState("4");
 
   // Single Delete Modal
   const [tableToDelete, setTableToDelete] = useState<TableItem | null>(null);
@@ -61,7 +94,7 @@ export default function AdminMejaPage() {
   const loadData = async () => {
     try {
       const data = await getTables();
-      setTables(data);
+      setTables(data as TableItem[]);
     } catch (e) {
       console.error("Error loading tables:", e);
     } finally {
@@ -120,6 +153,37 @@ export default function AdminMejaPage() {
     tableEditName,
   ]);
 
+  // Unique Zones list from tables
+  const existingZones = useMemo(() => {
+    const set = new Set<string>();
+    tables.forEach((t) => {
+      if (t.zone && t.zone.trim()) set.add(t.zone.trim());
+    });
+    return Array.from(set);
+  }, [tables]);
+
+  const allAvailableZones = useMemo(() => {
+    const merged = Array.from(new Set([...existingZones, ...DEFAULT_ZONES]));
+    return merged;
+  }, [existingZones]);
+
+  // Filtered tables based on zone tab
+  const filteredTables = useMemo(() => {
+    if (activeZone === "Semua") return tables;
+    return tables.filter((t) => (t.zone || "Ruang Utama") === activeZone);
+  }, [tables, activeZone]);
+
+  // Tables grouped by zone for the Floor Plan view
+  const tablesByZone = useMemo(() => {
+    const groups: Record<string, TableItem[]> = {};
+    tables.forEach((t) => {
+      const z = t.zone?.trim() || "Ruang Utama";
+      if (!groups[z]) groups[z] = [];
+      groups[z].push(t);
+    });
+    return groups;
+  }, [tables]);
+
   // Multi-select helpers
   const handleToggleSelectTable = (id: number) => {
     setSelectedTableIds((prev) =>
@@ -128,10 +192,10 @@ export default function AdminMejaPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedTableIds.length === tables.length) {
+    if (selectedTableIds.length === filteredTables.length) {
       setSelectedTableIds([]);
     } else {
-      setSelectedTableIds(tables.map((t) => t.id));
+      setSelectedTableIds(filteredTables.map((t) => t.id));
     }
   };
 
@@ -151,7 +215,13 @@ export default function AdminMejaPage() {
   };
 
   const handleCloseEdit = () => {
-    if (tableToEdit && tableEditName.trim() !== tableToEdit.nomor) {
+    if (
+      tableToEdit &&
+      (tableEditName.trim() !== tableToEdit.nomor ||
+        tableEditZone !== (tableToEdit.zone || "Ruang Utama") ||
+        tableEditShape !== (tableToEdit.shape || "square") ||
+        tableEditCapacity !== String(tableToEdit.capacity || 4))
+    ) {
       setUnsavedConfirm({
         isOpen: true,
         onDiscard: () => {
@@ -167,7 +237,12 @@ export default function AdminMejaPage() {
     e.preventDefault();
     if (!newTableName.trim()) return;
     try {
-      await addTable(newTableName);
+      await addTable({
+        nomor: newTableName.trim(),
+        zone: newTableZone.trim() || "Ruang Utama",
+        shape: newTableShape,
+        capacity: parseInt(newTableCapacity) || 4,
+      });
       showToast(`Meja "${newTableName}" berhasil dibuat`, "success");
       setNewTableName("");
       setIsAddOpen(false);
@@ -181,12 +256,17 @@ export default function AdminMejaPage() {
     e.preventDefault();
     if (!tableToEdit || !tableEditName.trim()) return;
     try {
-      await renameTable(tableToEdit.id, tableEditName);
+      await updateTable(tableToEdit.id, {
+        nomor: tableEditName.trim(),
+        zone: tableEditZone.trim() || "Ruang Utama",
+        shape: tableEditShape,
+        capacity: parseInt(tableEditCapacity) || 4,
+      });
       showToast(`Meja diperbarui jadi "${tableEditName}"`, "success");
       setTableToEdit(null);
       await loadData();
     } catch (err: any) {
-      alert(err.message || "Gagal mengubah nama meja.");
+      alert(err.message || "Gagal mengubah meja.");
     }
   };
 
@@ -262,21 +342,56 @@ export default function AdminMejaPage() {
     }
   };
 
+  const openEditModal = (table: TableItem) => {
+    setTableToEdit(table);
+    setTableEditName(table.nomor);
+    setTableEditZone(table.zone || "Ruang Utama");
+    setTableEditShape(table.shape || "square");
+    setTableEditCapacity(String(table.capacity || 4));
+  };
+
   return (
     <div className="space-y-5 animate-in fade-in duration-200 pb-24">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line">
         <div>
           <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
-            
             <span>Kelola Meja ({tables.length})</span>
           </h2>
           <p className="text-xs text-muted mt-0.5">
-            Pengaturan tata letak dan nama meja pelanggan untuk Dine-in POS.
+            Pengaturan denah ruang, bentuk meja visual, dan nama meja untuk kasir Dine-in & Waiter.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Mode Switcher */}
+          <div className="inline-flex rounded-xl p-1 bg-surface border border-line">
+            <button
+              type="button"
+              onClick={() => setViewMode("cards")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === "cards"
+                  ? "bg-accent text-white shadow-sm"
+                  : "text-muted hover:text-fg"
+              }`}
+            >
+              <LineIcon name="chart" />
+              <span>Daftar Kartu</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("floorplan")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === "floorplan"
+                  ? "bg-accent text-white shadow-sm"
+                  : "text-muted hover:text-fg"
+              }`}
+            >
+              <LineIcon name="receipt" />
+              <span>Denah Visual 2D</span>
+            </button>
+          </div>
+
           {/* Bulk Create Button */}
           <button
             type="button"
@@ -286,11 +401,11 @@ export default function AdminMejaPage() {
               setBulkCount("10");
               setIsBulkCreateOpen(true);
             }}
-            className="px-3.5 py-2.5 bg-blue-50 hover:bg-blue-100 active:scale-95 text-accent-text font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all border border-blue-200"
-            title="Tambah banyak meja sekaligus (contoh: Meja 1 sampai 20)"
+            className="px-3 py-2 bg-blue-50 hover:bg-blue-100 active:scale-95 text-accent-text font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all border border-blue-200"
+            title="Tambah banyak meja sekaligus"
           >
-            <span><LineIcon name="lightning" /></span>
-            <span>Tambah Massal</span>
+            <LineIcon name="lightning" />
+            <span className="hidden sm:inline">Tambah Massal</span>
           </button>
 
           {/* Add Single Table */}
@@ -298,9 +413,12 @@ export default function AdminMejaPage() {
             type="button"
             onClick={() => {
               setNewTableName(`Meja ${tables.length + 1}`);
+              setNewTableZone(activeZone !== "Semua" ? activeZone : "Ruang Utama");
+              setNewTableShape("square");
+              setNewTableCapacity("4");
               setIsAddOpen(true);
             }}
-            className="px-4 py-2.5 bg-accent hover:bg-accent-hover active:scale-95 text-white font-black text-xs rounded-xl shadow-lg shadow-accent/20 flex items-center justify-center gap-1.5 transition-all"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover active:scale-95 text-white font-black text-xs rounded-xl shadow-lg shadow-accent/20 flex items-center justify-center gap-1.5 transition-all"
           >
             <span className="text-base leading-none">+</span>
             <span>Tambah Meja</span>
@@ -308,43 +426,177 @@ export default function AdminMejaPage() {
         </div>
       </div>
 
-      {/* Select All Toggle Bar */}
-      {tables.length > 0 && (
+      {/* Zone Filter Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
+        <span className="text-[11px] font-bold text-muted uppercase tracking-wider shrink-0 mr-1">
+          Zona:
+        </span>
+        <button
+          type="button"
+          onClick={() => setActiveZone("Semua")}
+          className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap transition-all border ${
+            activeZone === "Semua"
+              ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 border-slate-900"
+              : "bg-surface border-line text-muted hover:text-fg"
+          }`}
+        >
+          Semua Zona ({tables.length})
+        </button>
+        {allAvailableZones.map((z) => {
+          const count = tables.filter((t) => (t.zone || "Ruang Utama") === z).length;
+          if (count === 0 && !existingZones.includes(z)) return null;
+          return (
+            <button
+              key={z}
+              type="button"
+              onClick={() => setActiveZone(z)}
+              className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap transition-all border ${
+                activeZone === z
+                  ? "bg-accent border-accent text-white shadow-sm"
+                  : "bg-surface border-line text-muted hover:text-fg"
+              }`}
+            >
+              {z} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Select All Toggle Bar (In card mode) */}
+      {viewMode === "cards" && filteredTables.length > 0 && (
         <div className="flex items-center justify-between px-2 py-1 text-xs text-muted">
           <label className="flex items-center gap-2 cursor-pointer font-bold select-none">
             <input
               type="checkbox"
-              checked={tables.length > 0 && selectedTableIds.length === tables.length}
+              checked={
+                filteredTables.length > 0 &&
+                selectedTableIds.length === filteredTables.length
+              }
               onChange={handleSelectAll}
               className="w-4 h-4 rounded text-accent-text focus:ring-accent border-line"
             />
-            <span>Pilih Semua Meja ({tables.length})</span>
+            <span>Pilih Semua ({filteredTables.length})</span>
           </label>
           {selectedTableIds.length > 0 && (
-            <span className=" text-accent-text font-black">
+            <span className="text-accent-text font-black">
               {selectedTableIds.length} meja dipilih
             </span>
           )}
         </div>
       )}
 
-      {/* Grid of Tables */}
+      {/* --- CONTENT AREA --- */}
       {isLoading ? (
         <div className="py-12 text-center text-muted text-xs">Memuat daftar meja...</div>
       ) : tables.length === 0 ? (
         <div className="py-12 text-center bg-surface rounded-3xl border border-line p-8">
-          <div className="text-4xl mb-2"><LineIcon name="info" /></div>
-          <h3 className="text-sm font-bold text-slate-300">Belum ada meja</h3>
-          <p className="text-xs text-muted mt-1">
-            Klik tombol di atas untuk menambahkan meja atau gunakan fitur Tambah Massal.
+          <div className="w-12 h-12 mx-auto mb-3 text-muted flex items-center justify-center">
+            <LineIcon name="info" />
+          </div>
+          <h3 className="text-sm font-bold text-fg">Belum ada meja</h3>
+          <p className="text-xs text-muted mt-1 max-w-sm mx-auto">
+            Klik tombol Tambah Meja di atas atau gunakan preset demo usaha untuk membuat denah meja secara instan.
           </p>
         </div>
+      ) : viewMode === "floorplan" ? (
+        /* --- MODE DENAH VISUAL 2D (FLOOR PLAN CANVAS) --- */
+        <div className="space-y-6">
+          {Object.entries(tablesByZone).map(([zoneName, zoneTables]) => {
+            if (activeZone !== "Semua" && zoneName !== activeZone) return null;
+            return (
+              <div
+                key={zoneName}
+                className="bg-surface rounded-3xl border border-line p-5 shadow-sm space-y-4"
+              >
+                <div className="flex items-center justify-between pb-3 border-b border-line">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-accent" />
+                    <h3 className="font-black text-base text-fg tracking-tight">
+                      {zoneName}
+                    </h3>
+                    <span className="text-xs text-muted font-semibold">
+                      ({zoneTables.length} Meja • {zoneTables.reduce((acc, t) => acc + (t.capacity || 4), 0)} Kursi)
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-muted font-bold">
+                    Denah Spasial Ruangan
+                  </span>
+                </div>
+
+                {/* Spatial Grid representation */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 p-3 rounded-2xl bg-card/60 border border-line/60 min-h-[140px]">
+                  {zoneTables.map((table) => {
+                    const isOpenBill = table.status === "open" || table.status === "occupied";
+                    const isPaid = table.status === "lunas";
+                    const shape = table.shape || "square";
+
+                    const shapeClasses =
+                      shape === "round"
+                        ? "rounded-full aspect-square"
+                        : shape === "bar"
+                        ? "rounded-2xl aspect-square border-dashed"
+                        : shape === "lesehan"
+                        ? "rounded-xl border-amber-300 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/20"
+                        : shape === "rect"
+                        ? "rounded-2xl col-span-1 sm:col-span-2"
+                        : "rounded-2xl aspect-square";
+
+                    return (
+                      <div
+                        key={table.id}
+                        onClick={() => openEditModal(table)}
+                        className={`relative p-3.5 flex flex-col justify-between items-center text-center cursor-pointer transition-all border-2 hover:scale-[1.02] shadow-sm active:scale-95 ${shapeClasses} ${
+                          isOpenBill
+                            ? "border-rose-500 bg-rose-50/50 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200"
+                            : isPaid
+                            ? "border-amber-500 bg-amber-50/50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200"
+                            : "border-line bg-card hover:border-accent text-fg"
+                        }`}
+                        title={`Klik untuk ubah data: ${table.nomor}`}
+                      >
+                        {/* Table Shape Icon & Capacity */}
+                        <div className="flex items-center justify-between w-full text-muted">
+                          <TableShapeIcon shape={shape} size={16} />
+                          <span className="text-[10px] font-bold">
+                            {table.capacity || 4}p
+                          </span>
+                        </div>
+
+                        {/* Name */}
+                        <div className="my-1 w-full">
+                          <h4 className="font-black text-xs sm:text-sm truncate max-w-full">
+                            {table.nomor}
+                          </h4>
+                        </div>
+
+                        {/* Status Badge */}
+                        <span
+                          className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                            isOpenBill
+                              ? "bg-rose-600 text-white"
+                              : isPaid
+                              ? "bg-amber-600 text-white"
+                              : "bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                          }`}
+                        >
+                          {isOpenBill ? "TERISI" : isPaid ? "TAGIHAN" : "KOSONG"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
+        /* --- MODE DAFTAR / KARTU MEJA --- */
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {tables.map((table) => {
+          {filteredTables.map((table) => {
             const isOpenBill = table.status === "open" || table.status === "occupied";
             const isPaid = table.status === "lunas";
             const isSelected = selectedTableIds.includes(table.id);
+            const shape = table.shape || "square";
 
             return (
               <div
@@ -353,7 +605,7 @@ export default function AdminMejaPage() {
                 className={`p-4 rounded-2xl sm:rounded-3xl bg-surface border shadow-sm flex flex-col justify-between cursor-pointer select-none transition-all ${
                   isSelected
                     ? "border-accent bg-accent/20 ring-2 ring-accent/30"
-                    : " border-line hover:border-accent/50"
+                    : "border-line hover:border-accent/50"
                 }`}
               >
                 <div>
@@ -362,43 +614,47 @@ export default function AdminMejaPage() {
                       <input
                         type="checkbox"
                         checked={isSelected}
-                        onChange={() => {}} // handled by parent onClick
+                        onChange={() => {}}
                         className="w-4 h-4 text-accent-text rounded border-line focus:ring-accent pointer-events-none"
                       />
-                      <span className="text-lg"><LineIcon name="info" /></span>
+                      <span className="text-muted" title={table.shape || "square"}>
+                        <TableShapeIcon shape={shape} size={18} />
+                      </span>
                     </div>
 
                     <span
                       className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
                         isOpenBill
-                          ? " bg-blue-100 text-blue-900 border border-blue-200"
+                          ? "bg-rose-100 text-rose-900 border border-rose-200"
                           : isPaid
-                          ? " bg-amber-100 text-amber-900 border border-amber-200"
-                          : " bg-emerald-100 text-emerald-900 border border-emerald-200"
+                          ? "bg-amber-100 text-amber-900 border border-amber-200"
+                          : "bg-emerald-100 text-emerald-900 border border-emerald-200"
                       }`}
                     >
                       {isOpenBill ? "TERISI" : isPaid ? "TAGIHAN" : "KOSONG"}
                     </span>
                   </div>
 
-                  <h4 className="font-black text-base text-fg truncate">
+                  <h4 className="font-black text-sm sm:text-base text-fg truncate">
                     {table.nomor}
                   </h4>
-                  <span className="text-[10px] text-muted block mt-0.5">
-                    ID #{table.id}
-                  </span>
+
+                  <div className="flex items-center gap-1.5 mt-1 text-[10px] text-muted">
+                    <span className="font-semibold truncate max-w-[100px]">
+                      {table.zone || "Ruang Utama"}
+                    </span>
+                    <span>•</span>
+                    <span className="font-bold">{table.capacity || 4} Kursi</span>
+                  </div>
                 </div>
 
                 <div
                   className="mt-4 pt-3 border-t border-line flex gap-1.5"
-                  onClick={(e) => e.stopPropagation()} // don't toggle select
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <button
                     type="button"
-                    onClick={() => {
-                      setTableToEdit(table);
-                      setTableEditName(table.nomor);
-                    }}
+                    onClick={() => openEditModal(table)}
                     className="flex-1 py-1.5 bg-card border border-line hover:bg-line text-fg rounded-xl text-[11px] font-bold transition-colors"
                   >
                     Ubah
@@ -408,7 +664,9 @@ export default function AdminMejaPage() {
                     onClick={() => setTableToDelete(table)}
                     className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 flex items-center justify-center text-xs font-bold transition-colors shrink-0"
                     title="Hapus Meja"
-                  ><LineIcon name="delete" /></button>
+                  >
+                    <LineIcon name="delete" />
+                  </button>
                 </div>
               </div>
             );
@@ -421,7 +679,9 @@ export default function AdminMejaPage() {
         <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-[460px] z-40 bg-card/95 backdrop-blur-md text-fg p-3.5 rounded-2xl sm:rounded-3xl shadow-2xl border border-line animate-in slide-in-from-bottom-5 duration-200 flex flex-col gap-2">
           <div className="flex items-center justify-between border-b border-line pb-2">
             <span className="text-xs font-black text-accent-text flex items-center gap-1.5">
-              <span className="text-accent-text"><LineIcon name="success" /></span>
+              <span className="text-accent-text">
+                <LineIcon name="success" />
+              </span>
               <span>{selectedTableIds.length} Meja Dipilih</span>
             </span>
             <button
@@ -433,7 +693,6 @@ export default function AdminMejaPage() {
           </div>
 
           <div className="flex items-center gap-2 text-xs">
-            {/* Rename Massal */}
             <button
               type="button"
               onClick={() => {
@@ -442,19 +701,253 @@ export default function AdminMejaPage() {
               }}
               className="flex-1 py-2 bg-slate-100 text-slate-800 hover:bg-slate-200 border border-line rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
             >
-              <span className="text-slate-800"><LineIcon name="edit" /></span>
+              <LineIcon name="edit" />
               <span>Rename Massal</span>
             </button>
 
-            {/* Hapus Meja Kosong */}
             <button
               type="button"
               onClick={() => setIsBulkDeleteOpen(true)}
               className="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
             >
-              <span className="text-white"><LineIcon name="delete" /></span>
+              <LineIcon name="delete" />
               <span>Hapus Terpilih</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL TAMBAH MEJA SATUAN --- */}
+      {isAddOpen && (
+        <div
+          className="fixed inset-0 bg-black/65 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+          onClick={handleCloseAdd}
+        >
+          <div
+            className="bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 shadow-2xl border border-line animate-in slide-in-from-bottom duration-250 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
+            <h3 className="text-lg font-black text-fg mb-1">Tambah Meja Baru</h3>
+            <p className="text-xs text-muted mb-4">
+              Konfigurasi tata letak fisik, bentuk, zona ruang, dan kapasitas kursi.
+            </p>
+
+            <form onSubmit={handleAddSubmit} className="space-y-4">
+              {/* Table Name */}
+              <div>
+                <label className="block text-xs font-bold text-fg mb-1">
+                  Nama / Nomor Meja:
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Sofa Jendela, Lesehan Kolam, Meja 12"
+                  value={newTableName}
+                  onChange={(e) => setNewTableName(e.target.value)}
+                  className="w-full bg-card border border-line rounded-xl p-3 text-sm font-semibold text-fg outline-none focus:border-accent"
+                  autoFocus
+                  required
+                />
+              </div>
+
+              {/* Table Shape Selector */}
+              <div>
+                <label className="block text-xs font-bold text-fg mb-1.5">
+                  Bentuk Meja Visual:
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {TABLE_SHAPES.map((shp) => (
+                    <button
+                      key={shp.id}
+                      type="button"
+                      onClick={() => setNewTableShape(shp.id)}
+                      className={`p-2.5 rounded-xl border text-left transition-all flex items-center gap-2.5 ${
+                        newTableShape === shp.id
+                          ? "bg-accent/15 border-accent text-accent-text ring-2 ring-accent/30 font-bold"
+                          : "bg-card border-line text-muted hover:text-fg"
+                      }`}
+                    >
+                      <TableShapeIcon shape={shp.id} size={20} />
+                      <div className="truncate">
+                        <span className="text-xs font-bold block">{shp.label}</span>
+                        <span className="text-[10px] text-muted truncate block">
+                          {shp.desc}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Zone and Capacity */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-fg mb-1">
+                    Zona Ruangan:
+                  </label>
+                  <input
+                    type="text"
+                    list="available-zones-list"
+                    value={newTableZone}
+                    onChange={(e) => setNewTableZone(e.target.value)}
+                    placeholder="misal: Ruang Utama"
+                    className="w-full bg-card border border-line rounded-xl p-2.5 text-xs font-semibold text-fg outline-none focus:border-accent"
+                  />
+                  <datalist id="available-zones-list">
+                    {allAvailableZones.map((z) => (
+                      <option key={z} value={z} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-fg mb-1">
+                    Kapasitas Kursi:
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={newTableCapacity}
+                    onChange={(e) => setNewTableCapacity(e.target.value)}
+                    className="w-full bg-card border border-line rounded-xl p-2.5 text-xs font-semibold text-fg outline-none focus:border-accent"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handleCloseAdd}
+                  className="flex-1 py-3 bg-card text-fg border border-line rounded-xl text-xs font-bold hover:bg-line transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-[2] py-3 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-black shadow-lg shadow-accent/20 active:scale-95 transition-all"
+                >
+                  Simpan Meja
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL UBAH MEJA SATUAN --- */}
+      {tableToEdit && (
+        <div
+          className="fixed inset-0 bg-black/65 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+          onClick={handleCloseEdit}
+        >
+          <div
+            className="bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 shadow-2xl border border-line animate-in slide-in-from-bottom duration-250 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
+            <h3 className="text-lg font-black text-fg mb-1">Ubah Meja</h3>
+            <p className="text-xs text-muted mb-4">
+              Perbarui nama, bentuk visual, zona ruang, dan kapasitas meja ID #{tableToEdit.id}.
+            </p>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-fg mb-1">
+                  Nama / Nomor Meja:
+                </label>
+                <input
+                  type="text"
+                  value={tableEditName}
+                  onChange={(e) => setTableEditName(e.target.value)}
+                  className="w-full bg-card border border-line rounded-xl p-3 text-sm font-semibold text-fg outline-none focus:border-accent"
+                  autoFocus
+                  required
+                />
+              </div>
+
+              {/* Table Shape Selector */}
+              <div>
+                <label className="block text-xs font-bold text-fg mb-1.5">
+                  Bentuk Meja Visual:
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {TABLE_SHAPES.map((shp) => (
+                    <button
+                      key={shp.id}
+                      type="button"
+                      onClick={() => setTableEditShape(shp.id)}
+                      className={`p-2.5 rounded-xl border text-left transition-all flex items-center gap-2.5 ${
+                        tableEditShape === shp.id
+                          ? "bg-accent/15 border-accent text-accent-text ring-2 ring-accent/30 font-bold"
+                          : "bg-card border-line text-muted hover:text-fg"
+                      }`}
+                    >
+                      <TableShapeIcon shape={shp.id} size={20} />
+                      <div className="truncate">
+                        <span className="text-xs font-bold block">{shp.label}</span>
+                        <span className="text-[10px] text-muted truncate block">
+                          {shp.desc}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Zone and Capacity */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-fg mb-1">
+                    Zona Ruangan:
+                  </label>
+                  <input
+                    type="text"
+                    list="edit-zones-list"
+                    value={tableEditZone}
+                    onChange={(e) => setTableEditZone(e.target.value)}
+                    className="w-full bg-card border border-line rounded-xl p-2.5 text-xs font-semibold text-fg outline-none focus:border-accent"
+                  />
+                  <datalist id="edit-zones-list">
+                    {allAvailableZones.map((z) => (
+                      <option key={z} value={z} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-fg mb-1">
+                    Kapasitas Kursi:
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={tableEditCapacity}
+                    onChange={(e) => setTableEditCapacity(e.target.value)}
+                    className="w-full bg-card border border-line rounded-xl p-2.5 text-xs font-semibold text-fg outline-none focus:border-accent"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handleCloseEdit}
+                  className="flex-1 py-3 bg-card text-fg border border-line rounded-xl text-xs font-bold hover:bg-line transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-[2] py-3 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-black shadow-lg shadow-accent/20 active:scale-95 transition-all"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -466,12 +959,11 @@ export default function AdminMejaPage() {
           onClick={() => setIsBulkCreateOpen(false)}
         >
           <div
-            className=" bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-line animate-in slide-in-from-bottom duration-200"
+            className="bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-line animate-in slide-in-from-bottom duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
-            <h3 className="text-lg font-black text-fg mb-1"> Tambah Meja Massal
-            </h3>
+            <h3 className="text-lg font-black text-fg mb-1">Tambah Meja Massal</h3>
             <p className="text-xs text-muted mb-4">
               Buat serangkaian meja secara otomatis sekaligus.
             </p>
@@ -520,7 +1012,6 @@ export default function AdminMejaPage() {
                 </div>
               </div>
 
-              {/* Live Preview */}
               <div className="p-3 bg-accent/40 rounded-xl border border-accent/40 text-xs">
                 <span className="text-[10px] uppercase font-bold text-accent-text block">
                   Pratinjau Meja yang Akan Dibuat:
@@ -560,12 +1051,11 @@ export default function AdminMejaPage() {
           onClick={() => setIsBulkRenameOpen(false)}
         >
           <div
-            className=" bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-line animate-in slide-in-from-bottom duration-200"
+            className="bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-line animate-in slide-in-from-bottom duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
-            <h3 className="text-lg font-black text-fg mb-1"> Rename Massal Meja
-            </h3>
+            <h3 className="text-lg font-black text-fg mb-1">Rename Massal Meja</h3>
             <p className="text-xs text-muted mb-4">
               Ubah format nama <strong>{selectedTableIds.length}</strong> meja terpilih secara berurutan.
             </p>
@@ -586,7 +1076,6 @@ export default function AdminMejaPage() {
                 />
               </div>
 
-              {/* Preview */}
               <div className="p-3 bg-card rounded-xl border border-line text-xs text-slate-300 space-y-1">
                 <span className="text-[10px] uppercase font-bold text-muted block">
                   Contoh Hasil Penamaan:
@@ -623,14 +1112,18 @@ export default function AdminMejaPage() {
           onClick={() => setIsBulkDeleteOpen(false)}
         >
           <div
-            className=" bg-surface rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
+            className="bg-surface rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-rose-50 text-rose-700 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
+            <div className="w-12 h-12 bg-rose-50 text-rose-700 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
+              <LineIcon name="info" />
+            </div>
             <h3 className="text-base font-black text-fg mb-1">
               Hapus {selectedTableIds.length} Meja Terpilih?
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed mb-4 text-left bg-card/60 p-3 rounded-xl border border-line/60"><LineIcon name="info" /><strong>Fitur Pengaman Tagihan:</strong> Meja yang sedang memiliki pesanan/tagihan aktif (Status Open Bill atau Terisi) tidak akan dapat dihapus untuk mencegah kehilangan data keuangan kasir.
+            <p className="text-xs text-slate-300 leading-relaxed mb-4 text-left bg-card/60 p-3 rounded-xl border border-line/60">
+              <LineIcon name="info" />
+              <strong>Fitur Pengaman Tagihan:</strong> Meja yang sedang memiliki pesanan/tagihan aktif (Status Open Bill atau Terisi) tidak akan dapat dihapus untuk mencegah kehilangan data keuangan kasir.
             </p>
             <div className="flex space-x-2">
               <button
@@ -652,111 +1145,6 @@ export default function AdminMejaPage() {
         </div>
       )}
 
-      {/* --- MODAL TAMBAH MEJA SATUAN --- */}
-      {isAddOpen && (
-        <div
-          className="fixed inset-0 bg-black/65 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-          onClick={handleCloseAdd}
-        >
-          <div
-            className=" bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-line animate-in slide-in-from-bottom duration-250"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
-            <h3 className="text-lg font-black text-fg mb-1"> Tambah Meja Baru
-            </h3>
-            <p className="text-xs text-muted mb-4">
-              Masukkan nomor atau nama meja makan pelanggan.
-            </p>
-
-            <form onSubmit={handleAddSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-fg mb-1">
-                  Nama / Nomor Meja:
-                </label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Meja 16 / VIP 1"
-                  value={newTableName}
-                  onChange={(e) => setNewTableName(e.target.value)}
-                  className="w-full bg-card border border-line rounded-xl p-3 text-sm font-semibold text-fg outline-none focus:border-accent"
-                  autoFocus
-                  required
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={handleCloseAdd}
-                  className="flex-1 py-3 bg-card text-fg border border-line rounded-xl text-xs font-bold hover:bg-line transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex-[2] py-3 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-black shadow-lg shadow-accent/20 active:scale-95 transition-all"
-                >
-                  Simpan Meja
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* --- MODAL UBAH NAMA MEJA SATUAN --- */}
-      {tableToEdit && (
-        <div
-          className="fixed inset-0 bg-black/65 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-          onClick={handleCloseEdit}
-        >
-          <div
-            className=" bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-line animate-in slide-in-from-bottom duration-250"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
-            <h3 className="text-lg font-black text-fg mb-1"> Ubah Nama Meja
-            </h3>
-            <p className="text-xs text-muted mb-4">
-              Ganti nama meja ID #{tableToEdit.id}.
-            </p>
-
-            <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-fg mb-1">
-                  Nama Meja:
-                </label>
-                <input
-                  type="text"
-                  value={tableEditName}
-                  onChange={(e) => setTableEditName(e.target.value)}
-                  className="w-full bg-card border border-line rounded-xl p-3 text-sm font-semibold text-fg outline-none focus:border-accent"
-                  autoFocus
-                  required
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={handleCloseEdit}
-                  className="flex-1 py-3 bg-card text-fg border border-line rounded-xl text-xs font-bold hover:bg-line transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex-[2] py-3 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-black shadow-lg shadow-accent/20 active:scale-95 transition-all"
-                >
-                  Simpan Perubahan
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* --- CONFIRMATION DIALOG: DELETE SINGLE TABLE --- */}
       {tableToDelete && (
         <div
@@ -764,13 +1152,13 @@ export default function AdminMejaPage() {
           onClick={() => setTableToDelete(null)}
         >
           <div
-            className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
+            className="bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-rose-50 text-rose-700 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
-            <h3 className="text-base font-black text-fg mb-1">
-              Hapus Meja Ini?
-            </h3>
+            <div className="w-12 h-12 bg-rose-50 text-rose-700 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
+              <LineIcon name="info" />
+            </div>
+            <h3 className="text-base font-black text-fg mb-1">Hapus Meja Ini?</h3>
             <p className="text-xs text-slate-300 leading-relaxed mb-5">
               Apakah Anda yakin ingin menghapus <strong>"{tableToDelete.nomor}"</strong>? Pastikan meja tidak sedang memiliki tagihan aktif.
             </p>
@@ -801,15 +1189,15 @@ export default function AdminMejaPage() {
           onClick={() => setUnsavedConfirm(null)}
         >
           <div
-            className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
+            className="bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
-            <h3 className="text-base font-black text-fg mb-1">
-              Batalkan Perubahan?
-            </h3>
+            <div className="w-12 h-12 bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
+              <LineIcon name="info" />
+            </div>
+            <h3 className="text-base font-black text-fg mb-1">Batalkan Perubahan?</h3>
             <p className="text-xs text-muted leading-relaxed mb-5">
-              Input nama meja yang Anda ketik belum disimpan. Yakin ingin menutup?
+              Input data meja yang Anda ketik belum disimpan. Yakin ingin menutup?
             </p>
             <div className="flex space-x-2">
               <button

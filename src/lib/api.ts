@@ -1,5 +1,5 @@
 import Dexie from 'dexie';
-import { db, MenuItem, Order, OrderItem, Payment, SelectedModifier, PaymentProof, ModifierGroup } from './dexie';
+import { db, MenuItem, Order, OrderItem, Payment, SelectedModifier, PaymentProof, ModifierGroup, TableShape } from './dexie';
 import initialData from './initialData.json';
 import { getStoreSettings, SETTINGS_STORAGE_KEY } from './settings';
 import { applyOrderStock } from './inventory';
@@ -8,6 +8,7 @@ import { cashierCanSeeOrder } from './cashierScope';
 import { validateProductPhoto } from './productPhoto';
 import { requireCashierWriteAccess } from './licenseGuard';
 import { DEMO_ORDER_LIMIT } from './demoMode';
+import { applyBusinessDemoPreset, BusinessDemoType, BUSINESS_DEMO_PRESETS } from './demoCatalog';
 
 async function requireActiveCashierShift(shiftId: number) {
   if (typeof window === 'undefined') return;
@@ -403,22 +404,45 @@ export async function clearTable(tableId: number | string) {
   await setTableStatus(tableId, 'kosong');
 }
 
-export async function addTable(nomor: string) {
+export async function addTable(data: string | { nomor: string; zone?: string; shape?: TableShape; capacity?: number; posX?: number; posY?: number }) {
   await requireMerchantAdmin();
-  const name = nomor.trim();
+  const name = typeof data === 'string' ? data.trim() : data.nomor.trim();
   if (!name) throw new Error('Nama meja tidak boleh kosong.');
   const existing = await db.table('tables').toArray();
   if (existing.some((t: any) => t.nomor.toLowerCase() === name.toLowerCase())) {
     throw new Error(`"${name}" sudah ada.`);
   }
-  await db.table('tables').add({ nomor: name, status: 'kosong' });
+  const entry: any = {
+    nomor: name,
+    status: 'kosong',
+    zone: typeof data === 'object' && data.zone ? data.zone.trim() : 'Ruang Utama',
+    shape: typeof data === 'object' && data.shape ? data.shape : 'square',
+    capacity: typeof data === 'object' && data.capacity ? Number(data.capacity) : 4,
+    posX: typeof data === 'object' && data.posX !== undefined ? Number(data.posX) : undefined,
+    posY: typeof data === 'object' && data.posY !== undefined ? Number(data.posY) : undefined,
+  };
+  return await db.table('tables').add(entry);
+}
+
+export async function updateTable(id: number, data: { nomor?: string; zone?: string; shape?: TableShape; capacity?: number; posX?: number; posY?: number }) {
+  await requireMerchantAdmin();
+  const updates: any = {};
+  if (data.nomor !== undefined) {
+    const name = data.nomor.trim();
+    if (!name) throw new Error('Nama meja tidak boleh kosong.');
+    updates.nomor = name;
+  }
+  if (data.zone !== undefined) updates.zone = data.zone.trim() || 'Ruang Utama';
+  if (data.shape !== undefined) updates.shape = data.shape;
+  if (data.capacity !== undefined) updates.capacity = Number(data.capacity) || 4;
+  if (data.posX !== undefined) updates.posX = Number(data.posX);
+  if (data.posY !== undefined) updates.posY = Number(data.posY);
+
+  await db.table('tables').update(id, updates);
 }
 
 export async function renameTable(id: number, nomor: string) {
-  await requireMerchantAdmin();
-  const name = nomor.trim();
-  if (!name) throw new Error('Nama meja tidak boleh kosong.');
-  await db.table('tables').update(id, { nomor: name });
+  await updateTable(id, { nomor });
 }
 
 export async function deleteTable(id: number) {
@@ -1878,39 +1902,61 @@ export async function resetAllTransactions() {
   return true;
 }
 
-export async function resetDemoSandbox() {
+export async function resetDemoSandbox(presetType?: BusinessDemoType) {
   if (db.name !== 'SakuNotaDemoDB') throw new Error('Reset demo hanya diizinkan pada database demo.');
   await resetAllTransactions();
   await db.table('inventoryMovements').clear();
-  await db.table('menuItems').clear();
-  const menusToInsert = initialData.menus.map(m => ({
-    nama: m.nama,
-    harga: m.harga,
-    kategori: m.kategori,
-    isSoldOut: m.isSoldOut,
-    urutan: m.urutan,
-    modifiers: (m as any).modifiers || getDefaultModifiersForCategory(m.kategori, m.nama)
-  }));
-  await db.table('menuItems').bulkAdd(menusToInsert);
-  const tables = await db.table('tables').toArray();
-  if (tables.length === 0) {
-    await resetStoreTables(8, 'Meja ');
-  } else {
-    for (const t of tables) {
-      await db.table('tables').update(t.id, { status: 'kosong' });
-    }
-  }
-  const demoProduct = await db.table('menuItems').orderBy('id').first();
-  if (demoProduct) {
+
+  const type = presetType || (getStoreSettings().businessType as BusinessDemoType) || 'warung';
+  await applyBusinessDemoPreset(type);
+
+  // Generate realistic historical demo sales for charts
+  const demoProducts = await db.table('menuItems').toArray();
+  if (demoProducts.length > 0) {
     const quantities = [9, 14, 8, 18, 11, 23, 17];
     for (let day = 0; day < quantities.length; day++) {
-      const date = new Date(); date.setDate(date.getDate() - (6 - day)); date.setHours(12, 0, 0, 0);
-      const qty = quantities[day], total = demoProduct.harga * qty;
-      const result = await createOrder({ total, status: 'paid', paymentMethod: day % 2 ? 'QRIS' : 'Cash', isHistorical: true, customerName: 'Contoh penjualan demo', items: [{ ...demoProduct, qty }] });
+      const prod = demoProducts[day % demoProducts.length];
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - day));
+      date.setHours(12 + (day % 6), 0, 0, 0);
+      const qty = quantities[day];
+      const total = prod.harga * qty;
+      const result = await createOrder({
+        total,
+        status: 'paid',
+        paymentMethod: day % 2 ? 'QRIS' : 'Cash',
+        isHistorical: true,
+        customerName: 'Tamu Demo',
+        items: [{ ...prod, qty }]
+      });
       await db.table('orders').update(result.id, { createdAt: date.toISOString(), updatedAt: date.toISOString() });
       await db.table('payments').where('orderId').equals(Number(result.id)).modify({ paidAt: date.toISOString() });
     }
   }
+
+  // If resto or kafe, seat 1 sample order on first table so floor plan has active visual status
+  if (type === 'restoran' || type === 'kafe') {
+    const allTables = await db.table('tables').toArray();
+    const firstTable = allTables[0];
+    if (firstTable && demoProducts.length >= 2) {
+      const items = [
+        { ...demoProducts[0], qty: 2 },
+        { ...demoProducts[1], qty: 1 }
+      ];
+      const total = (demoProducts[0].harga * 2) + demoProducts[1].harga;
+      await createOrder({
+        tableId: firstTable.id,
+        customerName: 'Bpk. Ahmad (Dine-in)',
+        orderType: 'Dine-in',
+        status: 'unpaid',
+        paymentMethod: 'Cash',
+        total,
+        items
+      });
+      await db.table('tables').update(firstTable.id, { status: 'open' });
+    }
+  }
+
   return true;
 }
 
