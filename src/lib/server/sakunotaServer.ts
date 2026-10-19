@@ -182,9 +182,9 @@ export async function revokeOwnerSession(
 
   if (!token) return { success: false, error: "Token tidak diberikan." };
   try {
-    const raw = Buffer.from(token, "base64url").toString("utf8");
-    const parts = raw.split(":");
-    const sessionId = parts[1];
+    const auth = await verifyOwnerSession(db, token);
+    if (!auth.valid) return { success: false, error: 'Sesi Owner tidak sah.' };
+    const sessionId = auth.sessionId;
     if (sessionId) {
       await revokeSessionD1(db, sessionId);
       return { success: true };
@@ -227,8 +227,11 @@ export function verifyDeviceActivationToken(token: string): {
       return { valid: true, licenseKey: key, deviceId: devId, licenseType: "berbayar", expiresAt: null, isExpired: false };
     }
     // New format (key:dev:type:exp:sig)
-    if (parts.length === 5) {
-      const [key, devId, type, exp, sig] = parts;
+    if (parts.length >= 5) {
+      const [key, devId, type] = parts;
+      const exp = parts.slice(3, -1).join(':');
+      const sig = parts[parts.length - 1];
+      if (!['berbayar','trial','tester'].includes(type) || (exp !== '0' && !Number.isFinite(Date.parse(exp)))) return {valid:false,error:'Metadata aktivasi tidak valid'};
       const expectedSig = crypto.createHmac("sha256", getServerSecret()).update(`${key}:${devId}:${type}:${exp}`).digest("hex");
       if (sig !== expectedSig) return { valid: false, error: "Tanda tangan token tidak sah" };
       const expiresAt = exp === "0" ? null : exp;
@@ -619,7 +622,7 @@ export async function activateLicenseOnDevice(
     const deviceName = data.deviceName || "Perangkat Kasir";
     const activatedAt = lic.activatedAt || now;
 
-    await bindLicenseToDeviceD1(db, key, devId, deviceName, activatedAt);
+    if (!(await bindLicenseToDeviceD1(db, key, devId, deviceName, activatedAt))) return {success:false,status:409,error:'Lisensi sudah diaktifkan oleh perangkat lain.'};
     const token = signDeviceActivation(key, devId, "berbayar", null);
 
     return {
@@ -666,7 +669,7 @@ export async function activateLicenseOnDevice(
     const deviceName = data.deviceName || "Perangkat Kasir Tester";
     const activatedAt = testerLic.activatedAt || now;
 
-    await bindTesterLicenseToDeviceD1(db, key, devId, deviceName, activatedAt);
+    if (!(await bindTesterLicenseToDeviceD1(db, key, devId, deviceName, activatedAt))) return {success:false,status:409,error:'Lisensi tester sudah terikat pada perangkat lain.'};
     const token = signDeviceActivation(key, devId, "tester", testerLic.expiresAt || null);
 
     return {
@@ -734,7 +737,7 @@ export async function activateLicenseOnDevice(
     const durationDays = betaReg.durationDays || 7;
     const expiresAt = betaReg.expiresAt || new Date(new Date(activatedAt).getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString();
 
-    await bindBetaRegistrationToDeviceD1(db, key, devId, deviceName, activatedAt, expiresAt);
+    if (!(await bindBetaRegistrationToDeviceD1(db, key, devId, deviceName, activatedAt, expiresAt))) return {success:false,status:409,error:'Trial sudah terikat pada perangkat lain.'};
     const token = signDeviceActivation(key, devId, "trial", expiresAt);
 
     return {
@@ -1026,11 +1029,11 @@ export async function registerBetaAccount(
   if (existing && existing.status !== "ditolak") {
     return {
       success: false,
-      error: `Nomor WhatsApp ini sudah pernah terdaftar untuk usaha "${existing.businessName}" (Status: ${existing.status}). SakuNota memberlakukan batas 1 trial gratis per usaha.`,
+      error: 'Nomor WhatsApp ini sudah pernah didaftarkan. Gunakan bukti pendaftaran Anda atau hubungi dukungan resmi.',
     };
   }
 
-  const registrationId = `REG-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
+  const registrationId = `REG-${crypto.randomBytes(24).toString("hex").toUpperCase()}`;
 
   const reg: ServerBetaRegistration = {
     id: registrationId,
@@ -1238,7 +1241,7 @@ export async function convertBetaTrialToPaid(
     signLicenseKey(commercialKey)
   );
 
-  await db.batch([stmtBeta, stmtLicense]);
+  await db.batch([stmtBeta, stmtLicense, db.prepare('INSERT OR IGNORE INTO LicenseDeviceKeys (licenseKey, deviceId, publicKey) SELECT ?, deviceId, publicKey FROM LicenseDeviceKeys WHERE licenseKey = ?').bind(commercialKey, reg.trialLicenseKey || '')]);
 
   return { success: true, status: "dikonversi_berbayar", licenseKey: commercialKey, commercialLicenseKey: commercialKey };
 }
@@ -1347,6 +1350,8 @@ export async function verifyDeviceLicense(
       return { valid: false, status: "revoked", error: "Akses Trial Beta ini telah dicabut oleh Owner." };
     }
     if (beta.status === "dikonversi_berbayar") {
+      const paid = await getLicenseD1(db, generateGenuineLicenseKey(beta.registrationId));
+      if (!paid || paid.revoked === 1 || !devId || paid.boundDeviceId !== devId) return {valid:false,status:'revoked',error:'Lisensi hasil konversi tidak aktif pada perangkat ini.'};
       return {
         valid: true,
         status: "paid_active",

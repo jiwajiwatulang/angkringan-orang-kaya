@@ -4,6 +4,7 @@ import LineIcon from "@/components/LineIcon";
 import React, { useState } from "react";
 import { StoreSettings, updateStoreSettings } from "@/lib/settings";
 import { seedDemoMenus, clearAllMenus, resetStoreTables } from "@/lib/api";
+import { requireMerchantAdmin } from '@/lib/merchantAccess';
 
 interface OnboardingWizardProps {
   isOpen: boolean;
@@ -24,12 +25,14 @@ export default function OnboardingWizard({
   const [menuSetupChoice, setMenuSetupChoice] = useState<"demo" | "clean">("demo");
   const [tableCount, setTableCount] = useState<number>(10);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [adminPin, setAdminPin] = useState('');
 
   if (!isOpen) return null;
 
   const handleFinish = async () => {
     setIsSubmitting(true);
     try {
+      await requireMerchantAdmin(adminPin);
       // 1. Simpan pengaturan toko
       await updateStoreSettings({
         storeName: storeName.trim() || "Toko SakuNota",
@@ -42,18 +45,18 @@ export default function OnboardingWizard({
 
       // 2. Setup menu berdasarkan pilihan pengguna
       if (menuSetupChoice === "demo") {
-        await seedDemoMenus(businessType);
+        await seedDemoMenus(businessType, adminPin);
       } else {
-        await clearAllMenus();
+        await clearAllMenus(adminPin);
       }
 
       // 3. Setup meja berdasarkan jumlah yang dipilih (0 = tanpa meja / mode quick)
-      await resetStoreTables(tableCount);
+      await resetStoreTables(tableCount, 'Meja ', adminPin);
 
       onComplete();
     } catch (err) {
       console.error("Gagal menyelesaikan onboarding:", err);
-      alert("Terjadi kesalahan saat menyimpan pengaturan awal toko.");
+      alert(err instanceof Error ? err.message : 'Pengaturan awal belum dapat disimpan.');
     } finally {
       setIsSubmitting(false);
     }
@@ -82,6 +85,9 @@ export default function OnboardingWizard({
           </span>
         </div>
 
+        <label className="px-6 pt-3 text-xs font-semibold">PIN Admin untuk menyimpan pengaturan awal
+          <input type="password" inputMode="numeric" autoComplete="off" value={adminPin} onChange={event => setAdminPin(event.target.value)} className="block w-full mt-1 rounded-lg border border-line bg-surface text-fg p-2" placeholder="Masukkan PIN Admin toko" />
+        </label>
         {/* Progress Bar Indicator */}
         <div className="w-full bg-card h-1.5">
           <div

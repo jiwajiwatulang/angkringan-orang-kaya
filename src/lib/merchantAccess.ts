@@ -1,5 +1,6 @@
 import { db } from './dexie';
 import { verifyAdminSession } from './session';
+import { demoSessionValid, isDemoMode } from './demoMode';
 
 export async function verifyMerchantPin(pin: string): Promise<boolean> {
   const state = await db.table('settings').get('admin_pin_attempts');
@@ -19,11 +20,13 @@ export async function hasMerchantAdminAccess(): Promise<boolean> {
   // Node callers are the local test/runtime layer, never a public API authorization path.
   if (typeof window === 'undefined') return true;
   if ((await db.table('settings').get('waiter_floor_session'))?.value) return false;
-  if (db.name === 'SakuNotaDemoDB') return true; // Demo backoffice only touches isolated demo data.
+  if (db.name === 'SakuNotaDemoDB') return demoSessionValid();
   return verifyAdminSession();
 }
 
 export async function requireMerchantAdmin(pin?: string): Promise<void> {
+  if (typeof window !== 'undefined' && (db.name === 'SakuNotaDemoDB') !== isDemoMode()) throw new Error('Mode database berubah. Muat ulang halaman sebelum membuka Admin.');
+  if (typeof window !== 'undefined' && db.name === 'SakuNotaDemoDB' && !demoSessionValid()) throw new Error('Sesi demo sudah berakhir.');
   if (typeof window !== 'undefined' && (await db.table('settings').get('waiter_floor_session'))?.value) throw new Error('Keluar dari Waiter Floor dengan PIN Admin terlebih dahulu.');
   if (pin !== undefined) {
     if (await verifyMerchantPin(pin)) return; // One action; never creates an Admin session.

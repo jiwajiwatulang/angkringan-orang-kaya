@@ -12,6 +12,9 @@ import { createD1NodeAdapter } from '../src/lib/server/d1';
 import worker from '../src/worker';
 import { activateLicenseServer } from '../src/lib/ordersClient';
 import { checkCashierAccess } from '../src/lib/licenseGuard';
+import { LICENSE_PUBLIC_KEY, publicKeyIdentity } from '../src/lib/licenseProtocol';
+import { signOfflineLicense } from '../src/lib/server/licenseSigning';
+import { testDeviceProof, testSigningJwk, testPublicJwk } from './securityFixtures';
 
 test('retail: quantities, atomic checkout, reservations, concurrent sales, cancellation and backup', async () => {
   await db.delete(); await db.open();
@@ -130,37 +133,43 @@ test('barcode HID: scanner works without stealing normal form input', () => {
   } finally { if (previous) Object.defineProperty(globalThis, 'window', previous); else delete (globalThis as any).window; }
 });
 
-test('activation client caches trial metadata and blocks incomplete/expired offline trials', async () => {
+test('activation client caches signed trial and ignores forged local entitlement metadata', async () => {
+  await db.open();
   const values = new Map<string, string>();
   const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); }, removeItem: (key: string) => values.delete(key) };
   const previous = ['window', 'navigator', 'localStorage', 'sessionStorage'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)] as const);
   const realFetch = globalThis.fetch;
+  const savedKey = {...LICENSE_PUBLIC_KEY}; Object.assign(LICENSE_PUBLIC_KEY, testPublicJwk);
+  process.env.SAKUNOTA_LICENSE_PRIVATE_JWK = JSON.stringify(testSigningJwk);
   try {
     Object.defineProperty(globalThis, 'window', { value: { location: { search: '' }, localStorage: storage }, configurable: true });
     Object.defineProperty(globalThis, 'navigator', { value: { onLine: false }, configurable: true });
     Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true });
     Object.defineProperty(globalThis, 'sessionStorage', { value: { getItem: () => null }, configurable: true });
-    globalThis.fetch = (async () => Response.json({ success: true, activationToken: 'test-activation-token', licenseType: 'trial', businessName: 'Uji Offline', expiresAt: new Date(Date.now()+86400000).toISOString() })) as typeof fetch;
+    let capturedClaims: any;
+    globalThis.fetch = (async (_url: any, init: any) => { const body=JSON.parse(init.body); capturedClaims={v:2,licenseKey:body.licenseKey,deviceId:body.deviceId,deviceKey:publicKeyIdentity(body.deviceProof.publicKey),licenseType:'trial',businessName:'Uji Offline',expiresAt:new Date(Date.now()+86400000).toISOString(),issuedAt:Date.now()};return Response.json({success:true,activationToken:signOfflineLicense(capturedClaims),licenseType:'trial',businessName:'Uji Offline',expiresAt:capturedClaims.expiresAt}); }) as typeof fetch;
     assert.equal((await activateLicenseServer('SN-TRIAL-LOCAL')).success, true);
     assert.equal(values.get('sakunota_license_type'), 'trial');
     assert.equal((await checkCashierAccess()).status, 'trial_active');
     values.delete('sakunota_trial_expires_at');
-    assert.equal((await checkCashierAccess()).isValid, false);
+    assert.equal((await checkCashierAccess()).isValid, true, 'signed expiry remains authoritative');
     values.set('sakunota_trial_expires_at', 'invalid date');
-    assert.equal((await checkCashierAccess()).isValid, false);
-    values.set('sakunota_trial_expires_at', new Date(Date.now()-1000).toISOString());
+    assert.equal((await checkCashierAccess()).isValid, true);
+    values.set('sakunota_activation_token',signOfflineLicense({...capturedClaims,expiresAt:new Date(Date.now()-1000).toISOString()}));
+    values.set('sakunota_trial_expires_at','2099-01-01T00:00:00Z');
     assert.equal((await checkCashierAccess()).status, 'trial_expired');
     values.set('sakunota_license_type', 'berbayar'); values.delete('sakunota_activation_token');
     assert.equal((await checkCashierAccess()).isValid, false);
   } finally {
-    globalThis.fetch = realFetch;
+    globalThis.fetch = realFetch; Object.assign(LICENSE_PUBLIC_KEY,savedKey);
     for (const [key, descriptor] of previous) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete (globalThis as any)[key]; }
   }
 });
 
 test('Worker HTTP: owner auth, license checkout, signed webhook, duplicate and delayed notifications', async () => {
-  const env = { DB: createD1NodeAdapter(':memory:'), ASSETS: { fetch: async () => new Response('asset') }, SAKUNOTA_OWNER_USERNAME: 'LocalOwner', SAKUNOTA_OWNER_PASSWORD: 'Local-test-only!', SAKUNOTA_OWNER_SALT: 'local-test-salt', SAKUNOTA_OWNER_JWT_SECRET: 'local-test-jwt', SAKUNOTA_SERVER_SECRET: 'local-test-license', MIDTRANS_SERVER_KEY: 'SB-local-test-only', MIDTRANS_CLIENT_KEY: 'SB-client-local' };
+  const env = { DB: createD1NodeAdapter(':memory:'), ASSETS: { fetch: async () => new Response('asset') }, SAKUNOTA_OWNER_USERNAME: 'LocalOwner', SAKUNOTA_OWNER_PASSWORD: 'Local-test-only!', SAKUNOTA_OWNER_SALT: 'local-test-salt', SAKUNOTA_OWNER_JWT_SECRET: 'local-test-jwt', SAKUNOTA_SERVER_SECRET: 'local-test-license', MIDTRANS_SERVER_KEY: 'SB-local-test-only', MIDTRANS_CLIENT_KEY: 'SB-client-local', SAKUNOTA_LICENSE_PRIVATE_JWK:JSON.stringify(testSigningJwk) };
   async function call(path: string, body?: unknown, token?: string) {
+    if(path === '/api/license/activate') {const data=body as any;body={...data,deviceProof:testDeviceProof('activate',data.licenseKey,data.deviceId,data.token || '')};}
     const response = await worker.fetch(new Request('http://localhost'+path, { method: body === undefined ? 'GET' : 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) }), env, {});
     return { status: response.status, body: await response.json() as any };
   }
@@ -205,7 +214,7 @@ test('Worker HTTP: owner auth, license checkout, signed webhook, duplicate and d
   assert.equal(final.body.order.status, 'lunas_lisensi_terbit'); assert.equal(final.body.order.licenseKey, key);
   const activated = await call('/api/license/activate', { licenseKey: key, deviceId: 'LOCAL-DEVICE', deviceName: 'Test browser' });
   assert.equal(activated.status, 200); assert.equal(activated.body.licenseType, 'berbayar'); assert.ok(activated.body.activationToken);
-  assert.equal((await call('/api/license/activate', { licenseKey: key, deviceId: 'OTHER-DEVICE' })).status, 409);
+  assert.equal((await call('/api/license/activate', { licenseKey: key, deviceId: 'OTHER-DEVICE' })).status, 403);
   const registration = await call('/api/beta/register', { ownerName: 'Tester Lokal', businessName: 'Toko Beta', whatsapp: '081234567891', honeypot: '' });
   assert.equal(registration.status, 201);
   const betaId = registration.body.registration.registrationId;

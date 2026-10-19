@@ -401,7 +401,7 @@ export default function PengaturanDataPage() {
             <span className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl"><LineIcon name="info" /></span>
             <h3 className="font-black text-base text-fg">Kembalikan Data</h3>
             <p className="text-xs text-muted leading-relaxed">
-              Punya cadangan sebelumnya? Pilih file yang pernah disimpan untuk mengembalikan data usaha.
+              {db.name === 'SakuNotaDemoDB' ? 'Demo hanya menggunakan data latihan. Pemulihan backup usaha tersedia pada perangkat dengan lisensi atau trial aktif.' : 'Punya cadangan sebelumnya? Pilih file yang pernah disimpan untuk mengembalikan data usaha.'}
             </p>
           </div>
 
@@ -413,6 +413,7 @@ export default function PengaturanDataPage() {
               onChange={handleFileSelected}
               className="hidden"
               id="backup-file-input"
+              disabled={db.name === 'SakuNotaDemoDB'}
             />
             <label
               htmlFor="backup-file-input"

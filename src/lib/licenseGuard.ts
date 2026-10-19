@@ -2,6 +2,11 @@
 // Handles offline verification, monotonic clock tampering detection, and 7-day trial expiry
 
 import { getLocalDeviceId, verifyLicenseServer } from "./ordersClient";
+import { deviceKeyIdentity } from './deviceIdentity';
+import { verifyOfflineLicense } from './offlineLicense';
+import { isDemoMode, demoSessionValid } from './demoMode';
+let lastOnlineCheck = 0;
+let verification: Promise<Awaited<ReturnType<typeof verifyLicenseServer>>> | undefined;
 
 export interface CashierAccessStatus {
   isValid: boolean;
@@ -37,166 +42,58 @@ export function detectClockTampering(): boolean {
 }
 
 export async function checkCashierAccess(forceOnlineCheck: boolean = false): Promise<CashierAccessStatus> {
-  if (typeof window === "undefined") {
-    return { isValid: false, isDemo: false, status: "unregistered" };
+  const denied = (error: string): CashierAccessStatus => ({ isValid:false, isDemo:false, status:'unregistered', error });
+  if (typeof window === 'undefined') return denied('Perangkat belum tersedia.');
+  if (isDemoMode()) {
+    const valid = demoSessionValid();
+    return {isValid:valid,isDemo:true,status:valid?'trial_active':'trial_expired',businessName:'Demo SakuNota',error:valid?undefined:'Sesi demo 30 menit selesai. Keluar demo untuk mencoba ulang atau aktifkan lisensi.'};
   }
-
-  // Check Demo Mode (query param or sessionStorage)
-  const isDemo = 
-    (typeof window !== "undefined" && window.location.search.includes("demo=true")) ||
-    (typeof sessionStorage !== "undefined" && sessionStorage.getItem("sakunota_demo_mode") === "true");
-
-  if (isDemo) {
-    if (typeof sessionStorage !== "undefined") {
-      try {
-        sessionStorage.setItem("sakunota_demo_mode", "true");
-      } catch (_) {}
-    }
-    return {
-      isValid: true,
-      isDemo: true,
-      status: "trial_active",
-      businessName: "Demo Warung SakuNota",
-      daysRemaining: 7,
-      hoursRemaining: 168,
-    };
-  }
-
-  const licenseKey = localStorage.getItem("sakunota_license_key") || "";
-  const token = localStorage.getItem("sakunota_activation_token") || "";
+  const licenseKey = localStorage.getItem('sakunota_license_key') || '';
+  let token = localStorage.getItem('sakunota_activation_token') || '';
+  if (!licenseKey || !token) return denied('Aktifkan lisensi atau trial pada perangkat ini terlebih dahulu.');
   const deviceId = getLocalDeviceId();
-
-  if (!licenseKey) {
-    return {
-      isValid: false,
-      isDemo: false,
-      status: "unregistered",
-      error: "Perangkat ini belum memiliki lisensi atau trial aktif. Silakan daftar Closed Beta atau masukkan nomor lisensi Anda.",
-    };
-  }
-
-  const isClockTampered = detectClockTampering();
-  const cachedType = (localStorage.getItem("sakunota_license_type") || "trial") as "berbayar" | "trial" | "tester";
-  const cachedExpiresAt = localStorage.getItem("sakunota_trial_expires_at");
-  const cachedBusinessName = localStorage.getItem("sakunota_business_name") || "Usaha Saya";
-
-  // Try Online Verification if connected
-  if (navigator.onLine || forceOnlineCheck) {
+  let identity: string;
+  try { identity = await deviceKeyIdentity(); }
+  catch { return denied('Kunci perangkat tidak dapat dibaca. Periksa izin penyimpanan browser.'); }
+  let claims = await verifyOfflineLicense(token,licenseKey,deviceId,identity);
+  // A definitive online rejection is sticky until a successful online activation/verification.
+  const rejected = localStorage.getItem('sakunota_license_rejected') === licenseKey;
+  const shouldCheck = navigator.onLine && (forceOnlineCheck || !claims || Date.now()-lastOnlineCheck > 15*60*1000 || rejected);
+  if (shouldCheck) {
     try {
-      const serverCheck = await verifyLicenseServer(licenseKey, deviceId, token);
-      if (serverCheck.valid) {
-        // Update local cache
-        localStorage.setItem("sakunota_license_type", serverCheck.licenseType || "berbayar");
-        if (serverCheck.expiresAt) {
-          localStorage.setItem("sakunota_trial_expires_at", serverCheck.expiresAt);
-        } else {
-          localStorage.removeItem("sakunota_trial_expires_at");
-        }
-        if (serverCheck.businessName) {
-          localStorage.setItem("sakunota_business_name", serverCheck.businessName);
-        }
-
-        return {
-          isValid: true,
-          isDemo: false,
-          status: serverCheck.status,
-          licenseKey,
-          licenseType: serverCheck.licenseType,
-          businessName: serverCheck.businessName || cachedBusinessName,
-          expiresAt: serverCheck.expiresAt,
-          daysRemaining: serverCheck.daysRemaining,
-          hoursRemaining: serverCheck.hoursRemaining,
-        };
-      } else {
-        // Explicit rejection from server
-        return {
-          isValid: false,
-          isDemo: false,
-          status: serverCheck.status,
-          licenseKey,
-          licenseType: serverCheck.licenseType,
-          businessName: serverCheck.businessName || cachedBusinessName,
-          expiresAt: serverCheck.expiresAt,
-          error: serverCheck.error,
-        };
+      if (!verification) verification = verifyLicenseServer(licenseKey,deviceId,token).finally(()=>{ verification=undefined; });
+      const result = await verification;
+      lastOnlineCheck = Date.now();
+      if (!result.valid) {
+        localStorage.setItem('sakunota_license_rejected',licenseKey);
+        return {isValid:false,isDemo:false,status:result.status || 'unregistered',error:result.error || 'Lisensi tidak aktif.'};
       }
-    } catch (_) {
-      // Fallback to offline evaluation
+      if (result.activationToken) {
+        const checked = await verifyOfflineLicense(result.activationToken,licenseKey,deviceId,identity);
+        if (!checked) return denied('Bukti aktivasi server tidak dapat diverifikasi.');
+        token = result.activationToken; claims = checked;
+        localStorage.setItem('sakunota_activation_token',token);
+      }
+      localStorage.removeItem('sakunota_license_rejected');
+      localStorage.setItem('sakunota_clock_watermark', String(Date.now()));
+    } catch {
+      // Network/5xx failure never upgrades an unsigned legacy cache into a license.
+      if (rejected) return denied('Lisensi sebelumnya ditolak. Sambungkan internet untuk verifikasi kembali.');
     }
-  }
+  } else if (rejected) return denied('Lisensi sebelumnya ditolak. Sambungkan internet untuk verifikasi kembali.');
+  if (!claims) return denied('Pembaruan keamanan lisensi memerlukan internet satu kali di perangkat asal. Data toko tetap tersimpan; tidak perlu membeli ulang.');
+  const expiry = claims.expiresAt ? Date.parse(claims.expiresAt) : null;
+  const tampered = detectClockTampering();
+  if (expiry !== null && (tampered || Date.now() >= expiry)) return {isValid:false,isDemo:false,status:claims.licenseType==='tester'?'tester_expired':'trial_expired',isClockTampered:tampered,error:tampered?'Waktu perangkat berubah. Sambungkan internet dan sesuaikan jam perangkat.':'Masa trial atau tester sudah berakhir.'};
+  const status = claims.licenseType === 'berbayar' ? 'paid_active' : claims.licenseType === 'tester' ? 'tester_active' : 'trial_active';
+  return {isValid:true,isDemo:false,status,licenseKey:claims.licenseKey,licenseType:claims.licenseType,businessName:claims.businessName,expiresAt:claims.expiresAt,daysRemaining:expiry===null?undefined:Math.max(0,Math.floor((expiry-Date.now())/86400000)),hoursRemaining:expiry===null?undefined:Math.max(0,Math.floor((expiry-Date.now())/3600000))};
+}
 
-  // --- Offline Evaluation ---
-  // If user has a commercial paid license: Lifetime access offline
-  if ((cachedType === "berbayar" || (cachedType === "tester" && !cachedExpiresAt)) && token) {
-    return {
-      isValid: true,
-      isDemo: false,
-      status: cachedType === 'tester' ? 'tester_active' : 'paid_active',
-      licenseKey,
-      licenseType: cachedType,
-      businessName: cachedBusinessName,
-      expiresAt: null,
-    };
-  }
-
-  // If clock was turned back to bypass trial expiration
-  if (isClockTampered) {
-    return {
-      isValid: false,
-      isDemo: false,
-      status: "trial_expired",
-      licenseKey,
-      licenseType: cachedType,
-      businessName: cachedBusinessName,
-      isClockTampered: true,
-      error: "Manipulasi jam perangkat terdeteksi. Tanggal perangkat dimundurkan dari catatan sebelumnya. Harap sambungkan ke internet atau sesuaikan waktu perangkat.",
-    };
-  }
-
-  // If trial or tester: check expiration timestamp
-  if (cachedExpiresAt && token && Number.isFinite(new Date(cachedExpiresAt).getTime())) {
-    const expTime = new Date(cachedExpiresAt).getTime();
-    const now = Date.now();
-    if (now >= expTime) {
-      return {
-        isValid: false,
-        isDemo: false,
-        status: cachedType === "tester" ? "tester_expired" : "trial_expired",
-        licenseKey,
-        licenseType: cachedType,
-        businessName: cachedBusinessName,
-        expiresAt: cachedExpiresAt,
-        daysRemaining: 0,
-        hoursRemaining: 0,
-        error: "Masa coba 7 hari telah berakhir. Akses kasir dikunci sampai lisensi resmi dibeli atau diperpanjang.",
-      };
-    }
-
-    const diffMs = expTime - now;
-    const hoursRemaining = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60)));
-    const daysRemaining = Math.max(0, Math.floor(hoursRemaining / 24));
-
-    return {
-      isValid: true,
-      isDemo: false,
-      status: cachedType === "tester" ? "tester_active" : "trial_active",
-      licenseKey,
-      licenseType: cachedType,
-      businessName: cachedBusinessName,
-      expiresAt: cachedExpiresAt,
-      daysRemaining,
-      hoursRemaining,
-    };
-  }
-
-  // Missing/invalid activation metadata cannot start a fresh trial on every launch.
-  return {
-    isValid: false,
-    isDemo: false,
-    status: "unregistered",
-    licenseKey,
-    licenseType: "trial",
-    businessName: cachedBusinessName,
-    error: "Data aktivasi belum lengkap. Sambungkan internet dan aktifkan kembali lisensi pada perangkat ini.",
-  };
+export async function requireCashierWriteAccess(allowWaiterDraft = false): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const { db } = await import('./dexie');
+  if ((db.name === 'SakuNotaDemoDB') !== isDemoMode()) throw new Error('Mode database berubah. Muat ulang halaman sebelum melanjutkan.');
+  if (!allowWaiterDraft && (await db.table('settings').get('waiter_floor_session'))?.value) throw new Error('Waiter Floor hanya dapat mencatat pesanan meja, tanpa pembayaran atau pengaturan shift.');
+  const access = await checkCashierAccess();
+  if (!access.isValid) throw new Error(access.error || 'Lisensi kasir tidak aktif.');
 }

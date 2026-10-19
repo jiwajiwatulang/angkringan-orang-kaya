@@ -36,6 +36,7 @@ const validFiles = allFiles.filter(f => {
   if (f.path.endsWith('.map')) return false;
   if (f.path === '/sw.js') return false; // sw.js manages itself
   if (f.path === '/offline-manifest.json') return false;
+  if (f.path === '/_headers' || f.path === '/_redirects') return false;
   return true;
 });
 

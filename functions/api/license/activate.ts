@@ -1,5 +1,6 @@
 // Cloudflare Pages Function: POST /api/license/activate
 import { activateLicenseOnDevice, getD1, initD1Tables } from "../../../src/lib/server/sakunotaServer";
+import { activateSecureDevice } from '../../../src/lib/server/licenseDeviceAccess';
 
 export async function onRequestPost(context: any) {
   try {
@@ -7,16 +8,16 @@ export async function onRequestPost(context: any) {
     await initD1Tables(db);
 
     const body = await context.request.json();
-    const { licenseKey, deviceId, deviceName } = body || {};
+    const { licenseKey, deviceId, deviceName, token, deviceProof } = body || {};
 
-    if (!licenseKey || !deviceId) {
+    if (typeof licenseKey !== 'string' || typeof deviceId !== 'string' || !licenseKey.trim() || !deviceId.trim() || !deviceProof || licenseKey.length > 200 || deviceId.length > 200) {
       return new Response(
         JSON.stringify({ success: false, error: "Nomor lisensi dan ID perangkat wajib disertakan." }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const res = await activateLicenseOnDevice(db, { licenseKey, deviceId, deviceName });
+    const res = await activateSecureDevice(db, { licenseKey:licenseKey.trim().toUpperCase(), deviceId:deviceId.trim(), deviceName, token, deviceProof });
 
     return new Response(
       JSON.stringify({

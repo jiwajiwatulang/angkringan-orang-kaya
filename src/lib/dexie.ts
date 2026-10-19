@@ -1,4 +1,5 @@
 import Dexie, { type Table as DexieTable } from 'dexie';
+import { isDemoMode } from './demoMode';
 
 export interface ModifierOption {
   id: string;
@@ -170,8 +171,7 @@ export interface CashMovement {
 }
 
 // Demo activity never reads or overwrites a merchant's real database.
-const demoDatabase = typeof window !== 'undefined' &&
-  (new URLSearchParams(window.location.search).get('demo') === 'true' || sessionStorage.getItem('sakunota_demo_mode') === 'true');
+const demoDatabase = isDemoMode();
 const db = new Dexie(demoDatabase ? 'SakuNotaDemoDB' : 'AngkringanDB');
 db.version(5).stores({
   menuItems: '++id, nama, kategori, isSoldOut, urutan',

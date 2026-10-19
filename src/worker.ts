@@ -17,6 +17,7 @@ import * as betaStatus from "../functions/api/beta/status";
 import * as paymentConfig from "../functions/api/payment/config";
 import * as paymentMidtrans from "../functions/api/payment/midtrans";
 import * as paymentSnap from "../functions/api/payment/snap";
+import { verifyOwnerSession, getD1 } from './lib/server/sakunotaServer';
 
 export interface Env {
   DB: any;
@@ -31,6 +32,8 @@ export interface Env {
   SAKUNOTA_SERVER_SECRET?: string;
   SAKUNOTA_OWNER_SALT?: string;
   SAKUNOTA_OWNER_USERNAME?: string;
+  SAKUNOTA_LICENSE_PRIVATE_JWK?: string;
+  PUBLIC_RATE_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> };
 }
 
 function corsHeaders() {
@@ -43,6 +46,9 @@ function corsHeaders() {
 
 function withCors(response: Response): Response {
   const newHeaders = new Headers(response.headers);
+  newHeaders.set('Cache-Control', 'no-store');
+  newHeaders.set('X-Content-Type-Options', 'nosniff');
+  newHeaders.set('Referrer-Policy', 'no-referrer');
   const cors = corsHeaders();
   for (const [key, val] of Object.entries(cors)) {
     if (!newHeaders.has(key)) {
@@ -64,6 +70,7 @@ export default {
       if (env.SAKUNOTA_OWNER_PASSWORD) process.env.SAKUNOTA_OWNER_PASSWORD = env.SAKUNOTA_OWNER_PASSWORD;
       if (env.SAKUNOTA_OWNER_USERNAME) process.env.SAKUNOTA_OWNER_USERNAME = env.SAKUNOTA_OWNER_USERNAME;
       if (env.SAKUNOTA_OWNER_JWT_SECRET) process.env.SAKUNOTA_OWNER_JWT_SECRET = env.SAKUNOTA_OWNER_JWT_SECRET;
+      if (env.SAKUNOTA_LICENSE_PRIVATE_JWK) process.env.SAKUNOTA_LICENSE_PRIVATE_JWK = env.SAKUNOTA_LICENSE_PRIVATE_JWK;
     }
 
     const url = new URL(request.url);
@@ -80,9 +87,29 @@ export default {
 
     // 2. Handle /api/ routes
     if (pathname.startsWith("/api/")) {
+      const publicAction = /^\/api\/(license|orders|beta)\//.test(pathname) || pathname === '/api/owner/login' || pathname === '/api/payment/snap';
+      if (publicAction && env.PUBLIC_RATE_LIMITER) {
+        try {
+          const result = await env.PUBLIC_RATE_LIMITER.limit({key:`${pathname}:${request.headers.get('CF-Connecting-IP') || 'local'}`});
+          if (!result.success) return withCors(Response.json({success:false,error:'Terlalu banyak permintaan. Coba lagi dalam satu menit.'},{status:429,headers:{'Retry-After':'60'}}));
+        } catch {
+          return withCors(Response.json({success:false,error:'Layanan sementara sibuk. Coba lagi.'},{status:503}));
+        }
+      }
       // Internal service overloads used by local tests are never an HTTP auth bypass.
       if (pathname.startsWith('/api/owner/') && pathname !== '/api/owner/login' && !/^Bearer\s+\S+\s*$/i.test(request.headers.get('Authorization') || '')) {
         return withCors(Response.json({ success: false, error: 'Sesi Owner diperlukan. Silakan login terlebih dahulu.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } }));
+      }
+      if (pathname.startsWith('/api/owner/') && pathname !== '/api/owner/login') {
+        try {
+          const database = getD1(env.DB);
+          const token = request.headers.get('Authorization')!.replace(/^Bearer\s+/i, '').trim();
+          // Verify cryptographic authenticity before any handler or action is selected.
+          const auth = await verifyOwnerSession(database, token);
+          if (!auth.valid) return withCors(Response.json({ success: false, error: 'Sesi Owner tidak sah atau telah berakhir.' }, { status: 401 }));
+        } catch {
+          return withCors(Response.json({ success: false, error: 'Sesi Owner belum dapat diverifikasi.' }, { status: 503 }));
+        }
       }
       const context = {
         request,
@@ -262,7 +289,12 @@ export default {
           headers: { "Content-Type": "text/plain; charset=utf-8" }
         });
       }
-      return response;
+      const headers = new Headers(response.headers);
+      headers.set('X-Content-Type-Options','nosniff');
+      headers.set('Referrer-Policy','no-referrer');
+      headers.set('X-Frame-Options','DENY');
+      headers.set('Content-Security-Policy', "frame-ancestors 'none'; base-uri 'self'; object-src 'none'");
+      return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
     } catch (err: any) {
       if (url.pathname.endsWith('.__PAGE__.txt')) {
         return new Response("", {

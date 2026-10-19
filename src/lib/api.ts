@@ -1,3 +1,4 @@
+import Dexie from 'dexie';
 import { db, MenuItem, Order, OrderItem, Payment, SelectedModifier, PaymentProof, ModifierGroup } from './dexie';
 import initialData from './initialData.json';
 import { getStoreSettings, SETTINGS_STORAGE_KEY } from './settings';
@@ -5,6 +6,8 @@ import { applyOrderStock } from './inventory';
 import { requireMerchantAdmin } from './merchantAccess';
 import { cashierCanSeeOrder } from './cashierScope';
 import { validateProductPhoto } from './productPhoto';
+import { requireCashierWriteAccess } from './licenseGuard';
+import { DEMO_ORDER_LIMIT } from './demoMode';
 
 async function requireActiveCashierShift(shiftId: number) {
   if (typeof window === 'undefined') return;
@@ -126,12 +129,14 @@ export async function getMenus() {
   return menus;
 }
 
-export async function clearAllMenus() {
+export async function clearAllMenus(adminPin?: string) {
+  await requireMerchantAdmin(adminPin);
   await db.table('menuItems').clear();
   return 0;
 }
 
-export async function resetStoreTables(count: number, prefix: string = 'Meja ') {
+export async function resetStoreTables(count: number, prefix: string = 'Meja ', adminPin?: string) {
+  await requireMerchantAdmin(adminPin);
   await db.table('tables').clear();
   if (count > 0) {
     const toInsert = Array.from({ length: count }).map((_, i) => ({
@@ -142,7 +147,8 @@ export async function resetStoreTables(count: number, prefix: string = 'Meja ') 
   }
 }
 
-export async function seedDemoMenus(type: string = 'angkringan') {
+export async function seedDemoMenus(type: string = 'angkringan', adminPin?: string) {
+  await requireMerchantAdmin(adminPin);
   await db.table('menuItems').clear();
 
   let rawList: any[] = [];
@@ -484,8 +490,14 @@ async function readOrders(orders: Order[]) {
 }
 
 export async function createOrder(data: any) {
+  await Dexie.waitFor(requireCashierWriteAccess(true));
+  if (typeof window !== 'undefined') {
+    const waiter = (await db.table('settings').get('waiter_floor_session'))?.value;
+    if (waiter && (data.status !== 'unpaid' || data.isHistorical || !waiter.tableIds.includes(Number(data.tableId)))) throw new Error('Pesanan pelayan harus belum lunas dan menggunakan meja tugasnya.');
+  }
   if (!Number.isFinite(data.total) || data.total < 0 || !Array.isArray(data.items) || !data.items.length) throw new Error('Total atau item pesanan tidak valid.');
   return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'paymentProofs', 'shifts', 'tables', 'auditLogs', 'menuItems', 'inventoryMovements'], async () => {
+    if (db.name === 'SakuNotaDemoDB' && !data.isHistorical && (await db.table('orders').filter(o => !o.isHistorical).count()) >= DEMO_ORDER_LIMIT) throw new Error('Batas 50 transaksi demo tercapai. Gunakan trial atau lisensi resmi untuk operasional usaha.');
     // 1. Atomic Idempotency check di dalam transaksi (OWASP Compliance)
     if (data.idempotencyKey) {
       const existing = await db.table('orders').where('idempotencyKey').equals(data.idempotencyKey).first();
@@ -615,6 +627,7 @@ export async function createOrder(data: any) {
 }
 
 export async function updateOrder(id: number, data: any) {
+  await Dexie.waitFor(requireCashierWriteAccess());
   return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'tables', 'menuItems', 'inventoryMovements', 'paymentProofs', 'shifts', 'auditLogs'], async () => {
     const existingOrder = await db.table('orders').get(id);
     if (!existingOrder || existingOrder.status === 'void') throw new Error('Nota tidak ditemukan atau sudah dibatalkan.');
@@ -705,6 +718,7 @@ export async function recordPayment(data: {
   notes?: string;
   proof?: { imageData: string; fileName?: string; fileSize?: number; mimeType?: string; notes?: string };
 }) {
+  await Dexie.waitFor(requireCashierWriteAccess());
   return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'paymentProofs', 'tables', 'shifts', 'auditLogs'], async () => {
     const order = await db.table('orders').get(data.orderId);
     if (!order) throw new Error('Nota tidak ditemukan.');
@@ -1748,6 +1762,7 @@ export async function getShiftLiveStats(shiftId: number) {
 }
 
 export async function openShift(data: { operatorName: string, startingCash: number, notes?: string }) {
+  await Dexie.waitFor(requireCashierWriteAccess());
   if (!Number.isFinite(data.startingCash) || data.startingCash < 0) throw new Error('Modal awal tidak valid.');
   return db.transaction('rw', ['shifts', 'auditLogs'], async () => {
   const active = await getActiveShift();
@@ -2023,6 +2038,7 @@ export function validateBackupSchema(data: any): {
 }
 
 export async function importAllData(data: any, options?: { skipPreBackup?: boolean }) {
+  if (db.name === 'SakuNotaDemoDB') throw new Error('Pemulihan data usaha hanya tersedia pada perangkat berlisensi atau trial. Demo menggunakan data latihan.');
   await requireMerchantAdmin();
   const validation = validateBackupSchema(data);
   if (!validation.isValid) {

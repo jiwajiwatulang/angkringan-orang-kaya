@@ -1,3 +1,5 @@
+import { createDeviceProof } from './deviceIdentity';
+
 export interface CustomerOrder {
   orderId: string;
   accessCode: string;
@@ -24,7 +26,7 @@ export function getLocalDeviceId(): string {
   if (typeof window === "undefined") return "dev-server";
   let id = localStorage.getItem("sakunota_device_id");
   if (!id) {
-    id = "SN-DEV-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+    id = "SN-DEV-" + crypto.randomUUID().toUpperCase();
     localStorage.setItem("sakunota_device_id", id);
   }
   return id;
@@ -232,10 +234,12 @@ export async function activateLicenseServer(
   const deviceId = getLocalDeviceId();
 
   try {
+    const token = localStorage.getItem('sakunota_activation_token') || '';
+    const deviceProof = await createDeviceProof('activate', licenseKey, deviceId, token);
     const res = await fetch("/api/license/activate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ licenseKey, deviceId, deviceName }),
+      body: JSON.stringify({ licenseKey, deviceId, deviceName, token, deviceProof }),
     });
 
     const json = await res.json();
@@ -254,6 +258,7 @@ export async function activateLicenseServer(
         localStorage.setItem("sakunota_license_key", licenseKey);
         localStorage.setItem("sakunota_license_activated", "true");
         localStorage.setItem("sakunota_activation_token", json.activationToken);
+        localStorage.removeItem('sakunota_license_rejected');
         localStorage.setItem("sakunota_license_type", json.licenseType || 'berbayar');
         localStorage.setItem("sakunota_business_name", json.businessName || 'Usaha Saya');
         if (json.expiresAt) localStorage.setItem("sakunota_trial_expires_at", json.expiresAt);
@@ -264,14 +269,6 @@ export async function activateLicenseServer(
 
     return { success: false, error: json.error || "Gagal mengaktifkan lisensi.", status: res.status };
   } catch {
-    // If offline, check if this device was previously activated
-    if (typeof window !== "undefined") {
-      const storedKey = localStorage.getItem("sakunota_license_key");
-      const storedToken = localStorage.getItem("sakunota_activation_token");
-      if (storedKey === licenseKey && storedToken) {
-        return { success: true, status: 200 };
-      }
-    }
     return { success: false, error: "Aktivasi awal membutuhkan koneksi internet untuk memeriksa keaslian lisensi." };
   }
 }
@@ -742,16 +739,19 @@ export async function verifyLicenseServer(licenseKey: string, deviceId: string, 
   daysRemaining?: number;
   hoursRemaining?: number;
   error?: string;
+  activationToken?: string;
 }> {
   try {
+    const deviceProof = await createDeviceProof('verify', licenseKey, deviceId, token || '');
     const res = await fetch("/api/license/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ licenseKey, deviceId, token }),
+      body: JSON.stringify({ licenseKey, deviceId, token, deviceProof }),
     });
+    if (res.status >= 500 || res.status === 429) throw new Error('Server lisensi sementara tidak tersedia.');
     return await res.json();
   } catch (e: any) {
-    return { valid: false, status: "unregistered", error: e.message || "Gagal memverifikasi lisensi." };
+    throw new Error(e.message || "Gagal memverifikasi lisensi.");
   }
 }
 

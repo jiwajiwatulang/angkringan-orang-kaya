@@ -1,5 +1,6 @@
 'use client';
 
+import { isDemoMode, preserveDemoUrl, demoSessionValid } from "@/lib/demoMode";
 import React, { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type MenuItem } from '@/lib/dexie';
@@ -32,7 +33,8 @@ export default function WaiterFloorPage() {
     return Promise.all(orders.map(async o => ({ id: o.id, notes: o.notes, items: await db.table('orderItems').where('orderId').equals(o.id).toArray() })));
   }, [tableId, session]);
   useEffect(() => {
-    const wantsDemo = window.location.search.includes('demo=true') || sessionStorage.getItem('sakunota_demo_mode') === 'true';
+    preserveDemoUrl();
+    const wantsDemo = isDemoMode();
     if (wantsDemo !== (db.name === 'SakuNotaDemoDB')) { window.location.reload(); return; }
     const check = () => { checkCashierAccess().then(setAccess); };
     check(); const timer = window.setInterval(check, 60000);

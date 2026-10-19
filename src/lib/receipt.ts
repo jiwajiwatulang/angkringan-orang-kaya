@@ -2,6 +2,7 @@ import { StoreSettings, getStoreSettings } from './settings';
 import { Capacitor } from '@capacitor/core';
 import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
 import { Printer } from '@capgo/capacitor-printer';
+import { safePrintData, safePrintLogo, safePrinterText } from './printSafety';
 
 /**
  * Format mata uang Rupiah standar Indonesia
@@ -69,7 +70,8 @@ export function generateEscPosReceipt(
   mode: 'all' | 'food' | 'drink' = 'all',
   settings?: StoreSettings
 ): string {
-  const cfg = settings || getStoreSettings();
+  receipt = safePrinterText(receipt);
+  const cfg = safePrinterText(settings || getStoreSettings());
   const width = cfg.paperWidth === '80mm' ? 48 : 32;
   const divider = "-".repeat(width) + "\n";
   const doubleDivider = "=".repeat(width) + "\n";
@@ -277,7 +279,9 @@ export function generateEscPosReceipt(
 }
 
 export function generatePartialPaymentReceipt(order: any, payment: any, settings?: StoreSettings): string {
-  const cfg = settings || getStoreSettings();
+  order = safePrinterText(order);
+  payment = safePrinterText(payment);
+  const cfg = safePrinterText(settings || getStoreSettings());
   const width = cfg.paperWidth === '80mm' ? 48 : 32;
   const divider = "-".repeat(width) + "\n";
   const doubleDivider = "=".repeat(width) + "\n";
@@ -352,7 +356,8 @@ export function generatePartialPaymentReceipt(order: any, payment: any, settings
 }
 
 export function generateZReportReceipt(stats: any, settings?: StoreSettings): string {
-  const cfg = settings || getStoreSettings();
+  stats = safePrinterText(stats);
+  const cfg = safePrinterText(settings || getStoreSettings());
   const width = cfg.paperWidth === '80mm' ? 48 : 32;
   const divider = "-".repeat(width) + "\n";
   const doubleDivider = "=".repeat(width) + "\n";
@@ -438,7 +443,9 @@ export function generateReceiptHtml(
   mode: 'all' | 'food' | 'drink' = 'all',
   settings?: StoreSettings
 ): string {
-  const cfg = settings || getStoreSettings();
+  receipt = safePrintData(receipt);
+  const cfg = safePrintData(settings || getStoreSettings());
+  cfg.storeLogo = safePrintLogo(cfg.storeLogo);
   const is80 = cfg.paperWidth === '80mm';
   const paperWidthMm = is80 ? '80mm' : '58mm';
   const printableWidth = is80 ? '72mm' : '52mm';
@@ -521,6 +528,7 @@ export function generateReceiptHtml(
     <html lang="id">
     <head>
       <meta charset="utf-8">
+      <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
       <title>Struk_${orderIdLabel}</title>
       <style>
         @page {
@@ -573,7 +581,7 @@ export function generateReceiptHtml(
     <body>
       ${cfg.storeLogo && mode === 'all' ? `
         <div class="logo-box">
-          <img src="${cfg.storeLogo}" alt="Logo Toko" onerror="this.style.display='none'" />
+          <img src="${cfg.storeLogo}" alt="Logo Toko" />
         </div>
       ` : ''}
 
@@ -668,7 +676,8 @@ export function generateReceiptHtml(
 }
 
 export function generateZReportHtml(stats: any, settings?: StoreSettings): string {
-  const cfg = settings || getStoreSettings();
+  stats = safePrintData(stats);
+  const cfg = safePrintData(settings || getStoreSettings());
   const is80 = cfg.paperWidth === '80mm';
   const paperWidthMm = is80 ? '80mm' : '58mm';
   const printableWidth = is80 ? '72mm' : '52mm';
@@ -683,6 +692,7 @@ export function generateZReportHtml(stats: any, settings?: StoreSettings): strin
     <html lang="id">
     <head>
       <meta charset="utf-8">
+      <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
       <title>Z_Report_Shift_${stats.id || '-'}</title>
       <style>
         @page { margin: 0; size: ${paperWidthMm} auto; }
@@ -878,6 +888,7 @@ export async function executePrintDocument(options: PrintExecutionOptions): Prom
       let printFrame = document.getElementById('sakunota-print-iframe') as HTMLIFrameElement;
       if (!printFrame) {
         printFrame = document.createElement('iframe');
+        printFrame.setAttribute('sandbox', 'allow-same-origin allow-modals');
         printFrame.id = 'sakunota-print-iframe';
         printFrame.style.position = 'fixed';
         printFrame.style.right = '0';

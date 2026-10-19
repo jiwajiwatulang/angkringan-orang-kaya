@@ -196,6 +196,7 @@ export function getD1(envDb?: D1Database): D1Database {
 // Table Initialization in Cloudflare D1
 export async function initD1Tables(db: D1Database): Promise<void> {
   const tableStatements = [
+    `CREATE TABLE IF NOT EXISTS LicenseDeviceKeys (licenseKey TEXT PRIMARY KEY, deviceId TEXT NOT NULL, publicKey TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS CustomerOrders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       orderId TEXT UNIQUE NOT NULL,
@@ -485,18 +486,7 @@ export async function getLicenseD1(db: D1Database, licenseKey: string): Promise<
 }
 
 export async function unbindLicenseDeviceD1(db: D1Database, licenseKey: string): Promise<boolean> {
-  await db.prepare(`
-    UPDATE Licenses 
-    SET boundDeviceId = NULL, deviceName = NULL 
-    WHERE licenseKey = ?
-  `).bind(licenseKey).run();
-
-  await db.prepare(`
-    UPDATE CustomerOrders
-    SET boundDeviceId = NULL
-    WHERE licenseKey = ?
-  `).bind(licenseKey).run();
-
+  await db.batch([db.prepare('DELETE FROM LicenseDeviceKeys WHERE licenseKey = ?').bind(licenseKey),db.prepare('UPDATE Licenses SET boundDeviceId = NULL, deviceName = NULL WHERE licenseKey = ?').bind(licenseKey),db.prepare('UPDATE CustomerOrders SET boundDeviceId = NULL WHERE licenseKey = ?').bind(licenseKey)]);
   return true;
 }
 
@@ -515,8 +505,10 @@ export async function bindLicenseToDeviceD1(
   await db.prepare(`
     UPDATE Licenses 
     SET boundDeviceId = ?, deviceName = ?, activatedAt = ?, lastConnectedAt = ?
-    WHERE licenseKey = ?
-  `).bind(deviceId, deviceName, activatedAt, activatedAt, licenseKey).run();
+    WHERE licenseKey = ? AND revoked = 0 AND (boundDeviceId IS NULL OR boundDeviceId = ?)
+  `).bind(deviceId, deviceName, activatedAt, activatedAt, licenseKey, deviceId).run();
+  const claimed = await getLicenseD1(db, licenseKey);
+  if (claimed?.boundDeviceId !== deviceId || claimed.revoked === 1) return false;
 
   await db.prepare(`
     UPDATE CustomerOrders
@@ -614,6 +606,7 @@ export async function getMetricsD1(db: D1Database): Promise<{
 // Clean Database helper for test suite
 export async function resetDatabaseCleanD1(db: D1Database): Promise<void> {
   await db.exec(`
+    DELETE FROM LicenseDeviceKeys;
     DELETE FROM CustomerOrders;
     DELETE FROM Licenses;
     DELETE FROM OwnerSessions;
@@ -711,7 +704,7 @@ export async function revokeTesterLicenseD1(db: D1Database, licenseKey: string):
 }
 
 export async function unbindTesterLicenseDeviceD1(db: D1Database, licenseKey: string): Promise<boolean> {
-  await db.prepare(`UPDATE TesterLicenses SET boundDeviceId = NULL, deviceName = NULL WHERE licenseKey = ?`).bind(licenseKey).run();
+  await db.batch([db.prepare('DELETE FROM LicenseDeviceKeys WHERE licenseKey = ?').bind(licenseKey),db.prepare('UPDATE TesterLicenses SET boundDeviceId = NULL, deviceName = NULL WHERE licenseKey = ?').bind(licenseKey)]);
   return true;
 }
 
@@ -725,8 +718,10 @@ export async function bindTesterLicenseToDeviceD1(
   await db.prepare(`
     UPDATE TesterLicenses 
     SET boundDeviceId = ?, deviceName = ?, activatedAt = ?
-    WHERE licenseKey = ?
-  `).bind(deviceId, deviceName, activatedAt, licenseKey).run();
+    WHERE licenseKey = ? AND revoked = 0 AND (boundDeviceId IS NULL OR boundDeviceId = ?)
+  `).bind(deviceId, deviceName, activatedAt, licenseKey, deviceId).run();
+  const current = await getTesterLicenseD1(db, licenseKey);
+  if (current?.boundDeviceId !== deviceId || current.revoked === 1) return false;
   return true;
 }
 
@@ -822,11 +817,7 @@ export async function revokeBetaRegistrationD1(db: D1Database, trialLicenseKey: 
 }
 
 export async function unbindBetaRegistrationDeviceD1(db: D1Database, trialLicenseKey: string): Promise<boolean> {
-  await db.prepare(`
-    UPDATE BetaRegistrations 
-    SET boundDeviceId = NULL, deviceName = NULL 
-    WHERE trialLicenseKey = ?
-  `).bind(trialLicenseKey).run();
+  await db.batch([db.prepare('DELETE FROM LicenseDeviceKeys WHERE licenseKey = ?').bind(trialLicenseKey),db.prepare('UPDATE BetaRegistrations SET boundDeviceId = NULL, deviceName = NULL WHERE trialLicenseKey = ?').bind(trialLicenseKey)]);
   return true;
 }
 
@@ -841,8 +832,10 @@ export async function bindBetaRegistrationToDeviceD1(
   await db.prepare(`
     UPDATE BetaRegistrations 
     SET boundDeviceId = ?, deviceName = ?, activatedAt = ?, expiresAt = ?, lastConnectedAt = ?
-    WHERE trialLicenseKey = ?
-  `).bind(deviceId, deviceName, activatedAt, expiresAt, activatedAt, trialLicenseKey).run();
+    WHERE trialLicenseKey = ? AND status = 'disetujui' AND (boundDeviceId IS NULL OR boundDeviceId = ?)
+  `).bind(deviceId, deviceName, activatedAt, expiresAt, activatedAt, trialLicenseKey, deviceId).run();
+  const current = await getBetaRegistrationByLicenseKeyD1(db, trialLicenseKey);
+  if (current?.boundDeviceId !== deviceId || current.status !== 'disetujui') return false;
   return true;
 }
 

@@ -64,6 +64,8 @@ export async function onRequestPut(context: any) {
     }
 
     if (action === "sync_midtrans") {
+      const { verifyOwnerSession } = await import("../../../src/lib/server/sakunotaServer");
+      if (!(await verifyOwnerSession(db, token)).valid) return Response.json({ success: false, error: 'Sesi Owner tidak sah.' }, { status: 401 });
       const { syncMidtransOrderStatus } = await import("../../../src/lib/server/sakunotaServer");
       const serverKey = context.env?.MIDTRANS_SERVER_KEY || process.env.MIDTRANS_SERVER_KEY;
       const res = await syncMidtransOrderStatus(db, orderId, serverKey);

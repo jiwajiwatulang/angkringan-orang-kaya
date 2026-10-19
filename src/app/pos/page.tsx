@@ -5,6 +5,7 @@ import ProductPhoto from "@/components/ProductPhoto";
 import CategoryScroller from "@/components/CategoryScroller";
 
 import { useState, useEffect, useRef } from "react";
+import { isDemoMode, preserveDemoUrl } from '@/lib/demoMode';
 import Link from "next/link";
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
@@ -173,6 +174,7 @@ export default function POSPage() {
       try {
         sessionStorage.removeItem('sakunota_demo_mode');
         sessionStorage.removeItem('sakunota_demo_initialized');
+        sessionStorage.removeItem('sakunota_demo_started_at');
         const url = new URL(window.location.href);
         url.searchParams.delete('demo');
         window.history.replaceState({}, '', url.toString());
@@ -832,12 +834,13 @@ export default function POSPage() {
   };
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.location.search.includes("demo=true")) {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "true") {
       try {
         sessionStorage.setItem("sakunota_demo_mode", "true");
       } catch (_) {}
     }
-    const wantsDemo = window.location.search.includes('demo=true') || sessionStorage.getItem('sakunota_demo_mode') === 'true';
+    preserveDemoUrl();
+    const wantsDemo = isDemoMode();
     if (wantsDemo !== (db.name === 'SakuNotaDemoDB')) { window.location.reload(); return; }
     async function initAccess() {
       setIsAccessChecking(true);
@@ -862,6 +865,10 @@ export default function POSPage() {
     initAccess();
 
     const interval = setInterval(loadData, 5000);
+    const licenseTimer = setInterval(() => { checkCashierAccess().then(setAccessStatus).catch(() => {}); }, 60000);
+    const recheckAccess = () => { checkCashierAccess(true).then(setAccessStatus).catch(() => {}); };
+    window.addEventListener('focus', recheckAccess);
+    window.addEventListener('online', recheckAccess);
 
     const handlePop = () => {
       initAccess();
@@ -870,6 +877,9 @@ export default function POSPage() {
 
     return () => {
       clearInterval(interval);
+      clearInterval(licenseTimer);
+      window.removeEventListener('focus', recheckAccess);
+      window.removeEventListener('online', recheckAccess);
       window.removeEventListener("popstate", handlePop);
     };
   }, []);
@@ -2396,7 +2406,7 @@ export default function POSPage() {
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex flex-wrap items-center justify-between text-xs text-amber-950 font-medium shrink-0 z-40">
           <div className="flex items-center gap-2">
             <span className="font-black bg-amber-500 text-white px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase shadow-xs">DEMO KASIR</span>
-            <span>Mode Demo Kasir: Data hanya tersimpan sementara dan otomatis di-reset saat keluar. Untuk pemakaian permanen di memori HP, gunakan Trial atau Lisensi Resmi.</span>
+            <span>Demo Kasir: 30 menit, maksimal 50 transaksi latihan. Data demo terpisah dari toko asli dan di-reset saat memulai sesi demo baru. Gunakan Trial atau Lisensi Resmi untuk usaha.</span>
           </div>
           <div className="flex items-center gap-2 mt-1 sm:mt-0 font-bold">
             <button type="button" onClick={handleExitDemo} className="text-amber-900 hover:text-amber-950 font-bold text-xs px-2.5 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300 transition-colors">Keluar Demo</button>

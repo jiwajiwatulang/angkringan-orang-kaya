@@ -25,7 +25,8 @@ export async function onRequest(context: any) {
       });
     }
 
-    // Try finding by registrationId
+    if (!query.startsWith('REG-') && !query.toUpperCase().startsWith('SN-TRIAL-')) return Response.json({success:false,error:'Gunakan nomor pendaftaran rahasia atau kode trial. Pencarian lewat nomor WhatsApp dinonaktifkan demi privasi.'},{status:400,headers:{'Cache-Control':'no-store'}});
+    // These identifiers are receipt secrets; phone numbers are never authentication.
     let reg = await getBetaRegistrationByIdD1(db, query);
 
     // Try finding by trialLicenseKey
@@ -33,11 +34,6 @@ export async function onRequest(context: any) {
       reg = await getBetaRegistrationByLicenseKeyD1(db, query.toUpperCase());
     }
 
-    // Try finding by WhatsApp
-    if (!reg) {
-      const cleanPhone = query.replace(/^0/, "62").replace(/[^0-9]/g, "");
-      reg = await getBetaRegistrationByWhatsappD1(db, cleanPhone) || await getBetaRegistrationByWhatsappD1(db, query);
-    }
 
     if (!reg) {
       return new Response(JSON.stringify({ success: false, error: "Data pendaftaran tidak ditemukan." }), {
@@ -51,10 +47,7 @@ export async function onRequest(context: any) {
         success: true,
         registration: {
           registrationId: reg.registrationId,
-          businessName: reg.businessName,
           status: reg.status,
-          trialLicenseKey: reg.status === "disetujui" || reg.status === "dikonversi_berbayar" ? reg.trialLicenseKey : undefined,
-          boundDeviceId: reg.boundDeviceId,
           activatedAt: reg.activatedAt,
           expiresAt: reg.expiresAt,
           durationDays: reg.durationDays,
@@ -62,7 +55,7 @@ export async function onRequest(context: any) {
           rejectionReason: reg.rejectionReason,
         },
       }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      { status: 200, headers: { "Content-Type": "application/json", 'Cache-Control':'no-store' } }
     );
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e.message }), {

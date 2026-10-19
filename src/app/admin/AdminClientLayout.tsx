@@ -1,6 +1,7 @@
 "use client";
 import LockIcon from "@/components/LockIcon";
 
+import { isDemoMode, preserveDemoUrl, demoSessionValid } from "@/lib/demoMode";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -35,10 +36,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const [isLainnyaOpen, setIsLainnyaOpen] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  useEffect(() => { preserveDemoUrl(); }, [pathname]);
 
   useEffect(() => {
     const recheck = async () => {
-      if (db.name === 'SakuNotaDemoDB') return;
+      if (db.name === 'SakuNotaDemoDB') { if (!demoSessionValid()) setIsAuthenticated(false); return; }
       if (!(await verifyAdminSession())) setIsAuthenticated(false);
     };
     window.addEventListener('focus', recheck);
@@ -54,10 +56,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     }
     if (typeof window !== "undefined") {
       const demoFlag =
-        sessionStorage.getItem("sakunota_demo_mode") === "true" ||
-        window.location.search.includes("demo=true");
+        isDemoMode();
       setIsDemo(demoFlag);
-      if (demoFlag) {
+      if (demoFlag && demoSessionValid()) {
         setIsAuthenticated(true);
       }
     }
@@ -65,14 +66,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   // Auth verification menggunakan sesi kriptografis aman (IndexedDB + sessionStorage)
   useEffect(() => {
-    const wantsDemo = window.location.search.includes('demo=true') || sessionStorage.getItem('sakunota_demo_mode') === 'true';
+    preserveDemoUrl();
+    const wantsDemo = isDemoMode();
     if (wantsDemo !== (db.name === 'SakuNotaDemoDB')) { window.location.reload(); return; }
     verifyAdminSession().then((isValid) => {
-      const isDemoMode =
-        typeof window !== "undefined" &&
-        (sessionStorage.getItem("sakunota_demo_mode") === "true" ||
-          window.location.search.includes("demo=true"));
-      setIsAuthenticated(isValid || isDemoMode);
+      setIsAuthenticated(db.name === 'SakuNotaDemoDB' ? demoSessionValid() : isValid);
     }).catch(() => setIsAuthenticated(false)).finally(() => setIsAuthReady(true));
   }, [setIsAuthenticated]);
 
@@ -253,6 +251,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   // Unauthenticated: PIN Login / Pemulihan Pemilik / Konfigurasi Awal
   if (!isAuthReady) return <div className="min-h-screen flex items-center justify-center bg-app text-muted" role="status">Menyiapkan Admin SakuNota…</div>;
+  if (isDemo && !demoSessionValid()) return <div className="p-8 text-fg"><h1>Sesi demo selesai</h1><p>Demo tersedia selama 30 menit. Gunakan trial atau lisensi resmi untuk usaha.</p><button onClick={() => { ['sakunota_demo_mode','sakunota_demo_initialized','sakunota_demo_started_at'].forEach(k => sessionStorage.removeItem(k)); window.location.assign('/'); }}>Keluar Demo</button></div>;
   if (!isAuthenticated) {
     // 1. MODAL TAMPILKAN RECOVERY CODE BARU KEPADA PEMILIK
     if (revealedCode) {
