@@ -272,7 +272,46 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   // Unauthenticated: PIN Login / Pemulihan Pemilik / Konfigurasi Awal
   if (!isAuthReady) return <div className="min-h-screen flex items-center justify-center bg-app text-muted" role="status">Menyiapkan Admin SakuNota…</div>;
-  if (isDemo && !demoSessionValid()) return <div className="p-8 text-fg"><h1>Sesi demo selesai</h1><p>Demo tersedia selama 30 menit. Gunakan trial atau lisensi resmi untuk usaha.</p><button onClick={() => { ['sakunota_demo_mode','sakunota_demo_initialized','sakunota_demo_started_at'].forEach(k => sessionStorage.removeItem(k)); window.location.assign('/'); }}>Keluar Demo</button></div>;
+  if (isDemo && !demoSessionValid()) {
+    return (
+      <div className="min-h-screen bg-app flex flex-col items-center justify-center p-4">
+        <div className="bg-surface border border-line rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center space-y-4 animate-in zoom-in-95 duration-200">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto mb-1">
+            <LineIcon name="info" className="w-7 h-7" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-fg">Sesi Demo Selesai</h2>
+            <p className="text-xs text-muted leading-relaxed mt-1">
+              Waktu simulasi mode demo 30 menit telah berakhir. Silakan keluar dari demo untuk kembali ke beranda atau beli lisensi resmi untuk penggunaan usaha.
+            </p>
+          </div>
+
+          <div className="pt-2 space-y-2">
+            <button
+              type="button"
+              onClick={() => {
+                ["sakunota_demo_mode", "sakunota_demo_initialized", "sakunota_demo_started_at"].forEach((k) =>
+                  sessionStorage.removeItem(k)
+                );
+                window.location.assign("/");
+              }}
+              className="w-full py-3.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>Keluar Mode Demo</span>
+              <span>→</span>
+            </button>
+
+            <Link
+              href="/?beli=true"
+              className="w-full py-3 px-4 rounded-2xl bg-card hover:bg-line border border-line text-fg font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
+            >
+              <span>Beli Lisensi Resmi (Rp50.000)</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (!isAuthenticated) {
     // 1. MODAL TAMPILKAN RECOVERY CODE BARU KEPADA PEMILIK
     if (revealedCode) {
