@@ -121,12 +121,12 @@ export default function MobileTableScreen({
 
               if (isPaid) {
                 statusLabel = "Lunas";
-                badgeColor = "bg-blue-50 text-blue-700 border border-blue-200";
-                cardBorder = "border-blue-300 bg-card";
+                badgeColor = "bg-emerald-50 text-emerald-800 border border-emerald-200";
+                cardBorder = "border-emerald-300 bg-card";
               } else if (isOccupied) {
                 statusLabel = "Terisi";
-                badgeColor = "bg-amber-500/20 text-amber-300 border border-amber-500/30";
-                cardBorder = "border-amber-500/40 bg-card";
+                badgeColor = "bg-amber-50 text-amber-950 border border-amber-300";
+                cardBorder = "border-amber-400 bg-card";
               }
 
               return (
@@ -212,7 +212,7 @@ export default function MobileTableScreen({
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted">Status:</span>
-                      <span className={`font-bold ${isPaid ? "text-blue-600" : "text-amber-500"}`}>
+                      <span className={`font-bold ${isPaid ? "text-emerald-700" : "text-amber-950"}`}>
                         {isPaid ? "Lunas" : "Belum Bayar"}
                       </span>
                     </div>

@@ -15,7 +15,7 @@ Ruang lingkup: pengamanan lisensi, pemisahan demo, otorisasi API owner, dan kelu
 
 ## Validasi rilis
 
-Jalankan npm test, npm run test:stability, npm run build, npm run test:offline, dan Wrangler dry-run sebelum deployment. Uji Chrome dengan profil sementara meliputi checkout demo, cetak aman, normalisasi URL, pemisahan database, muat ulang offline, dan kedaluwarsa demo. Pengujian otomatis juga mencakup migrasi lisensi lama, pemalsuan sesi, aktivasi bersamaan, backup/restore, dan pembatasan akses waiter.
+Hasil: npm test 198 lulus; npm run test:stability 24 lulus. Build, pemeriksaan 151 URL offline, dan Wrangler dry-run lulus. Uji Chrome dengan profil sementara meliputi checkout demo, cetak aman, normalisasi URL, pemisahan database, muat ulang offline, dan kedaluwarsa demo; seluruhnya lulus tanpa exception halaman. Pengujian otomatis juga mencakup migrasi lisensi lama, pemalsuan sesi, aktivasi bersamaan, backup/restore, dan pembatasan akses waiter.
 
 ## Batas verifikasi
 

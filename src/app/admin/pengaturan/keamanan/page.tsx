@@ -188,7 +188,7 @@ export default function PengaturanKeamananPage() {
               />
             </div>
           ) : (
-            <div className="p-3 bg-amber-950/40 border border-amber-800/50 rounded-xl text-xs text-amber-200"> Perangkat ini belum memiliki PIN Admin yang tersimpan. Silakan langsung tentukan PIN baru untuk mengamankan operasional toko.
+            <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-950 font-medium"> Perangkat ini belum memiliki PIN Admin yang tersimpan. Silakan langsung tentukan PIN baru untuk mengamankan operasional toko.
             </div>
           )}
 

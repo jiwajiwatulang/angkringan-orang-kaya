@@ -1754,10 +1754,10 @@ export default function POSPage() {
     if (!isMobile) {
       return (
         <div className="flex flex-col h-full">
-          <div className="p-5 border-b border-line bg-surface rounded-t-3xl">
+          <div className="p-3 sm:p-4 lg:p-5 border-b border-line bg-surface rounded-t-3xl md:rounded-none">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-fg tracking-tight">{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
+                <h2 className="text-base sm:text-lg lg:text-xl font-bold text-fg tracking-tight">{editingOrderId ? 'Edit Open Bill' : 'Pesanan Anda'}</h2>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-accent/60 text-accent-text font-extrabold">
                   {cart.reduce((sum, item) => sum + item.qty, 0)} item
                 </span>
@@ -1778,7 +1778,7 @@ export default function POSPage() {
 
             {selectedTableObj && (
               <div className="mt-3 flex flex-wrap gap-2 items-center">
-                <div className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm ${selectedTableStatus === 'open' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : selectedTableStatus === 'lunas' ? 'bg-accent/10 text-accent-text border border-accent/30' : 'bg-card text-slate-200 border border-line'}`}>
+                <div className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm ${selectedTableStatus === 'open' ? 'bg-amber-50 text-amber-950 border border-amber-300' : selectedTableStatus === 'lunas' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-card text-fg border border-line'}`}>
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" /></svg>
                   {selectedTableObj.nomor.replace(/^Meja\s*/i, '')}
                   <span className="opacity-70 ml-1">({selectedTableStatus === 'open' ? 'Open Bill' : selectedTableStatus === 'lunas' ? 'Lunas' : 'Kosong'})</span>
@@ -1792,7 +1792,7 @@ export default function POSPage() {
 
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-card">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5 space-y-2.5 sm:space-y-4 bg-card">
             {cart.length === 0 && selectedTableStatus === 'lunas' && (() => {
               const paidOrder = allOrders
                 .filter(o => o.tableId === selectedTableObj?.id && o.status === 'paid')
@@ -1874,9 +1874,9 @@ export default function POSPage() {
             ))}
           </div>
 
-          <div className="p-5 bg-surface border-t border-line shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+          <div className="p-3 sm:p-4 lg:p-5 bg-surface border-t border-line shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
             {cart.length > 0 && (
-              <div className="mb-3 space-y-1.5 text-xs text-muted border-b border-line pb-3">
+              <div className="mb-2.5 sm:mb-3 space-y-1 sm:space-y-1.5 text-xs text-muted border-b border-line pb-2.5 sm:pb-3">
                 <div className="flex justify-between items-center">
                   <span>Subtotal:</span>
                   <span className="font-semibold text-fg">Rp {rawSubtotal.toLocaleString('id-ID')}</span>
@@ -1923,25 +1923,25 @@ export default function POSPage() {
               </div>
             )}
 
-            <div className="flex justify-between items-end mb-4">
-              <span className=" text-muted font-bold text-xs uppercase tracking-wider">Total Pembayaran</span>
-              <span className="text-2xl md:text-3xl font-black text-fg leading-none tracking-tight">Rp {totalPrice.toLocaleString('id-ID')}</span>
+            <div className="flex justify-between items-end mb-2.5 sm:mb-4">
+              <span className=" text-muted font-bold text-[11px] sm:text-xs uppercase tracking-wider">Total Pembayaran</span>
+              <span className="text-xl sm:text-2xl lg:text-3xl font-black text-fg leading-none tracking-tight">Rp {totalPrice.toLocaleString('id-ID')}</span>
             </div>
             <div className="flex gap-2">
               {editingOrderId && (
-                <button onClick={handleShowDraftBill} className="w-1/4 bg-card border border-line text-fg py-3.5 rounded-xl font-bold text-xs shadow-sm active:scale-95 transition-all"> Draft</button>
+                <button onClick={handleShowDraftBill} className="w-1/4 bg-card border border-line text-fg py-2.5 sm:py-3.5 rounded-xl font-bold text-xs shadow-sm active:scale-95 transition-all"> Draft</button>
               )}
               {(editingOrderId || (orderType === "Dine-in" && selectedTable && activeOrders.some(o => o.tableId === parseInt(selectedTable)))) && (
                 <button 
                   type="button"
                   onClick={handleOpenSplitBillFromCart} 
-                  className="w-1/3 bg-slate-100 text-slate-800 hover:bg-slate-200 py-3.5 rounded-xl font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
+                  className="w-1/3 bg-slate-100 text-slate-800 hover:bg-slate-200 py-2.5 sm:py-3.5 rounded-xl font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
                 > Split Bill
                 </button>
               )}
-              <button 
-                onClick={openPaymentModal} 
-                className="flex-1 bg-accent hover:bg-accent-hover text-white py-3.5 rounded-xl font-extrabold text-sm md:text-base shadow-lg shadow-accent/25 active:scale-95 transition-all disabled:opacity-40" 
+              <button
+                onClick={openPaymentModal}
+                className="flex-1 bg-accent hover:bg-accent-hover text-white py-2.5 sm:py-3.5 rounded-xl font-extrabold text-sm md:text-base shadow-lg shadow-accent/25 active:scale-95 transition-all disabled:opacity-40"
                 disabled={cart.length === 0}
               >
                 Lanjut ke Pembayaran →
@@ -2010,7 +2010,7 @@ export default function POSPage() {
             {/* Meja badge & Customer Name */}
             <div className="mt-2 flex items-center gap-2">
               {selectedTableObj && (
-                <div className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm shrink-0 ${selectedTableStatus === 'open' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : selectedTableStatus === 'lunas' ? 'bg-accent/10 text-accent-text border border-accent/30' : 'bg-card text-slate-200 border border-line'}`}>
+                <div className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm shrink-0 ${selectedTableStatus === 'open' ? 'bg-amber-50 text-amber-950 border border-amber-300' : selectedTableStatus === 'lunas' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-card text-fg border border-line'}`}>
                   <span><LineIcon name="info" /></span>
                   <span>{selectedTableObj.nomor.replace(/^Meja\s*/i, '')}</span>
                   <span className="opacity-70 text-[10px]">({selectedTableStatus === 'open' ? 'Open' : selectedTableStatus === 'lunas' ? 'Lunas' : 'Kosong'})</span>
@@ -2933,31 +2933,31 @@ export default function POSPage() {
       )}
 
       {/* ======================================================== */}
-      {/* --- DESKTOP APPLICATION WORKSPACE (>= 1024px / lg:flex) --- */}
+      {/* --- UNIFIED POS WORKSPACE (Desktop, Tablet & Landscape) --- */}
       {/* ======================================================== */}
-      <div className="hidden lg:flex flex-col h-full w-full overflow-hidden">
+      <div className="hidden md:flex landscape:flex flex-col h-full w-full overflow-hidden">
         {/* Top Application Header (Full Width) */}
-        <header className="h-16 bg-card border-b border-line px-4 flex items-center justify-between shrink-0 z-30 transition-colors">
+        <header className="h-12 md:h-14 lg:h-16 bg-card border-b border-line px-3 md:px-4 flex items-center justify-between shrink-0 z-30 transition-colors">
         {/* Left: Brand & Store Name */}
-        <Link href="/" className="flex items-center space-x-3 hover:opacity-85 transition-opacity" title="Kembali ke Beranda SakuNota">
+        <Link href="/" className="flex items-center space-x-2 md:space-x-3 hover:opacity-85 transition-opacity" title="Kembali ke Beranda SakuNota">
           {storeSettings.storeLogo ? (
             <img
               src={storeSettings.storeLogo}
               alt="Logo Toko"
-              className="w-10 h-10 rounded-xl object-contain bg-surface border border-line shadow-sm flex-shrink-0 p-0.5"
+              className="w-8 h-8 md:w-10 md:h-10 rounded-xl object-contain bg-surface border border-line shadow-sm flex-shrink-0 p-0.5"
             />
           ) : (
             <img
               src="/icon.png"
               alt="SakuNota"
-              className="w-10 h-10 rounded-xl object-contain shadow-md shadow-accent/20 flex-shrink-0"
+              className="w-8 h-8 md:w-10 md:h-10 rounded-xl object-contain shadow-md shadow-accent/20 flex-shrink-0"
             />
           )}
           <div className="min-w-0">
-            <h1 className="text-sm md:text-base font-black text-fg leading-tight truncate">
+            <h1 className="text-xs md:text-sm lg:text-base font-black text-fg leading-tight truncate">
               {storeSettings.storeName || 'SakuNota'}
             </h1>
-            <span className="text-[11px] text-muted font-medium line-clamp-1">
+            <span className="text-[10px] md:text-[11px] text-muted font-medium line-clamp-1 hidden sm:block">
               {storeSettings.storeAddress || 'Kasir Jalan Tanpa Internet'}
             </span>
           </div>
@@ -3007,25 +3007,35 @@ export default function POSPage() {
 
       {/* Main Horizontal Workspace Below Top Header */}
       <div className="flex-1 flex overflow-hidden w-full print:hidden">
-        {/* Left Navigation Sidebar (Desktop) */}
-        <aside className="hidden lg:flex flex-col w-52 bg-card border-r border-line p-3 justify-between shrink-0 select-none">
+        {/* Left Navigation Sidebar (Desktop, Tablet & Landscape) */}
+        <aside className="flex flex-col w-14 md:w-16 lg:w-52 bg-card border-r border-line p-1.5 md:p-2 lg:p-3 justify-between shrink-0 select-none">
           <nav className="space-y-1" aria-label="Navigasi karyawan">
             {[{ id: 'kasir', label: 'Kasir', icon: 'cashier' }, { id: 'menu', label: 'Menu', icon: 'food' },
               ...(isTableManagementEnabled(storeSettings) ? [{ id: 'meja', label: 'Meja', icon: 'table' }] : []),
               { id: 'pesanan', label: 'Pesanan', icon: 'receipt' }, { id: 'shift', label: 'Shift Saya', icon: 'shift' }].map(item =>
-              <button key={item.id} type="button" aria-current={view === item.id ? 'page' : undefined} onClick={() => navigateWorkspace(item.id as typeof view)} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-left ${view === item.id ? 'bg-accent text-white' : 'text-fg hover:bg-surface'}`}><LineIcon name={item.icon} />{item.label}</button>)}
+              <button
+                key={item.id}
+                type="button"
+                aria-current={view === item.id ? 'page' : undefined}
+                onClick={() => navigateWorkspace(item.id as typeof view)}
+                className={`w-full flex items-center justify-center lg:justify-start gap-2.5 px-2 lg:px-3 py-2.5 lg:py-3 rounded-xl text-xs lg:text-sm font-bold text-left transition-colors ${view === item.id ? 'bg-accent text-white' : 'text-fg hover:bg-surface'}`}
+                title={item.label}
+              >
+                <LineIcon name={item.icon} className="w-5 h-5 shrink-0" />
+                <span className="hidden lg:inline truncate">{item.label}</span>
+              </button>)}
           </nav>
 
-          <div className="pt-3 border-t border-line">
-            <div className="px-2.5 py-2 rounded-xl bg-surface border border-line text-[11px] text-muted flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="font-semibold text-emerald-700">Siap Tanpa Internet</span>
+          <div className="pt-2 lg:pt-3 border-t border-line hidden sm:block">
+            <div className="px-1.5 lg:px-2.5 py-1.5 lg:py-2 rounded-xl bg-surface border border-line text-[10px] lg:text-[11px] text-muted flex items-center justify-center lg:justify-start gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+              <span className="font-semibold text-emerald-700 hidden lg:inline truncate">Siap Tanpa Internet</span>
             </div>
           </div>
         </aside>
 
         {/* Central Workspace */}
-        <div className="flex-1 min-w-0 flex flex-col h-full pb-20 lg:pb-0 overflow-hidden bg-surface transition-colors">
+        <div className="flex-1 min-w-0 flex flex-col h-full pb-0 overflow-hidden bg-surface transition-colors">
           {view === 'kasir' && <><div className="p-4 border-b border-line flex flex-wrap gap-3 items-center justify-between"><h1 className="font-bold text-lg">Kasir</h1><button type="button" className="px-4 py-2 bg-accent text-white rounded-xl text-sm font-bold" onClick={() => navigateWorkspace('menu')}>Pilih Produk / Scan Barcode</button></div>{renderCartInner(false)}</>}
           {view === 'pesanan' && renderCashierOrders()}
           {view === 'shift' && renderShiftPanel()}
@@ -3184,7 +3194,7 @@ export default function POSPage() {
                               <ProductPhoto product={item} />
 
                               {isSoldOut ? (
-                                <span className="absolute top-2 right-2 text-[10px] bg-red-950 text-red-400 border border-red-800 px-2 py-0.5 rounded-full font-bold">
+                                <span className="absolute top-2 right-2 text-[10px] bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full font-bold">
                                   Habis
                                 </span>
                               ) : item.isGroup ? (
@@ -3286,17 +3296,17 @@ export default function POSPage() {
           </div>
         )}
 
-        {/* Desktop Sidebar Cart */}
-        <div className={`hidden ${view === 'menu' || view === 'meja' ? 'lg:flex' : ''} flex-col w-80 xl:w-96 bg-card border-l border-line shadow-2xl z-20 shrink-0`}>
+        {/* POS Sidebar Cart (Desktop, Tablet & Landscape) */}
+        <div className={`hidden ${view === 'menu' || view === 'meja' ? 'md:flex landscape:flex' : ''} flex-col w-64 sm:w-72 lg:w-80 xl:w-96 bg-card border-l border-line shadow-2xl z-20 shrink-0`}>
           {renderCartInner(false)}
         </div>
       </div>
       </div>
 
       {/* ======================================================== */}
-      {/* --- DEDICATED MOBILE & TABLET APPLICATION SHELL (< 1024px) --- */}
+      {/* --- DEDICATED MOBILE PORTRAIT APPLICATION SHELL (< 768px portrait) --- */}
       {/* ======================================================== */}
-      <div className="flex lg:hidden flex-col h-full w-full overflow-hidden bg-app">
+      <div className="flex md:hidden landscape:hidden flex-col h-full w-full overflow-hidden bg-app">
         {/* Mobile Top Header */}
         <MobileHeader
           storeSettings={storeSettings}
@@ -3320,7 +3330,15 @@ export default function POSPage() {
               onSelectCategory={setActiveCategory}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
-              onAddToCart={(item) => addToCart(item)}
+              onAddToCart={(item) => {
+                if (item.isGroup) {
+                  setActiveVariantGroup({ title: item.nama, variants: item.variants });
+                } else if (item.modifiers && item.modifiers.length > 0) {
+                  openModifierModal(item);
+                } else {
+                  addToCart(item);
+                }
+              }}
               onOpenBarcodeScan={() => setIsBarcodeScanOpen(true)}
             />
           )}
@@ -3816,9 +3834,9 @@ export default function POSPage() {
             {/* Status Rekonsiliasi Banner */}
             <div className={`mt-4 p-4 rounded-2xl text-center border ${
               blindCloseResult.cashDifference === 0 || blindCloseResult.difference === 0 
-                ? ' bg-accent/40 border-accent/40 text-accent-text'
+                ? ' bg-emerald-50 border-emerald-200 text-emerald-800'
                 : (blindCloseResult.cashDifference || blindCloseResult.difference || 0) > 0
-                ? ' bg-amber-950/40 border-amber-700 text-amber-300'
+                ? ' bg-amber-50 border-amber-300 text-amber-950'
                 : ' bg-rose-50 border-rose-200 text-rose-700'
             }`}>
               <p className="text-[11px] font-bold uppercase tracking-wider">Hasil Rekonsiliasi Kas Fisik</p>
@@ -3831,7 +3849,7 @@ export default function POSPage() {
 
             {/* Rincian Finansial Kas Fisik Laci */}
             <div className="mt-4 bg-surface/60 p-4 rounded-2xl border border-line space-y-2 text-xs">
-              <div className="flex justify-between text-slate-300">
+              <div className="flex justify-between text-fg font-medium">
                 <span>Modal Awal Kas:</span>
                 <span className="font-bold">Rp {blindCloseResult.startingCash?.toLocaleString('id-ID')}</span>
               </div>
@@ -3867,7 +3885,7 @@ export default function POSPage() {
               </div>
               <div className="pt-2 border-t border-dashed border-line flex justify-between font-black text-sm">
                 <span>Selisih:</span>
-                <span className={(blindCloseResult.cashDifference || blindCloseResult.difference || 0) === 0 ? 'text-accent-text' : (blindCloseResult.cashDifference || blindCloseResult.difference || 0) > 0 ? 'text-amber-400' : 'text-rose-700'}>
+                <span className={(blindCloseResult.cashDifference || blindCloseResult.difference || 0) === 0 ? 'text-accent-text' : (blindCloseResult.cashDifference || blindCloseResult.difference || 0) > 0 ? 'text-amber-950 font-black' : 'text-rose-700'}>
                   Rp {(blindCloseResult.cashDifference !== undefined ? blindCloseResult.cashDifference : blindCloseResult.difference)?.toLocaleString('id-ID')}
                 </span>
               </div>
@@ -3975,9 +3993,9 @@ export default function POSPage() {
                     Rp {(splitBillTargetOrder.paidAmount || 0).toLocaleString('id-ID')}
                   </span>
                 </div>
-                <div className=" bg-amber-950/40 rounded-xl py-1 px-1 border border-amber-800">
-                  <span className="text-[10px] text-amber-300 block font-bold uppercase">Sisa Tagihan</span>
-                  <span className="text-xs md:text-sm font-black text-amber-400">
+                <div className="bg-amber-50 rounded-xl py-1 px-2 border border-amber-300">
+                  <span className="text-[10px] text-amber-950 block font-bold uppercase">Sisa Tagihan</span>
+                  <span className="text-xs md:text-sm font-black text-amber-950">
                     Rp {(splitBillTargetOrder.remainingBalance !== undefined ? splitBillTargetOrder.remainingBalance : splitBillTargetOrder.total).toLocaleString('id-ID')}
                   </span>
                 </div>
@@ -3988,19 +4006,19 @@ export default function POSPage() {
                 <button
                   type="button"
                   onClick={() => setSplitTab('item')}
-                  className={'flex-1 py-2 rounded-xl text-xs font-bold transition-all ' + (splitTab === 'item' ? ' bg-card text-amber-400 shadow-sm' : 'text-muted hover:text-fg')}
+                  className={'flex-1 py-2 rounded-xl text-xs font-bold transition-all ' + (splitTab === 'item' ? ' bg-card text-fg shadow-sm font-black' : 'text-muted hover:text-fg')}
                 > Split per Menu
                 </button>
                 <button
                   type="button"
                   onClick={() => setSplitTab('equal')}
-                  className={'flex-1 py-2 rounded-xl text-xs font-bold transition-all ' + (splitTab === 'equal' ? ' bg-card text-amber-400 shadow-sm' : 'text-muted hover:text-fg')}
+                  className={'flex-1 py-2 rounded-xl text-xs font-bold transition-all ' + (splitTab === 'equal' ? ' bg-card text-fg shadow-sm font-black' : 'text-muted hover:text-fg')}
                 > Bagi Rata
                 </button>
                 <button
                   type="button"
                   onClick={() => setSplitTab('partial')}
-                  className={'flex-1 py-2 rounded-xl text-xs font-bold transition-all ' + (splitTab === 'partial' ? ' bg-card text-amber-400 shadow-sm' : 'text-muted hover:text-fg')}
+                  className={'flex-1 py-2 rounded-xl text-xs font-bold transition-all ' + (splitTab === 'partial' ? ' bg-card text-fg shadow-sm font-black' : 'text-muted hover:text-fg')}
                 > Cicil / Parsial
                 </button>
               </div>
@@ -4008,7 +4026,7 @@ export default function POSPage() {
               {/* TAB 1: SPLIT PER MENU */}
               {splitTab === 'item' && (
                 <div className="space-y-2 bg-surface/40 p-3 rounded-2xl border border-line">
-                  <span className="text-xs font-bold text-slate-300 block mb-1">
+                  <span className="text-xs font-bold text-fg block mb-1">
                     Pilih menu yang ingin dibayar pelanggan saat ini:
                   </span>
                   <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
@@ -4028,14 +4046,14 @@ export default function POSPage() {
                                 {item.selectedModifiers.map((m: any) => m.optionName).join(', ')}
                               </div>
                             )}
-                            <div className="text-[11px] text-yellow-500 font-bold">
+                            <div className="text-[11px] text-fg font-bold">
                               Rp {(item.hargaSatuan || item.harga).toLocaleString('id-ID')}
                               <span className="text-muted font-normal ml-2">({paidQty}/{totalQty} lunas)</span>
                             </div>
                           </div>
 
                           {isFullyPaid ? (
-                            <span className="text-[10px] font-bold text-accent-text bg-accent/60 px-2 py-1 rounded-lg">
+                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">
                               Lunas
                             </span>
                           ) : (
@@ -4051,7 +4069,7 @@ export default function POSPage() {
                               <button
                                 type="button"
                                 onClick={() => setSplitSelectedItems(prev => ({ ...prev, [item.id]: Math.min(unpaidQty, (prev[item.id] || 0) + 1) }))}
-                                className="w-6 h-6 rounded bg-amber-500 font-black text-white"
+                                className="w-6 h-6 rounded bg-amber-600 font-black text-white"
                               >
                                 +
                               </button>
@@ -4063,7 +4081,7 @@ export default function POSPage() {
                   </div>
                   <div className="pt-2 border-t border-line flex justify-between items-center text-xs font-bold">
                     <span>Estimasi Subtotal Pilihan:</span>
-                    <span className=" text-amber-400 font-black text-sm">
+                    <span className=" text-amber-950 font-black text-sm">
                       Rp {calculateSplitItemTotal().toLocaleString('id-ID')}
                     </span>
                   </div>
@@ -4074,14 +4092,14 @@ export default function POSPage() {
               {splitTab === 'equal' && (
                 <div className="space-y-3 bg-surface/40 p-4 rounded-2xl border border-line">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-slate-300">Bagi rata untuk:</span>
+                    <span className="text-xs font-bold text-fg">Bagi rata untuk:</span>
                     <div className="flex gap-1.5">
                       {[2, 3, 4, 5].map(n => (
                         <button
                           key={n}
                           type="button"
                           onClick={() => setSplitNumPeople(n)}
-                          className={'px-3 py-1.5 rounded-xl text-xs font-bold transition-all ' + (splitNumPeople === n ? 'bg-amber-500 text-white shadow' : ' bg-card text-slate-300 border border-line')}
+                          className={'px-3 py-1.5 rounded-xl text-xs font-bold transition-all ' + (splitNumPeople === n ? 'bg-amber-600 text-white shadow' : ' bg-card text-fg border border-line hover:border-accent')}
                         >
                           {n} Orang
                         </button>
@@ -4099,9 +4117,9 @@ export default function POSPage() {
 
                       return (
                         <div key={idx} className="flex justify-between items-center py-1 border-b border-line last:border-0">
-                          <span className="font-semibold text-slate-300"> Bagian Orang #{idx + 1} {idx === 0 && mod > 0 && <span className="text-[10px] text-muted">(+sisa pembulatan)</span>}:
+                          <span className="font-semibold text-fg"> Bagian Orang #{idx + 1} {idx === 0 && mod > 0 && <span className="text-[10px] text-muted">(+sisa pembulatan)</span>}:
                           </span>
-                          <span className="font-black text-amber-400">
+                          <span className="font-black text-amber-950">
                             Rp {share.toLocaleString('id-ID')}
                           </span>
                         </div>
@@ -4116,7 +4134,7 @@ export default function POSPage() {
               {/* TAB 3: CICIL / PARSIAL BEBAS */}
               {splitTab === 'partial' && (
                 <div className="space-y-3 bg-surface/40 p-4 rounded-2xl border border-line">
-                  <label className="block text-xs font-bold text-slate-300">
+                  <label className="block text-xs font-bold text-fg">
                     Masukkan nominal yang ingin dibayar saat ini (Rp):
                   </label>
                   <input
@@ -4132,7 +4150,7 @@ export default function POSPage() {
                         key={amt}
                         type="button"
                         onClick={() => setSplitCustomAmount(amt.toString())}
-                        className="py-1 px-2 text-xs bg-card border border-line rounded-lg font-semibold text-slate-300 hover:bg-card"
+                        className="py-1 px-2 text-xs bg-card border border-line rounded-lg font-semibold text-fg hover:border-accent"
                       >
                         {amt / 1000}rb
                       </button>
@@ -4140,7 +4158,7 @@ export default function POSPage() {
                     <button
                       type="button"
                       onClick={() => setSplitCustomAmount((splitBillTargetOrder.remainingBalance !== undefined ? splitBillTargetOrder.remainingBalance : splitBillTargetOrder.total).toString())}
-                      className="py-1 px-2 text-xs bg-amber-950/60 border border-amber-800 rounded-lg font-bold text-amber-400"
+                      className="py-1 px-2 text-xs bg-amber-50 border border-amber-300 rounded-lg font-bold text-amber-950 hover:bg-amber-100"
                     >
                       Sisa Tagihan
                     </button>
@@ -4150,14 +4168,14 @@ export default function POSPage() {
 
               {/* METODE PEMBAYARAN & UANG DITERIMA */}
               <div className=" bg-surface/40 p-4 rounded-2xl border border-line space-y-3">
-                <span className="text-xs font-bold text-slate-300 block">Metode Pembayaran untuk Split Ini:</span>
+                <span className="text-xs font-bold text-fg block">Metode Pembayaran untuk Split Ini:</span>
                 <div className="grid grid-cols-3 gap-2">
                   {["Cash", "QRIS", "Transfer"].map(m => (
                     <button
                       key={m}
                       type="button"
                       onClick={() => setSplitPaymentMethod(m)}
-                      className={'py-2 rounded-xl text-xs font-bold transition-all border ' + (splitPaymentMethod === m ? 'bg-accent border-accent text-white shadow' : ' bg-card border-line text-slate-300')}
+                      className={'py-2 rounded-xl text-xs font-bold transition-all border ' + (splitPaymentMethod === m ? 'bg-accent border-accent text-white shadow' : ' bg-card border-line text-fg hover:border-accent')}
                     >
                       {m}
                     </button>
@@ -4449,13 +4467,13 @@ export default function POSPage() {
                 ×
               </button>
             </div>
-            <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
+            <div className="w-12 h-12 bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black">
               !
             </div>
             <h3 className="text-base font-black text-fg mb-1">
               {unsavedConfirm.title || "Perubahan Belum Disimpan"}
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed mb-5">
+            <p className="text-xs text-muted leading-relaxed mb-5">
               {unsavedConfirm.message || "Input yang Anda ketik belum disimpan. Yakin ingin membatalkan?"}
             </p>
             <div className="flex space-x-2">

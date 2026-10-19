@@ -343,14 +343,14 @@ export default function PengaturanDataPage() {
 
       {/* Rollback Snapshot jika baru saja melakukan pemulihan */}
       {preRestoreSnapshot && (
-        <div className="p-5 rounded-3xl bg-amber-950/30 border border-amber-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-5 rounded-3xl bg-amber-50 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
-            <span className="text-2xl"><LineIcon name="info" /></span>
+            <span className="text-2xl text-amber-900"><LineIcon name="info" /></span>
             <div>
-              <h4 className="text-xs font-black text-amber-300 uppercase tracking-wider">
+              <h4 className="text-xs font-black text-amber-950 uppercase tracking-wider">
                 Batalkan Pemulihan Terakhir
               </h4>
-              <p className="text-xs text-amber-200/90 mt-0.5 leading-relaxed">
+              <p className="text-xs text-amber-900 mt-0.5 leading-relaxed font-medium">
                 Tersimpan otomatis pada <strong>{new Date(preRestoreSnapshot.timestamp).toLocaleString("id-ID")}</strong> sebelum data terakhir dipulihkan. Jika file yang Anda pulihkan tadi salah, Anda bisa kembali ke data sebelumnya.
               </p>
             </div>
@@ -478,7 +478,7 @@ export default function PengaturanDataPage() {
               setResetPinError("");
               setIsResetModalOpen(true);
             }}
-            className="px-4 py-2 bg-red-600/20 hover:bg-red-600 border border-red-600/40 hover:border-red-600 text-red-300 hover:text-white text-xs font-bold rounded-xl transition-all active:scale-95 shrink-0"
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95 shrink-0 shadow-sm"
           >
             Hapus Riwayat Penjualan & Shift
           </button>
@@ -602,11 +602,11 @@ export default function PengaturanDataPage() {
             </div>
 
             {/* Keamanan & Privasi Data */}
-            <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 space-y-1">
-              <div className="flex items-center gap-2 text-amber-300 font-black text-xs">
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-300 space-y-1">
+              <div className="flex items-center gap-2 text-amber-950 font-black text-xs">
                 <span><LockIcon /> Keamanan & Privasi Data</span>
               </div>
-              <p className="text-[11px] text-amber-200/90 leading-relaxed">
+              <p className="text-[11px] text-amber-900 leading-relaxed font-medium">
                 File cadangan berisi data keuangan, riwayat penjualan, dan nama pelanggan usaha Anda. Simpan file hanya di tempat pribadi (seperti chat WhatsApp ke nomor Anda sendiri atau Google Drive pribadi). <strong>Jangan bagikan file ini ke grup publik atau pihak yang tidak berwenang.</strong>
               </p>
             </div>

@@ -763,7 +763,7 @@ function CatalogPanel() {
               className={`px-3.5 py-1.5 rounded-full font-bold whitespace-nowrap transition-all ${
                 selectedCategory === cat
                   ? "bg-accent text-white shadow-sm"
-                  : " bg-card text-slate-300 hover:bg-card border border-line/60"
+                  : " bg-card text-fg hover:bg-card border border-line"
               }`}
             >
               {cat}
@@ -780,7 +780,7 @@ function CatalogPanel() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="py-1.5 px-2.5 rounded-xl bg-card border border-line font-bold text-slate-300 outline-none"
+                className="py-1.5 px-2.5 rounded-xl bg-card border border-line font-bold text-fg outline-none"
               >
                 <option value="nama_asc"> Nama (A - Z)</option>
                 <option value="nama_desc"> Nama (Z - A)</option>
@@ -796,7 +796,7 @@ function CatalogPanel() {
               <select
                 value={itemsPerPage}
                 onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                className="py-1.5 px-2.5 rounded-xl bg-card border border-line font-bold text-slate-300 outline-none"
+                className="py-1.5 px-2.5 rounded-xl bg-card border border-line font-bold text-fg outline-none"
               >
                 <option value={12}>12 / hal</option>
                 <option value={24}>24 / hal</option>
@@ -941,7 +941,7 @@ function CatalogPanel() {
                           {menu.sku || <span className="text-slate-500 italic">ID #{menu.id}</span>}
                         </td>
                         <td className="py-3 px-3">
-                          <span className="px-2.5 py-1 rounded-lg bg-card border border-line text-[11px] font-bold text-slate-300">
+                          <span className="px-2.5 py-1 rounded-lg bg-card border border-line text-[11px] font-bold text-fg">
                             {menu.kategori}
                           </span>
                         </td>
@@ -1000,7 +1000,7 @@ function CatalogPanel() {
                             <button
                               type="button"
                               onClick={() => handleOpenEdit(menu)}
-                              className="w-8 h-8 rounded-xl bg-card hover:bg-line text-slate-300 flex items-center justify-center text-xs font-bold transition-colors"
+                              className="w-8 h-8 rounded-xl bg-card border border-line hover:bg-line text-fg flex items-center justify-center text-xs font-bold transition-colors"
                               title="Edit Menu"
                             ><LineIcon name="edit" /></button>
                             <button
@@ -1106,7 +1106,7 @@ function CatalogPanel() {
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(menu)}
-                          className="w-8 h-8 rounded-xl bg-card hover:bg-line text-slate-300 flex items-center justify-center text-xs font-bold transition-colors"
+                          className="w-8 h-8 rounded-xl bg-card border border-line hover:bg-line text-fg flex items-center justify-center text-xs font-bold transition-colors"
                           title="Edit Menu"
                         ><LineIcon name="edit" /></button>
                         <button
@@ -1135,7 +1135,7 @@ function CatalogPanel() {
                   type="button"
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="px-3 py-1.5 rounded-xl bg-card border border-line disabled:opacity-40 font-bold text-slate-300 hover:bg-card transition-all active:scale-95"
+                  className="px-3 py-1.5 rounded-xl bg-card border border-line disabled:opacity-40 font-bold text-fg hover:bg-card transition-all active:scale-95"
                 >
                   ← Sebelumnya
                 </button>
@@ -1155,7 +1155,7 @@ function CatalogPanel() {
                           className={`w-8 h-8 rounded-xl font-black text-xs transition-all ${
                             currentPage === p
                               ? "bg-accent text-white shadow-md shadow-accent/20"
-                              : " bg-card border border-line text-slate-300 hover:bg-card"
+                              : " bg-card border border-line text-fg hover:bg-card"
                           }`}
                         >
                           {p}
@@ -1168,7 +1168,7 @@ function CatalogPanel() {
                   type="button"
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  className="px-3 py-1.5 rounded-xl bg-card border border-line disabled:opacity-40 font-bold text-slate-300 hover:bg-card transition-all active:scale-95"
+                  className="px-3 py-1.5 rounded-xl bg-card border border-line disabled:opacity-40 font-bold text-fg hover:bg-card transition-all active:scale-95"
                 >
                   Berikutnya →
                 </button>
@@ -1180,15 +1180,15 @@ function CatalogPanel() {
 
       {/* --- FLOATING BULK ACTIONS TOOLBAR (WHEN ITEMS ARE SELECTED) --- */}
       {selectedMenuIds.length > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-[500px] z-40 bg-card/95 backdrop-blur-md text-white p-3.5 rounded-2xl sm:rounded-3xl shadow-2xl border border-line/80 animate-in slide-in-from-bottom-5 duration-200 flex flex-col gap-2">
-          <div className="flex items-center justify-between border-b border-line/60 pb-2">
+        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-[500px] z-40 bg-card/95 backdrop-blur-md text-fg p-3.5 rounded-2xl sm:rounded-3xl shadow-2xl border border-line animate-in slide-in-from-bottom-5 duration-200 flex flex-col gap-2">
+          <div className="flex items-center justify-between border-b border-line pb-2">
             <span className="text-xs font-black text-accent-text flex items-center gap-1.5">
-              <span><LineIcon name="success" /></span>
+              <span className="text-accent-text"><LineIcon name="success" /></span>
               <span>{selectedMenuIds.length} Menu Terpilih</span>
             </span>
             <button
               onClick={() => setSelectedMenuIds([])}
-              className="text-[11px] text-muted hover:text-white font-bold transition-colors"
+              className="text-[11px] text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-lg font-bold transition-colors"
             >
               Batal Pilih ×
             </button>
@@ -1202,9 +1202,9 @@ function CatalogPanel() {
                 setBulkPriceValue("");
                 setIsBulkPriceOpen(true);
               }}
-              className="px-2.5 py-1.5 bg-slate-100 text-slate-800 hover:bg-slate-200 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
+              className="px-2.5 py-1.5 bg-slate-100 text-slate-800 hover:bg-slate-200 border border-line rounded-xl font-bold flex items-center gap-1.5 active:scale-95 transition-all"
             >
-              <span><LineIcon name="card" /></span>
+              <span className="text-slate-800"><LineIcon name="card" /></span>
               <span>Ubah Harga</span>
             </button>
 
@@ -1217,9 +1217,9 @@ function CatalogPanel() {
                 setCustomBulkCategory("");
                 setIsBulkCategoryOpen(true);
               }}
-              className="px-2.5 py-1.5 bg-slate-100 text-slate-800 hover:bg-slate-200 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
+              className="px-2.5 py-1.5 bg-slate-100 text-slate-800 hover:bg-slate-200 border border-line rounded-xl font-bold flex items-center gap-1.5 active:scale-95 transition-all"
             >
-              <span><LineIcon name="receipt" /></span>
+              <span className="text-slate-800"><LineIcon name="receipt" /></span>
               <span>Ubah Kategori</span>
             </button>
 
@@ -1229,7 +1229,7 @@ function CatalogPanel() {
               onClick={() => handleBulkToggleStock(false)}
               className="px-2.5 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
             >
-              <span><LineIcon name="success" /></span>
+              <span className="text-white"><LineIcon name="success" /></span>
               <span>Tersedia</span>
             </button>
 
@@ -1237,9 +1237,9 @@ function CatalogPanel() {
             <button
               type="button"
               onClick={() => handleBulkToggleStock(true)}
-              className="px-2.5 py-1.5 bg-amber-800/80 hover:bg-amber-700 text-amber-200 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
+              className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all"
             >
-              <span><LineIcon name="success" /></span>
+              <span className="text-white"><LineIcon name="success" /></span>
               <span>Habis</span>
             </button>
 
@@ -1247,9 +1247,9 @@ function CatalogPanel() {
             <button
               type="button"
               onClick={() => setIsBulkDeleteOpen(true)}
-              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all ml-auto"
+              className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all ml-auto"
             >
-              <span><LineIcon name="delete" /></span>
+              <span className="text-white"><LineIcon name="delete" /></span>
               <span>Hapus</span>
             </button>
           </div>
@@ -1330,7 +1330,7 @@ function CatalogPanel() {
                 <button
                   type="button"
                   onClick={() => setIsBulkPriceOpen(false)}
-                  className="flex-1 py-3 bg-card text-slate-300 rounded-xl text-xs font-bold"
+                  className="flex-1 py-3 bg-card text-fg border border-line rounded-xl text-xs font-bold hover:bg-line transition-colors"
                 >
                   Batal
                 </button>
@@ -1407,7 +1407,7 @@ function CatalogPanel() {
                 <button
                   type="button"
                   onClick={() => setIsBulkCategoryOpen(false)}
-                  className="flex-1 py-3 bg-card text-slate-300 rounded-xl text-xs font-bold"
+                  className="flex-1 py-3 bg-card text-fg border border-line rounded-xl text-xs font-bold hover:bg-line transition-colors"
                 >
                   Batal
                 </button>
@@ -1567,11 +1567,11 @@ function CatalogPanel() {
                       </div>
                     </div>
 
-                    <div className="p-2.5 bg-amber-950/40 rounded-xl border border-amber-900/40 col-span-2 sm:col-span-1">
-                      <div className="text-[10px] text-amber-400 font-bold uppercase">
+                    <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-300 col-span-2 sm:col-span-1">
+                      <div className="text-[10px] text-amber-950 font-bold uppercase">
                         SKU Duplikat
                       </div>
-                      <div className="text-lg font-black text-amber-300">
+                      <div className="text-lg font-black text-amber-950">
                         {importResult.duplicateSkus.length} SKU
                       </div>
                     </div>
@@ -1666,7 +1666,7 @@ function CatalogPanel() {
                   type="button"
                   disabled={isImporting}
                   onClick={() => setIsImportOpen(false)}
-                  className="flex-1 py-3 bg-card text-slate-300 rounded-xl text-xs font-bold"
+                  className="flex-1 py-3 bg-card text-fg border border-line rounded-xl text-xs font-bold hover:bg-line transition-colors"
                 >
                   Batal
                 </button>
@@ -2165,7 +2165,7 @@ function CatalogPanel() {
                   type="button"
                   onClick={handleCloseSheet}
                   disabled={isSavingMenu || isPhotoProcessing}
-                  className="flex-1 py-3 bg-card hover:bg-line text-slate-300 rounded-xl text-xs font-bold transition-colors disabled:opacity-50"
+                  className="flex-1 py-3 bg-card hover:bg-line text-fg border border-line rounded-xl text-xs font-bold transition-colors disabled:opacity-50"
                 >
                   Batal
                 </button>
@@ -2233,11 +2233,11 @@ function CatalogPanel() {
             className=" bg-card rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-line text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 bg-amber-950/60 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
+            <div className="w-12 h-12 bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-black"><LineIcon name="info" /></div>
             <h3 className="text-base font-black text-fg mb-1">
               Batalkan Perubahan Menu?
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed mb-5">
+            <p className="text-xs text-muted leading-relaxed mb-5">
               Data rincian menu yang sedang Anda ketik belum disimpan. Yakin ingin membuang perubahan?
             </p>
             <div className="flex space-x-2">

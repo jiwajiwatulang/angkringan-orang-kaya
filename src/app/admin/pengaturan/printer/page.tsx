@@ -346,7 +346,7 @@ export default function PengaturanPrinterPage() {
                     className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                       isSelected
                         ? "bg-accent text-white font-black shadow-md shadow-accent/20"
-                        : "bg-card text-slate-300 hover:bg-accent-hover/40 hover:text-accent-text border border-line"
+                        : "bg-card text-fg hover:border-accent hover:text-accent-text border border-line"
                     }`}
                   >
                     {isSelected ? "Sedang Digunakan" : "Gunakan Printer Ini"}
