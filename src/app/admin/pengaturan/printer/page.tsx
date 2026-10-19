@@ -407,9 +407,7 @@ export default function PengaturanPrinterPage() {
               placeholder="Contoh: Nikmatnya Kopi Tradisional & Angkringan"
               className="w-full bg-card border border-line rounded-xl px-3.5 py-2.5 text-xs text-fg font-semibold placeholder:text-muted/60 outline-none focus:border-accent"
             />
-            <p className="text-[11px] text-muted">
-              Dicetak di bawah nama dan alamat toko pada bagian atas struk.
-            </p>
+
           </div>
 
           {/* Footer Message */}
@@ -424,9 +422,7 @@ export default function PengaturanPrinterPage() {
               placeholder="Contoh: Terima Kasih atas Kunjungan Anda&#10;Silakan Datang Kembali"
               className="w-full bg-card border border-line rounded-xl px-3.5 py-2 text-xs text-fg font-semibold placeholder:text-muted/60 outline-none focus:border-accent resize-none"
             />
-            <p className="text-[11px] text-muted">
-              Pesan penutup di bagian bawah sebelum batas potong kertas.
-            </p>
+
           </div>
 
           {/* Custom Note (WiFi, Instagram, Sosmed) */}

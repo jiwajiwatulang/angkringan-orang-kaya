@@ -431,9 +431,6 @@ export default function AdminDashboardPage() {
             <h3 className="text-base font-black text-fg flex items-center gap-2">
               <span>Tren Penjualan</span>
             </h3>
-            <p className="text-xs text-muted mt-0.5">
-              Penjualan lunas per interval • {chartType === 'line' ? 'sentuh titik garis' : 'sentuh pilar batang'} untuk melihat detail
-            </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -488,7 +485,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* SVG Canvas */}
-          <div className="w-full overflow-hidden relative">
+          <div className="w-full overflow-visible relative">
             <svg
               viewBox={`0 0 ${svgW} ${svgH}`}
               className="w-full h-56 sm:h-64 overflow-visible"
@@ -622,29 +619,38 @@ export default function AdminDashboardPage() {
             </svg>
 
             {/* Hover Tooltip Box */}
-            {hoveredPoint && (
-              <div
-                style={{
-                  left: `${(hoveredPoint.x / svgW) * 100}%`,
-                  top: `${(hoveredPoint.y / svgH) * 100}%`,
-                }}
-                className="absolute z-20 pointer-events-none -translate-x-1/2 -translate-y-full mb-3"
-              >
-                <div className="bg-slate-900/95 dark:bg-slate-950 text-white rounded-2xl px-4 py-3 shadow-2xl border-2 border-blue-500/80 text-xs min-w-[160px] text-center space-y-1 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md">
-                  <span className="text-xs text-slate-100 font-extrabold block tracking-wide">
-                    {hoveredPoint.sublabel} ({hoveredPoint.label})
-                  </span>
-                  <div className="text-base font-black text-sky-300 tracking-tight">
-                    Rp {hoveredPoint.omzet.toLocaleString("id-ID")}
-                  </div>
-                  <div className="pt-0.5">
-                    <span className="inline-block px-3 py-1 rounded-full bg-blue-500/25 text-blue-200 border border-blue-400/40 text-xs font-bold shadow-xs">
-                      {hoveredPoint.count} pesanan
+            {hoveredPoint && (() => {
+              const isNearTop = (hoveredPoint.y / svgH) < 0.45;
+              const isNearLeft = (hoveredPoint.x / svgW) < 0.18;
+              const isNearRight = (hoveredPoint.x / svgW) > 0.82;
+
+              const xTranslate = isNearLeft ? 'translate-x-0' : isNearRight ? '-translate-x-full' : '-translate-x-1/2';
+              const yTranslate = isNearTop ? 'translate-y-4' : '-translate-y-full -translate-y-2';
+
+              return (
+                <div
+                  style={{
+                    left: `${(hoveredPoint.x / svgW) * 100}%`,
+                    top: `${(hoveredPoint.y / svgH) * 100}%`,
+                  }}
+                  className={`absolute z-30 pointer-events-none ${xTranslate} ${yTranslate}`}
+                >
+                  <div className="bg-slate-900/95 dark:bg-slate-950 text-white rounded-2xl px-4 py-2.5 shadow-2xl border-2 border-blue-500 text-xs min-w-[150px] text-center space-y-1 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md">
+                    <span className="text-xs text-slate-100 font-extrabold block tracking-wide">
+                      {hoveredPoint.sublabel} ({hoveredPoint.label})
                     </span>
+                    <div className="text-base font-black text-sky-300 tracking-tight">
+                      Rp {hoveredPoint.omzet.toLocaleString("id-ID")}
+                    </div>
+                    <div className="pt-0.5">
+                      <span className="inline-block px-3 py-0.5 rounded-full bg-blue-500/25 text-blue-200 border border-blue-400/40 text-xs font-bold shadow-xs">
+                        {hoveredPoint.count} pesanan
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Bottom X-Axis Labels */}
@@ -666,10 +672,8 @@ export default function AdminDashboardPage() {
           <div className="flex items-center justify-between pb-3 border-b border-line">
             <div>
               <h4 className="text-sm font-black text-fg flex items-center gap-2">
-                
                 <span>Komposisi Metode Pembayaran</span>
               </h4>
-              <p className="text-xs text-muted mt-0.5">Distribusi penerimaan kasir (Tunai vs Non-Tunai)</p>
             </div>
             <span className="text-[11px] font-bold text-muted">
               {currentOrderCount} transaksi
@@ -716,10 +720,8 @@ export default function AdminDashboardPage() {
           <div className="flex items-center justify-between pb-3 border-b border-line">
             <div>
               <h4 className="text-sm font-black text-fg flex items-center gap-2">
-                
-                <span>5 Menu Terlaris (Top Products)</span>
+                <span>5 Menu Terlaris</span>
               </h4>
-              <p className="text-xs text-muted mt-0.5">Produk dengan perputaran unit tertinggi</p>
             </div>
             <Link
               href="/admin/menu"

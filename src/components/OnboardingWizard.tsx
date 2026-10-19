@@ -111,11 +111,15 @@ export default function OnboardingWizard({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-fg mb-1">
-                  Nama Toko / Usaha <span className="text-rose-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-fg">
+                    Nama Toko / Usaha <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-muted font-mono">{storeName.length}/25</span>
+                </div>
                 <input
                   type="text"
+                  maxLength={25}
                   value={storeName}
                   onChange={(e) => setStoreName(e.target.value)}
                   placeholder="Contoh: Kopi Senja, Warung Berkah, dll."

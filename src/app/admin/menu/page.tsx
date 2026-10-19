@@ -1800,9 +1800,7 @@ function CatalogPanel() {
                   ))}
                   <option value="Lainnya">+ Buat Kategori Baru...</option>
                 </select>
-                <p className="text-[10px] text-muted mt-1">
-                  Untuk mengelompokkan menu di halaman kasir.
-                </p>
+
 
                 {isCustomKategori && (
                   <input
@@ -1846,9 +1844,7 @@ function CatalogPanel() {
                     Scan
                   </button>
                 </div>
-                <p className="text-[10px] text-muted mt-1">
-                  Dapat dipindai langsung dengan barcode scanner fisik atau kamera HP saat transaksi di kasir.
-                </p>
+
               </div>
 
               {/* Ketersediaan Menu (Stok) */}
