@@ -53,8 +53,39 @@ export default function MobileHeader({
 
       {/* Right Side: Shift Status & Quick Action */}
       <div className="flex items-center gap-1.5">
+        {activeShift ? (
+          <div className="flex items-center gap-1 bg-accent/15 border border-accent/30 px-2 py-1 rounded-lg text-[11px] font-bold text-accent-text">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse shrink-0" />
+            <button
+              type="button"
+              onClick={onOpenCashMovement}
+              className="hover:underline"
+              title="Catat Kas Masuk/Keluar"
+            >
+              +/- Kas
+            </button>
+            <span className="text-muted/60">|</span>
+            <button
+              type="button"
+              onClick={onOpenCloseShiftModal}
+              className="text-rose-600 hover:underline"
+              title="Tutup Shift"
+            >
+              Tutup
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onOpenShiftModal}
+            className="px-2 py-1 rounded-lg bg-accent/20 border border-accent/40 text-accent-text text-[11px] font-bold hover:bg-accent/30 transition-colors"
+            title="Buka Shift Kasir"
+          >
+            + Shift
+          </button>
+        )}
         <CashierPrinter settings={storeSettings} />
-        <button type="button" onClick={onAdmin} className="px-2.5 py-2 bg-card border border-line text-fg rounded-xl text-xs font-bold">Admin</button>
+        <button type="button" onClick={onAdmin} className="px-2.5 py-1.5 bg-card border border-line text-fg rounded-xl text-xs font-bold">Admin</button>
       </div>
     </header>
   );

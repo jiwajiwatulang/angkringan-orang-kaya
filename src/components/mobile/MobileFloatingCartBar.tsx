@@ -16,7 +16,7 @@ export default function MobileFloatingCartBar({
   if (itemCount === 0) return null;
 
   return (
-    <div className="fixed bottom-14 left-0 right-0 p-3 z-20 select-none flex justify-center">
+    <div className="fixed bottom-14 left-0 right-0 p-3 z-20 select-none flex justify-center landscape:hidden">
       <div className="w-full max-w-md">
         <button
           type="button"

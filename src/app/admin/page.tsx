@@ -279,6 +279,112 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* Sentrik POS Style: Welcome Banner Card */}
+      <div className="bg-surface border border-line rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-black text-fg tracking-tight">
+            Selamat Datang, {activeShift?.operatorName || "Kasir"}!
+          </h2>
+          <p className="text-xs text-muted mt-0.5">
+            {storeSettings.storeName || "SakuNota"} • Sistem kasir dan pencatatan transaksi 100% offline.
+          </p>
+          <div className="flex flex-wrap items-center gap-2 mt-3 text-xs font-bold">
+            <span className="px-2.5 py-1 bg-card text-fg rounded-xl border border-line">
+              Cabang: {storeSettings.storeName || "Toko Pusat"}
+            </span>
+            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200">
+              Kas Laci: Rp {activeShift ? Number(activeShift.startingCash || 0).toLocaleString("id-ID") : "0"}
+            </span>
+            <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-xl border border-blue-200">
+              {activeShift ? "Shift Aktif" : "Shift Tutup"}
+            </span>
+          </div>
+        </div>
+        <div className="text-left sm:text-right sm:border-l sm:border-line sm:pl-6 shrink-0">
+          <div className="text-2xl font-black text-fg tracking-tight">
+            {new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} WIB
+          </div>
+          <div className="text-xs text-muted font-medium mt-0.5">
+            {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}
+          </div>
+        </div>
+      </div>
+
+      {/* Sentrik POS Style: Pastel Quick Actions */}
+      <div>
+        <h3 className="text-xs font-black text-muted uppercase tracking-wider mb-3">
+          Aksi Cepat
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <Link
+            href="/pos"
+            className="p-3.5 rounded-2xl bg-blue-50 hover:bg-blue-100/80 border border-blue-200 transition-all shadow-xs group"
+          >
+            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs mb-2">
+              <LineIcon name="cashier" className="w-4 h-4 text-white" />
+            </div>
+            <div className="font-black text-xs text-slate-900 group-hover:text-blue-700 transition-colors">Mulai Kasir</div>
+            <div className="text-[11px] text-slate-600 mt-0.5 leading-snug">Buka kasir & billing</div>
+          </Link>
+
+          <Link
+            href="/admin/meja"
+            className="p-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 transition-all shadow-xs group"
+          >
+            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs mb-2">
+              <LineIcon name="tables" className="w-4 h-4 text-white" />
+            </div>
+            <div className="font-black text-xs text-slate-900 group-hover:text-emerald-700 transition-colors">Kelola Meja</div>
+            <div className="text-[11px] text-slate-600 mt-0.5 leading-snug">Dine-in & denah</div>
+          </Link>
+
+          <Link
+            href="/admin/menu?tambah=true"
+            className="p-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100/80 border border-rose-200 transition-all shadow-xs group"
+          >
+            <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center font-black text-xs mb-2">
+              <LineIcon name="add" className="w-4 h-4 text-white" />
+            </div>
+            <div className="font-black text-xs text-slate-900 group-hover:text-rose-700 transition-colors">Tambah Menu</div>
+            <div className="text-[11px] text-slate-600 mt-0.5 leading-snug">Input produk baru</div>
+          </Link>
+
+          <Link
+            href="/admin/transaksi"
+            className="p-3.5 rounded-2xl bg-amber-50 hover:bg-amber-100/80 border border-amber-200 transition-all shadow-xs group"
+          >
+            <div className="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center font-black text-xs mb-2">
+              <LineIcon name="receipt" className="w-4 h-4 text-white" />
+            </div>
+            <div className="font-black text-xs text-slate-900 group-hover:text-amber-800 transition-colors">Riwayat Nota</div>
+            <div className="text-[11px] text-slate-600 mt-0.5 leading-snug">Cek transaksi & nota</div>
+          </Link>
+
+          <Link
+            href="/admin/menu?tab=stock"
+            className="p-3.5 rounded-2xl bg-purple-50 hover:bg-purple-100/80 border border-purple-200 transition-all shadow-xs group"
+          >
+            <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center font-black text-xs mb-2">
+              <LineIcon name="stock" className="w-4 h-4 text-white" />
+            </div>
+            <div className="font-black text-xs text-slate-900 group-hover:text-purple-700 transition-colors">Stok Opname</div>
+            <div className="text-[11px] text-slate-600 mt-0.5 leading-snug">Audit persediaan</div>
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => setIsWaModalOpen(true)}
+            className="p-3.5 rounded-2xl bg-teal-50 hover:bg-teal-100/80 border border-teal-200 transition-all shadow-xs group text-left"
+          >
+            <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center font-black text-xs mb-2">
+              <LineIcon name="export" className="w-4 h-4 text-white" />
+            </div>
+            <div className="font-black text-xs text-slate-900 group-hover:text-teal-700 transition-colors">Laporan WA</div>
+            <div className="text-[11px] text-slate-600 mt-0.5 leading-snug">Kirim rekap omzet</div>
+          </button>
+        </div>
+      </div>
+
       {/* 2. Four Shopify-Grade Metric Cards with Delta Growth Badges */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Metric 1: Total Omzet */}

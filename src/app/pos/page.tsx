@@ -45,11 +45,11 @@ export default function POSPage() {
   const [tableData, setTableData] = useState<any[]>([]);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [allOrders, setAllOrders] = useState<any[]>([]);
-  const [view, setView] = useState<'kasir' | 'meja' | 'menu' | 'pesanan' | 'shift'>('kasir');
+  const [view, setView] = useState<'kasir' | 'meja' | 'menu' | 'pesanan' | 'shift'>('menu');
   useEffect(() => { void destroyAdminSession(); }, []);
   const enterAdmin = async () => { await destroyAdminSession(); window.location.assign('/admin' + (accessStatus.isDemo ? '?demo=true' : '')); };
 
-  const [mobileTab, setMobileTab] = useState<MobileTab>('home');
+  const [mobileTab, setMobileTab] = useState<MobileTab>('menu');
   const navigateWorkspace = (next: typeof view) => { setView(next); setMobileTab(({ kasir: "home", menu: "menu", meja: "meja", pesanan: "nota", shift: "lainnya" } as const)[next]); };
   const navigateMobile = (next: MobileTab) => { setMobileTab(next); setView(({ home: "kasir", menu: "menu", meja: "meja", nota: "pesanan", lainnya: "shift" } as const)[next]); };
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
@@ -243,6 +243,9 @@ export default function POSPage() {
     setIsMobileCartOpen(false);
     setCartSheetDragY(0);
     popModalHistory();
+    if (mobileTab === 'home') {
+      navigateMobile('menu');
+    }
   };
 
   // Modifier Bottom Sheet Drag State
@@ -2443,7 +2446,7 @@ export default function POSPage() {
           onClick={handleClosePaymentModal}
         >
           <div 
-            className=" bg-card p-6 md:p-8 rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl relative flex flex-col max-h-[90vh] transition-transform ease-out"
+            className=" bg-card p-4 sm:p-6 md:p-8 landscape:p-3 rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl relative flex flex-col max-h-[90vh] landscape:max-h-[96dvh] transition-transform ease-out"
             style={{
               transform: paymentSheetDragY > 0 ? `translateY(${paymentSheetDragY}px)` : undefined,
               touchAction: 'pan-y'
@@ -2937,7 +2940,7 @@ export default function POSPage() {
       {/* ======================================================== */}
       <div className="hidden md:flex landscape:flex flex-col h-full w-full overflow-hidden">
         {/* Top Application Header (Full Width) */}
-        <header className="h-12 md:h-14 lg:h-16 bg-card border-b border-line px-3 md:px-4 flex items-center justify-between shrink-0 z-30 transition-colors">
+        <header className="h-10 md:h-12 lg:h-14 landscape:h-10 bg-card border-b border-line px-3 md:px-4 flex items-center justify-between shrink-0 z-30 transition-colors">
         {/* Left: Brand & Store Name */}
         <Link href="/" className="flex items-center space-x-2 md:space-x-3 hover:opacity-85 transition-opacity" title="Kembali ke Beranda SakuNota">
           {storeSettings.storeLogo ? (
@@ -3272,7 +3275,7 @@ export default function POSPage() {
 
         {/* Floating Cart Button (Mobile) */}
         {(!isMobileCartOpen && (cart.length > 0 || selectedTable)) && (
-          <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-surface/90 backdrop-blur-md border-t border-line shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-30">
+          <div className="lg:hidden landscape:hidden fixed bottom-0 left-0 right-0 p-4 bg-surface/90 backdrop-blur-md border-t border-line shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-30">
             <button 
               onClick={openMobileCart}
               className="w-full bg-accent hover:bg-accent-hover text-white rounded-2xl py-3.5 px-5 flex justify-between items-center shadow-lg shadow-accent/30 active:scale-95 transition-all"
@@ -3374,7 +3377,7 @@ export default function POSPage() {
             <MobileFloatingCartBar
               itemCount={cart.reduce((s, i) => s + i.qty, 0)}
               totalPrice={totalPrice}
-              onOpenCart={() => navigateMobile('home')}
+              onOpenCart={openMobileCart}
             />
           )}
         </div>
