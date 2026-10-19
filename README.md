@@ -29,7 +29,7 @@
 
 | Rute Halaman | Fungsi Utama |
 | :--- | :--- |
-| `/` | Halaman Beranda, Simulasi Kasir Interaktif, Pembelian Lisensi, & Aktivasi Kode Lisensi / Tester |
+| `/` | Halaman Beranda, Simulasi Kasir Interaktif, Pembelian Lisensi, & Aktivasi Kode |
 | `/pos` | Layar Kasir Utama (Menu, Keranjang, Denah Meja, Pembayaran, Buka/Tutup Shift) |
 | `/pos?demo=true` | Mode Demo Sandbox Kasir (Simulasi aman tanpa lisensi) |
 | `/admin` | Ringkasan Penjualan, Grafik Tren 7 Hari, & Kirim Laporan ke WhatsApp |

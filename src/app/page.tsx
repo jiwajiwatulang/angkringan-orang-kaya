@@ -1449,7 +1449,7 @@ export default function SakuNotaLandingPage() {
               type="button"
               onClick={() => handleOpenLicenseModal("direct_license")}
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-blue-50 text-blue-700 font-extrabold text-xs border border-blue-200 shadow-xs transition-all"
-            > Aktivasi Kode Lisensi / Tester
+            > Aktivasi Kode
             </button>
           </div>
         </div>
@@ -1493,7 +1493,7 @@ export default function SakuNotaLandingPage() {
           {/* Col 2: Product */}
           <div className="space-y-3">
             <span className="text-slate-900 font-extrabold text-xs uppercase tracking-wider block">
-              Produk &amp; Perusahaan
+              Produk
             </span>
             <ul className="space-y-2 text-xs font-medium">
               <li><a href="#fitur" className="hover:text-blue-600 transition-colors">Fitur Kasir</a></li>
@@ -1517,7 +1517,7 @@ export default function SakuNotaLandingPage() {
                   onClick={() => handleOpenLicenseModal("direct_license")}
                   className="hover:text-blue-600 transition-colors text-left font-bold text-blue-600"
                 >
-                  Aktivasi Kode Lisensi / Tester
+                  Aktivasi Kode
                 </button>
               </li>
               <li>
@@ -1526,7 +1526,7 @@ export default function SakuNotaLandingPage() {
                   onClick={() => handleOpenLicenseModal("order_lookup")}
                   className="hover:text-blue-600 transition-colors text-left"
                 >
-                  Cek Status Lisensi / Pesanan
+                  Cek Pesanan
                 </button>
               </li>
               <li>
@@ -1536,7 +1536,7 @@ export default function SakuNotaLandingPage() {
                   rel="noopener noreferrer"
                   className="hover:text-blue-600 transition-colors"
                 >
-                  Bantuan WhatsApp Resmi
+                  Bantuan Whatsapp
                 </a>
               </li>
             </ul>
