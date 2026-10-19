@@ -22,7 +22,15 @@ export async function configureStock(menuItemId: number, stockQty: number, minim
   });
 }
 
-export async function adjustStock(input: { menuItemId: number; type: 'in' | 'out' | 'count'; amount: number; reason: string; expectedBalance?: number }) {
+export async function adjustStock(input: {
+  menuItemId: number;
+  type: 'in' | 'out' | 'count';
+  amount: number;
+  reason: string;
+  expectedBalance?: number;
+  supplierName?: string;
+  purchasePrice?: number;
+}) {
   await requireMerchantAdmin();
   quantity(input.amount);
   if (!input.reason.trim()) throw new Error('Alasan penyesuaian wajib diisi.');
@@ -35,7 +43,20 @@ export async function adjustStock(input: { menuItemId: number; type: 'in' | 'out
     const balance = input.type === 'count' ? input.amount : before + (input.type === 'in' ? input.amount : -input.amount);
     if (balance < 0) throw new Error('Stok tidak mencukupi.');
     await db.table('menuItems').update(product.id, { stockQty: balance, isSoldOut: balance === 0 });
-    await db.table('inventoryMovements').add({ menuItemId: product.id, productName: product.nama, type: input.type, delta: balance - before, balance, countedQty: input.type === 'count' ? input.amount : undefined, reason: input.reason.trim(), operator: 'Admin', timestamp: new Date().toISOString() });
+    await db.table('inventoryMovements').add({
+      menuItemId: product.id,
+      productName: product.nama,
+      type: input.type,
+      delta: balance - before,
+      balance,
+      countedQty: input.type === 'count' ? input.amount : undefined,
+      supplierName: input.supplierName?.trim() || undefined,
+      purchasePrice: input.purchasePrice ? Number(input.purchasePrice) : undefined,
+      totalCost: (input.purchasePrice && input.amount) ? Number(input.purchasePrice) * input.amount : undefined,
+      reason: input.reason.trim(),
+      operator: 'Admin',
+      timestamp: new Date().toISOString()
+    });
     return balance;
   });
 }

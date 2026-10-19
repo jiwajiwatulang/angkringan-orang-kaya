@@ -167,11 +167,20 @@ export interface Shift {
   notes?: string;
 }
 
+export type ExpenseCategory =
+  | 'bahan_baku'
+  | 'perlengkapan'
+  | 'operasional'
+  | 'gaji_harian'
+  | 'lainnya';
+
 export interface CashMovement {
   id?: number;
   shiftId: number;
-  type: 'in' | 'out';         // 'in' = kas masuk, 'out' = kas keluar (biaya operasional)
+  type: 'in' | 'out'; // 'in' = kas masuk, 'out' = kas keluar (biaya operasional)
   amount: number;
+  category?: ExpenseCategory | string;
+  paymentSource?: 'laci' | 'rekening';
   reason: string;
   operatorName: string;
   timestamp: string;

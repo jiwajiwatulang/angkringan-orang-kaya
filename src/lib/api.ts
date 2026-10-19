@@ -1859,12 +1859,27 @@ export async function closeShift(shiftId: number, data: { actualCash: number, no
   });
 }
 
-export async function addCashMovement(data: { shiftId: number, type: 'in' | 'out', amount: number, reason: string, operatorName: string }) {
-  await requireActiveCashierShift(data.shiftId);
+export async function addCashMovement(data: {
+  shiftId?: number;
+  type: 'in' | 'out';
+  amount: number;
+  category?: string;
+  paymentSource?: 'laci' | 'rekening';
+  reason: string;
+  operatorName?: string;
+}) {
+  if (data.shiftId && data.shiftId > 0) {
+    await requireActiveCashierShift(data.shiftId);
+  } else {
+    await requireMerchantAdmin();
+  }
+
   const movement = {
-    shiftId: data.shiftId,
+    shiftId: data.shiftId || 0,
     type: data.type,
     amount: Number(data.amount) || 0,
+    category: data.category || (data.type === 'out' ? 'operasional' : undefined),
+    paymentSource: data.paymentSource || 'laci',
     reason: data.reason || (data.type === 'in' ? 'Kas Masuk' : 'Kas Keluar'),
     operatorName: data.operatorName || 'Kasir',
     timestamp: new Date().toISOString()
@@ -1875,12 +1890,26 @@ export async function addCashMovement(data: { shiftId: number, type: 'in' | 'out
   await db.table('auditLogs').add({
     action: data.type === 'in' ? 'CASH_IN' : 'CASH_OUT',
     amount: movement.amount,
-    reason: movement.reason,
+    reason: `${movement.category ? `[${movement.category}] ` : ''}${movement.reason}`,
     operator: movement.operatorName,
     timestamp: new Date().toISOString()
   });
 
   return { id, ...movement };
+}
+
+export async function deleteCashMovement(id: number) {
+  await requireMerchantAdmin();
+  const movement = await db.table('cashMovements').get(id);
+  if (!movement) return;
+  await db.table('cashMovements').delete(id);
+  await db.table('auditLogs').add({
+    action: 'DELETE',
+    amount: movement.amount,
+    reason: `Hapus catatan kas ${movement.type === 'in' ? 'masuk' : 'keluar'}: ${movement.reason}`,
+    operator: 'Admin',
+    timestamp: new Date().toISOString()
+  });
 }
 
 export async function resetAllTransactions() {

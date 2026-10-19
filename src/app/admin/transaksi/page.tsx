@@ -12,6 +12,7 @@ import {
   deletePaymentProof,
   matchBulkPaymentProofs,
   importHistoricalTransactions,
+  recordPayment,
 } from "@/lib/api";
 import {
   exportOrdersToExcel,
@@ -28,8 +29,17 @@ export default function AdminTransaksiPage() {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Active Tab: 'orders' or 'voids'
-  const [activeTab, setActiveTab] = useState<'orders' | 'voids'>('orders');
+  // Active Tab: 'orders', 'voids', or 'kasbon'
+  const [activeTab, setActiveTab] = useState<'orders' | 'voids' | 'kasbon'>('orders');
+
+  // Kasbon & Buku Pelanggan States
+  const [kasbonSearch, setKasbonSearch] = useState("");
+  const [kasbonFilterStatus, setKasbonFilterStatus] = useState<"unpaid" | "all">("unpaid");
+  const [kasbonTargetOrder, setKasbonTargetOrder] = useState<any | null>(null);
+  const [kasbonPayAmount, setKasbonPayAmount] = useState("");
+  const [kasbonPayMethod, setKasbonPayMethod] = useState("Cash");
+  const [kasbonPayNotes, setKasbonPayNotes] = useState("");
+  const [isSubmittingKasbonPay, setIsSubmittingKasbonPay] = useState(false);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -446,6 +456,148 @@ export default function AdminTransaksiPage() {
     }
   };
 
+  // --- KASBON & BUKU PELANGGAN DATA PROCESSING ---
+  const kasbonData = React.useMemo(() => {
+    const map = new Map<string, {
+      key: string;
+      customerName: string;
+      customerPhone: string;
+      orders: any[];
+      totalDebt: number;
+      totalPaid: number;
+      remainingBalance: number;
+    }>();
+
+    let totalGlobalRemaining = 0;
+    let totalGlobalPaid = 0;
+    let totalUnpaidOrdersCount = 0;
+
+    orders.forEach((o) => {
+      if (o.status === "void") return;
+      const remaining = o.remainingBalance !== undefined ? o.remainingBalance : (o.status === "unpaid" ? o.total : 0);
+      const paid = o.paidAmount !== undefined ? o.paidAmount : (o.status === "paid" ? o.total : 0);
+      const isUnpaid = o.status === "unpaid" || remaining > 0;
+
+      if (isUnpaid) {
+        totalGlobalRemaining += remaining;
+        totalGlobalPaid += paid;
+        totalUnpaidOrdersCount++;
+      }
+
+      if (!isUnpaid && kasbonFilterStatus === "unpaid") return;
+
+      const rawName = (o.customerName || "Pelanggan").trim();
+      const rawPhone = (o.customerPhone || "").trim();
+      const groupKey = `${rawName.toLowerCase()}___${rawPhone}`;
+
+      if (!map.has(groupKey)) {
+        map.set(groupKey, {
+          key: groupKey,
+          customerName: rawName,
+          customerPhone: rawPhone,
+          orders: [],
+          totalDebt: 0,
+          totalPaid: 0,
+          remainingBalance: 0,
+        });
+      }
+
+      const group = map.get(groupKey)!;
+      group.orders.push(o);
+      group.totalDebt += o.total || 0;
+      group.totalPaid += paid;
+      group.remainingBalance += remaining;
+    });
+
+    const customers = Array.from(map.values())
+      .filter((g) => {
+        if (!kasbonSearch.trim()) return true;
+        const q = kasbonSearch.toLowerCase();
+        return (
+          g.customerName.toLowerCase().includes(q) ||
+          g.customerPhone.includes(q) ||
+          g.orders.some((o) => o.id.toString().includes(q))
+        );
+      })
+      .sort((a, b) => b.remainingBalance - a.remainingBalance);
+
+    const debtorsCount = Array.from(map.values()).filter((g) => g.remainingBalance > 0).length;
+
+    return {
+      customers,
+      totalGlobalRemaining,
+      totalGlobalPaid,
+      totalUnpaidOrdersCount,
+      debtorsCount,
+    };
+  }, [orders, kasbonFilterStatus, kasbonSearch]);
+
+  const handleOpenKasbonPayModal = (order: any) => {
+    const remaining = order.remainingBalance !== undefined
+      ? order.remainingBalance
+      : (order.status === "unpaid" ? order.total : 0);
+    setKasbonTargetOrder(order);
+    setKasbonPayAmount(String(remaining > 0 ? remaining : order.total || 0));
+    setKasbonPayMethod("Cash");
+    setKasbonPayNotes("");
+  };
+
+  const handleProcessKasbonPay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!kasbonTargetOrder) return;
+    const amt = Number(kasbonPayAmount) || 0;
+    if (amt <= 0) {
+      alert("Nominal pembayaran harus lebih dari Rp 0!");
+      return;
+    }
+    const currentRemaining = kasbonTargetOrder.remainingBalance !== undefined
+      ? kasbonTargetOrder.remainingBalance
+      : (kasbonTargetOrder.status === "unpaid" ? kasbonTargetOrder.total : 0);
+    if (amt > currentRemaining) {
+      alert(`Nominal pembayaran (Rp ${amt.toLocaleString("id-ID")}) melebihi sisa tagihan (Rp ${currentRemaining.toLocaleString("id-ID")})`);
+      return;
+    }
+
+    setIsSubmittingKasbonPay(true);
+    try {
+      await recordPayment({
+        orderId: kasbonTargetOrder.id,
+        amount: amt,
+        paymentMethod: kasbonPayMethod as any,
+        splitType: 'partial',
+        operatorName: "Admin",
+        notes: kasbonPayNotes.trim() || (amt >= currentRemaining ? "Pelunasan Kasbon" : "Cicilan Kasbon"),
+      });
+
+      showToast(`Pembayaran kasbon Rp ${amt.toLocaleString("id-ID")} berhasil disimpan!`, "success");
+      setKasbonTargetOrder(null);
+      setKasbonPayAmount("");
+      setKasbonPayNotes("");
+      await loadData();
+    } catch (err: any) {
+      alert("Gagal mencatat pembayaran kasbon: " + (err.message || err));
+    } finally {
+      setIsSubmittingKasbonPay(false);
+    }
+  };
+
+  const getWhatsAppReminderUrl = (customer: { customerName: string; customerPhone: string; remainingBalance: number; orders: any[] }) => {
+    if (!customer.customerPhone) return null;
+    let cleanPhone = customer.customerPhone.replace(/[^0-9]/g, "");
+    if (cleanPhone.startsWith("0")) {
+      cleanPhone = "62" + cleanPhone.slice(1);
+    }
+    const storeName = storeSettings.storeName || "SakuNota";
+    const unpaidOrders = customer.orders.filter((o) => (o.remainingBalance ?? (o.status === "unpaid" ? o.total : 0)) > 0);
+    const orderLines = unpaidOrders.map((o) => {
+      const sisa = o.remainingBalance ?? (o.status === "unpaid" ? o.total : 0);
+      return `• Nota #${o.id}: Rp ${sisa.toLocaleString("id-ID")}`;
+    }).join("\n");
+
+    const msg = `Halo Kak *${customer.customerName}*,\n\nIni rincian catatan kasbon di *${storeName}*:\n${orderLines}\n\n*Total Sisa Tagihan: Rp ${customer.remainingBalance.toLocaleString("id-ID")}*.\n\nTerima kasih atas kerja samanya.`;
+    return `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
+  };
+
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-16">
       {/* --- TOP BAR & ACTION TOOLS --- */}
@@ -489,6 +641,22 @@ export default function AdminTransaksiPage() {
                 {orders.filter(o => o.status === 'void').length}
               </span>
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('kasbon')}
+              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                activeTab === 'kasbon'
+                  ? "bg-amber-600 text-white shadow-sm font-black"
+                  : "text-amber-700 hover:text-amber-800"
+              }`}
+            >
+              <span>Buku Kasbon</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                activeTab === 'kasbon' ? "bg-amber-900 text-amber-200" : "bg-amber-100 text-amber-900"
+              }`}>
+                {kasbonData.debtorsCount}
+              </span>
+            </button>
           </div>
 
           {/* Export & Import Buttons */}
@@ -523,8 +691,269 @@ export default function AdminTransaksiPage() {
         </div>
       </div>
 
-      {/* --- FILTER & SEARCH BAR --- */}
-      <div className=" bg-surface p-4 rounded-3xl border border-line shadow-sm space-y-3">
+      {activeTab === 'kasbon' ? (
+        /* --- BUKU KASBON & PELANGGAN VIEW --- */
+        <div className="space-y-4 animate-in fade-in duration-200">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-4 rounded-3xl bg-surface border border-line shadow-sm space-y-1">
+              <span className="text-[10px] font-bold text-muted block uppercase tracking-wider">
+                Total Piutang Belum Lunas
+              </span>
+              <span className="text-2xl font-black text-rose-700 block">
+                Rp {kasbonData.totalGlobalRemaining.toLocaleString("id-ID")}
+              </span>
+              <span className="text-[11px] text-muted block">
+                Dari {kasbonData.totalUnpaidOrdersCount} nota belum lunas
+              </span>
+            </div>
+
+            <div className="p-4 rounded-3xl bg-surface border border-line shadow-sm space-y-1">
+              <span className="text-[10px] font-bold text-muted block uppercase tracking-wider">
+                Pelanggan Kasbon Aktif
+              </span>
+              <span className="text-2xl font-black text-amber-600 block">
+                {kasbonData.debtorsCount} Orang
+              </span>
+              <span className="text-[11px] text-muted block">
+                Pelanggan yang masih memiliki sisa tagihan
+              </span>
+            </div>
+
+            <div className="p-4 rounded-3xl bg-surface border border-line shadow-sm space-y-1">
+              <span className="text-[10px] font-bold text-muted block uppercase tracking-wider">
+                Total Cicilan Masuk
+              </span>
+              <span className="text-2xl font-black text-emerald-700 block">
+                Rp {kasbonData.totalGlobalPaid.toLocaleString("id-ID")}
+              </span>
+              <span className="text-[11px] text-muted block">
+                Akumulasi cicilan & DP yang telah dibayar
+              </span>
+            </div>
+          </div>
+
+          {/* Search & Filter Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-3xl bg-surface border border-line shadow-sm">
+            <div className="relative flex-1">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-xs">
+                <LineIcon name="search" className="w-4 h-4" />
+              </span>
+              <input
+                type="text"
+                value={kasbonSearch}
+                onChange={(e) => setKasbonSearch(e.target.value)}
+                placeholder="Cari nama pelanggan, nomor WhatsApp, atau ID nota..."
+                className="w-full pl-9 pr-3 py-2.5 bg-card border border-line rounded-xl text-xs text-fg outline-none focus:border-accent font-semibold"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setKasbonFilterStatus("unpaid")}
+                className={`px-3 py-2 rounded-xl transition-all ${
+                  kasbonFilterStatus === "unpaid"
+                    ? "bg-amber-600 text-white shadow-sm font-black"
+                    : "bg-card text-muted hover:text-fg border border-line"
+                }`}
+              >
+                Belum Lunas ({kasbonData.debtorsCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setKasbonFilterStatus("all")}
+                className={`px-3 py-2 rounded-xl transition-all ${
+                  kasbonFilterStatus === "all"
+                    ? "bg-fg text-surface shadow-sm font-black"
+                    : "bg-card text-muted hover:text-fg border border-line"
+                }`}
+              >
+                Semua Riwayat ({kasbonData.customers.length})
+              </button>
+            </div>
+          </div>
+
+          {/* Customer Group Cards */}
+          {kasbonData.customers.length === 0 ? (
+            <div className="p-12 text-center bg-surface rounded-3xl border border-line space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                <LineIcon name="success" className="w-6 h-6" />
+              </div>
+              <h4 className="text-sm font-bold text-fg">Tidak ada catatan kasbon yang cocok</h4>
+              <p className="text-xs text-muted">
+                {kasbonFilterStatus === "unpaid"
+                  ? "Semua kasbon pelanggan telah lunas atau belum ada transaksi kasbon yang tercatat."
+                  : "Belum ada riwayat pelanggan yang sesuai dengan pencarian Anda."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {kasbonData.customers.map((customer) => {
+                const isPaidOff = customer.remainingBalance <= 0;
+                const waUrl = getWhatsAppReminderUrl(customer);
+
+                return (
+                  <div
+                    key={customer.key}
+                    className="p-5 rounded-3xl bg-surface border border-line shadow-sm space-y-4 hover:border-accent/40 transition-all"
+                  >
+                    {/* Customer Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-sm font-black shrink-0 ${
+                          isPaidOff
+                            ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                            : "bg-amber-100 text-amber-900 border border-amber-300"
+                        }`}>
+                          {customer.customerName.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-base text-fg">
+                              {customer.customerName}
+                            </span>
+                            <span
+                              className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                                isPaidOff
+                                  ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                                  : "bg-rose-100 text-rose-900 border border-rose-300"
+                              }`}
+                            >
+                              {isPaidOff ? "LUNAS" : "BELUM LUNAS"}
+                            </span>
+                          </div>
+                          <span className="text-xs text-muted block mt-0.5">
+                            {customer.customerPhone ? (
+                              <span className="font-mono">{customer.customerPhone}</span>
+                            ) : (
+                              "Nomor HP belum diisi"
+                            )}{" "}
+                            • {customer.orders.length} Transaksi
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="text-left sm:text-right">
+                          <span className="text-[10px] text-muted block font-semibold">
+                            Sisa Tagihan (Piutang)
+                          </span>
+                          <span className={`text-base font-black ${isPaidOff ? "text-emerald-700" : "text-rose-700"}`}>
+                            Rp {customer.remainingBalance.toLocaleString("id-ID")}
+                          </span>
+                          <span className="text-[10px] text-muted block">
+                            Dari Total: Rp {customer.totalDebt.toLocaleString("id-ID")}
+                          </span>
+                        </div>
+
+                        {waUrl && !isPaidOff && (
+                          <a
+                            href={waUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+                            title="Kirim rincian tagihan via WhatsApp"
+                          >
+                            <LineIcon name="info" className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>Kirim WA</span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Orders Breakdown */}
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-bold text-muted block">
+                        Daftar Nota Pembelian:
+                      </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {customer.orders.map((o) => {
+                          const orderRemaining = o.remainingBalance !== undefined
+                            ? o.remainingBalance
+                            : (o.status === "unpaid" ? o.total : 0);
+                          const isOrderPaid = orderRemaining <= 0;
+
+                          return (
+                            <div
+                              key={o.id}
+                              className="p-3 rounded-2xl bg-card/50 border border-line space-y-2 text-xs"
+                            >
+                              <div className="flex items-center justify-between pb-1.5 border-b border-line">
+                                <div>
+                                  <span className="font-black text-fg">Nota #{o.id}</span>
+                                  <span className="text-[10px] text-muted ml-2">
+                                    {new Date(o.createdAt || o.created_at).toLocaleString("id-ID", {
+                                      day: "numeric",
+                                      month: "short",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                  </span>
+                                </div>
+                                <span
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                    isOrderPaid
+                                      ? "bg-emerald-100 text-emerald-900"
+                                      : "bg-amber-100 text-amber-900"
+                                  }`}
+                                >
+                                  {isOrderPaid ? "Lunas" : "Sisa Tagihan"}
+                                </span>
+                              </div>
+
+                              {o.notes && (
+                                <p className="text-[10px] text-muted italic">
+                                  Catatan: {o.notes}
+                                </p>
+                              )}
+
+                              <div className="flex items-center justify-between pt-1">
+                                <div>
+                                  <span className="text-[10px] text-muted block">Total / Sisa:</span>
+                                  <span className="font-bold text-fg">
+                                    Rp {(o.total || 0).toLocaleString("id-ID")}{" "}
+                                    <span className="font-normal text-muted">/</span>{" "}
+                                    <strong className={orderRemaining > 0 ? "text-rose-700" : "text-emerald-700"}>
+                                      Rp {orderRemaining.toLocaleString("id-ID")}
+                                    </strong>
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => setReceiptData(o)}
+                                    className="px-2.5 py-1.5 bg-card hover:bg-line text-muted hover:text-fg rounded-xl text-xs font-semibold transition-colors"
+                                  >
+                                    Struk
+                                  </button>
+                                  {!isOrderPaid && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenKasbonPayModal(o)}
+                                      className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1"
+                                    >
+                                      <span>+ Bayar / Cicil</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* --- FILTER & SEARCH BAR --- */}
+          <div className=" bg-surface p-4 rounded-3xl border border-line shadow-sm space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
           {/* Search */}
           <div className="relative">
@@ -563,6 +992,7 @@ export default function AdminTransaksiPage() {
               <option value="Cash"> Tunai (Cash)</option>
               <option value="QRIS"> QRIS</option>
               <option value="Transfer"> Transfer Bank</option>
+              <option value="Kasbon"> Kasbon / Piutang</option>
             </select>
           </div>
 
@@ -1087,6 +1517,8 @@ export default function AdminTransaksiPage() {
           )}
         </div>
       )}
+    </>
+  )}
 
       {/* --- RECEIPT & DETAIL BUKTI PEMBAYARAN MODAL --- */}
       {receiptData && (
@@ -1617,6 +2049,174 @@ export default function AdminTransaksiPage() {
                   className="flex-[2] py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-md transition-all active:scale-95"
                 >
                   Konfirmasi VOID
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Bayar / Cicil Kasbon */}
+      {kasbonTargetOrder && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
+          onClick={() => !isSubmittingKasbonPay && setKasbonTargetOrder(null)}
+        >
+          <div
+            className="bg-surface rounded-3xl p-6 max-w-md w-full shadow-2xl border border-line space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-line">
+              <div>
+                <h3 className="text-base font-black text-fg">
+                  Catat Pembayaran Kasbon
+                </h3>
+                <p className="text-xs text-muted mt-0.5">
+                  Nota #{kasbonTargetOrder.id} • {kasbonTargetOrder.customerName || "Pelanggan"}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={isSubmittingKasbonPay}
+                onClick={() => setKasbonTargetOrder(null)}
+                className="text-muted hover:text-fg font-bold text-sm p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleProcessKasbonPay} className="space-y-4">
+              {/* Sisa Tagihan Info */}
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold text-muted block uppercase">
+                    Sisa Tagihan Belum Lunas
+                  </span>
+                  <span className="text-lg font-black text-rose-700 block">
+                    Rp {(kasbonTargetOrder.remainingBalance !== undefined
+                      ? kasbonTargetOrder.remainingBalance
+                      : (kasbonTargetOrder.status === "unpaid" ? kasbonTargetOrder.total : 0)).toLocaleString("id-ID")}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const remaining = kasbonTargetOrder.remainingBalance !== undefined
+                      ? kasbonTargetOrder.remainingBalance
+                      : (kasbonTargetOrder.status === "unpaid" ? kasbonTargetOrder.total : 0);
+                    setKasbonPayAmount(String(remaining));
+                  }}
+                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-black transition-colors"
+                >
+                  Bayar Lunas
+                </button>
+              </div>
+
+              {/* Input Nominal */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-fg">
+                  Nominal Pembayaran (Rp):
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-muted text-sm">
+                    Rp
+                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    max={kasbonTargetOrder.remainingBalance !== undefined
+                      ? kasbonTargetOrder.remainingBalance
+                      : (kasbonTargetOrder.status === "unpaid" ? kasbonTargetOrder.total : undefined)}
+                    value={kasbonPayAmount}
+                    onChange={(e) => setKasbonPayAmount(e.target.value)}
+                    placeholder="0"
+                    className="w-full bg-card border border-line rounded-xl pl-11 pr-4 py-3 text-lg font-black text-fg outline-none focus:border-accent"
+                    required
+                    autoFocus
+                  />
+                </div>
+                {/* Presets */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[10000, 20000, 50000, 100000].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => {
+                        const cur = Number(kasbonPayAmount) || 0;
+                        setKasbonPayAmount(String(cur + val));
+                      }}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-card hover:bg-line text-muted hover:text-fg border border-line transition-colors"
+                    >
+                      +{val >= 1000 ? `${val / 1000}rb` : val}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setKasbonPayAmount("")}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-card hover:bg-rose-50 text-rose-600 border border-line transition-colors"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+
+              {/* Metode Pembayaran */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-fg">
+                  Metode Pembayaran:
+                </label>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  {[
+                    { id: "Cash", label: "Tunai" },
+                    { id: "QRIS", label: "QRIS" },
+                    { id: "Transfer", label: "Transfer" },
+                  ].map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setKasbonPayMethod(m.id)}
+                      className={`py-2 px-1 rounded-xl border text-center font-bold transition-all ${
+                        kasbonPayMethod === m.id
+                          ? "bg-accent border-accent text-white shadow-sm"
+                          : "bg-card border-line text-muted hover:text-fg"
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Catatan Pembayaran */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-fg">
+                  Catatan Pembayaran:
+                </label>
+                <input
+                  type="text"
+                  value={kasbonPayNotes}
+                  onChange={(e) => setKasbonPayNotes(e.target.value)}
+                  placeholder="Contoh: Cicilan pertama, Pelunasan via BCA"
+                  className="w-full bg-card border border-line rounded-xl p-2.5 text-xs text-fg outline-none focus:border-accent"
+                />
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex items-center gap-2 pt-2 border-t border-line">
+                <button
+                  type="button"
+                  disabled={isSubmittingKasbonPay}
+                  onClick={() => setKasbonTargetOrder(null)}
+                  className="flex-1 py-3 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingKasbonPay}
+                  className="flex-1 py-3 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-bold shadow-lg shadow-accent/20 transition-all active:scale-95"
+                >
+                  {isSubmittingKasbonPay ? "Menyimpan..." : "Simpan Pembayaran"}
                 </button>
               </div>
             </form>

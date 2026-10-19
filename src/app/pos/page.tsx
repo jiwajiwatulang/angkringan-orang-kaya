@@ -107,6 +107,8 @@ export default function POSPage() {
   const [cashMovementType, setCashMovementType] = useState<'in' | 'out'>('out');
   const [cashMovementAmount, setCashMovementAmount] = useState("");
   const [cashMovementReason, setCashMovementReason] = useState("Beli Es Batu");
+  const [cashMovementCategory, setCashMovementCategory] = useState<string>("operasional");
+  const [cashMovementPaymentSource, setCashMovementPaymentSource] = useState<'laci' | 'rekening'>('laci');
 
   const refreshShiftData = async () => {
     try {
@@ -322,6 +324,7 @@ export default function POSPage() {
   // Payment & Modal State
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [orderType, setOrderType] = useState("Dine-in");
@@ -1035,6 +1038,8 @@ export default function POSPage() {
         shiftId: activeShift.id,
         type: cashMovementType,
         amount: amt,
+        category: cashMovementType === 'out' ? cashMovementCategory : undefined,
+        paymentSource: cashMovementPaymentSource,
         reason: cashMovementReason,
         operatorName: activeShift.operatorName
       });
@@ -1518,6 +1523,14 @@ export default function POSPage() {
       }
     }
 
+    if (paymentMethod === 'Kasbon') {
+      if (!customerName.trim() || customerName.trim().toLowerCase() === 'tamu') {
+        alert("Harap masukkan Nama Pelanggan untuk mencatat kasbon/hutang!");
+        return;
+      }
+      status = 'unpaid';
+    }
+
     const effectiveName = customerName.trim() || (selectedTableObj ? `Meja ${selectedTableObj.nomor.replace(/^Meja\s*/i, '')}` : "Tamu");
     paymentInFlight.current = true;
     setIsProcessingPayment(true);
@@ -1537,6 +1550,7 @@ export default function POSPage() {
       const signature = JSON.stringify({ items: cart, totalPrice, status, editingOrderId, selectedTable, paymentMethod, cashTendered });
       if (paymentAttempt.current?.signature !== signature) paymentAttempt.current = { signature, key: crypto.randomUUID() };
       const idempotencyKey = paymentAttempt.current.key;
+      const isKasbon = paymentMethod === 'Kasbon';
       const payload: any = {
         idempotencyKey,
         items: finalItems,
@@ -1548,15 +1562,17 @@ export default function POSPage() {
         serviceCharge: serviceAmount,
         total: finalTotal,
         customerName: effectiveName,
-        customerPhone: "",
+        customerPhone: customerPhone.trim() || undefined,
         paymentMethod,
         cashTendered: paymentMethod === 'Cash' ? Number(cashTendered) : undefined,
         change: paymentMethod === 'Cash' ? Math.max(0, Number(cashTendered) - finalTotal) : 0,
+        paidAmount: isKasbon ? 0 : (status === 'paid' ? finalTotal : 0),
+        remainingBalance: isKasbon ? finalTotal : (status === 'paid' ? 0 : finalTotal),
         orderType,
-        notes,
+        notes: isKasbon ? (notes ? `[Kasbon] ${notes}` : 'Kasbon / Bayar Nanti') : notes,
         tableId: orderType === "Dine-in" && selectedTable ? parseInt(selectedTable) : null,
         status: status,
-        proof: checkoutProof && paymentMethod !== 'Cash' ? checkoutProof : undefined
+        proof: checkoutProof && paymentMethod !== 'Cash' && !isKasbon ? checkoutProof : undefined
       };
 
       let resultId;
@@ -1656,6 +1672,7 @@ export default function POSPage() {
       pushModalHistory("receipt");
 
       resetCart();
+      setCustomerPhone("");
       setOrderType("Dine-in");
       setSelectedTable("");
       navigateWorkspace(isTableManagementEnabled(storeSettings) ? 'meja' : 'kasir');
@@ -2590,16 +2607,35 @@ export default function POSPage() {
                   </div>
                 )}
                 <div>
-                  <label className="block text-xs font-bold text-muted mb-1">Nama Pelanggan</label>
-                  <input 
-                    type="text" 
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Nama Pelanggan (Opsional)"
-                    className="w-full bg-surface border border-line rounded-xl p-2.5 text-sm text-fg focus:border-accent outline-none transition-colors" 
-                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-bold text-muted mb-1">
+                        Nama Pelanggan {paymentMethod === 'Kasbon' ? <span className="text-rose-500 font-black">* (Wajib)</span> : '(Opsional)'}
+                      </label>
+                      <input 
+                        type="text" 
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder={paymentMethod === 'Kasbon' ? 'Nama Pelanggan (Wajib Kasbon)' : 'Nama Pelanggan (Opsional)'}
+                        className="w-full bg-surface border border-line rounded-xl p-2.5 text-sm text-fg focus:border-accent outline-none transition-colors" 
+                        required={paymentMethod === 'Kasbon'}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-muted mb-1">
+                        No. HP / WA Pelanggan (Opsional)
+                      </label>
+                      <input 
+                        type="tel" 
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        placeholder="Contoh: 08123456789"
+                        className="w-full bg-surface border border-line rounded-xl p-2.5 text-sm text-fg focus:border-accent outline-none transition-colors" 
+                      />
+                    </div>
+                  </div>
                   <div className="mt-2.5">
-                    <label className="block text-xs font-bold text-muted mb-1">Catatan</label>
+                    <label className="block text-xs font-bold text-muted mb-1">Catatan Pesanan</label>
                     <input
                       type="text"
                       value={notes}
@@ -2612,11 +2648,12 @@ export default function POSPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-muted mb-1.5 mt-2">Metode Pembayaran</label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {[
                       { id: "Cash", label: "Tunai" },
                       { id: "QRIS", label: "QRIS" },
-                      { id: "Transfer", label: "Transfer" }
+                      { id: "Transfer", label: "Transfer" },
+                      { id: "Kasbon", label: "Kasbon" }
                     ].map((method) => (
                       <button 
                         key={method.id}
@@ -2624,7 +2661,7 @@ export default function POSPage() {
                         onClick={() => setPaymentMethod(method.id)}
                         className={`py-2.5 px-1 rounded-xl text-xs font-bold transition-all border flex flex-col items-center justify-center gap-1 ${
                           paymentMethod === method.id 
-                            ? 'bg-accent border-accent text-white shadow-md shadow-accent/30' 
+                            ? (method.id === 'Kasbon' ? 'bg-amber-600 border-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-accent border-accent text-white shadow-md shadow-accent/30') 
                             : ' bg-surface border-line text-muted hover:border-slate-500'
                         }`}
                       >
@@ -2633,6 +2670,16 @@ export default function POSPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Kasbon Notice */}
+                {paymentMethod === "Kasbon" && (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs space-y-1">
+                    <span className="font-bold text-amber-800 block">Pencatatan Buku Kasbon / Piutang</span>
+                    <p className="text-[11px] text-muted leading-relaxed">
+                      Pesanan akan disimpan sebagai tagihan belum lunas atas nama <strong>{customerName || "Pelanggan"}</strong>. Pelanggan dapat mencicil atau melunasi sewaktu-waktu di Buku Kasbon Admin.
+                    </p>
+                  </div>
+                )}
 
                 {/* Split Bill Trigger */}
                 <div className="pt-1">
@@ -2753,7 +2800,7 @@ export default function POSPage() {
               >
                 Batal
               </button>
-              {orderType === "Dine-in" && selectedTable && (
+              {orderType === "Dine-in" && selectedTable && paymentMethod !== "Kasbon" && (
                 <button 
                   type="button"
                   onClick={() => processPayment(true, 'unpaid')} 
@@ -2772,11 +2819,19 @@ export default function POSPage() {
                       return;
                     }
                   }
-                  processPayment(false, 'paid');
+                  processPayment(false, paymentMethod === 'Kasbon' ? 'unpaid' : 'paid');
                 }} 
-                className="flex-1 py-3 rounded-xl bg-accent hover:bg-accent-hover text-white font-extrabold transition-all shadow-md text-xs sm:text-sm active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                className={`flex-1 py-3 rounded-xl text-white font-extrabold transition-all shadow-md text-xs sm:text-sm active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
+                  paymentMethod === 'Kasbon'
+                    ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
+                    : 'bg-accent hover:bg-accent-hover'
+                }`}
               >
-                {isProcessingPayment ? 'Memproses...' : 'Bayar Sekarang'}
+                {isProcessingPayment 
+                  ? 'Memproses...' 
+                  : paymentMethod === 'Kasbon' 
+                  ? 'Simpan Kasbon' 
+                  : 'Bayar Sekarang'}
               </button>
             </div>
           </div>
@@ -3598,38 +3653,152 @@ export default function POSPage() {
           onClick={handleCloseCashMovement}
         >
           <div 
-            className=" bg-card rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-line"
+            className=" bg-card rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl border border-line space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-xl font-black text-fg mb-1">Catat Arus Kas Laci</h3>
-            <p className="text-xs text-muted mb-4">Catat pengeluaran operasional toko atau penambahan modal kas kecil.</p>
+            <div>
+              <h3 className="text-xl font-black text-fg mb-1">
+                {cashMovementType === 'out' ? 'Catat Kas Keluar / Biaya' : 'Catat Kas Masuk (+)'}
+              </h3>
+              <p className="text-xs text-muted">
+                {cashMovementType === 'out' 
+                  ? 'Catat belanja bahan, perlengkapan, atau biaya operasional kasir.' 
+                  : 'Catat penambahan modal laci atau penerimaan kas non-nota.'}
+              </p>
+            </div>
 
-            <form onSubmit={handleCashMovementSubmit} className="space-y-4">
+            <form onSubmit={handleCashMovementSubmit} className="space-y-3.5">
               <div className="flex rounded-xl bg-line p-1">
                 <button
                   type="button"
                   onClick={() => setCashMovementType('out')}
                   className={'flex-1 py-2 rounded-lg text-xs font-bold transition-all ' + (cashMovementType === 'out' ? 'bg-rose-600 text-white shadow' : ' text-slate-300')}
-                > Kas Keluar (Biaya)
+                >
+                  Kas Keluar (Biaya)
                 </button>
                 <button
                   type="button"
                   onClick={() => setCashMovementType('in')}
                   className={'flex-1 py-2 rounded-lg text-xs font-bold transition-all ' + (cashMovementType === 'in' ? 'bg-accent text-white shadow' : ' text-slate-300')}
-                > Kas Masuk (+)
+                >
+                  Kas Masuk (+)
                 </button>
               </div>
+
+              {/* Quick suggestion chips for cash out */}
+              {cashMovementType === 'out' && (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-muted block">Pilihan Cepat Biaya:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { label: 'Es Batu', cat: 'operasional', text: 'Beli Es Batu' },
+                      { label: 'Gas LPG', cat: 'perlengkapan', text: 'Beli Gas LPG' },
+                      { label: 'Plastik', cat: 'perlengkapan', text: 'Beli Kantong Plastik / Kemasan' },
+                      { label: 'Air Galon', cat: 'operasional', text: 'Beli Air Galon' },
+                      { label: 'Parkir', cat: 'operasional', text: 'Biaya Parkir & Kebersihan' },
+                      { label: 'Bahan Masak', cat: 'bahan_baku', text: 'Belanja Pasar / Bahan Dapur' },
+                      { label: 'Bensin', cat: 'operasional', text: 'Bensin & Transportasi' },
+                    ].map((item, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setCashMovementCategory(item.cat);
+                          setCashMovementReason(item.text);
+                        }}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border transition-all ${
+                          cashMovementReason === item.text
+                            ? 'bg-accent text-white border-accent'
+                            : 'bg-surface text-muted hover:text-fg border-line hover:border-accent'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1">Nominal (Rp):</label>
                 <input 
                   type="number" 
+                  min="1"
                   placeholder="0"
                   value={cashMovementAmount}
                   onChange={(e) => setCashMovementAmount(e.target.value)}
                   className="w-full border border-line rounded-xl p-3 text-lg font-black text-fg bg-surface outline-none focus:border-accent"
                   required
+                  autoFocus
                 />
+                {/* Quick addition buttons */}
+                <div className="flex flex-wrap gap-1.5 pt-1.5">
+                  {[10000, 20000, 50000, 100000].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => {
+                        const cur = Number(cashMovementAmount) || 0;
+                        setCashMovementAmount(String(cur + val));
+                      }}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-line text-muted hover:text-fg transition-colors"
+                    >
+                      +{val >= 1000 ? `${val / 1000}rb` : val}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setCashMovementAmount("")}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-600 transition-colors"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+
+              {cashMovementType === 'out' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Kategori Pengeluaran:</label>
+                  <select
+                    value={cashMovementCategory}
+                    onChange={(e) => setCashMovementCategory(e.target.value)}
+                    className="w-full border border-line rounded-xl p-2.5 text-xs font-bold text-fg bg-surface outline-none focus:border-accent"
+                  >
+                    <option value="bahan_baku">Bahan Baku & Dapur</option>
+                    <option value="perlengkapan">Perlengkapan & Kemasan</option>
+                    <option value="operasional">Operasional & Utilitas</option>
+                    <option value="gaji_harian">Gaji / Upah Harian</option>
+                    <option value="lainnya">Lain-lain</option>
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Sumber Dana:</label>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setCashMovementPaymentSource('laci')}
+                    className={`py-2 px-3 rounded-xl border text-center font-bold transition-all ${
+                      cashMovementPaymentSource === 'laci'
+                        ? 'bg-accent/10 border-accent text-accent-text'
+                        : 'bg-surface border-line text-muted hover:text-fg'
+                    }`}
+                  >
+                    Kas Fisik Laci
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCashMovementPaymentSource('rekening')}
+                    className={`py-2 px-3 rounded-xl border text-center font-bold transition-all ${
+                      cashMovementPaymentSource === 'rekening'
+                        ? 'bg-accent/10 border-accent text-accent-text'
+                        : 'bg-surface border-line text-muted hover:text-fg'
+                    }`}
+                  >
+                    Rekening Toko
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -3639,7 +3808,7 @@ export default function POSPage() {
                   placeholder="Keterangan pengeluaran / pemasukan kas"
                   value={cashMovementReason}
                   onChange={(e) => setCashMovementReason(e.target.value)}
-                  className="w-full border border-line rounded-xl p-2.5 text-sm text-fg bg-surface outline-none focus:border-accent"
+                  className="w-full border border-line rounded-xl p-2.5 text-xs text-fg bg-surface outline-none focus:border-accent"
                   required
                 />
               </div>
@@ -3648,13 +3817,17 @@ export default function POSPage() {
                 <button 
                   type="button" 
                   onClick={handleCloseCashMovement}
-                  className="flex-1 py-3 bg-line text-fg rounded-xl text-sm font-bold transition-colors"
+                  className="flex-1 py-3 bg-line text-fg rounded-xl text-xs font-bold transition-colors"
                 >
                   Batal
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 py-3 bg-accent hover:bg-accent-hover text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 transition-all active:scale-95"
+                  className={`flex-1 py-3 text-white rounded-xl text-xs font-bold shadow-lg transition-all active:scale-95 ${
+                    cashMovementType === 'out'
+                      ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
+                      : 'bg-accent hover:bg-accent-hover shadow-accent/20'
+                  }`}
                 >
                   Simpan
                 </button>
