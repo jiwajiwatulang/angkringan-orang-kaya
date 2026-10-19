@@ -84,4 +84,4 @@ npx wrangler deploy
 
 ## Hak Cipta & Perusahaan
 
-© 2026 **SakuNota**. Hak cipta dilindungi undang-undang.
+© 2026 **SakuNota**, PT Pemuda Gaya Bebas

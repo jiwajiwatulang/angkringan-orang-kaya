@@ -2382,7 +2382,7 @@ export default function POSPage() {
         </div>
 
         <div className="text-center text-[11px] text-slate-500 py-3">
-          SakuNota - Kasir Jalan Tanpa Internet &copy; 2026. Hak cipta dilindungi.
+          SakuNota - Kasir Jalan Tanpa Internet &copy; 2026, PT Pemuda Gaya Bebas
         </div>
       </div>
     );

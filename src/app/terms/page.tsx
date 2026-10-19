@@ -106,7 +106,7 @@ export default function TermsOfServicePage() {
                 alt="SakuNota"
                 className="h-6 w-auto object-contain"
               />
-              <span className="font-bold text-slate-800">© 2026 SakuNota. Hak cipta dilindungi.</span>
+              <span className="font-bold text-slate-800">© 2026 SakuNota, PT Pemuda Gaya Bebas</span>
             </div>
             <p className="text-[11px] text-slate-500 max-w-md">
               Aplikasi kasir modern untuk UMKM, angkringan, kafe, dan retail. 100% jalan offline tanpa biaya langganan bulanan.

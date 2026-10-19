@@ -1547,7 +1547,7 @@ export default function SakuNotaLandingPage() {
         {/* Bottom Bar: Copyright, Privacy, Terms */}
         <div className="max-w-6xl mx-auto mt-12 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-600">
           <div>
-            © 2026 SakuNota. Hak cipta dilindungi.
+            © 2026 SakuNota, PT Pemuda Gaya Bebas
           </div>
           <div className="flex items-center gap-6 font-semibold">
             <Link href="/tentang" className="hover:text-blue-600 transition-colors">Tentang Kami</Link>

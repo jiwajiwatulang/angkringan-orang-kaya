@@ -630,7 +630,7 @@ export default function PanduanPage() {
           {/* Bottom Copyright & Legal Links */}
           <div className="mt-12 pt-6 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-400">
             <div>
-              © 2026 SakuNota. Hak cipta dilindungi.
+              © 2026 SakuNota, PT Pemuda Gaya Bebas
             </div>
             <div className="flex items-center gap-6">
               <Link href="/privacy" className="text-neutral-400 hover:text-white transition-colors">
