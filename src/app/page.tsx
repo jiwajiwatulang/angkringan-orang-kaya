@@ -653,7 +653,7 @@ export default function SakuNotaLandingPage() {
           {/* Top Pill Slogan Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50/95 backdrop-blur-md border border-blue-200 text-blue-700 text-xs font-extrabold shadow-xs">
             <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
-            <span>SakuNota POS</span>
+            <span>SakuNota</span>
             <span className="text-blue-300">•</span>
             <span className="text-blue-800">Sekali Bayar Rp50.000</span>
           </div>

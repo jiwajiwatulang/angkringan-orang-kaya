@@ -2116,83 +2116,85 @@ export default function POSPage() {
             onTouchMove={handleCartTouchMove}
             onTouchEnd={handleCartTouchEnd}
           >
-            {/* Grab handle & Resizable Height Switcher */}
-            <div className="flex flex-col items-center justify-center -mt-1 mb-2 pt-1 pb-1 select-none touch-none landscape:hidden">
-              <div 
-                className="w-14 h-1.5 bg-slate-500 hover:bg-accent rounded-full mb-2 cursor-pointer transition-colors"
-                onClick={() => {
-                  if (mobileSheetSnap === 'compact') handleSetMobileSheetSnap('comfortable');
-                  else if (mobileSheetSnap === 'comfortable') handleSetMobileSheetSnap('full');
-                  else handleSetMobileSheetSnap('compact');
-                }}
-                title="Tarik atau ketuk untuk beralih tinggi nota"
-              />
-              <div className="flex items-center justify-between w-full px-0.5 gap-2">
-                {/* Height Presets */}
-                <div className="flex items-center gap-1 bg-card/80 p-0.5 rounded-xl border border-line text-[10px] font-bold shadow-xs">
-                  <span className="text-muted px-1">Tinggi:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleSetMobileSheetSnap('compact')}
-                    className={`px-2 py-0.5 rounded-lg transition-all ${
-                      mobileSheetSnap === 'compact'
-                        ? 'bg-accent text-white shadow-xs font-black'
-                        : 'text-muted hover:text-fg'
-                    }`}
-                  >
-                    60%
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSetMobileSheetSnap('comfortable')}
-                    className={`px-2 py-0.5 rounded-lg transition-all ${
-                      mobileSheetSnap === 'comfortable'
-                        ? 'bg-accent text-white shadow-xs font-black'
-                        : 'text-muted hover:text-fg'
-                    }`}
-                  >
-                    82% Nyaman
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSetMobileSheetSnap('full')}
-                    className={`px-2 py-0.5 rounded-lg transition-all ${
-                      mobileSheetSnap === 'full'
-                        ? 'bg-accent text-white shadow-xs font-black'
-                        : 'text-muted hover:text-fg'
-                    }`}
-                  >
-                    96% Penuh
-                  </button>
-                </div>
+            {/* Grab handle & Resizable Height Switcher (Only active when cart drawer is open) */}
+            {isMobile && isMobileCartOpen && (
+              <div className="flex flex-col items-center justify-center -mt-1 mb-2 pt-1 pb-1 select-none touch-none landscape:hidden">
+                <div 
+                  className="w-14 h-1.5 bg-slate-500 hover:bg-accent rounded-full mb-2 cursor-pointer transition-colors"
+                  onClick={() => {
+                    if (mobileSheetSnap === 'compact') handleSetMobileSheetSnap('comfortable');
+                    else if (mobileSheetSnap === 'comfortable') handleSetMobileSheetSnap('full');
+                    else handleSetMobileSheetSnap('compact');
+                  }}
+                  title="Tarik atau ketuk untuk beralih tinggi nota"
+                />
+                <div className="flex items-center justify-between w-full px-0.5 gap-2">
+                  {/* Height Presets */}
+                  <div className="flex items-center gap-1 bg-card/80 p-0.5 rounded-xl border border-line text-[10px] font-bold shadow-xs">
+                    <span className="text-muted px-1">Tinggi:</span>
+                    <button
+                      type="button"
+                      onClick={() => handleSetMobileSheetSnap('compact')}
+                      className={`px-2 py-0.5 rounded-lg transition-all ${
+                        mobileSheetSnap === 'compact'
+                          ? 'bg-accent text-white shadow-xs font-black'
+                          : 'text-muted hover:text-fg'
+                      }`}
+                    >
+                      60%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSetMobileSheetSnap('comfortable')}
+                      className={`px-2 py-0.5 rounded-lg transition-all ${
+                        mobileSheetSnap === 'comfortable'
+                          ? 'bg-accent text-white shadow-xs font-black'
+                          : 'text-muted hover:text-fg'
+                      }`}
+                    >
+                      82%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSetMobileSheetSnap('full')}
+                      className={`px-2 py-0.5 rounded-lg transition-all ${
+                        mobileSheetSnap === 'full'
+                          ? 'bg-accent text-white shadow-xs font-black'
+                          : 'text-muted hover:text-fg'
+                      }`}
+                    >
+                      96%
+                    </button>
+                  </div>
 
-                {/* Density Switcher: Normal vs Jumbo */}
-                <div className="flex items-center gap-1 bg-card/80 p-0.5 rounded-xl border border-line text-[10px] font-bold shadow-xs">
-                  <button
-                    type="button"
-                    onClick={() => handleSetMobileCartDensity('normal')}
-                    className={`px-2 py-0.5 rounded-lg transition-all ${
-                      mobileCartDensity === 'normal'
-                        ? 'bg-accent text-white shadow-xs font-black'
-                        : 'text-muted hover:text-fg'
-                    }`}
-                  >
-                    Normal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSetMobileCartDensity('jumbo')}
-                    className={`px-2 py-0.5 rounded-lg transition-all ${
-                      mobileCartDensity === 'jumbo'
-                        ? 'bg-accent text-white shadow-xs font-black'
-                        : 'text-muted hover:text-fg'
-                    }`}
-                  >
-                    Jumbo
-                  </button>
+                  {/* Density Switcher: Normal vs Besar */}
+                  <div className="flex items-center gap-1 bg-card/80 p-0.5 rounded-xl border border-line text-[10px] font-bold shadow-xs">
+                    <button
+                      type="button"
+                      onClick={() => handleSetMobileCartDensity('normal')}
+                      className={`px-2 py-0.5 rounded-lg transition-all ${
+                        mobileCartDensity === 'normal'
+                          ? 'bg-accent text-white shadow-xs font-black'
+                          : 'text-muted hover:text-fg'
+                      }`}
+                    >
+                      Normal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSetMobileCartDensity('jumbo')}
+                      className={`px-2 py-0.5 rounded-lg transition-all ${
+                        mobileCartDensity === 'jumbo'
+                          ? 'bg-accent text-white shadow-xs font-black'
+                          : 'text-muted hover:text-fg'
+                      }`}
+                    >
+                      Besar
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
@@ -2484,23 +2486,25 @@ export default function POSPage() {
         <div className="max-w-xl w-full mx-auto my-auto py-6">
           {/* Header */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 border-2 border-blue-200 mb-4 shadow-sm">
+            <div className="inline-flex items-center justify-center mb-3">
               {accessStatus.status === 'trial_expired' ? (
-                <svg className="w-8 h-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-10 h-10 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               ) : accessStatus.isClockTampered ? (
-                <svg className="w-8 h-8 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-10 h-10 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               ) : (
-                <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-10 h-10 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               )}
             </div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-extrabold mb-2">
-              <span>SakuNota - Kasir Pintar Offline</span>
+            <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm mb-2">
+              <span className="font-black text-slate-900 tracking-tight">Saku<span className="text-blue-600">Nota</span></span>
+              <span className="text-slate-400 font-medium">-</span>
+              <span className="font-bold text-blue-600 tracking-tight">Kasir Jalan Tanpa Internet</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
               {accessStatus.status === 'trial_expired'
@@ -2600,10 +2604,9 @@ export default function POSPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
             <Link
               href="/?beli=true"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-black p-3 rounded-xl text-xs transition-colors flex flex-col items-center justify-center gap-1 shadow-xs"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-black p-3 rounded-xl text-xs transition-colors flex items-center justify-center shadow-xs min-h-[56px]"
             >
-              <span className="text-base"><LineIcon name="card" /></span>
-              <span>Beli Lisensi Rp50rb</span>
+              <span>Beli Rp 50,000</span>
             </Link>
             <Link
               href="/?beta=register"
