@@ -653,7 +653,7 @@ export default function SakuNotaLandingPage() {
           {/* Top Pill Slogan Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50/95 backdrop-blur-md border border-blue-200 text-blue-700 text-xs font-extrabold shadow-xs">
             <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
-            <span>Kasir Jalan Tanpa Internet</span>
+            <span>SakuNota POS</span>
             <span className="text-blue-300">•</span>
             <span className="text-blue-800">Sekali Bayar Rp50.000</span>
           </div>
@@ -661,10 +661,10 @@ export default function SakuNotaLandingPage() {
           {/* Main Headline */}
           <div className="space-y-3">
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.15]">
-              Kasir untuk setiap usaha.
+              Kasir Jalan Tanpa Internet
             </h1>
             <p className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-blue-600 tracking-tight">
-              Jualan lancar, online maupun offline.
+              Dimana aja, Sambil jalan dan melayani
             </p>
           </div>
 

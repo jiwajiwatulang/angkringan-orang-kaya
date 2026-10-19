@@ -190,7 +190,7 @@ export default function TentangSakuNotaPage() {
             Manifesto
           </h2>
 
-          <div className="space-y-6 text-sm sm:text-base text-slate-300 leading-relaxed">
+          <div className="space-y-6 text-sm sm:text-base text-white leading-relaxed font-normal">
             <p>
               Kami meyakini bahwa pemilik usaha berhak memiliki alat kerjanya sendiri, bukan menyewanya seumur hidup.
             </p>
@@ -246,7 +246,7 @@ export default function TentangSakuNotaPage() {
           <h2 className="text-3xl sm:text-5xl font-black tracking-tight">
             Ready to transform your operations?
           </h2>
-          <p className="text-sm sm:text-base text-slate-300 max-w-xl mx-auto">
+          <p className="text-sm sm:text-base text-white max-w-xl mx-auto font-medium">
             Mulai gunakan SakuNota hari ini. Tanpa tagihan langganan bulanan, tanpa biaya tersembunyi, dan 100% bebas dari risiko kasir macet saat internet mati.
           </p>
 
