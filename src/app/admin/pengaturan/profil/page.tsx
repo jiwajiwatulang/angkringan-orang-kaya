@@ -256,11 +256,15 @@ export default function PengaturanProfilPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-fg mb-1">
-                Nama Usaha / Toko:
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-fg">
+                  Nama Usaha / Toko:
+                </label>
+                <span className="text-[10px] text-muted font-mono">{storeName.length}/40 karakter</span>
+              </div>
               <input
                 type="text"
+                maxLength={40}
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
                 placeholder="Contoh: Angkringan Orang Kaya"

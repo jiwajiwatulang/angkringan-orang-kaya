@@ -229,9 +229,22 @@ export default function POSPage() {
     }
   };
 
-  const handleCartTouchEnd = () => {
-    if (cartSheetDragY > 70) {
-      closeMobileCart();
+  const handleCartTouchEnd = (e: React.TouchEvent) => {
+    if (cartSheetTouchStartRef.current !== null) {
+      const deltaY = (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientY : e.touches[0]?.clientY || 0) - cartSheetTouchStartRef.current;
+      if (deltaY < -50) {
+        if (mobileSheetSnap === 'compact') {
+          handleSetMobileSheetSnap('comfortable');
+        } else if (mobileSheetSnap === 'comfortable') {
+          handleSetMobileSheetSnap('full');
+        }
+      } else if (cartSheetDragY > 110) {
+        closeMobileCart();
+      } else if (cartSheetDragY > 45 && mobileSheetSnap === 'full') {
+        handleSetMobileSheetSnap('comfortable');
+      } else if (cartSheetDragY > 45 && mobileSheetSnap === 'comfortable') {
+        handleSetMobileSheetSnap('compact');
+      }
     }
     setCartSheetDragY(0);
     cartSheetTouchStartRef.current = null;
@@ -256,7 +269,8 @@ export default function POSPage() {
   const [posCartWidth, setPosCartWidth] = useState<number>(380);
   const [isResizingCart, setIsResizingCart] = useState<boolean>(false);
   const [posCatalogDensity, setPosCatalogDensity] = useState<'S' | 'M' | 'L'>('M');
-  const [mobileSheetSnap, setMobileSheetSnap] = useState<'half' | 'full'>('full');
+  const [mobileSheetSnap, setMobileSheetSnap] = useState<'compact' | 'comfortable' | 'full'>('comfortable');
+  const [mobileCartDensity, setMobileCartDensity] = useState<'normal' | 'jumbo'>('normal');
   const workspaceContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -272,8 +286,36 @@ export default function POSPage() {
       if (savedDensity && ['S', 'M', 'L'].includes(savedDensity)) {
         setPosCatalogDensity(savedDensity);
       }
+      const savedSnap = localStorage.getItem('sakunota_mobile_cart_snap') as 'compact' | 'comfortable' | 'full' | null;
+      if (savedSnap && ['compact', 'comfortable', 'full'].includes(savedSnap)) {
+        setMobileSheetSnap(savedSnap);
+      }
+      const savedCartDensity = localStorage.getItem('sakunota_mobile_cart_density') as 'normal' | 'jumbo' | null;
+      if (savedCartDensity && ['normal', 'jumbo'].includes(savedCartDensity)) {
+        setMobileCartDensity(savedCartDensity);
+      }
     }
   }, []);
+
+  const handleSetMobileSheetSnap = (snap: 'compact' | 'comfortable' | 'full') => {
+    setMobileSheetSnap(snap);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sakunota_mobile_cart_snap', snap);
+    }
+  };
+
+  const handleSetMobileCartDensity = (density: 'normal' | 'jumbo') => {
+    setMobileCartDensity(density);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sakunota_mobile_cart_density', density);
+    }
+  };
+
+  const getMobileSheetHeight = () => {
+    if (mobileSheetSnap === 'compact') return '60vh';
+    if (mobileSheetSnap === 'full') return '96vh';
+    return '82vh';
+  };
 
   const handleSetCatalogDensity = (density: 'S' | 'M' | 'L') => {
     setPosCatalogDensity(density);
@@ -1555,6 +1597,12 @@ export default function POSPage() {
       return item;
     }).filter(item => item.qty > 0));
   };
+  const removeFromCart = (keyOrId: string | number) => {
+    setCart(prev => prev.filter(item => {
+      const currentKey = item.itemKey || item.id;
+      return !(currentKey === keyOrId || item.id === keyOrId || currentKey.toString() === keyOrId.toString());
+    }));
+  };
   const resetCart = () => {
     setCart([]);
     setOldCart([]);
@@ -2068,20 +2116,82 @@ export default function POSPage() {
             onTouchMove={handleCartTouchMove}
             onTouchEnd={handleCartTouchEnd}
           >
-            {/* Grab handle: ONLY visible in portrait mode, hidden in landscape to save vertical pixels */}
-            <div 
-              className="flex flex-col items-center justify-center -mt-1 mb-2 pt-1 pb-0.5 cursor-pointer select-none active:opacity-70 touch-none landscape:hidden"
-              onClick={() => {
-                setMobileSheetSnap(prev => prev === 'half' ? 'full' : 'half');
-              }}
-              title="Ketuk untuk ubah tinggi nota (Setengah / Penuh) atau tarik ke bawah untuk menutup"
-            >
-              <div className="w-14 h-1.5 bg-slate-500 hover:bg-accent rounded-full mb-1 transition-colors"></div>
-              <span className="text-[10px] text-muted font-semibold flex items-center gap-1.5">
-                <span>{mobileSheetSnap === 'half' ? '▲ Perbesar Nota Penuh' : '▼ Perkecil ke Setengah'}</span>
-                <span className="opacity-40">•</span>
-                <span>Tarik ke bawah untuk tutup</span>
-              </span>
+            {/* Grab handle & Resizable Height Switcher */}
+            <div className="flex flex-col items-center justify-center -mt-1 mb-2 pt-1 pb-1 select-none touch-none landscape:hidden">
+              <div 
+                className="w-14 h-1.5 bg-slate-500 hover:bg-accent rounded-full mb-2 cursor-pointer transition-colors"
+                onClick={() => {
+                  if (mobileSheetSnap === 'compact') handleSetMobileSheetSnap('comfortable');
+                  else if (mobileSheetSnap === 'comfortable') handleSetMobileSheetSnap('full');
+                  else handleSetMobileSheetSnap('compact');
+                }}
+                title="Tarik atau ketuk untuk beralih tinggi nota"
+              />
+              <div className="flex items-center justify-between w-full px-0.5 gap-2">
+                {/* Height Presets */}
+                <div className="flex items-center gap-1 bg-card/80 p-0.5 rounded-xl border border-line text-[10px] font-bold shadow-xs">
+                  <span className="text-muted px-1">Tinggi:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleSetMobileSheetSnap('compact')}
+                    className={`px-2 py-0.5 rounded-lg transition-all ${
+                      mobileSheetSnap === 'compact'
+                        ? 'bg-accent text-white shadow-xs font-black'
+                        : 'text-muted hover:text-fg'
+                    }`}
+                  >
+                    60%
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetMobileSheetSnap('comfortable')}
+                    className={`px-2 py-0.5 rounded-lg transition-all ${
+                      mobileSheetSnap === 'comfortable'
+                        ? 'bg-accent text-white shadow-xs font-black'
+                        : 'text-muted hover:text-fg'
+                    }`}
+                  >
+                    82% Nyaman
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetMobileSheetSnap('full')}
+                    className={`px-2 py-0.5 rounded-lg transition-all ${
+                      mobileSheetSnap === 'full'
+                        ? 'bg-accent text-white shadow-xs font-black'
+                        : 'text-muted hover:text-fg'
+                    }`}
+                  >
+                    96% Penuh
+                  </button>
+                </div>
+
+                {/* Density Switcher: Normal vs Jumbo */}
+                <div className="flex items-center gap-1 bg-card/80 p-0.5 rounded-xl border border-line text-[10px] font-bold shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleSetMobileCartDensity('normal')}
+                    className={`px-2 py-0.5 rounded-lg transition-all ${
+                      mobileCartDensity === 'normal'
+                        ? 'bg-accent text-white shadow-xs font-black'
+                        : 'text-muted hover:text-fg'
+                    }`}
+                  >
+                    Normal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetMobileCartDensity('jumbo')}
+                    className={`px-2 py-0.5 rounded-lg transition-all ${
+                      mobileCartDensity === 'jumbo'
+                        ? 'bg-accent text-white shadow-xs font-black'
+                        : 'text-muted hover:text-fg'
+                    }`}
+                  >
+                    Jumbo
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-between items-center">
@@ -2183,9 +2293,9 @@ export default function POSPage() {
             )}
 
             {cart.map(item => (
-              <div key={item.itemKey || item.id} className="flex justify-between items-start border-b border-line pb-2.5 sm:pb-4">
-                <div className="flex-1 pr-2">
-                  <h4 className="font-bold text-fg text-xs sm:text-sm md:text-base leading-tight">{item.nama}</h4>
+              <div key={item.itemKey || item.id} className="flex justify-between items-start border-b border-line pb-2.5 sm:pb-3.5 gap-2">
+                <div className="flex-1 pr-1 min-w-0">
+                  <h4 className={`font-black text-fg leading-tight transition-all ${mobileCartDensity === 'jumbo' ? 'text-sm sm:text-base md:text-lg' : 'text-xs sm:text-sm md:text-base'}`}>{item.nama}</h4>
                   {item.selectedModifiers && item.selectedModifiers.length > 0 && (
                     <div className="mt-0.5 space-y-0.5">
                       {item.selectedModifiers.map((m: any, mIdx: number) => (
@@ -2197,12 +2307,38 @@ export default function POSPage() {
                       ))}
                     </div>
                   )}
-                  <p className="text-accent-text text-xs sm:text-sm font-extrabold mt-0.5 sm:mt-1">Rp {item.harga.toLocaleString('id-ID')}</p>
+                  <p className={`text-accent-text font-black mt-0.5 sm:mt-1 ${mobileCartDensity === 'jumbo' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`}>Rp {item.harga.toLocaleString('id-ID')}</p>
                 </div>
-                <div className="flex items-center bg-surface rounded-xl p-0.5 sm:p-1 border border-line shadow-sm shrink-0">
-                  <button onClick={() => updateQty(item.itemKey || item.id, -1)} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-card text-fg hover:bg-card flex items-center justify-center font-black transition-colors text-sm">-</button>
-                  <span className="w-7 sm:w-8 text-center font-bold text-fg text-xs sm:text-sm">{item.qty}</span>
-                  <button onClick={() => updateQty(item.itemKey || item.id, 1)} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-accent hover:bg-accent-hover text-white flex items-center justify-center font-black transition-colors text-sm">+</button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center bg-surface rounded-xl p-0.5 sm:p-1 border border-line shadow-xs">
+                    <button 
+                      type="button"
+                      onClick={() => updateQty(item.itemKey || item.id, -1)} 
+                      className={`${mobileCartDensity === 'jumbo' ? 'w-10 h-10 sm:w-11 sm:h-11 text-base' : 'w-8 h-8 sm:w-9 sm:h-9 text-sm'} rounded-lg bg-card text-fg hover:bg-line flex items-center justify-center font-black transition-all active:scale-90`}
+                      aria-label="Kurangi jumlah"
+                    >
+                      -
+                    </button>
+                    <span className={`${mobileCartDensity === 'jumbo' ? 'w-8 sm:w-9 text-sm sm:text-base' : 'w-7 sm:w-8 text-xs sm:text-sm'} text-center font-black text-fg`}>
+                      {item.qty}
+                    </span>
+                    <button 
+                      type="button"
+                      onClick={() => updateQty(item.itemKey || item.id, 1)} 
+                      className={`${mobileCartDensity === 'jumbo' ? 'w-10 h-10 sm:w-11 sm:h-11 text-base' : 'w-8 h-8 sm:w-9 sm:h-9 text-sm'} rounded-lg bg-accent hover:bg-accent-hover text-white flex items-center justify-center font-black transition-all active:scale-90 shadow-xs`}
+                      aria-label="Tambah jumlah"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeFromCart(item.itemKey || item.id)}
+                    className={`${mobileCartDensity === 'jumbo' ? 'w-10 h-10 rounded-xl' : 'w-8 h-8 rounded-lg'} bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 border border-rose-200/50 flex items-center justify-center font-bold text-xs active:scale-90 transition-all`}
+                    title="Hapus menu dari keranjang"
+                  >
+                    <LineIcon name="delete" className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -2712,11 +2848,15 @@ export default function POSPage() {
                 <div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-bold text-muted mb-1">
-                        Nama Pelanggan {paymentMethod === 'Kasbon' ? <span className="text-rose-500 font-black">* (Wajib)</span> : '(Opsional)'}
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-bold text-muted">
+                          Nama Pelanggan {paymentMethod === 'Kasbon' ? <span className="text-rose-500 font-black">* (Wajib)</span> : '(Opsional)'}
+                        </label>
+                        <span className="text-[10px] text-muted font-mono">{customerName.length}/30</span>
+                      </div>
                       <input 
                         type="text" 
+                        maxLength={30}
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
                         placeholder={paymentMethod === 'Kasbon' ? 'Nama Pelanggan (Wajib Kasbon)' : 'Nama Pelanggan (Opsional)'}
@@ -3775,8 +3915,8 @@ export default function POSPage() {
             <div 
               className="relative bg-surface rounded-t-3xl landscape:rounded-none shadow-2xl flex flex-col landscape:max-h-[100dvh] landscape:h-[100dvh] w-full animate-in slide-in-from-bottom-2 duration-200 transition-all ease-out overflow-hidden"
               style={{
-                height: mobileSheetSnap === 'half' ? '55vh' : '90vh',
-                maxHeight: mobileSheetSnap === 'half' ? '55vh' : '90vh',
+                height: getMobileSheetHeight(),
+                maxHeight: getMobileSheetHeight(),
                 transform: cartSheetDragY > 0 ? `translateY(${cartSheetDragY}px)` : undefined,
                 touchAction: 'pan-y'
               }}
@@ -3804,9 +3944,13 @@ export default function POSPage() {
 
             <form onSubmit={handleOpenShiftSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-fg mb-1">Nama Kasir / Operator:</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-fg">Nama Kasir / Operator:</label>
+                  <span className="text-[10px] text-muted font-mono">{shiftOperatorName.length}/30</span>
+                </div>
                 <input 
                   type="text" 
+                  maxLength={30}
                   value={shiftOperatorName}
                   onChange={(e) => setShiftOperatorName(e.target.value)}
                   placeholder="Nama Kasir"

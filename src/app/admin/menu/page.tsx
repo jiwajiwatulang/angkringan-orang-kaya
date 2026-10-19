@@ -1742,11 +1742,15 @@ function CatalogPanel() {
               </div>
               {/* Nama Menu */}
               <div>
-                <label className="block text-xs font-bold text-fg mb-1">
-                  Nama Menu *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-fg">
+                    Nama Menu *
+                  </label>
+                  <span className="text-[10px] text-muted font-mono">{formNama.length}/50 karakter</span>
+                </div>
                 <input
                   type="text"
+                  maxLength={50}
                   placeholder="Contoh: Ayam Panggang, Nasi Goreng, Es Teh"
                   value={formNama}
                   onChange={(e) => setFormNama(e.target.value)}

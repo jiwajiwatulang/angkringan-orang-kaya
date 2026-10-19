@@ -393,11 +393,15 @@ export default function PengaturanPrinterPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Header Slogan */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-fg">
-              Slogan / Tagline Header Struk
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-fg">
+                Slogan / Tagline Header Struk
+              </label>
+              <span className="text-[10px] text-muted font-mono">{receiptHeader.length}/50 karakter</span>
+            </div>
             <input
               type="text"
+              maxLength={50}
               value={receiptHeader}
               onChange={(e) => setReceiptHeader(e.target.value)}
               placeholder="Contoh: Nikmatnya Kopi Tradisional & Angkringan"

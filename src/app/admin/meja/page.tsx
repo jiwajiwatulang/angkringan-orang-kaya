@@ -736,11 +736,15 @@ export default function AdminMejaPage() {
             <form onSubmit={handleAddSubmit} className="space-y-4">
               {/* Table Name */}
               <div>
-                <label className="block text-xs font-bold text-fg mb-1">
-                  Nama / Nomor Meja:
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-fg">
+                    Nama / Nomor Meja:
+                  </label>
+                  <span className="text-[10px] text-muted font-mono">{newTableName.length}/25 karakter</span>
+                </div>
                 <input
                   type="text"
+                  maxLength={25}
                   placeholder="Contoh: Sofa Jendela, Lesehan Kolam, Meja 12"
                   value={newTableName}
                   onChange={(e) => setNewTableName(e.target.value)}
@@ -854,11 +858,15 @@ export default function AdminMejaPage() {
 
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-fg mb-1">
-                  Nama / Nomor Meja:
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-fg">
+                    Nama / Nomor Meja:
+                  </label>
+                  <span className="text-[10px] text-muted font-mono">{tableEditName.length}/25 karakter</span>
+                </div>
                 <input
                   type="text"
+                  maxLength={25}
                   value={tableEditName}
                   onChange={(e) => setTableEditName(e.target.value)}
                   className="w-full bg-card border border-line rounded-xl p-3 text-sm font-semibold text-fg outline-none focus:border-accent"

@@ -193,6 +193,7 @@ export default function MobileCartSheet({
 
             <input
               type="text"
+              maxLength={30}
               value={customerName}
               onChange={(e) => onSetCustomerName(e.target.value)}
               placeholder="Nama Pelanggan (opsional)"
@@ -240,28 +241,28 @@ export default function MobileCartSheet({
                   </div>
 
                   {/* Quantity Stepper */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => onUpdateQty(item, -1)}
-                      className="w-7 h-7 rounded-lg bg-card border border-line text-fg font-black text-xs flex items-center justify-center active:scale-90"
+                      className="w-8 h-8 rounded-xl bg-card border border-line text-fg font-black text-sm flex items-center justify-center active:scale-90"
                     >
                       -
                     </button>
-                    <span className="text-xs font-black text-fg w-5 text-center">
+                    <span className="text-sm font-black text-fg w-6 text-center">
                       {item.qty}
                     </span>
                     <button
                       type="button"
                       onClick={() => onUpdateQty(item, 1)}
-                      className="w-7 h-7 rounded-lg bg-accent text-white font-black text-xs flex items-center justify-center active:scale-90 shadow-sm"
+                      className="w-8 h-8 rounded-xl bg-accent text-white font-black text-sm flex items-center justify-center active:scale-90 shadow-sm"
                     >
                       +
                     </button>
                     <button
                       type="button"
                       onClick={() => onRemoveItem(item)}
-                      className="w-7 h-7 rounded-lg bg-card border border-line text-rose-700 hover:text-rose-700 font-bold text-xs flex items-center justify-center active:scale-90 ml-1"
+                      className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 border border-rose-200/50 flex items-center justify-center text-xs font-bold active:scale-90 ml-1"
                       title="Hapus Menu"
                     ><LineIcon name="delete" /></button>
                   </div>
