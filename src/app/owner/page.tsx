@@ -343,6 +343,11 @@ https://angkringan-orang-kaya.ranutarde.workers.dev/?beli=true`;
     return () => clearInterval(interval);
   }, [ownerToken, isLoggedIn]);
 
+  // Reset order pagination to page 1 whenever filter changes
+  useEffect(() => {
+    setOrderPage(1);
+  }, [orderFilter]);
+
   const handleApproveBeta = async (regId: string) => {
     if (!ownerToken) return;
     try {
@@ -897,10 +902,6 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
   const totalOrderPages = Math.ceil(filteredOrders.length / ORDERS_PER_PAGE) || 1;
   const paginatedOrders = filteredOrders.slice((orderPage - 1) * ORDERS_PER_PAGE, orderPage * ORDERS_PER_PAGE);
-
-  useEffect(() => {
-    setOrderPage(1);
-  }, [orderFilter]);
 
   // 2. DASHBOARD OWNER
   return (
