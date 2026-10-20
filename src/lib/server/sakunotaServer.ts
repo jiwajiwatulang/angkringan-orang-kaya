@@ -343,6 +343,7 @@ export async function createCustomerOrder(
     businessName: string;
     whatsapp: string;
     email?: string;
+    npwp?: string;
     transferProofName?: string;
     transferProofData?: string;
     promoCode?: string;
@@ -352,6 +353,7 @@ export async function createCustomerOrder(
     businessName: string;
     whatsapp: string;
     email?: string;
+    npwp?: string;
     transferProofName?: string;
     transferProofData?: string;
     promoCode?: string;
@@ -409,6 +411,7 @@ export async function createCustomerOrder(
     businessName: (data.businessName || "").trim(),
     whatsapp: (data.whatsapp || "").trim(),
     email: data.email?.trim() || undefined,
+    npwp: data.npwp?.trim() || undefined,
     amount: finalAmount,
     originalAmount: 50000,
     discountAmount: discountAmount,

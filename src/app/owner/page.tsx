@@ -621,21 +621,32 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 Nomor Faktur: INV-${o.orderId}
 Tanggal: ${dateStr}
 Status: ${isPaid ? "LUNAS / PAID" : "MENUNGGU PEMBAYARAN / UNPAID"}
+Penerbit: PT Pemuda Gaya Bebas (NPWP: 125383232617000)
 
 Diterbitkan Untuk:
 • Usaha: ${o.businessName}
 • Pemilik: ${o.buyerName}
-• WhatsApp: ${o.whatsapp}
-• Kode Akses Cek Status: ${o.accessCode}
+• WhatsApp: ${o.whatsapp}`;
+
+    if (o.npwp) {
+      text += `\n• NPWP Pelanggan: ${o.npwp}`;
+    }
+
+    const dpp = Math.round((o.amount || 50000) / 1.11);
+    const ppn = (o.amount || 50000) - dpp;
+
+    text += `\n• Kode Akses Cek Status: ${o.accessCode}
 
 Rincian Tagihan:
-• 1x Lisensi Resmi SakuNota POS (Akses Kasir Offline Permanen): Rp ${(o.originalAmount || 50000).toLocaleString("id-ID")}`;
+• 1x Lisensi SakuNota (Akses 1 perangkat, tanpa biaya langganan bulanan)`;
 
     if (o.promoCode) {
       text += `\n• Diskon Promo (${o.promoCode}): -Rp ${(o.discountAmount || 0).toLocaleString("id-ID")}`;
     }
 
-    text += `\n*TOTAL TAGIHAN: Rp ${(o.amount || 50000).toLocaleString("id-ID")}*`;
+    text += `\n• Dasar Pengenaan Pajak (DPP): Rp ${dpp.toLocaleString("id-ID")}`;
+    text += `\n• PPN 11% (Termasuk): Rp ${ppn.toLocaleString("id-ID")}`;
+    text += `\n*TOTAL TAGIHAN (Termasuk PPN 11%): Rp ${(o.amount || 50000).toLocaleString("id-ID")}*`;
 
     if (!isPaid) {
       text += `\n\n*Petunjuk Pembayaran Transfer Bank:*
@@ -2967,9 +2978,9 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 pb-3 border-b-2 border-slate-900">
                 <div>
                   <div className="text-lg font-black tracking-tight text-slate-900">SakuNota POS</div>
-                  <div className="text-[11px] font-bold text-purple-700">Aplikasi Kasir Offline UMKM Indonesia</div>
+                  <div className="text-[11px] font-bold text-purple-700">Kasir Jalan Tanpa Internet</div>
                   <div className="text-[11px] text-slate-600 font-medium mt-0.5">PT Pemuda Gaya Bebas</div>
-                  <div className="text-[10px] text-slate-500">WhatsApp Dukungan: 0851-5874-8884 • sakunota.my.id</div>
+                  <div className="text-[10px] text-slate-500">NPWP: 125383232617000 • sakunota.my.id</div>
                 </div>
                 <div className="sm:text-right">
                   <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
@@ -3008,6 +3019,12 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
                     <span className="text-slate-500">WhatsApp:</span>
                     <span className="font-mono font-semibold text-slate-800">{selectedInvoiceOrder.whatsapp}</span>
                   </div>
+                  {selectedInvoiceOrder.npwp && (
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">NPWP Pelanggan:</span>
+                      <span className="font-mono font-semibold text-slate-800">{selectedInvoiceOrder.npwp}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
@@ -3041,29 +3058,45 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
                   <tbody className="divide-y divide-slate-200 text-xs">
                     <tr>
                       <td className="py-3 px-3">
-                        <strong className="text-slate-900 block font-bold">Lisensi Resmi SakuNota POS</strong>
+                        <strong className="text-slate-900 block font-bold">Lisensi SakuNota</strong>
                         <span className="text-[10px] text-slate-500 leading-relaxed block mt-0.5">
-                          Akses kasir offline 1 perangkat seumur hidup, bebas biaya langganan bulanan
+                          Akses 1 perangkat, tanpa biaya langganan bulanan
                         </span>
                       </td>
                       <td className="py-3 px-2 text-center font-bold whitespace-nowrap">1</td>
-                      <td className="py-3 px-3 text-right whitespace-nowrap">Rp {(selectedInvoiceOrder.originalAmount || 50000).toLocaleString("id-ID")}</td>
-                      <td className="py-3 px-3 text-right font-black text-slate-900 whitespace-nowrap">Rp {(selectedInvoiceOrder.originalAmount || 50000).toLocaleString("id-ID")}</td>
+                      <td className="py-3 px-3 text-right whitespace-nowrap">Rp {Math.round((selectedInvoiceOrder.originalAmount || 50000) / 1.11).toLocaleString("id-ID")}</td>
+                      <td className="py-3 px-3 text-right font-black text-slate-900 whitespace-nowrap">Rp {Math.round((selectedInvoiceOrder.originalAmount || 50000) / 1.11).toLocaleString("id-ID")}</td>
+                    </tr>
+                    <tr className="bg-slate-50/60 text-slate-600">
+                      <td colSpan={3} className="py-2 px-3 text-right font-semibold text-[11px]">
+                        Dasar Pengenaan Pajak (DPP):
+                      </td>
+                      <td className="py-2 px-3 text-right font-semibold text-xs whitespace-nowrap">
+                        Rp {Math.round((selectedInvoiceOrder.amount || 50000) / 1.11).toLocaleString("id-ID")}
+                      </td>
                     </tr>
                     {selectedInvoiceOrder.promoCode && (
                       <tr className="bg-emerald-50/70 text-emerald-800">
-                        <td colSpan={3} className="py-2.5 px-3 text-right font-bold text-[11px]">
+                        <td colSpan={3} className="py-2 px-3 text-right font-bold text-[11px]">
                           Potongan Diskon Promo ({selectedInvoiceOrder.promoCode}):
                         </td>
-                        <td className="py-2.5 px-3 text-right font-black text-xs text-emerald-700 whitespace-nowrap">
+                        <td className="py-2 px-3 text-right font-black text-xs text-emerald-700 whitespace-nowrap">
                           -Rp {(selectedInvoiceOrder.discountAmount || 0).toLocaleString("id-ID")}
                         </td>
                       </tr>
                     )}
+                    <tr className="bg-slate-50/60 text-slate-600">
+                      <td colSpan={3} className="py-2 px-3 text-right font-semibold text-[11px]">
+                        PPN 11% (Termasuk / Included):
+                      </td>
+                      <td className="py-2 px-3 text-right font-semibold text-xs text-slate-800 whitespace-nowrap">
+                        Rp {((selectedInvoiceOrder.amount || 50000) - Math.round((selectedInvoiceOrder.amount || 50000) / 1.11)).toLocaleString("id-ID")}
+                      </td>
+                    </tr>
                   </tbody>
                   <tfoot className="bg-slate-50 text-xs font-black border-t-2 border-slate-200">
                     <tr>
-                      <td colSpan={3} className="py-3 px-3 text-right uppercase text-[11px] text-slate-700">Total Tagihan:</td>
+                      <td colSpan={3} className="py-3 px-3 text-right uppercase text-[11px] text-slate-700">Total Tagihan (Termasuk PPN 11%):</td>
                       <td className="py-3 px-3 text-right text-emerald-700 text-sm whitespace-nowrap">Rp {(selectedInvoiceOrder.amount || 50000).toLocaleString("id-ID")}</td>
                     </tr>
                   </tfoot>
@@ -3133,7 +3166,7 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
                 className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black transition-colors flex items-center justify-center gap-1.5 shadow-sm"
               >
                 <LineIcon name="printer" className="w-3.5 h-3.5" />
-                <span>Cetak / Simpan PDF (A4 Rapih)</span>
+                <span>Cetak / Simpan PDF</span>
               </button>
               <button
                 type="button"

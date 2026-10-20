@@ -7,6 +7,7 @@ export interface CustomerOrder {
   businessName: string;
   whatsapp: string;
   email?: string;
+  npwp?: string | null;
   amount: number;
   promoCode?: string;
   discountAmount?: number;
@@ -88,6 +89,7 @@ export async function submitBuyerOrder(data: {
   businessName: string;
   whatsapp: string;
   email?: string;
+  npwp?: string;
   promoCode?: string;
 }): Promise<{ success: boolean; order?: CustomerOrder; error?: string }> {
   try {

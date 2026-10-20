@@ -9,6 +9,7 @@ export interface DbCustomerOrder {
   businessName: string;
   whatsapp: string;
   email?: string;
+  npwp?: string | null;
   amount: number;
   promoCode?: string;
   discountAmount?: number;
@@ -239,6 +240,7 @@ export async function initD1Tables(db: D1Database): Promise<void> {
       businessName TEXT NOT NULL,
       whatsapp TEXT NOT NULL,
       email TEXT,
+      npwp TEXT,
       amount INTEGER NOT NULL DEFAULT 50000,
       paymentMethod TEXT NOT NULL DEFAULT 'Transfer Bank BCA',
       bankAccount TEXT NOT NULL DEFAULT '2582118451 a.n. REZA RESTU RENGGA HARDIANTO',
@@ -351,6 +353,7 @@ export async function initD1Tables(db: D1Database): Promise<void> {
     "ALTER TABLE CustomerOrders ADD COLUMN promoCode TEXT",
     "ALTER TABLE CustomerOrders ADD COLUMN discountAmount INTEGER DEFAULT 0",
     "ALTER TABLE CustomerOrders ADD COLUMN originalAmount INTEGER DEFAULT 50000",
+    "ALTER TABLE CustomerOrders ADD COLUMN npwp TEXT",
   ];
 
   for (const query of columnMigrations) {
@@ -366,10 +369,10 @@ export async function initD1Tables(db: D1Database): Promise<void> {
 export async function insertOrderD1(db: D1Database, order: DbCustomerOrder): Promise<DbCustomerOrder> {
   const stmt = db.prepare(`
     INSERT INTO CustomerOrders (
-      orderId, accessCode, buyerName, businessName, whatsapp, email,
+      orderId, accessCode, buyerName, businessName, whatsapp, email, npwp,
       amount, paymentMethod, bankAccount, transferProofName, transferProofData, paymentLink, status,
       licenseKey, boundDeviceId, createdAt, verifiedAt, promoCode, discountAmount, originalAmount
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   await stmt.bind(
@@ -379,6 +382,7 @@ export async function insertOrderD1(db: D1Database, order: DbCustomerOrder): Pro
     order.businessName,
     order.whatsapp,
     order.email || null,
+    order.npwp || null,
     order.amount || 50000,
     order.paymentMethod || "Transfer Bank BCA",
     order.bankAccount || "2582118451 a.n. REZA RESTU RENGGA HARDIANTO",
@@ -408,6 +412,7 @@ export async function getAllOrdersD1(db: D1Database): Promise<DbCustomerOrder[]>
       o.businessName,
       o.whatsapp,
       o.email,
+      o.npwp,
       o.amount,
       o.paymentMethod,
       o.bankAccount,
@@ -447,6 +452,7 @@ export async function getOrderByIdD1(db: D1Database, orderId: string): Promise<D
       o.businessName,
       o.whatsapp,
       o.email,
+      o.npwp,
       o.amount,
       o.paymentMethod,
       o.bankAccount,

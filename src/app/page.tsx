@@ -112,6 +112,7 @@ export default function SakuNotaLandingPage() {
   const [businessName, setBusinessName] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
+  const [buyerNpwp, setBuyerNpwp] = useState("");
   const [consentChecked, setConsentChecked] = useState(false);
   const [formError, setFormError] = useState("");
   const [currentOrderId, setCurrentOrderId] = useState("");
@@ -204,6 +205,7 @@ export default function SakuNotaLandingPage() {
     setAppliedPromo(null);
     setPromoInput("");
     setPromoError("");
+    setBuyerNpwp("");
   };
 
   // Escape key listener to close modals with unsaved confirmation
@@ -401,6 +403,7 @@ export default function SakuNotaLandingPage() {
         businessName,
         whatsapp: whatsappNumber,
         email: buyerEmail,
+        npwp: buyerNpwp.trim() || undefined,
         promoCode: appliedPromo?.code,
       });
 
@@ -2123,6 +2126,19 @@ export default function SakuNotaLandingPage() {
                       />
                     </div>
 
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 mb-1">
+                        NPWP Usaha / Pribadi <span className="text-slate-500 font-normal">(Opsional - jika butuh faktur pajak)</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: 125383232617000"
+                        value={buyerNpwp}
+                        onChange={(e) => setBuyerNpwp(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:bg-white outline-none font-mono"
+                      />
+                    </div>
+
                     <div className="pt-1">
                       <label className="flex items-start gap-2.5 cursor-pointer">
                         <input
@@ -2552,6 +2568,8 @@ export default function SakuNotaLandingPage() {
                           buyerName: buyerName,
                           businessName: businessName,
                           whatsapp: whatsappNumber,
+                          email: buyerEmail.trim() || undefined,
+                          npwp: buyerNpwp.trim() || undefined,
                           amount: appliedPromo ? appliedPromo.finalAmount : 50000,
                           originalAmount: 50000,
                           promoCode: appliedPromo?.code,
@@ -3172,9 +3190,9 @@ export default function SakuNotaLandingPage() {
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 pb-3 border-b-2 border-slate-900">
                 <div>
                   <div className="text-lg font-black tracking-tight text-slate-900">SakuNota POS</div>
-                  <div className="text-[11px] font-bold text-blue-600">Aplikasi Kasir Offline UMKM Indonesia</div>
+                  <div className="text-[11px] font-bold text-blue-600">Kasir Jalan Tanpa Internet</div>
                   <div className="text-[11px] text-slate-600 font-medium mt-0.5">PT Pemuda Gaya Bebas</div>
-                  <div className="text-[10px] text-slate-500">WhatsApp Dukungan: 0851-5874-8884 • sakunota.my.id</div>
+                  <div className="text-[10px] text-slate-500">NPWP: 125383232617000 • sakunota.my.id</div>
                 </div>
                 <div className="sm:text-right">
                   <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
@@ -3213,6 +3231,12 @@ export default function SakuNotaLandingPage() {
                     <span className="text-slate-500">WhatsApp:</span>
                     <span className="font-mono font-semibold text-slate-800">{invoiceData.whatsapp}</span>
                   </div>
+                  {invoiceData.npwp && (
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">NPWP Pelanggan:</span>
+                      <span className="font-mono font-semibold text-slate-800">{invoiceData.npwp}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
@@ -3248,29 +3272,45 @@ export default function SakuNotaLandingPage() {
                   <tbody className="divide-y divide-slate-200 text-xs">
                     <tr>
                       <td className="py-3 px-3">
-                        <strong className="text-slate-900 block font-bold">Lisensi Resmi SakuNota POS</strong>
+                        <strong className="text-slate-900 block font-bold">Lisensi SakuNota</strong>
                         <span className="text-[10px] text-slate-500 leading-relaxed block mt-0.5">
-                          Akses kasir offline 1 perangkat seumur hidup, bebas biaya langganan bulanan
+                          Akses 1 perangkat, tanpa biaya langganan bulanan
                         </span>
                       </td>
                       <td className="py-3 px-2 text-center font-bold whitespace-nowrap">1</td>
-                      <td className="py-3 px-3 text-right whitespace-nowrap">Rp {(invoiceData.originalAmount || 50000).toLocaleString("id-ID")}</td>
-                      <td className="py-3 px-3 text-right font-black text-slate-900 whitespace-nowrap">Rp {(invoiceData.originalAmount || 50000).toLocaleString("id-ID")}</td>
+                      <td className="py-3 px-3 text-right whitespace-nowrap">Rp {Math.round((invoiceData.originalAmount || 50000) / 1.11).toLocaleString("id-ID")}</td>
+                      <td className="py-3 px-3 text-right font-black text-slate-900 whitespace-nowrap">Rp {Math.round((invoiceData.originalAmount || 50000) / 1.11).toLocaleString("id-ID")}</td>
+                    </tr>
+                    <tr className="bg-slate-50/60 text-slate-600">
+                      <td colSpan={3} className="py-2 px-3 text-right font-semibold text-[11px]">
+                        Dasar Pengenaan Pajak (DPP):
+                      </td>
+                      <td className="py-2 px-3 text-right font-semibold text-xs whitespace-nowrap">
+                        Rp {Math.round((invoiceData.amount || 50000) / 1.11).toLocaleString("id-ID")}
+                      </td>
                     </tr>
                     {invoiceData.promoCode && (
                       <tr className="bg-emerald-50/70 text-emerald-800">
-                        <td colSpan={3} className="py-2.5 px-3 text-right font-bold text-[11px]">
+                        <td colSpan={3} className="py-2 px-3 text-right font-bold text-[11px]">
                           Potongan Diskon Promo ({invoiceData.promoCode}):
                         </td>
-                        <td className="py-2.5 px-3 text-right font-black text-xs text-emerald-700 whitespace-nowrap">
+                        <td className="py-2 px-3 text-right font-black text-xs text-emerald-700 whitespace-nowrap">
                           -Rp {(invoiceData.discountAmount || 0).toLocaleString("id-ID")}
                         </td>
                       </tr>
                     )}
+                    <tr className="bg-slate-50/60 text-slate-600">
+                      <td colSpan={3} className="py-2 px-3 text-right font-semibold text-[11px]">
+                        PPN 11% (Termasuk / Included):
+                      </td>
+                      <td className="py-2 px-3 text-right font-semibold text-xs text-slate-800 whitespace-nowrap">
+                        Rp {((invoiceData.amount || 50000) - Math.round((invoiceData.amount || 50000) / 1.11)).toLocaleString("id-ID")}
+                      </td>
+                    </tr>
                   </tbody>
                   <tfoot className="bg-slate-50 text-xs font-black border-t-2 border-slate-200">
                     <tr>
-                      <td colSpan={3} className="py-3 px-3 text-right uppercase text-[11px] text-slate-700">Total Tagihan:</td>
+                      <td colSpan={3} className="py-3 px-3 text-right uppercase text-[11px] text-slate-700">Total Tagihan (Termasuk PPN 11%):</td>
                       <td className="py-3 px-3 text-right text-blue-700 text-sm whitespace-nowrap">Rp {(invoiceData.amount || 50000).toLocaleString("id-ID")}</td>
                     </tr>
                   </tfoot>
@@ -3332,7 +3372,7 @@ export default function SakuNotaLandingPage() {
                 className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition-colors flex items-center justify-center gap-1.5 shadow-sm"
               >
                 <LineIcon name="printer" className="w-3.5 h-3.5" />
-                <span>Cetak / Simpan PDF (A4 Rapih)</span>
+                <span>Cetak / Simpan PDF</span>
               </button>
               <button
                 type="button"

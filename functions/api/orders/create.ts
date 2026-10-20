@@ -7,7 +7,7 @@ export async function onRequestPost(context: any) {
     await initD1Tables(db);
 
     const body = await context.request.json();
-    const { buyerName, businessName, whatsapp, email, transferProofName, transferProofData, promoCode } = body || {};
+    const { buyerName, businessName, whatsapp, email, npwp, transferProofName, transferProofData, promoCode } = body || {};
 
     if (!buyerName || !businessName || !whatsapp) {
       return new Response(
@@ -16,7 +16,7 @@ export async function onRequestPost(context: any) {
       );
     }
 
-    const res = await createCustomerOrder(db, { buyerName, businessName, whatsapp, email, transferProofName, transferProofData, promoCode });
+    const res = await createCustomerOrder(db, { buyerName, businessName, whatsapp, email, npwp, transferProofName, transferProofData, promoCode });
 
     return new Response(JSON.stringify({ success: true, order: res.order }), {
       status: 201,

@@ -42,6 +42,7 @@ export function generateOfficialInvoiceHtml(order: CustomerOrder): string {
   const buyerName = escapePrintText(order.buyerName || "-");
   const whatsapp = escapePrintText(order.whatsapp || "-");
   const email = order.email ? escapePrintText(order.email) : "";
+  const npwp = order.npwp ? escapePrintText(order.npwp) : "";
   const accessCode = escapePrintText(order.accessCode || "-");
   const paymentMethod = escapePrintText(
     order.paymentMethod || (isPaid ? "Midtrans / Transfer Terverifikasi" : "Transfer Bank BCA / QRIS")
@@ -53,6 +54,11 @@ export function generateOfficialInvoiceHtml(order: CustomerOrder): string {
   const originalAmount = order.originalAmount || 50000;
   const discountAmount = order.discountAmount || 0;
   const finalAmount = order.amount ?? Math.max(0, originalAmount - discountAmount);
+
+  // Pajak PPN 11% include: Final amount is 50.000 already including PPN 11%
+  const dppAmount = Math.round(finalAmount / 1.11);
+  const ppnAmount = finalAmount - dppAmount;
+  const dppOriginal = Math.round(originalAmount / 1.11);
 
   const statusText = isPaid
     ? "LUNAS / PAID"
@@ -248,7 +254,7 @@ export function generateOfficialInvoiceHtml(order: CustomerOrder): string {
       white-space: nowrap;
     }
     .summary-row td {
-      padding: 9px 14px;
+      padding: 8px 14px;
       font-size: 11.5px;
       border-bottom: 1px solid #e2e8f0;
     }
@@ -353,11 +359,11 @@ export function generateOfficialInvoiceHtml(order: CustomerOrder): string {
     <div class="header-row">
       <div>
         <div class="brand-title">SakuNota POS</div>
-        <div class="brand-sub">Aplikasi Kasir Offline UMKM Indonesia</div>
+        <div class="brand-sub">Kasir Jalan Tanpa Internet</div>
         <div class="company-meta">
           <strong>PT Pemuda Gaya Bebas</strong><br />
-          Layanan Pelanggan WhatsApp: 0851-5874-8884<br />
-          Website Resmi: https://sakunota.my.id
+          NPWP: 125383232617000<br />
+          sakunota.my.id
         </div>
       </div>
       <div class="invoice-meta">
@@ -389,6 +395,14 @@ export function generateOfficialInvoiceHtml(order: CustomerOrder): string {
             ? `<div class="info-row">
           <span class="info-label">Email:</span>
           <span class="info-val">${email}</span>
+        </div>`
+            : ""
+        }
+        ${
+          npwp
+            ? `<div class="info-row">
+          <span class="info-label">NPWP Pelanggan:</span>
+          <span class="info-val mono">${npwp}</span>
         </div>`
             : ""
         }
@@ -430,14 +444,18 @@ export function generateOfficialInvoiceHtml(order: CustomerOrder): string {
           <tr>
             <td class="col-center" style="font-weight: 700; color: #475569;">1</td>
             <td>
-              <div class="item-title">Lisensi Resmi SakuNota POS (Kasir Offline)</div>
+              <div class="item-title">Lisensi SakuNota</div>
               <div class="item-desc">
-                Hak pakai permanen untuk 1 perangkat kasir utama, bebas biaya langganan bulanan, termasuk fitur cetak struk thermal Bluetooth, manajemen menu, laporan shift, dan backup data lokal.
+                Akses 1 perangkat, tanpa biaya langganan bulanan
               </div>
             </td>
             <td class="col-center" style="font-weight: 700;">1</td>
-            <td class="col-right">${formatRupiah(originalAmount)}</td>
-            <td class="col-right" style="font-weight: 700;">${formatRupiah(originalAmount)}</td>
+            <td class="col-right">${formatRupiah(dppOriginal)}</td>
+            <td class="col-right" style="font-weight: 700;">${formatRupiah(dppOriginal)}</td>
+          </tr>
+          <tr class="summary-row">
+            <td colspan="4" class="col-right">Dasar Pengenaan Pajak (DPP):</td>
+            <td class="col-right">${formatRupiah(dppAmount)}</td>
           </tr>
           ${
             promoCode
@@ -447,8 +465,12 @@ export function generateOfficialInvoiceHtml(order: CustomerOrder): string {
           </tr>`
               : ""
           }
+          <tr class="summary-row">
+            <td colspan="4" class="col-right">PPN 11% (Termasuk / Included):</td>
+            <td class="col-right">${formatRupiah(ppnAmount)}</td>
+          </tr>
           <tr class="total-row">
-            <td colspan="4" class="col-right">TOTAL TAGIHAN:</td>
+            <td colspan="4" class="col-right">TOTAL TAGIHAN (Termasuk PPN 11%):</td>
             <td class="col-right total-amount">${formatRupiah(finalAmount)}</td>
           </tr>
         </tbody>
@@ -511,11 +533,12 @@ export function generateOfficialInvoiceHtml(order: CustomerOrder): string {
     <div class="footer-row">
       <div style="max-width: 480px;">
         <strong>Catatan Resmi:</strong><br />
-        Faktur / Invoice ini diterbitkan secara elektronik oleh sistem SakuNota POS dan merupakan bukti penagihan atau bukti pembayaran yang sah tanpa memerlukan tanda tangan basah.
+        Faktur / Invoice ini diterbitkan secara elektronik oleh sistem SakuNota POS dan merupakan bukti pembayaran yang sah termasuk PPN 11% tanpa memerlukan tanda tangan basah.
       </div>
       <div class="stamp-box">
         <div class="stamp-title">PT Pemuda Gaya Bebas</div>
-        <div>Sistem Lisensi Resmi SakuNota POS</div>
+        <div>NPWP: 125383232617000</div>
+        <div>sakunota.my.id</div>
       </div>
     </div>
   </div>
