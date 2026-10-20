@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, Order, Payment, RefundEvent, CashMovement, MenuItem } from "@/lib/dexie";
+import { db, MenuItem } from "@/lib/dexie";
 import {
   dashboardPeriod,
   computeFinancialDashboard,
@@ -274,6 +274,65 @@ export default function AdminDashboardPage() {
       };
     }).sort((a, b) => b.sales - a.sales);
   }, [rawOrders, period, report.sales.salesRefunds]);
+
+  // Analisis Jam Ramai (Peak Hours / Hourly Activity)
+  const hourlyActivity = useMemo(() => {
+    const periodOrders = rawOrders.filter((o) => {
+      return isWithinPeriod(o.createdAt, period.start, period.end) && o.status !== "void";
+    });
+
+    // 12 bucket 2 jam (00-02, 02-04, ..., 22-24)
+    const buckets: { rangeLabel: string; count: number; omzet: number }[] = [];
+    for (let h = 0; h < 24; h += 2) {
+      const rangeLabel = `${String(h).padStart(2, "0")}:00–${String(h + 2).padStart(2, "0")}:00`;
+      buckets.push({ rangeLabel, count: 0, omzet: 0 });
+    }
+
+    periodOrders.forEach((o) => {
+      const d = new Date(o.createdAt);
+      const hour = d.getHours();
+      const bucketIdx = Math.min(11, Math.floor(hour / 2));
+      if (buckets[bucketIdx]) {
+        buckets[bucketIdx].count += 1;
+        buckets[bucketIdx].omzet += o.subtotal || o.total || 0;
+      }
+    });
+
+    const maxCount = Math.max(...buckets.map((b) => b.count), 1);
+    const peakBucket = [...buckets].sort((a, b) => b.count - a.count)[0];
+
+    return { buckets, maxCount, peakBucket: peakBucket?.count > 0 ? peakBucket : null };
+  }, [rawOrders, period]);
+
+  // Efisiensi Menu: Fast Moving vs Slow Moving
+  const menuVelocity = useMemo(() => {
+    const periodOrders = rawOrders.filter((o) => {
+      return isWithinPeriod(o.createdAt, period.start, period.end) && o.status !== "void";
+    });
+
+    const countMap: Record<string, { id: number; nama: string; qty: number; sales: number }> = {};
+    rawMenuItems.forEach((m: MenuItem) => {
+      if (m.id) {
+        countMap[String(m.id)] = { id: m.id, nama: m.nama, qty: 0, sales: 0 };
+      }
+    });
+
+    periodOrders.forEach((o) => {
+      (o.items || []).forEach((item: any) => {
+        const id = String(item.menuItemId || item.id || "");
+        if (id && countMap[id]) {
+          countMap[id].qty += item.qty || 1;
+          countMap[id].sales += (item.hargaSatuan || 0) * (item.qty || 1);
+        }
+      });
+    });
+
+    const all = Object.values(countMap);
+    const fastMoving = [...all].filter((m) => m.qty > 0).sort((a, b) => b.qty - a.qty).slice(0, 3);
+    const slowMoving = [...all].filter((m) => m.qty === 0).slice(0, 3);
+
+    return { fastMoving, slowMoving };
+  }, [rawOrders, rawMenuItems, period]);
 
   // Low Stock Items for Operational Insights
   const lowStockItems = useMemo(() => {
@@ -865,6 +924,86 @@ export default function AdminDashboardPage() {
               <span className="text-muted text-[10px]">
                 Saldo Open Bill dicatat terpisah sebagai aset operasional berjalan
               </span>
+            </div>
+          </div>
+
+          {/* 2 Kolom Analitik Lanjutan: Jam Ramai & Pergerakan Menu */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Analisis Jam Ramai */}
+            <div className="bg-surface border border-line rounded-3xl p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-black text-sm text-fg">Distribusi Jam Sibuk</h4>
+                {hourlyActivity.peakBucket && (
+                  <span className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 font-bold px-2.5 py-0.5 rounded-full">
+                    Paling Ramai: {hourlyActivity.peakBucket.rangeLabel}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted">
+                Kepadatan transaksi kasir setiap 2 jam untuk penjadwalan staf & dapur
+              </p>
+
+              <div className="grid grid-cols-6 sm:grid-cols-12 gap-1 items-end h-[100px] pt-4">
+                {hourlyActivity.buckets.map((b, i) => {
+                  const pct = Math.round((b.count / hourlyActivity.maxCount) * 100);
+                  return (
+                    <div key={i} className="flex flex-col items-center h-full justify-end group">
+                      <div
+                        className="w-full bg-blue-600/70 group-hover:bg-blue-600 rounded-t-sm transition-all"
+                        style={{ height: `${Math.max(4, pct)}%` }}
+                        title={`${b.rangeLabel}: ${b.count} Transaksi (Rp ${b.omzet.toLocaleString("id-ID")})`}
+                      />
+                      <span className="text-[9px] text-muted font-mono mt-1 scale-90">
+                        {b.rangeLabel.slice(0, 2)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Pergerakan Menu (Fast vs Slow Moving) */}
+            <div className="bg-surface border border-line rounded-3xl p-5 shadow-xs space-y-3">
+              <h4 className="font-black text-sm text-fg">Kecepatan Perputaran Menu</h4>
+              <p className="text-xs text-muted">
+                Pantau menu berputar cepat vs menu yang belum terjual sama sekali
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                {/* Fast Moving */}
+                <div className="p-3 bg-card rounded-2xl border border-line space-y-2">
+                  <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider block">
+                    Fast Moving (Terlaris)
+                  </span>
+                  {menuVelocity.fastMoving.length > 0 ? (
+                    menuVelocity.fastMoving.map((m, i) => (
+                      <div key={i} className="flex justify-between items-center text-[11px]">
+                        <span className="font-bold text-fg truncate max-w-[120px]">{m.nama}</span>
+                        <span className="text-emerald-600 font-mono font-bold">{m.qty}x</span>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-muted text-[11px] block py-2">Belum ada data</span>
+                  )}
+                </div>
+
+                {/* Slow Moving */}
+                <div className="p-3 bg-card rounded-2xl border border-line space-y-2">
+                  <span className="text-[10px] text-amber-600 font-bold uppercase tracking-wider block">
+                    Slow Moving (0 Terjual)
+                  </span>
+                  {menuVelocity.slowMoving.length > 0 ? (
+                    menuVelocity.slowMoving.map((m, i) => (
+                      <div key={i} className="flex justify-between items-center text-[11px]">
+                        <span className="text-muted truncate max-w-[120px]">{m.nama}</span>
+                        <span className="text-amber-600 font-mono font-bold">0x</span>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-emerald-600 text-[11px] block py-2">Semua menu laku</span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
