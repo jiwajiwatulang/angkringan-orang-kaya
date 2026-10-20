@@ -22,6 +22,9 @@ export interface DbCustomerOrder {
   licenseKey?: string;
   boundDeviceId?: string;
   deviceName?: string;
+  deviceModel?: string | null;
+  deviceLocation?: string | null;
+  deviceIp?: string | null;
   activatedAt?: string;
   lastConnectedAt?: string;
   createdAt: string;
@@ -35,6 +38,9 @@ export interface DbLicense {
   businessName: string;
   boundDeviceId?: string;
   deviceName?: string;
+  deviceModel?: string | null;
+  deviceLocation?: string | null;
+  deviceIp?: string | null;
   issuedAt: string;
   activatedAt?: string;
   lastConnectedAt?: string;
@@ -58,6 +64,9 @@ export interface DbBetaRegistration {
   notes?: string;
   boundDeviceId?: string | null;
   deviceName?: string | null;
+  deviceModel?: string | null;
+  deviceLocation?: string | null;
+  deviceIp?: string | null;
   registeredAt: string;
   approvedAt?: string | null;
   activatedAt?: string | null;
@@ -214,6 +223,14 @@ export function getD1(envDb?: D1Database): D1Database {
 export async function initD1Tables(db: D1Database): Promise<void> {
   const tableStatements = [
     `CREATE TABLE IF NOT EXISTS LicenseDeviceKeys (licenseKey TEXT PRIMARY KEY, deviceId TEXT NOT NULL, publicKey TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS DeviceTelemetry (
+      licenseKey TEXT PRIMARY KEY,
+      deviceId TEXT,
+      deviceModel TEXT,
+      location TEXT,
+      ipAddress TEXT,
+      lastSeenAt TEXT
+    )`,
     `CREATE TABLE IF NOT EXISTS CustomerOrders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       orderId TEXT UNIQUE NOT NULL,
@@ -401,16 +418,20 @@ export async function getAllOrdersD1(db: D1Database): Promise<DbCustomerOrder[]>
       o.licenseKey,
       COALESCE(l.boundDeviceId, o.boundDeviceId) AS boundDeviceId,
       l.deviceName AS deviceName,
+      dt.deviceModel AS deviceModel,
+      dt.location AS deviceLocation,
+      dt.ipAddress AS deviceIp,
       l.activatedAt AS activatedAt,
-      l.lastConnectedAt AS lastConnectedAt,
+      COALESCE(dt.lastSeenAt, l.lastConnectedAt, o.lastSeenAt) AS lastConnectedAt,
       o.createdAt,
       o.verifiedAt,
-      o.lastSeenAt,
+      COALESCE(dt.lastSeenAt, o.lastSeenAt) AS lastSeenAt,
       o.promoCode,
       o.discountAmount,
       o.originalAmount
     FROM CustomerOrders o
     LEFT JOIN Licenses l ON o.licenseKey = l.licenseKey
+    LEFT JOIN DeviceTelemetry dt ON o.licenseKey = dt.licenseKey
     ORDER BY o.id DESC
   `).all<DbCustomerOrder>();
   return res.results || [];
@@ -436,16 +457,20 @@ export async function getOrderByIdD1(db: D1Database, orderId: string): Promise<D
       o.licenseKey,
       COALESCE(l.boundDeviceId, o.boundDeviceId) AS boundDeviceId,
       l.deviceName AS deviceName,
+      dt.deviceModel AS deviceModel,
+      dt.location AS deviceLocation,
+      dt.ipAddress AS deviceIp,
       l.activatedAt AS activatedAt,
-      l.lastConnectedAt AS lastConnectedAt,
+      COALESCE(dt.lastSeenAt, l.lastConnectedAt, o.lastSeenAt) AS lastConnectedAt,
       o.createdAt,
       o.verifiedAt,
-      o.lastSeenAt,
+      COALESCE(dt.lastSeenAt, o.lastSeenAt) AS lastSeenAt,
       o.promoCode,
       o.discountAmount,
       o.originalAmount
     FROM CustomerOrders o
     LEFT JOIN Licenses l ON o.licenseKey = l.licenseKey
+    LEFT JOIN DeviceTelemetry dt ON o.licenseKey = dt.licenseKey
     WHERE o.orderId = ?
   `).bind(orderId).first<DbCustomerOrder>();
 }
@@ -556,16 +581,41 @@ export async function insertLicenseD1(db: D1Database, license: DbLicense): Promi
 }
 
 export async function getAllLicensesD1(db: D1Database): Promise<DbLicense[]> {
-  const res = await db.prepare(`SELECT * FROM Licenses ORDER BY rowid DESC`).all<DbLicense>();
+  const res = await db.prepare(`
+    SELECT 
+      l.*,
+      COALESCE(dt.lastSeenAt, l.lastConnectedAt) AS lastConnectedAt,
+      dt.deviceModel AS deviceModel,
+      dt.location AS deviceLocation,
+      dt.ipAddress AS deviceIp
+    FROM Licenses l
+    LEFT JOIN DeviceTelemetry dt ON l.licenseKey = dt.licenseKey
+    ORDER BY l.rowid DESC
+  `).all<DbLicense>();
   return res.results || [];
 }
 
 export async function getLicenseD1(db: D1Database, licenseKey: string): Promise<DbLicense | null> {
-  return await db.prepare(`SELECT * FROM Licenses WHERE licenseKey = ?`).bind(licenseKey).first<DbLicense>();
+  return await db.prepare(`
+    SELECT 
+      l.*,
+      COALESCE(dt.lastSeenAt, l.lastConnectedAt) AS lastConnectedAt,
+      dt.deviceModel AS deviceModel,
+      dt.location AS deviceLocation,
+      dt.ipAddress AS deviceIp
+    FROM Licenses l
+    LEFT JOIN DeviceTelemetry dt ON l.licenseKey = dt.licenseKey
+    WHERE l.licenseKey = ?
+  `).bind(licenseKey).first<DbLicense>();
 }
 
 export async function unbindLicenseDeviceD1(db: D1Database, licenseKey: string): Promise<boolean> {
-  await db.batch([db.prepare('DELETE FROM LicenseDeviceKeys WHERE licenseKey = ?').bind(licenseKey),db.prepare('UPDATE Licenses SET boundDeviceId = NULL, deviceName = NULL WHERE licenseKey = ?').bind(licenseKey),db.prepare('UPDATE CustomerOrders SET boundDeviceId = NULL WHERE licenseKey = ?').bind(licenseKey)]);
+  await db.batch([
+    db.prepare('DELETE FROM LicenseDeviceKeys WHERE licenseKey = ?').bind(licenseKey),
+    db.prepare('DELETE FROM DeviceTelemetry WHERE licenseKey = ?').bind(licenseKey),
+    db.prepare('UPDATE Licenses SET boundDeviceId = NULL, deviceName = NULL WHERE licenseKey = ?').bind(licenseKey),
+    db.prepare('UPDATE CustomerOrders SET boundDeviceId = NULL WHERE licenseKey = ?').bind(licenseKey),
+  ]);
   return true;
 }
 
@@ -686,6 +736,7 @@ export async function getMetricsD1(db: D1Database): Promise<{
 export async function resetDatabaseCleanD1(db: D1Database): Promise<void> {
   await db.exec(`
     DELETE FROM LicenseDeviceKeys;
+    DELETE FROM DeviceTelemetry;
     DELETE FROM CustomerOrders;
     DELETE FROM Licenses;
     DELETE FROM OwnerSessions;
@@ -706,8 +757,12 @@ export interface DbTesterLicense {
   notes: string | null;
   boundDeviceId: string | null;
   deviceName: string | null;
+  deviceModel?: string | null;
+  deviceLocation?: string | null;
+  deviceIp?: string | null;
   createdAt: string;
   activatedAt: string | null;
+  lastConnectedAt?: string | null;
   revoked: number;
 }
 
@@ -769,12 +824,32 @@ export async function insertTesterLicenseD1(
 }
 
 export async function getAllTesterLicensesD1(db: D1Database): Promise<DbTesterLicense[]> {
-  const res = await db.prepare(`SELECT * FROM TesterLicenses ORDER BY id DESC`).all<DbTesterLicense>();
+  const res = await db.prepare(`
+    SELECT 
+      t.*,
+      COALESCE(dt.lastSeenAt, t.activatedAt) AS lastConnectedAt,
+      dt.deviceModel AS deviceModel,
+      dt.location AS deviceLocation,
+      dt.ipAddress AS deviceIp
+    FROM TesterLicenses t
+    LEFT JOIN DeviceTelemetry dt ON t.licenseKey = dt.licenseKey
+    ORDER BY t.id DESC
+  `).all<DbTesterLicense>();
   return res.results || [];
 }
 
 export async function getTesterLicenseD1(db: D1Database, licenseKey: string): Promise<DbTesterLicense | null> {
-  return await db.prepare(`SELECT * FROM TesterLicenses WHERE licenseKey = ?`).bind(licenseKey).first<DbTesterLicense>();
+  return await db.prepare(`
+    SELECT 
+      t.*,
+      COALESCE(dt.lastSeenAt, t.activatedAt) AS lastConnectedAt,
+      dt.deviceModel AS deviceModel,
+      dt.location AS deviceLocation,
+      dt.ipAddress AS deviceIp
+    FROM TesterLicenses t
+    LEFT JOIN DeviceTelemetry dt ON t.licenseKey = dt.licenseKey
+    WHERE t.licenseKey = ?
+  `).bind(licenseKey).first<DbTesterLicense>();
 }
 
 export async function revokeTesterLicenseD1(db: D1Database, licenseKey: string): Promise<boolean> {
@@ -783,7 +858,11 @@ export async function revokeTesterLicenseD1(db: D1Database, licenseKey: string):
 }
 
 export async function unbindTesterLicenseDeviceD1(db: D1Database, licenseKey: string): Promise<boolean> {
-  await db.batch([db.prepare('DELETE FROM LicenseDeviceKeys WHERE licenseKey = ?').bind(licenseKey),db.prepare('UPDATE TesterLicenses SET boundDeviceId = NULL, deviceName = NULL WHERE licenseKey = ?').bind(licenseKey)]);
+  await db.batch([
+    db.prepare('DELETE FROM LicenseDeviceKeys WHERE licenseKey = ?').bind(licenseKey),
+    db.prepare('DELETE FROM DeviceTelemetry WHERE licenseKey = ?').bind(licenseKey),
+    db.prepare('UPDATE TesterLicenses SET boundDeviceId = NULL, deviceName = NULL WHERE licenseKey = ?').bind(licenseKey),
+  ]);
   return true;
 }
 
@@ -849,17 +928,47 @@ function normalizeBetaRow(row: any): DbBetaRegistration | null {
 }
 
 export async function getAllBetaRegistrationsD1(db: D1Database): Promise<DbBetaRegistration[]> {
-  const res = await db.prepare(`SELECT * FROM BetaRegistrations ORDER BY id DESC`).all<DbBetaRegistration>();
+  const res = await db.prepare(`
+    SELECT 
+      b.*,
+      COALESCE(dt.lastSeenAt, b.lastConnectedAt, b.activatedAt) AS lastConnectedAt,
+      dt.deviceModel AS deviceModel,
+      dt.location AS deviceLocation,
+      dt.ipAddress AS deviceIp
+    FROM BetaRegistrations b
+    LEFT JOIN DeviceTelemetry dt ON b.trialLicenseKey = dt.licenseKey
+    ORDER BY b.id DESC
+  `).all<DbBetaRegistration>();
   return (res.results || []).map(r => normalizeBetaRow(r)!);
 }
 
 export async function getBetaRegistrationByIdD1(db: D1Database, registrationId: string): Promise<DbBetaRegistration | null> {
-  const row = await db.prepare(`SELECT * FROM BetaRegistrations WHERE registrationId = ?`).bind(registrationId).first<DbBetaRegistration>();
+  const row = await db.prepare(`
+    SELECT 
+      b.*,
+      COALESCE(dt.lastSeenAt, b.lastConnectedAt, b.activatedAt) AS lastConnectedAt,
+      dt.deviceModel AS deviceModel,
+      dt.location AS deviceLocation,
+      dt.ipAddress AS deviceIp
+    FROM BetaRegistrations b
+    LEFT JOIN DeviceTelemetry dt ON b.trialLicenseKey = dt.licenseKey
+    WHERE b.registrationId = ?
+  `).bind(registrationId).first<DbBetaRegistration>();
   return normalizeBetaRow(row);
 }
 
 export async function getBetaRegistrationByLicenseKeyD1(db: D1Database, trialLicenseKey: string): Promise<DbBetaRegistration | null> {
-  const row = await db.prepare(`SELECT * FROM BetaRegistrations WHERE trialLicenseKey = ?`).bind(trialLicenseKey).first<DbBetaRegistration>();
+  const row = await db.prepare(`
+    SELECT 
+      b.*,
+      COALESCE(dt.lastSeenAt, b.lastConnectedAt, b.activatedAt) AS lastConnectedAt,
+      dt.deviceModel AS deviceModel,
+      dt.location AS deviceLocation,
+      dt.ipAddress AS deviceIp
+    FROM BetaRegistrations b
+    LEFT JOIN DeviceTelemetry dt ON b.trialLicenseKey = dt.licenseKey
+    WHERE b.trialLicenseKey = ?
+  `).bind(trialLicenseKey).first<DbBetaRegistration>();
   return normalizeBetaRow(row);
 }
 
@@ -896,7 +1005,11 @@ export async function revokeBetaRegistrationD1(db: D1Database, trialLicenseKey: 
 }
 
 export async function unbindBetaRegistrationDeviceD1(db: D1Database, trialLicenseKey: string): Promise<boolean> {
-  await db.batch([db.prepare('DELETE FROM LicenseDeviceKeys WHERE licenseKey = ?').bind(trialLicenseKey),db.prepare('UPDATE BetaRegistrations SET boundDeviceId = NULL, deviceName = NULL WHERE trialLicenseKey = ?').bind(trialLicenseKey)]);
+  await db.batch([
+    db.prepare('DELETE FROM LicenseDeviceKeys WHERE licenseKey = ?').bind(trialLicenseKey),
+    db.prepare('DELETE FROM DeviceTelemetry WHERE licenseKey = ?').bind(trialLicenseKey),
+    db.prepare('UPDATE BetaRegistrations SET boundDeviceId = NULL, deviceName = NULL WHERE trialLicenseKey = ?').bind(trialLicenseKey),
+  ]);
   return true;
 }
 
@@ -1039,4 +1152,106 @@ export async function incrementPromoUsageD1(db: D1Database, code: string): Promi
     .bind(code.trim().toUpperCase())
     .run();
 }
+
+export function parseServerUserAgent(ua?: string | null): string | null {
+  if (!ua) return null;
+  let os = "";
+  if (/Android/i.test(ua)) {
+    const verMatch = ua.match(/Android\s+([0-9.]+)/i);
+    const modelMatch = ua.match(/Android\s+[0-9.]+;\s*([^;)]+?)(?:\s+Build\/|\))/i);
+    const ver = verMatch ? `Android ${verMatch[1]}` : "Android";
+    const rawModel = modelMatch?.[1]?.trim();
+    const model = rawModel && rawModel !== "K" ? rawModel : "HP Android";
+    os = `${model} (${ver})`;
+  } else if (/iPhone|iPad|iPod/i.test(ua)) {
+    const isIpad = /iPad/i.test(ua);
+    const verMatch = ua.match(/OS\s+([0-9_]+)/i);
+    const ver = verMatch ? `iOS ${verMatch[1].replace(/_/g, ".")}` : "iOS";
+    os = `${isIpad ? "iPad" : "iPhone"} (${ver})`;
+  } else if (/Windows NT/i.test(ua)) {
+    os = "PC / Laptop Windows";
+  } else if (/Macintosh|Mac OS X/i.test(ua)) {
+    os = "Mac / macOS";
+  } else if (/Linux/i.test(ua)) {
+    os = "Perangkat Linux";
+  } else {
+    return null;
+  }
+
+  let browser = "Browser";
+  if (/Edg\//i.test(ua)) browser = "Edge";
+  else if (/OPR\/|Opera/i.test(ua)) browser = "Opera";
+  else if (/SamsungBrowser/i.test(ua)) browser = "Samsung Internet";
+  else if (/Chrome\//i.test(ua) && !/Chromium/i.test(ua)) browser = "Chrome";
+  else if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
+  else if (/Firefox\//i.test(ua)) browser = "Firefox";
+
+  return `${os} • ${browser}`;
+}
+
+export function extractRequestTelemetry(request?: any, clientDeviceModel?: string | null): {
+  deviceModel: string | null;
+  location: string | null;
+  ipAddress: string | null;
+} {
+  const cleanClientModel = typeof clientDeviceModel === "string" && clientDeviceModel.trim().length > 0
+    ? clientDeviceModel.trim().slice(0, 140)
+    : null;
+  if (!request) {
+    return { deviceModel: cleanClientModel, location: null, ipAddress: null };
+  }
+  const headers = request.headers;
+  const getHeader = (name: string): string => {
+    if (!headers) return "";
+    if (typeof headers.get === "function") return headers.get(name) || "";
+    return headers[name] || headers[name.toLowerCase()] || "";
+  };
+  const ua = getHeader("user-agent");
+  const rawIp = getHeader("cf-connecting-ip") || getHeader("x-forwarded-for");
+  const ipAddress = rawIp ? rawIp.split(",")[0].trim().slice(0, 64) : null;
+  const cf = request.cf || {};
+  const city = (cf.city || getHeader("cf-ipcity") || "").trim();
+  const region = (cf.region || getHeader("cf-region") || "").trim();
+  const countryCode = (cf.country || getHeader("cf-ipcountry") || "").trim().toUpperCase();
+  const country = countryCode === "ID" ? "Indonesia" : countryCode;
+  const locParts = [city, region && region !== city ? region : "", country].filter(Boolean);
+  const location = locParts.length > 0 ? locParts.join(", ").slice(0, 120) : null;
+  const deviceModel = cleanClientModel || parseServerUserAgent(ua);
+  return { deviceModel, location, ipAddress };
+}
+
+export async function upsertDeviceTelemetryD1(
+  db: D1Database,
+  data: {
+    licenseKey: string;
+    deviceId: string;
+    deviceModel?: string | null;
+    location?: string | null;
+    ipAddress?: string | null;
+    lastSeenAt?: string;
+  }
+): Promise<void> {
+  if (!data.licenseKey || !data.deviceId) return;
+  const now = data.lastSeenAt || new Date().toISOString();
+  try {
+    await db.prepare(`
+      INSERT INTO DeviceTelemetry (licenseKey, deviceId, deviceModel, location, ipAddress, lastSeenAt)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(licenseKey) DO UPDATE SET
+        deviceId = excluded.deviceId,
+        deviceModel = COALESCE(excluded.deviceModel, DeviceTelemetry.deviceModel),
+        location = COALESCE(excluded.location, DeviceTelemetry.location),
+        ipAddress = COALESCE(excluded.ipAddress, DeviceTelemetry.ipAddress),
+        lastSeenAt = excluded.lastSeenAt
+    `).bind(
+      data.licenseKey.trim().toUpperCase(),
+      data.deviceId.trim(),
+      data.deviceModel || null,
+      data.location || null,
+      data.ipAddress || null,
+      now
+    ).run();
+  } catch (_) {}
+}
+
 

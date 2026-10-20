@@ -22,6 +22,9 @@ export interface CustomerOrder {
   verifiedAt?: string;
   boundDeviceId?: string | null;
   deviceName?: string | null;
+  deviceModel?: string | null;
+  deviceLocation?: string | null;
+  deviceIp?: string | null;
   activatedAt?: string | null;
   lastConnectedAt?: string | null;
   lastSeenAt?: string | null;
@@ -35,6 +38,49 @@ export function getLocalDeviceId(): string {
     localStorage.setItem("sakunota_device_id", id);
   }
   return id;
+}
+
+export function getClientDeviceTelemetryModel(): string {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return "";
+  try {
+    const ua = navigator.userAgent || "";
+    if (!ua) return "";
+    let os = "Perangkat";
+    if (/Android/i.test(ua)) {
+      const verMatch = ua.match(/Android\s+([0-9.]+)/i);
+      const modelMatch = ua.match(/Android\s+[0-9.]+;\s*([^;)]+?)(?:\s+Build\/|\))/i);
+      const ver = verMatch ? `Android ${verMatch[1]}` : "Android";
+      const rawModel = modelMatch?.[1]?.trim();
+      const model = rawModel && rawModel !== "K" ? rawModel : "HP Android";
+      os = `${model} (${ver})`;
+    } else if (/iPhone|iPad|iPod/i.test(ua)) {
+      const isIpad = /iPad/i.test(ua);
+      const verMatch = ua.match(/OS\s+([0-9_]+)/i);
+      const ver = verMatch ? `iOS ${verMatch[1].replace(/_/g, ".")}` : "iOS";
+      os = `${isIpad ? "iPad" : "iPhone"} (${ver})`;
+    } else if (/Windows NT/i.test(ua)) {
+      os = "PC / Laptop Windows";
+    } else if (/Macintosh|Mac OS X/i.test(ua)) {
+      os = "Mac / macOS";
+    } else if (/Linux/i.test(ua)) {
+      os = "Perangkat Linux";
+    }
+
+    let browser = "Browser";
+    if (/Edg\//i.test(ua)) browser = "Edge";
+    else if (/OPR\/|Opera/i.test(ua)) browser = "Opera";
+    else if (/SamsungBrowser/i.test(ua)) browser = "Samsung Internet";
+    else if (/Chrome\//i.test(ua) && !/Chromium/i.test(ua)) browser = "Chrome";
+    else if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
+    else if (/Firefox\//i.test(ua)) browser = "Firefox";
+
+    const screenInfo = window.screen?.width && window.screen?.height
+      ? ` [${window.screen.width}x${window.screen.height}]`
+      : "";
+    return `${os} • ${browser}${screenInfo}`;
+  } catch {
+    return "";
+  }
 }
 
 export async function submitBuyerOrder(data: {
@@ -277,10 +323,11 @@ export async function activateLicenseServer(
   try {
     const token = localStorage.getItem('sakunota_activation_token') || '';
     const deviceProof = await createDeviceProof('activate', licenseKey, deviceId, token);
+    const deviceModel = getClientDeviceTelemetryModel();
     const res = await fetch("/api/license/activate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ licenseKey, deviceId, deviceName, token, deviceProof }),
+      body: JSON.stringify({ licenseKey, deviceId, deviceName, deviceModel, token, deviceProof }),
     });
 
     const json = await res.json();
@@ -325,8 +372,12 @@ export interface TesterLicense {
   notes: string | null;
   boundDeviceId: string | null;
   deviceName: string | null;
+  deviceModel?: string | null;
+  deviceLocation?: string | null;
+  deviceIp?: string | null;
   createdAt: string;
   activatedAt: string | null;
+  lastConnectedAt?: string | null;
   revoked: number;
 }
 
@@ -432,6 +483,9 @@ export interface CommercialLicense {
   businessName: string;
   boundDeviceId?: string | null;
   deviceName?: string | null;
+  deviceModel?: string | null;
+  deviceLocation?: string | null;
+  deviceIp?: string | null;
   issuedAt: string;
   activatedAt?: string | null;
   lastConnectedAt?: string | null;
@@ -604,6 +658,9 @@ export interface BetaRegistration {
   notes?: string;
   boundDeviceId?: string | null;
   deviceName?: string | null;
+  deviceModel?: string | null;
+  deviceLocation?: string | null;
+  deviceIp?: string | null;
   registeredAt: string;
   createdAt?: string;
   approvedAt?: string | null;
@@ -782,17 +839,23 @@ export async function verifyLicenseServer(licenseKey: string, deviceId: string, 
   error?: string;
   activationToken?: string;
 }> {
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), 4000) : null;
   try {
     const deviceProof = await createDeviceProof('verify', licenseKey, deviceId, token || '');
+    const deviceModel = getClientDeviceTelemetryModel();
     const res = await fetch("/api/license/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ licenseKey, deviceId, token, deviceProof }),
+      body: JSON.stringify({ licenseKey, deviceId, deviceModel, token, deviceProof }),
+      signal: controller?.signal,
     });
     if (res.status >= 500 || res.status === 429) throw new Error('Server lisensi sementara tidak tersedia.');
     return await res.json();
   } catch (e: any) {
     throw new Error(e.message || "Gagal memverifikasi lisensi.");
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
 }
 

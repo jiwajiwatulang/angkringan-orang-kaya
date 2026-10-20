@@ -669,6 +669,150 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
   };
 
+  // Helper: Format relative time & online/offline status from lastConnectedAt
+  const getDevicePresenceInfo = (lastConnectedAt?: string | null) => {
+    if (!lastConnectedAt) {
+      return {
+        statusLabel: "Belum Ada Riwayat Koneksi",
+        isOnline: false,
+        isRecent: false,
+        formattedTime: "-",
+        relativeTime: "-",
+      };
+    }
+
+    const parsed = Date.parse(lastConnectedAt);
+    if (Number.isNaN(parsed)) {
+      return {
+        statusLabel: "Tercatat",
+        isOnline: false,
+        isRecent: false,
+        formattedTime: lastConnectedAt,
+        relativeTime: lastConnectedAt,
+      };
+    }
+
+    const diffMs = Date.now() - parsed;
+    const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    let relativeTime = "Baru saja";
+    if (diffMinutes >= 1 && diffMinutes < 60) {
+      relativeTime = `${diffMinutes} menit lalu`;
+    } else if (diffHours >= 1 && diffHours < 24) {
+      relativeTime = `${diffHours} jam lalu`;
+    } else if (diffDays >= 1) {
+      relativeTime = `${diffDays} hari lalu`;
+    }
+
+    const isOnline = diffMinutes <= 15;
+    const isRecent = !isOnline && diffHours < 24;
+    const statusLabel = isOnline
+      ? "Sedang Aktif / Online"
+      : isRecent
+      ? "Aktif Hari Ini (Mode Kasir Offline)"
+      : "Sedang Offline";
+
+    const formattedTime = new Date(parsed).toLocaleString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    return {
+      statusLabel,
+      isOnline,
+      isRecent,
+      formattedTime,
+      relativeTime,
+    };
+  };
+
+  const renderDeviceTelemetryMeta = (item: {
+    boundDeviceId?: string | null;
+    deviceModel?: string | null;
+    deviceLocation?: string | null;
+    deviceIp?: string | null;
+    lastConnectedAt?: string | null;
+    activatedAt?: string | null;
+  }) => {
+    if (!item.boundDeviceId && !item.lastConnectedAt && !item.deviceModel && !item.deviceLocation) {
+      return null;
+    }
+
+    const presence = getDevicePresenceInfo(item.lastConnectedAt || item.activatedAt);
+
+    return (
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] bg-surface/80 px-2.5 py-2 rounded-xl border border-line/60">
+        <span className="inline-flex items-center gap-1.5 font-bold">
+          <span
+            className={`w-2 h-2 rounded-full ${
+              presence.isOnline
+                ? "bg-emerald-500 animate-pulse"
+                : presence.isRecent
+                ? "bg-amber-500"
+                : "bg-slate-400"
+            }`}
+          />
+          <span
+            className={
+              presence.isOnline
+                ? "text-emerald-600 dark:text-emerald-400"
+                : presence.isRecent
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-muted"
+            }
+          >
+            {presence.statusLabel}
+          </span>
+        </span>
+
+        {item.deviceModel && (
+          <span className="text-muted">
+            Perangkat: <strong className="text-fg font-semibold">{item.deviceModel}</strong>
+          </span>
+        )}
+
+        {(item.deviceLocation || item.deviceIp) && (
+          <span className="text-muted">
+            Lokasi Buka:{" "}
+            <strong className="text-fg font-semibold">
+              {item.deviceLocation || "Indonesia"}
+              {item.deviceIp ? ` (${item.deviceIp})` : ""}
+            </strong>
+          </span>
+        )}
+
+        {(item.lastConnectedAt || item.activatedAt) && (
+          <span className="text-muted">
+            Terakhir Login / Buka Kasir:{" "}
+            <strong className="text-fg font-semibold">
+              {presence.relativeTime} ({presence.formattedTime})
+            </strong>
+          </span>
+        )}
+
+        {item.activatedAt && !Number.isNaN(Date.parse(item.activatedAt)) && (
+          <span className="text-muted">
+            Aktivasi Awal:{" "}
+            <strong className="text-fg font-semibold">
+              {new Date(item.activatedAt).toLocaleString("id-ID", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </strong>
+          </span>
+        )}
+      </div>
+    );
+  };
+
   // Owner action: Cancel unpaid order
   const handleCancelOrder = async (orderId: string) => {
     if (!ownerToken) return;
@@ -1413,6 +1557,7 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
                             </div>
                           )}
                         </div>
+                        {renderDeviceTelemetryMeta(o)}
                       </div>
                     )}
 
@@ -1759,6 +1904,7 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
                               Pertama Aktif: {new Date(b.activatedAt).toLocaleDateString("id-ID")}
                             </div>
                           )}
+                          <div className="w-full">{renderDeviceTelemetryMeta(b)}</div>
                         </div>
 
                         {/* Audit Log / Notes */}
@@ -2069,6 +2215,7 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
                           ) : (
                             <span className="text-muted">Siap diaktifkan di HP baru</span>
                           )}
+                          {renderDeviceTelemetryMeta(l)}
                         </div>
                       </div>
 
@@ -2248,6 +2395,7 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
                             ) : (
                               <span className="text-muted font-medium">Belum digunakan pada perangkat</span>
                             )}
+                            {renderDeviceTelemetryMeta(t)}
                           </div>
                         </div>
 

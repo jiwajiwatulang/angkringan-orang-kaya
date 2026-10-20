@@ -1,9 +1,9 @@
 import { activateLicenseOnDevice, verifyDeviceLicense, verifyDeviceActivationToken } from './sakunotaServer';
-import { getLicenseD1, getTesterLicenseD1, getBetaRegistrationByLicenseKeyD1, type D1Database } from './d1';
+import { getLicenseD1, getTesterLicenseD1, getBetaRegistrationByLicenseKeyD1, upsertDeviceTelemetryD1, type D1Database } from './d1';
 import { readSignedLicense, signOfflineLicense, verifyDeviceProof } from './licenseSigning';
 import type { DeviceProof } from '../licenseProtocol';
 
-interface DeviceRequest { licenseKey: string; deviceId: string; deviceName?: string; token?: string; deviceProof?: DeviceProof }
+interface DeviceRequest { licenseKey: string; deviceId: string; deviceName?: string; deviceModel?: string; location?: string; ipAddress?: string; token?: string; deviceProof?: DeviceProof }
 async function binding(db: D1Database, key: string) {
   return db.prepare('SELECT * FROM LicenseDeviceKeys WHERE licenseKey = ?').bind(key).first<{deviceId:string; publicKey:string}>();
 }
@@ -51,6 +51,13 @@ export async function activateSecureDevice(db: D1Database, data: DeviceRequest) 
   if (!result.success) return result;
   const key = data.licenseKey.trim().toUpperCase();
   if (!(await claim(db, key, data.deviceId, identity))) return { success: false, status: 409, error: 'Lisensi sudah terikat pada kunci perangkat lain.' };
+  await upsertDeviceTelemetryD1(db, {
+    licenseKey: key,
+    deviceId: data.deviceId,
+    deviceModel: data.deviceModel || null,
+    location: data.location || null,
+    ipAddress: data.ipAddress || null,
+  });
   return { ...result, activationToken: signOfflineLicense({ v: 2, licenseKey: key, deviceId: data.deviceId, deviceKey: identity, licenseType: result.licenseType as 'berbayar' | 'trial' | 'tester', expiresAt: result.expiresAt || null, businessName: result.businessName || 'Usaha Saya', issuedAt: Date.now() }) };
 }
 export async function verifySecureDevice(db: D1Database, data: DeviceRequest) {
@@ -71,5 +78,12 @@ export async function verifySecureDevice(db: D1Database, data: DeviceRequest) {
   const result = await verifyDeviceLicense(db,data);
   if (!result.valid) return result;
   if (!(await claim(db,key,data.deviceId,identity))) return {valid:false,status:'revoked' as const,error:'Lisensi terikat pada perangkat lain.'};
+  await upsertDeviceTelemetryD1(db, {
+    licenseKey: key,
+    deviceId: data.deviceId,
+    deviceModel: data.deviceModel || null,
+    location: data.location || null,
+    ipAddress: data.ipAddress || null,
+  });
   return {...result,activationToken:signOfflineLicense({v:2,licenseKey:key,deviceId:data.deviceId,deviceKey:identity,licenseType:result.licenseType!,expiresAt:result.expiresAt || null,businessName:result.businessName || 'Usaha Saya',issuedAt:Date.now()})};
 }
