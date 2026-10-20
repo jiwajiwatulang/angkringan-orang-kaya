@@ -20,7 +20,7 @@ import {
   parseHistoricalTransactionsFile,
 } from "@/lib/excelUtils";
 import { compressPaymentProof, formatBytes } from "@/lib/imageUtils";
-import { generateEscPosReceipt, generateReceiptHtml, executePrintDocument } from "@/lib/receipt";
+import { generateEscPosReceipt, generateReceiptHtml, generateBulkReceiptHtml, executePrintDocument } from "@/lib/receipt";
 import { App } from "@capacitor/app";
 
 export default function AdminTransaksiPage() {
@@ -238,10 +238,32 @@ export default function AdminTransaksiPage() {
     }
 
     const selectedList = orders.filter(o => selectedOrderIds.includes(o.id));
-    showToast(`Memulai pencetakan ${selectedList.length} nota...`);
+    if (selectedList.length === 1) {
+      await handlePrintSingleOrder(selectedList[0], 'all');
+      return;
+    }
 
-    for (const ord of selectedList) {
-      await handlePrintSingleOrder(ord, 'all');
+    try {
+      showToast(`Menyiapkan cetak ${selectedList.length} nota...`);
+      // Gabungkan ESC/POS dengan cut/feed antar struk
+      const bulkEscposText = selectedList
+        .map(ord => generateEscPosReceipt(ord, 'all', storeSettings))
+        .join('\n\n\n\x1b\x64\x03\x1d\x56\x42\x00\n\n');
+      const bulkHtmlContent = generateBulkReceiptHtml(selectedList, 'all', storeSettings);
+
+      const result = await executePrintDocument({
+        title: `Cetak_Masal_${selectedList.length}_Nota`,
+        escposText: bulkEscposText,
+        htmlContent: bulkHtmlContent,
+        settings: storeSettings
+      });
+
+      if (result.success) {
+        showToast(result.message || `Berhasil mengirim ${selectedList.length} nota ke printer.`, "success");
+      }
+    } catch (e: any) {
+      console.error("Gagal mencetak masal nota:", e);
+      alert("Gagal mencetak nota: " + (e.message || e));
     }
   };
 
@@ -1089,7 +1111,7 @@ export default function AdminTransaksiPage() {
             <button
               type="button"
               onClick={() => setSelectedOrderIds([])}
-              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-colors"
+              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white border border-slate-500 rounded-xl text-xs font-bold transition-colors shadow-xs"
             >
               Batal
             </button>
