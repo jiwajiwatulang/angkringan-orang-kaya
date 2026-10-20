@@ -19,6 +19,7 @@ import {
   PAYMENT_ACCOUNT_NUMBER,
   PAYMENT_BANK_NAME,
 } from "@/lib/config";
+import { printOfficialInvoice } from "@/lib/invoicePrint";
 
 
 export default function SakuNotaLandingPage() {
@@ -3129,29 +3130,31 @@ export default function SakuNotaLandingPage() {
       {/* MODAL INVOICE RESMI PEMBELIAN LISENSI */}
       {isInvoiceOpen && invoiceData && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setIsInvoiceOpen(false)}
         >
           <div
-            className="bg-white text-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl relative border border-slate-200 my-8"
+            className="bg-white text-slate-900 rounded-3xl max-w-xl w-full p-5 sm:p-7 space-y-4 shadow-2xl relative border border-slate-200 my-6"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header Actions */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 print:hidden">
-              <div className="flex items-center gap-2">
-                <span className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">
                   <LineIcon name="receipt" className="w-4 h-4" />
                 </span>
-                <span className="text-xs font-black uppercase text-slate-700 tracking-wider">Faktur &amp; Invoice Resmi</span>
+                <span className="text-xs font-black uppercase text-slate-800 tracking-wider truncate">
+                  {invoiceData.status === "lunas_lisensi_terbit" ? "Faktur & Invoice Resmi" : "Faktur Tagihan Pembelian"}
+                </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1"
+                  onClick={() => printOfficialInvoice(invoiceData)}
+                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
                 >
                   <LineIcon name="printer" className="w-3.5 h-3.5" />
-                  <span>Cetak / PDF</span>
+                  <span>Cetak / Unduh PDF</span>
                 </button>
                 <button
                   type="button"
@@ -3166,13 +3169,14 @@ export default function SakuNotaLandingPage() {
             {/* Printable Invoice Body */}
             <div className="space-y-4 text-xs text-slate-700">
               {/* Header Toko / Perusahaan */}
-              <div className="flex justify-between items-start gap-4">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 pb-3 border-b-2 border-slate-900">
                 <div>
                   <div className="text-lg font-black tracking-tight text-slate-900">SakuNota POS</div>
-                  <div className="text-[11px] text-slate-500 font-medium">PT Pemuda Gaya Bebas</div>
-                  <div className="text-[10px] text-slate-500">Dukungan WhatsApp: 0851-5874-8884</div>
+                  <div className="text-[11px] font-bold text-blue-600">Aplikasi Kasir Offline UMKM Indonesia</div>
+                  <div className="text-[11px] text-slate-600 font-medium mt-0.5">PT Pemuda Gaya Bebas</div>
+                  <div className="text-[10px] text-slate-500">WhatsApp Dukungan: 0851-5874-8884 • sakunota.my.id</div>
                 </div>
-                <div className="text-right">
+                <div className="sm:text-right">
                   <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
                     invoiceData.status === "lunas_lisensi_terbit"
                       ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
@@ -3186,111 +3190,156 @@ export default function SakuNotaLandingPage() {
                       ? "DIBATALKAN"
                       : "MENUNGGU PEMBAYARAN"}
                   </span>
-                  <div className="font-mono text-xs font-bold text-slate-900 mt-1">INV-{invoiceData.orderId}</div>
+                  <div className="font-mono text-sm font-black text-slate-900 mt-1">INV-{invoiceData.orderId}</div>
                   <div className="text-[10px] text-slate-500">
-                    {invoiceData.createdAt ? new Date(invoiceData.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : new Date().toLocaleDateString("id-ID")}
+                    Tanggal: {invoiceData.createdAt ? new Date(invoiceData.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" }) : new Date().toLocaleDateString("id-ID")}
                   </div>
                 </div>
               </div>
 
-              {/* Data Pelanggan */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 grid grid-cols-2 gap-2 text-[11px]">
-                <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Diterbitkan Untuk:</span>
-                  <strong className="text-slate-900 text-xs block">{invoiceData.businessName}</strong>
-                  <span className="text-slate-600">Pemilik: {invoiceData.buyerName}</span>
+              {/* Data Pelanggan & Pesanan */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                  <span className="text-[9px] uppercase font-extrabold text-slate-500 block border-b border-slate-200 pb-1 mb-1">Diterbitkan Untuk (Pelanggan)</span>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">Nama Usaha:</span>
+                    <strong className="text-slate-900 text-right">{invoiceData.businessName}</strong>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">Pemilik:</span>
+                    <strong className="text-slate-900 text-right">{invoiceData.buyerName}</strong>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">WhatsApp:</span>
+                    <span className="font-mono font-semibold text-slate-800">{invoiceData.whatsapp}</span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Metode Pembayaran:</span>
-                  <strong className="text-slate-900 text-xs block">{invoiceData.paymentMethod || "Midtrans Otomatis"}</strong>
-                  <span className="text-slate-600">WA: {invoiceData.whatsapp}</span>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                  <span className="text-[9px] uppercase font-extrabold text-slate-500 block border-b border-slate-200 pb-1 mb-1">Rincian Pesanan &amp; Akses</span>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">No. Pesanan:</span>
+                    <strong className="font-mono text-slate-900">{invoiceData.orderId}</strong>
+                  </div>
                   {invoiceData.accessCode && (
-                    <span className="text-[10px] text-blue-700 font-mono block mt-0.5 font-bold">Kode Akses: {invoiceData.accessCode}</span>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">Kode Akses:</span>
+                      <strong className="font-mono text-blue-700">{invoiceData.accessCode}</strong>
+                    </div>
                   )}
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">Metode Bayar:</span>
+                    <strong className="text-slate-900 text-right">{invoiceData.paymentMethod || "Transfer BCA / QRIS"}</strong>
+                  </div>
                 </div>
               </div>
 
               {/* Rincian Produk */}
               <div className="border border-slate-200 rounded-2xl overflow-hidden">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-100 text-[10px] font-black uppercase text-slate-600">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-slate-100 text-[10px] font-black uppercase text-slate-600 border-b border-slate-200">
                     <tr>
                       <th className="py-2.5 px-3">Deskripsi Layanan</th>
-                      <th className="py-2.5 px-3 text-center">Qty</th>
-                      <th className="py-2.5 px-3 text-right">Harga</th>
-                      <th className="py-2.5 px-3 text-right">Total</th>
+                      <th className="py-2.5 px-2 text-center whitespace-nowrap">Qty</th>
+                      <th className="py-2.5 px-3 text-right whitespace-nowrap">Harga</th>
+                      <th className="py-2.5 px-3 text-right whitespace-nowrap">Subtotal</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-xs">
                     <tr>
                       <td className="py-3 px-3">
                         <strong className="text-slate-900 block font-bold">Lisensi Resmi SakuNota POS</strong>
-                        <span className="text-[10px] text-slate-500">Akses kasir offline 1 perangkat seumur hidup, bebas biaya bulanan</span>
+                        <span className="text-[10px] text-slate-500 leading-relaxed block mt-0.5">
+                          Akses kasir offline 1 perangkat seumur hidup, bebas biaya langganan bulanan
+                        </span>
                       </td>
-                      <td className="py-3 px-3 text-center">1</td>
-                      <td className="py-3 px-3 text-right">Rp {(invoiceData.originalAmount || 50000).toLocaleString("id-ID")}</td>
-                      <td className="py-3 px-3 text-right font-black text-slate-900">Rp {(invoiceData.originalAmount || 50000).toLocaleString("id-ID")}</td>
+                      <td className="py-3 px-2 text-center font-bold whitespace-nowrap">1</td>
+                      <td className="py-3 px-3 text-right whitespace-nowrap">Rp {(invoiceData.originalAmount || 50000).toLocaleString("id-ID")}</td>
+                      <td className="py-3 px-3 text-right font-black text-slate-900 whitespace-nowrap">Rp {(invoiceData.originalAmount || 50000).toLocaleString("id-ID")}</td>
                     </tr>
                     {invoiceData.promoCode && (
-                      <tr className="bg-emerald-50/60 text-emerald-800">
+                      <tr className="bg-emerald-50/70 text-emerald-800">
                         <td colSpan={3} className="py-2.5 px-3 text-right font-bold text-[11px]">
                           Potongan Diskon Promo ({invoiceData.promoCode}):
                         </td>
-                        <td className="py-2.5 px-3 text-right font-black text-xs text-emerald-700">
+                        <td className="py-2.5 px-3 text-right font-black text-xs text-emerald-700 whitespace-nowrap">
                           -Rp {(invoiceData.discountAmount || 0).toLocaleString("id-ID")}
                         </td>
                       </tr>
                     )}
                   </tbody>
-                  <tfoot className="bg-slate-50 text-xs font-black">
+                  <tfoot className="bg-slate-50 text-xs font-black border-t-2 border-slate-200">
                     <tr>
-                      <td colSpan={3} className="py-2.5 px-3 text-right uppercase text-[10px] text-slate-600">Total Tagihan:</td>
-                      <td className="py-2.5 px-3 text-right text-emerald-700 text-sm">Rp {(invoiceData.amount || 50000).toLocaleString("id-ID")}</td>
+                      <td colSpan={3} className="py-3 px-3 text-right uppercase text-[11px] text-slate-700">Total Tagihan:</td>
+                      <td className="py-3 px-3 text-right text-blue-700 text-sm whitespace-nowrap">Rp {(invoiceData.amount || 50000).toLocaleString("id-ID")}</td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
 
               {/* Petunjuk Pembayaran jika status belum lunas */}
-              {invoiceData.status !== "lunas_lisensi_terbit" && (
-                <div className="p-3.5 bg-amber-50/90 border border-amber-300 rounded-2xl space-y-1.5 text-[11px]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase text-amber-950">Petunjuk Pembayaran Transfer:</span>
-                    <span className="text-[9px] font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full">Tagihan Aktif</span>
+              {invoiceData.status !== "lunas_lisensi_terbit" && invoiceData.status !== "batal" && (
+                <div className="p-3.5 bg-amber-50/90 border border-amber-300 rounded-2xl space-y-2 text-[11px]">
+                  <div className="flex items-center justify-between border-b border-amber-200 pb-1.5">
+                    <span className="text-[10px] font-black uppercase text-amber-950">Instruksi Pembayaran Transfer Bank</span>
+                    <span className="text-[9px] font-bold text-amber-900 bg-amber-200/70 px-2 py-0.5 rounded-full">Tagihan Aktif</span>
                   </div>
-                  <div className="text-slate-800 space-y-0.5">
-                    <div>Bank Tujuan: <strong>{PAYMENT_BANK_NAME}</strong></div>
-                    <div>Nomor Rekening: <strong className="font-mono text-xs">{PAYMENT_ACCOUNT_NUMBER}</strong></div>
-                    <div>Atas Nama: <strong>{PAYMENT_ACCOUNT_NAME}</strong></div>
-                    <div>Nominal Transfer: <strong className="text-emerald-700 font-bold">Rp {(invoiceData.amount || 50000).toLocaleString("id-ID")}</strong></div>
-                    <div>Berita Acara / Keterangan Transfer: <strong className="font-mono font-bold">{invoiceData.orderId}</strong></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-slate-800">
+                    <div className="flex justify-between sm:block">
+                      <span className="text-slate-500">Bank Tujuan: </span>
+                      <strong>{PAYMENT_BANK_NAME}</strong>
+                    </div>
+                    <div className="flex justify-between sm:block">
+                      <span className="text-slate-500">Nomor Rekening: </span>
+                      <strong className="font-mono text-xs">{PAYMENT_ACCOUNT_NUMBER}</strong>
+                    </div>
+                    <div className="flex justify-between sm:block">
+                      <span className="text-slate-500">Atas Nama: </span>
+                      <strong>{PAYMENT_ACCOUNT_NAME}</strong>
+                    </div>
+                    <div className="flex justify-between sm:block">
+                      <span className="text-slate-500">Nominal Transfer: </span>
+                      <strong className="text-emerald-700 font-bold">Rp {(invoiceData.amount || 50000).toLocaleString("id-ID")}</strong>
+                    </div>
+                    <div className="sm:col-span-2 pt-0.5">
+                      <span className="text-slate-500">Berita / Keterangan Transfer: </span>
+                      <strong className="font-mono font-bold text-slate-900">{invoiceData.orderId}</strong>
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* Info Lisensi */}
               {invoiceData.licenseKey && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-center space-y-1">
-                  <span className="text-[10px] font-black uppercase text-blue-900 block">Nomor Lisensi Resmi Yang Diterbitkan:</span>
-                  <div className="font-mono font-black text-blue-700 text-sm tracking-wider select-all">
+                <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl text-center space-y-1">
+                  <span className="text-[10px] font-black uppercase text-blue-900 block">Nomor Lisensi Resmi SakuNota POS:</span>
+                  <div className="font-mono font-black text-blue-700 text-sm tracking-wider select-all bg-white py-1.5 px-3 rounded-xl border border-blue-200 inline-block">
                     {invoiceData.licenseKey}
                   </div>
                 </div>
               )}
 
               {/* Catatan Legal */}
-              <div className="text-[10px] text-slate-400 text-center leading-relaxed">
-                Dokumen ini merupakan bukti pembelian dan kepemilikan lisensi resmi yang sah yang diterbitkan oleh sistem otomatis SakuNota POS.
+              <div className="text-[10px] text-slate-500 text-center leading-relaxed pt-1 border-t border-slate-200">
+                Faktur / Invoice ini diterbitkan secara elektronik oleh sistem SakuNota POS (PT Pemuda Gaya Bebas) dan sah tanpa tanda tangan basah.
               </div>
             </div>
 
-            <div className="pt-2 print:hidden">
+            <div className="pt-1 flex gap-2">
+              <button
+                type="button"
+                onClick={() => printOfficialInvoice(invoiceData)}
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <LineIcon name="printer" className="w-3.5 h-3.5" />
+                <span>Cetak / Simpan PDF (A4 Rapih)</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setIsInvoiceOpen(false)}
-                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
               >
-                Tutup Invoice
+                Tutup
               </button>
             </div>
           </div>
