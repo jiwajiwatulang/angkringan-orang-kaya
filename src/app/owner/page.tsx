@@ -2,6 +2,7 @@
 import LineIcon from "@/components/LineIcon";
 
 import { formatServerDate } from "@/lib/dateFormat";
+import { PAYMENT_BANK_NAME, PAYMENT_ACCOUNT_NUMBER, PAYMENT_ACCOUNT_NAME, SUPPORT_WHATSAPP } from "@/lib/config";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
@@ -607,6 +608,65 @@ Langkah Pasang & Aktivasi di HP:
 Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+  };
+
+  const getInvoiceSummaryText = (o: CustomerOrder) => {
+    const isPaid = o.status === "lunas_lisensi_terbit";
+    const dateStr = o.createdAt
+      ? new Date(o.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+      : new Date().toLocaleDateString("id-ID");
+
+    let text = `*FAKTUR / INVOICE RESMI SAKUNOTA POS*
+Nomor Faktur: INV-${o.orderId}
+Tanggal: ${dateStr}
+Status: ${isPaid ? "LUNAS / PAID" : "MENUNGGU PEMBAYARAN / UNPAID"}
+
+Diterbitkan Untuk:
+• Usaha: ${o.businessName}
+• Pemilik: ${o.buyerName}
+• WhatsApp: ${o.whatsapp}
+• Kode Akses Cek Status: ${o.accessCode}
+
+Rincian Tagihan:
+• 1x Lisensi Resmi SakuNota POS (Akses Kasir Offline Permanen): Rp ${(o.originalAmount || 50000).toLocaleString("id-ID")}`;
+
+    if (o.promoCode) {
+      text += `\n• Diskon Promo (${o.promoCode}): -Rp ${(o.discountAmount || 0).toLocaleString("id-ID")}`;
+    }
+
+    text += `\n*TOTAL TAGIHAN: Rp ${(o.amount || 50000).toLocaleString("id-ID")}*`;
+
+    if (!isPaid) {
+      text += `\n\n*Petunjuk Pembayaran Transfer Bank:*
+• Bank: ${PAYMENT_BANK_NAME}
+• No. Rekening: ${PAYMENT_ACCOUNT_NUMBER}
+• Atas Nama: ${PAYMENT_ACCOUNT_NAME}
+• Berita Transfer: ${o.orderId}
+(Wajib cantumkan nomor pesanan ${o.orderId} pada berita transfer)`;
+
+      if (o.paymentLink) {
+        text += `\n\nLink Pembayaran Digital (QRIS / Midtrans):\n${o.paymentLink}`;
+      }
+
+      text += `\n\nSetelah transfer, silakan kirim foto bukti transfer ke WhatsApp ini atau buka menu Cek Status di portal SakuNota untuk verifikasi otomatis.`;
+    } else if (o.licenseKey) {
+      text += `\n\n*Nomor Lisensi Resmi:* ${o.licenseKey}
+Lisensi aktif seumur hidup bebas biaya bulanan.`;
+    }
+
+    return text;
+  };
+
+  const handleCopyInvoiceText = (o: CustomerOrder) => {
+    const text = getInvoiceSummaryText(o);
+    navigator.clipboard.writeText(text);
+    showToast("Teks Faktur / Invoice berhasil disalin!");
+  };
+
+  const getWhatsAppInvoiceUrl = (o: CustomerOrder) => {
+    const cleanPhone = o.whatsapp.replace(/^0/, "62").replace(/[^0-9]/g, "");
+    const text = getInvoiceSummaryText(o);
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
   };
 
   // Owner action: Cancel unpaid order
@@ -1392,6 +1452,17 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                               </button>
                             </div>
                           )}
+
+                          <a
+                            href={getWhatsAppInvoiceUrl(o)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 text-purple-700 dark:text-purple-300 text-xs font-bold border border-purple-300 dark:border-purple-800 transition-colors flex items-center gap-1.5"
+                            title="Kirim faktur / rincian tagihan via WhatsApp"
+                          >
+                            <LineIcon name="info" className="w-3.5 h-3.5" />
+                            <span>Kirim Faktur WA</span>
+                          </a>
                         </>
                       )}
 
@@ -1416,19 +1487,21 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                             <span><LineIcon name="info" /></span>
                             <span>Kirim via WhatsApp</span>
                           </a>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedInvoiceOrder(o);
-                              setIsInvoiceModalOpen(true);
-                            }}
-                            className="px-3 py-1.5 rounded-xl bg-card hover:bg-line text-fg text-xs font-bold border border-line transition-colors flex items-center gap-1.5"
-                          >
-                            <LineIcon name="receipt" className="w-3.5 h-3.5" />
-                            <span>Invoice</span>
-                          </button>
                         </>
                       )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedInvoiceOrder(o);
+                          setIsInvoiceModalOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-card hover:bg-line text-fg text-xs font-bold border border-line transition-colors flex items-center gap-1.5"
+                        title={o.status === "menunggu_verifikasi" ? "Buka Faktur Tagihan" : "Buka Invoice Resmi"}
+                      >
+                        <LineIcon name="receipt" className="w-3.5 h-3.5" />
+                        <span>Invoice</span>
+                      </button>
 
                       <button
                         type="button"
@@ -2698,9 +2771,30 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                 <span className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
                   <LineIcon name="receipt" className="w-4 h-4" />
                 </span>
-                <span className="text-xs font-black uppercase text-slate-700 tracking-wider">Faktur &amp; Invoice Resmi Pembeli</span>
+                <span className="text-xs font-black uppercase text-slate-700 tracking-wider">
+                  {selectedInvoiceOrder.status === "lunas_lisensi_terbit" ? "Faktur & Invoice Resmi Pembeli" : "Faktur Tagihan Pembeli"}
+                </span>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleCopyInvoiceText(selectedInvoiceOrder)}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1"
+                  title="Salin Teks Faktur / Invoice untuk WhatsApp"
+                >
+                  <LineIcon name="receipt" className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Salin Teks</span>
+                </button>
+                <a
+                  href={getWhatsAppInvoiceUrl(selectedInvoiceOrder)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1"
+                  title="Kirim Faktur Langsung via WhatsApp"
+                >
+                  <LineIcon name="info" className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Kirim WA</span>
+                </a>
                 <button
                   type="button"
                   onClick={() => window.print()}
@@ -2728,8 +2822,18 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                   <div className="text-[10px] text-slate-500">Dukungan WhatsApp: 0851-5874-8884</div>
                 </div>
                 <div className="text-right">
-                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    LUNAS / PAID
+                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                    selectedInvoiceOrder.status === "lunas_lisensi_terbit"
+                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                      : selectedInvoiceOrder.status === "batal"
+                      ? "bg-rose-100 text-rose-800 border border-rose-300"
+                      : "bg-amber-100 text-amber-800 border border-amber-300"
+                  }`}>
+                    {selectedInvoiceOrder.status === "lunas_lisensi_terbit"
+                      ? "LUNAS / PAID"
+                      : selectedInvoiceOrder.status === "batal"
+                      ? "DIBATALKAN"
+                      : "MENUNGGU PEMBAYARAN"}
                   </span>
                   <div className="font-mono text-xs font-bold text-slate-900 mt-1">INV-{selectedInvoiceOrder.orderId}</div>
                   <div className="text-[10px] text-slate-500">
@@ -2749,6 +2853,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                   <span className="text-[9px] uppercase font-bold text-slate-400 block">Metode Pembayaran:</span>
                   <strong className="text-slate-900 text-xs block">{selectedInvoiceOrder.paymentMethod || "Midtrans Otomatis"}</strong>
                   <span className="text-slate-600">WA: {selectedInvoiceOrder.whatsapp}</span>
+                  <span className="text-[10px] text-purple-700 font-mono block mt-0.5 font-bold">Kode Akses: {selectedInvoiceOrder.accessCode}</span>
                 </div>
               </div>
 
@@ -2786,12 +2891,37 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                   </tbody>
                   <tfoot className="bg-slate-50 text-xs font-black">
                     <tr>
-                      <td colSpan={3} className="py-2.5 px-3 text-right uppercase text-[10px] text-slate-600">Total Pembayaran:</td>
+                      <td colSpan={3} className="py-2.5 px-3 text-right uppercase text-[10px] text-slate-600">Total Tagihan:</td>
                       <td className="py-2.5 px-3 text-right text-emerald-700 text-sm">Rp {(selectedInvoiceOrder.amount || 50000).toLocaleString("id-ID")}</td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
+
+              {/* Petunjuk Pembayaran jika status belum lunas */}
+              {selectedInvoiceOrder.status !== "lunas_lisensi_terbit" && (
+                <div className="p-3.5 bg-amber-50/90 border border-amber-300 rounded-2xl space-y-1.5 text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase text-amber-950">Petunjuk Pembayaran Transfer:</span>
+                    <span className="text-[9px] font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full">Tagihan Aktif</span>
+                  </div>
+                  <div className="text-slate-800 space-y-0.5">
+                    <div>Bank Tujuan: <strong>{PAYMENT_BANK_NAME}</strong></div>
+                    <div>Nomor Rekening: <strong className="font-mono text-xs">{PAYMENT_ACCOUNT_NUMBER}</strong></div>
+                    <div>Atas Nama: <strong>{PAYMENT_ACCOUNT_NAME}</strong></div>
+                    <div>Nominal Transfer: <strong className="text-emerald-700 font-bold">Rp {(selectedInvoiceOrder.amount || 50000).toLocaleString("id-ID")}</strong></div>
+                    <div>Berita Acara / Keterangan Transfer: <strong className="font-mono font-bold">{selectedInvoiceOrder.orderId}</strong></div>
+                  </div>
+                  {selectedInvoiceOrder.paymentLink && (
+                    <div className="pt-1.5 border-t border-amber-200/60 text-[10px]">
+                      <span className="font-bold text-blue-900 block">Link Pembayaran Digital (QRIS / Midtrans):</span>
+                      <a href={selectedInvoiceOrder.paymentLink} target="_blank" rel="noopener noreferrer" className="font-mono text-blue-700 break-all underline">
+                        {selectedInvoiceOrder.paymentLink}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Info Lisensi */}
               {selectedInvoiceOrder.licenseKey && (

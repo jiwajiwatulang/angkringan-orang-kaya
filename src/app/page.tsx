@@ -17,6 +17,7 @@ import {
   SUPPORT_WHATSAPP,
   PAYMENT_ACCOUNT_NAME,
   PAYMENT_ACCOUNT_NUMBER,
+  PAYMENT_BANK_NAME,
 } from "@/lib/config";
 
 
@@ -2539,6 +2540,36 @@ export default function SakuNotaLandingPage() {
 
                 {/* Sticky Action Footer */}
                 <div className="shrink-0 p-3.5 sm:p-5 bg-slate-50 border-t border-slate-200 flex flex-col gap-2 rounded-b-3xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (createdOrder) {
+                        setInvoiceData(createdOrder);
+                      } else {
+                        setInvoiceData({
+                          orderId: currentOrderId,
+                          buyerName: buyerName,
+                          businessName: businessName,
+                          whatsapp: whatsappNumber,
+                          amount: appliedPromo ? appliedPromo.finalAmount : 50000,
+                          originalAmount: 50000,
+                          promoCode: appliedPromo?.code,
+                          discountAmount: appliedPromo?.discountAmount,
+                          status: "menunggu_verifikasi",
+                          paymentMethod: "Transfer Bank BCA Manual",
+                          bankAccount: PAYMENT_ACCOUNT_NUMBER,
+                          accessCode: currentAccessCode,
+                          createdAt: new Date().toISOString(),
+                        });
+                      }
+                      setIsInvoiceOpen(true);
+                    }}
+                    className="w-full py-2.5 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-xl border border-slate-300 transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <LineIcon name="receipt" className="w-3.5 h-3.5" />
+                    <span>Lihat &amp; Unduh Faktur / Invoice Tagihan</span>
+                  </button>
+
                   <a
                     href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20sudah%20transfer%20Rp${(createdOrder?.amount || (appliedPromo ? appliedPromo.finalAmount : 50000)).toLocaleString("id-ID")}%20untuk%20pesanan%20${currentOrderId}%20(${businessName}).%20Kode%20akses:%20${currentAccessCode}.%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
                     target="_blank"
@@ -3054,6 +3085,18 @@ export default function SakuNotaLandingPage() {
                           <span>{isSearchingOrder ? "Menyinkronkan..." : "Sinkronkan Status Pembayaran"}</span>
                         </button>
 
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInvoiceData(searchResult);
+                            setIsInvoiceOpen(true);
+                          }}
+                          className="w-full py-2 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-xl border border-slate-300 transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <LineIcon name="receipt" className="w-3.5 h-3.5" />
+                          <span>Lihat &amp; Unduh Faktur / Invoice Tagihan</span>
+                        </button>
+
                         <a
                           href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20sudah%20transfer%20untuk%20pesanan%20${searchResult.orderId}%20(${searchResult.businessName}).%20Kode%20akses:%20${searchResult.accessCode}.%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
                           target="_blank"
@@ -3130,8 +3173,18 @@ export default function SakuNotaLandingPage() {
                   <div className="text-[10px] text-slate-500">Dukungan WhatsApp: 0851-5874-8884</div>
                 </div>
                 <div className="text-right">
-                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    LUNAS / PAID
+                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                    invoiceData.status === "lunas_lisensi_terbit"
+                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                      : invoiceData.status === "batal"
+                      ? "bg-rose-100 text-rose-800 border border-rose-300"
+                      : "bg-amber-100 text-amber-800 border border-amber-300"
+                  }`}>
+                    {invoiceData.status === "lunas_lisensi_terbit"
+                      ? "LUNAS / PAID"
+                      : invoiceData.status === "batal"
+                      ? "DIBATALKAN"
+                      : "MENUNGGU PEMBAYARAN"}
                   </span>
                   <div className="font-mono text-xs font-bold text-slate-900 mt-1">INV-{invoiceData.orderId}</div>
                   <div className="text-[10px] text-slate-500">
@@ -3151,6 +3204,9 @@ export default function SakuNotaLandingPage() {
                   <span className="text-[9px] uppercase font-bold text-slate-400 block">Metode Pembayaran:</span>
                   <strong className="text-slate-900 text-xs block">{invoiceData.paymentMethod || "Midtrans Otomatis"}</strong>
                   <span className="text-slate-600">WA: {invoiceData.whatsapp}</span>
+                  {invoiceData.accessCode && (
+                    <span className="text-[10px] text-blue-700 font-mono block mt-0.5 font-bold">Kode Akses: {invoiceData.accessCode}</span>
+                  )}
                 </div>
               </div>
 
@@ -3188,12 +3244,29 @@ export default function SakuNotaLandingPage() {
                   </tbody>
                   <tfoot className="bg-slate-50 text-xs font-black">
                     <tr>
-                      <td colSpan={3} className="py-2.5 px-3 text-right uppercase text-[10px] text-slate-600">Total Pembayaran:</td>
+                      <td colSpan={3} className="py-2.5 px-3 text-right uppercase text-[10px] text-slate-600">Total Tagihan:</td>
                       <td className="py-2.5 px-3 text-right text-emerald-700 text-sm">Rp {(invoiceData.amount || 50000).toLocaleString("id-ID")}</td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
+
+              {/* Petunjuk Pembayaran jika status belum lunas */}
+              {invoiceData.status !== "lunas_lisensi_terbit" && (
+                <div className="p-3.5 bg-amber-50/90 border border-amber-300 rounded-2xl space-y-1.5 text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase text-amber-950">Petunjuk Pembayaran Transfer:</span>
+                    <span className="text-[9px] font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full">Tagihan Aktif</span>
+                  </div>
+                  <div className="text-slate-800 space-y-0.5">
+                    <div>Bank Tujuan: <strong>{PAYMENT_BANK_NAME}</strong></div>
+                    <div>Nomor Rekening: <strong className="font-mono text-xs">{PAYMENT_ACCOUNT_NUMBER}</strong></div>
+                    <div>Atas Nama: <strong>{PAYMENT_ACCOUNT_NAME}</strong></div>
+                    <div>Nominal Transfer: <strong className="text-emerald-700 font-bold">Rp {(invoiceData.amount || 50000).toLocaleString("id-ID")}</strong></div>
+                    <div>Berita Acara / Keterangan Transfer: <strong className="font-mono font-bold">{invoiceData.orderId}</strong></div>
+                  </div>
+                </div>
+              )}
 
               {/* Info Lisensi */}
               {invoiceData.licenseKey && (
