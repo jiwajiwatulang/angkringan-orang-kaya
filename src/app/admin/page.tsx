@@ -1,23 +1,23 @@
 "use client";
-import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/dexie";
-import { selectDashboardOrders, buildSalesSeries } from "@/lib/dashboardMetrics";
+import { db, Order, Payment, RefundEvent, CashMovement, MenuItem } from "@/lib/dexie";
+import {
+  dashboardPeriod,
+  computeFinancialDashboard,
+  isWithinPeriod,
+  DashboardRange,
+  UnifiedFinancialReport
+} from "@/lib/financialEngine";
 import { useAdmin } from "./AdminContext";
 import { getOrders, getActiveShift, getShiftLiveStats } from "@/lib/api";
 
 export default function AdminDashboardPage() {
   const { storeSettings } = useAdmin();
-  const [orders, setOrders] = useState<any[]>([]);
-  const [activeShift, setActiveShift] = useState<any>(null);
-  const [shiftStats, setShiftStats] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Shopify-Style Date Range Filter
-  const [timeRange, setTimeRange] = useState<"today" | "yesterday" | "7days" | "30days" | "thisMonth">("7days");
+  const [activeTab, setActiveTab] = useState<"summary" | "analytics">("summary");
+  const [timeRange, setTimeRange] = useState<DashboardRange>("7days");
   const [chartType, setChartType] = useState<"line" | "bar">("line");
   const [hoveredPoint, setHoveredPoint] = useState<{
     label: string;
@@ -28,82 +28,140 @@ export default function AdminDashboardPage() {
     y: number;
   } | null>(null);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("sakunota_admin_chart_type");
-      if (saved === "line" || saved === "bar") {
-        setChartType(saved);
-      }
-    } catch (_) {}
-  }, []);
+  const [activeShift, setActiveShift] = useState<any>(null);
+  const [shiftStats, setShiftStats] = useState<any>(null);
+  const [isWaModalOpen, setIsWaModalOpen] = useState(false);
+  const [copiedReport, setCopiedReport] = useState(false);
 
-  const handleSelectChartType = (type: "line" | "bar") => {
-    setChartType(type);
-    try {
-      localStorage.setItem("sakunota_admin_chart_type", type);
-    } catch (_) {}
-  };
-
+  // Load active shift info
   useEffect(() => {
-    async function loadDashboardData() {
+    async function loadShiftInfo() {
       try {
-        const allOrders = await getOrders();
-        setOrders(allOrders);
-
         const currentShift = await getActiveShift();
         setActiveShift(currentShift);
-
         if (currentShift && currentShift.id) {
           const stats = await getShiftLiveStats(currentShift.id);
           setShiftStats(stats);
         }
       } catch (e) {
-        console.error("Error loading dashboard data:", e);
-      } finally {
-        setIsLoading(false);
+        console.error("Error loading shift info:", e);
       }
     }
-    loadDashboardData();
+    loadShiftInfo();
   }, []);
 
-  const orderRevision = useLiveQuery(() => db.table("orders").toArray(), []);
-  const paymentRevision = useLiveQuery(() => db.table("payments").toArray(), []);
-  useEffect(() => { let current = true; getOrders().then(data => { if (current) setOrders(data); }); return () => { current = false; }; }, [orderRevision, paymentRevision]);
+  // Reactive queries via Dexie live query
+  const rawOrders = useLiveQuery(async () => {
+    return await getOrders();
+  }, []) || [];
 
-  const { currentOrders, previousOrders } = selectDashboardOrders(orders, timeRange);
+  const rawPayments = useLiveQuery(() => {
+    return db.table("payments").toArray();
+  }, []) || [];
 
-  // Current Metrics
-  const currentGrossSales = currentOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-  const currentOrderCount = currentOrders.length;
-  const currentAov = currentOrderCount > 0 ? Math.round(currentGrossSales / currentOrderCount) : 0;
-  const currentUnitsSold = currentOrders.reduce((sum, o) => {
-    return sum + (o.items || []).reduce((iSum: number, item: any) => iSum + (item.qty || 1), 0);
-  }, 0);
+  const rawRefundEvents = useLiveQuery(() => {
+    return db.table("refundEvents").toArray();
+  }, []) || [];
 
-  // Previous Metrics for Delta Calculation
-  const prevGrossSales = previousOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-  const prevOrderCount = previousOrders.length;
-  const prevAov = prevOrderCount > 0 ? Math.round(prevGrossSales / prevOrderCount) : 0;
-  const prevUnitsSold = previousOrders.reduce((sum, o) => {
-    return sum + (o.items || []).reduce((iSum: number, item: any) => iSum + (item.qty || 1), 0);
-  }, 0);
+  const rawCashMovements = useLiveQuery(() => {
+    return db.table("cashMovements").toArray();
+  }, []) || [];
+
+  const rawMenuItems = useLiveQuery(() => {
+    return db.table("menuItems").toArray();
+  }, []) || [];
+
+  // Compute period boundaries
+  const period = useMemo(() => {
+    return dashboardPeriod(timeRange);
+  }, [timeRange]);
+
+  // Compute unified financial report from Centralized Financial Engine
+  const report: UnifiedFinancialReport = useMemo(() => {
+    return computeFinancialDashboard({
+      orders: rawOrders,
+      payments: rawPayments,
+      refundEvents: rawRefundEvents,
+      cashMovements: rawCashMovements,
+      startingCash: activeShift?.startingCash || 0,
+      period: { start: period.start, end: period.end }
+    });
+  }, [rawOrders, rawPayments, rawRefundEvents, rawCashMovements, activeShift, period]);
+
+  // Previous period for delta comparison
+  const prevReport: UnifiedFinancialReport = useMemo(() => {
+    if (!period.previousStart || !period.previousEnd) return report;
+    return computeFinancialDashboard({
+      orders: rawOrders,
+      payments: rawPayments,
+      refundEvents: rawRefundEvents,
+      cashMovements: rawCashMovements,
+      startingCash: 0,
+      period: { start: period.previousStart, end: period.previousEnd }
+    });
+  }, [rawOrders, rawPayments, rawRefundEvents, rawCashMovements, period, report]);
 
   const calcDelta = (curr: number, prev: number) => {
     if (prev === 0) return curr > 0 ? 100 : 0;
     return Math.round(((curr - prev) / prev) * 100);
   };
 
-  const deltaSales = calcDelta(currentGrossSales, prevGrossSales);
-  const deltaOrders = calcDelta(currentOrderCount, prevOrderCount);
-  const deltaAov = calcDelta(currentAov, prevAov);
-  const deltaUnits = calcDelta(currentUnitsSold, prevUnitsSold);
+  const deltaSales = calcDelta(report.sales.netSales, prevReport.sales.netSales);
+  const deltaOrders = calcDelta(report.sales.orderCount, prevReport.sales.orderCount);
+  const deltaProfit = calcDelta(report.sales.grossProfit, prevReport.sales.grossProfit);
+  const currentAov = report.sales.orderCount > 0 ? Math.round(report.sales.netSales / report.sales.orderCount) : 0;
 
-  const chartPoints = buildSalesSeries(currentOrders, timeRange);
+  // Build Time Series Data for Chart
+  const chartPoints = useMemo(() => {
+    const { start, end } = period;
+    const result: { label: string; sublabel: string; omzet: number; count: number }[] = [];
+    const hourly = timeRange === "today" || timeRange === "yesterday";
+
+    for (const cursor = new Date(start); cursor < end;) {
+      const bucketStart = new Date(cursor);
+      if (hourly) cursor.setHours(cursor.getHours() + 2);
+      else cursor.setDate(cursor.getDate() + 1);
+
+      const matchingOrders = rawOrders.filter((o) => {
+        if (o.status === "void") return false;
+        const t = new Date(o.createdAt).getTime();
+        return t >= bucketStart.getTime() && t < cursor.getTime();
+      });
+
+      const matchingRefunds = rawRefundEvents.filter((r) => {
+        const isRetur = r.type === "ITEM_RETURN" || r.type === "ORDER_CANCELED";
+        if (!isRetur) return false;
+        const t = new Date(r.createdAt).getTime();
+        return t >= bucketStart.getTime() && t < cursor.getTime();
+      });
+
+      const gross = matchingOrders.reduce((sum, o) => sum + (o.subtotal || o.total || 0), 0);
+      const discount = matchingOrders.reduce((sum, o) => sum + (o.discount || 0), 0);
+      const ref = matchingRefunds.reduce((sum, r) => sum + r.amount, 0);
+      const net = Math.max(0, gross - discount - ref);
+
+      const label = hourly
+        ? `${String(bucketStart.getHours()).padStart(2, "0")}:00`
+        : bucketStart.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+
+      const sublabel = hourly
+        ? `${label}–${String(cursor.getHours()).padStart(2, "0")}:00`
+        : bucketStart.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" });
+
+      result.push({
+        label,
+        sublabel,
+        omzet: net,
+        count: matchingOrders.length
+      });
+    }
+    return result;
+  }, [period, timeRange, rawOrders, rawRefundEvents]);
 
   const maxChartOmzet = Math.max(...chartPoints.map((p) => p.omzet), 50000);
   const chartCeiling = maxChartOmzet > 0 ? Math.ceil(maxChartOmzet * 1.15) : 100000;
 
-  // SVG dimensions for smooth bezier curve
+  // SVG Chart Geometry
   const svgW = 800;
   const svgH = 220;
   const paddingX = 40;
@@ -117,7 +175,6 @@ export default function AdminDashboardPage() {
     return { x, y, ...p };
   });
 
-  // Construct smooth SVG path (Cubic Bezier Spline)
   const svgPathD = useMemo(() => {
     if (svgCoords.length === 0) return "";
     let d = `M ${svgCoords[0].x} ${svgCoords[0].y}`;
@@ -142,84 +199,110 @@ export default function AdminDashboardPage() {
     return d;
   }, [svgPathD, svgCoords, paddingY, usableH]);
 
-  // Payment Breakdown (Shopify Sales by Channel)
-  const paymentBreakdown = useMemo(() => {
-    const map: Record<string, { total: number; count: number }> = {
-      Cash: { total: 0, count: 0 },
-      QRIS: { total: 0, count: 0 },
-      Transfer: { total: 0, count: 0 },
-    };
+  // Top Products Ranking
+  const topProducts = useMemo(() => {
+    const itemMap: Record<string, { qty: number; revenue: number; profit: number; hasCost: boolean }> = {};
 
-    currentOrders.forEach((o) => {
-      const payments = o.payments?.length ? o.payments.filter((p: any) => p.status === 'completed') : [{ paymentMethod: o.paymentMethod || 'Cash', amount: o.total }];
-      payments.forEach((p: any) => {
-        const method = String(p.paymentMethod || 'Cash').toLowerCase();
-        const key = method.includes('qris') ? 'QRIS' : method.includes('transfer') ? 'Transfer' : 'Cash';
-        map[key].total += p.amount || 0; map[key].count += 1;
-      });
+    const periodOrders = rawOrders.filter((o) => {
+      return isWithinPeriod(o.createdAt, period.start, period.end) && o.status !== "void";
     });
 
-    const total = currentGrossSales || 1;
-    return Object.entries(map).map(([method, data]) => ({
-      method,
-      total: data.total,
-      count: data.count,
-      percent: Math.round((data.total / total) * 100),
-    }));
-  }, [currentOrders, currentGrossSales]);
-
-  // Top Products by Units Sold (Shopify Top Products)
-  const topProducts = useMemo(() => {
-    const itemMap: Record<string, { qty: number; revenue: number; kategori: string }> = {};
-
-    currentOrders.forEach((o) => {
+    periodOrders.forEach((o) => {
       (o.items || []).forEach((item: any) => {
-        const name = item.name || item.nama || item.menuName || "Menu";
-        const cat = item.kategori || item.category || "Umum";
-        const price = item.harga ?? item.price ?? item.hargaSatuan ?? 0;
+        const name = item.namaMenu || item.nama || item.name || "Menu";
+        const price = item.hargaSatuan ?? item.harga ?? 0;
         const qty = item.qty || 1;
+        const cost = typeof item.costPrice === "number" ? item.costPrice : null;
 
-        if (!itemMap[name]) itemMap[name] = { qty: 0, revenue: 0, kategori: cat };
+        if (!itemMap[name]) {
+          itemMap[name] = { qty: 0, revenue: 0, profit: 0, hasCost: false };
+        }
         itemMap[name].qty += qty;
         itemMap[name].revenue += price * qty;
+        if (cost !== null) {
+          itemMap[name].profit += (price - cost) * qty;
+          itemMap[name].hasCost = true;
+        }
       });
     });
 
     return Object.entries(itemMap)
       .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.qty - a.qty)
+      .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
-  }, [currentOrders]);
+  }, [rawOrders, period]);
 
-  // WhatsApp Report Export Modal State
-  const [isWaModalOpen, setIsWaModalOpen] = useState(false);
-  const [copiedReport, setCopiedReport] = useState(false);
+  // Category Profitability Breakdown (100% Cocok dengan Agregat)
+  const categoryBreakdown = useMemo(() => {
+    const periodOrders = rawOrders.filter((o) => {
+      return isWithinPeriod(o.createdAt, period.start, period.end) && o.status !== "void";
+    });
 
+    const catMap: Record<string, { qty: number; sales: number; cogs: number }> = {};
+
+    periodOrders.forEach((o) => {
+      (o.items || []).forEach((item: any) => {
+        const cat = item.kategoriMenu || item.kategori || "Umum";
+        const price = item.hargaSatuan ?? item.harga ?? 0;
+        const qty = item.qty || 1;
+        const cost = typeof item.costPrice === "number" ? item.costPrice : 0;
+
+        if (!catMap[cat]) {
+          catMap[cat] = { qty: 0, sales: 0, cogs: 0 };
+        }
+        catMap[cat].qty += qty;
+        catMap[cat].sales += price * qty;
+        catMap[cat].cogs += cost * qty;
+      });
+    });
+
+    // Sesuaikan dengan retur penjualan jika ada
+    const totalRawCatSales = Object.values(catMap).reduce((s, c) => s + c.sales, 0);
+    const returnRatio = totalRawCatSales > 0 ? (totalRawCatSales - report.sales.salesRefunds) / totalRawCatSales : 1;
+
+    return Object.entries(catMap).map(([kategori, data]) => {
+      const netSales = Math.round(data.sales * returnRatio);
+      const grossProfit = netSales - data.cogs;
+      const margin = netSales > 0 ? Number(((grossProfit / netSales) * 100).toFixed(1)) : 0;
+      return {
+        kategori,
+        qty: data.qty,
+        sales: netSales,
+        cogs: data.cogs,
+        grossProfit,
+        margin
+      };
+    }).sort((a, b) => b.sales - a.sales);
+  }, [rawOrders, period, report.sales.salesRefunds]);
+
+  // Low Stock Items for Operational Insights
+  const lowStockItems = useMemo(() => {
+    return rawMenuItems.filter((m: MenuItem) => {
+      return m.trackStock && typeof m.stockQty === "number" && typeof m.minimumStock === "number" && m.stockQty <= m.minimumStock;
+    });
+  }, [rawMenuItems]);
+
+  // WhatsApp Report Generation
   const generateWaReportMessage = () => {
     const store = storeSettings.storeName || "SakuNota";
     const dateFormatted = new Date().toLocaleDateString("id-ID", {
       day: "numeric",
       month: "long",
-      year: "numeric",
+      year: "numeric"
     });
 
-    let msg = `*RINGKASAN PENJUALAN SAKUNOTA*\n`;
+    let msg = `*RINGKASAN KEUANGAN SAKUNOTA*\n`;
     msg += `Toko: ${store}\n`;
-    msg += `Tanggal: ${dateFormatted}\n\n`;
-    msg += ` *Omzet*: Rp ${currentGrossSales.toLocaleString("id-ID")}\n`;
-    msg += ` *Transaksi Selesai*: ${currentOrderCount} nota\n`;
-    msg += ` *Porsi Terjual*: ${currentUnitsSold} item\n`;
-    msg += ` *Rata-rata Nota (AOV)*: Rp ${currentAov.toLocaleString("id-ID")}\n\n`;
-
-    if (topProducts.length > 0) {
-      msg += `*MENU PALING LARIS*\n`;
-      topProducts.forEach((p, i) => {
-        msg += `${i + 1}. ${p.name} (${p.qty} unit) - Rp ${p.revenue.toLocaleString("id-ID")}\n`;
-      });
-      msg += `\n`;
+    msg += `Tanggal: ${dateFormatted}\n`;
+    msg += `Periode: ${timeRange}\n\n`;
+    msg += `• *Penjualan Bersih*: Rp ${report.sales.netSales.toLocaleString("id-ID")}\n`;
+    msg += `• *Laba Kotor*: Rp ${report.sales.grossProfit.toLocaleString("id-ID")} (${report.sales.profitMarginPercent}%)\n`;
+    msg += `• *Uang Diterima*: Rp ${report.payments.netPayments.toLocaleString("id-ID")}\n`;
+    msg += `• *Transaksi*: ${report.sales.orderCount} Nota (Rata-rata: Rp ${currentAov.toLocaleString("id-ID")})\n`;
+    if (report.reconciliation.openBillOutstanding > 0) {
+      msg += `• *Tagihan Terbuka (Open Bill)*: Rp ${report.reconciliation.openBillOutstanding.toLocaleString("id-ID")}\n`;
     }
-
-    msg += `_Dibuat dengan Aplikasi Kasir SakuNota 100% Offline_`;
+    msg += `\n_Dibuat dengan Aplikasi Kasir SakuNota v3.0_`;
     return msg;
   };
 
@@ -239,21 +322,19 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="business-dashboard space-y-6 animate-in fade-in duration-200">
-      {/* 1. Header with Store Identity, Shopify-style Period Selector, and Quick Actions */}
+    <div className="space-y-6 animate-in fade-in duration-200">
+      {/* 1. Header & Controls Standar POS Modern */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-line">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-black text-fg tracking-tight">
-              Dashboard usaha
-            </h2>
-          </div>
+          <h2 className="text-2xl font-black text-fg tracking-tight">
+            Dashboard
+          </h2>
           <p className="text-xs text-muted mt-0.5">
-            {storeSettings.storeName || "SakuNota"} • Transaksi lunas, tren penjualan, dan produk terlaris pada perangkat toko ini.
+            {storeSettings.storeName || "SakuNota"} • Analisis keuangan dan laporan performa kasir
           </p>
         </div>
 
-        {/* Controls: Date Range Selector & Quick Buttons */}
+        {/* Controls: Date Range Selector & Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Time Filter Pills */}
           <div className="bg-card border border-line p-1 rounded-2xl flex items-center gap-1 text-xs font-bold shadow-xs">
@@ -262,7 +343,7 @@ export default function AdminDashboardPage() {
               { id: "yesterday", label: "Kemarin" },
               { id: "7days", label: "7 Hari" },
               { id: "30days", label: "30 Hari" },
-              { id: "thisMonth", label: "Bulan Ini" },
+              { id: "thisMonth", label: "Bulan Ini" }
             ].map((t) => (
               <button
                 key={t.id}
@@ -270,7 +351,7 @@ export default function AdminDashboardPage() {
                 onClick={() => setTimeRange(t.id as any)}
                 className={`px-3 py-1.5 rounded-xl transition-all ${
                   timeRange === t.id
-                    ? "bg-accent text-white shadow-sm font-black"
+                    ? "bg-blue-600 text-white shadow-sm font-black"
                     : "text-muted hover:text-fg"
                 }`}
               >
@@ -296,530 +377,577 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Sentrik POS Style: Welcome Banner Card */}
-      <div className="bg-surface border border-line rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-black text-fg tracking-tight">
-            Selamat Datang, {activeShift?.operatorName || "Kasir"}!
-          </h2>
-          <p className="text-xs text-muted mt-0.5">
-            {storeSettings.storeName || "SakuNota"} • Sistem kasir dan pencatatan transaksi 100% offline.
-          </p>
-          <div className="flex flex-wrap items-center gap-2 mt-3 text-xs font-bold">
-            <span className="px-2.5 py-1 bg-card text-fg rounded-xl border border-line">
-              Cabang: {storeSettings.storeName || "Toko Pusat"}
-            </span>
-            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200">
-              Kas Laci: Rp {activeShift ? Number(activeShift.startingCash || 0).toLocaleString("id-ID") : "0"}
-            </span>
-            <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-xl border border-blue-200">
-              {activeShift ? "Shift Aktif" : "Shift Tutup"}
-            </span>
-          </div>
-        </div>
-        <div className="text-left sm:text-right sm:border-l sm:border-line sm:pl-6 shrink-0">
-          <div className="text-2xl font-black text-fg tracking-tight">
-            {new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} WIB
-          </div>
-          <div className="text-xs text-muted font-medium mt-0.5">
-            {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}
-          </div>
-        </div>
+      {/* 2. Tab Navigation Switcher: Ringkasan vs Analitik */}
+      <div className="flex items-center gap-2 border-b border-line pb-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab("summary")}
+          className={`px-5 py-2 rounded-xl text-xs font-black transition-all ${
+            activeTab === "summary"
+              ? "bg-blue-600 text-white shadow-sm"
+              : "bg-surface border border-line text-muted hover:text-fg"
+          }`}
+        >
+          Ringkasan
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("analytics")}
+          className={`px-5 py-2 rounded-xl text-xs font-black transition-all ${
+            activeTab === "analytics"
+              ? "bg-blue-600 text-white shadow-sm"
+              : "bg-surface border border-line text-muted hover:text-fg"
+          }`}
+        >
+          Analitik
+        </button>
       </div>
 
-
-
-      {/* 2. Four Shopify-Grade Metric Cards with Delta Growth Badges */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Metric 1: Total Omzet */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted">Total Penjualan</span>
-            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 ${
-              deltaSales >= 0
-                ? "bg-emerald-100 text-emerald-800"
-                : "bg-rose-100 text-rose-800"
-            }`}>
-              {deltaSales >= 0 ? "▲ +" : "▼ "}
-              {deltaSales}%
-            </span>
-          </div>
-          <div>
-            <div className="text-lg sm:text-2xl font-black text-fg break-words tabular-nums">
-              Rp {currentGrossSales.toLocaleString("id-ID")}
-            </div>
-            <span className="text-[10px] text-muted block mt-0.5">
-              vs Rp {prevGrossSales.toLocaleString("id-ID")} periode lalu
-            </span>
-          </div>
-        </div>
-
-        {/* Metric 2: Total Orders */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted">Total Pesanan</span>
-            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 ${
-              deltaOrders >= 0
-                ? "bg-emerald-100 text-emerald-800"
-                : "bg-rose-100 text-rose-800"
-            }`}>
-              {deltaOrders >= 0 ? "▲ +" : "▼ "}
-              {deltaOrders}%
-            </span>
-          </div>
-          <div>
-            <div className="text-lg sm:text-2xl font-black text-fg break-words tabular-nums">
-              {currentOrderCount} <span className="text-xs font-semibold text-muted">transaksi</span>
-            </div>
-            <span className="text-[10px] text-muted block mt-0.5">
-              vs {prevOrderCount} transaksi lalu
-            </span>
-          </div>
-        </div>
-
-        {/* Metric 3: AOV (Average Order Value) */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted">Rata-rata Nota (AOV)</span>
-            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 ${
-              deltaAov >= 0
-                ? "bg-emerald-100 text-emerald-800"
-                : "bg-rose-100 text-rose-800"
-            }`}>
-              {deltaAov >= 0 ? "▲ +" : "▼ "}
-              {deltaAov}%
-            </span>
-          </div>
-          <div>
-            <div className="text-lg sm:text-2xl font-black text-fg break-words tabular-nums">
-              Rp {currentAov.toLocaleString("id-ID")}
-            </div>
-            <span className="text-[10px] text-muted block mt-0.5">
-              vs Rp {prevAov.toLocaleString("id-ID")} lalu
-            </span>
-          </div>
-        </div>
-
-        {/* Metric 4: Total Units Sold */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted">Unit terjual</span>
-            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 ${
-              deltaUnits >= 0
-                ? "bg-emerald-100 text-emerald-800"
-                : "bg-rose-100 text-rose-800"
-            }`}>
-              {deltaUnits >= 0 ? "▲ +" : "▼ "}
-              {deltaUnits}%
-            </span>
-          </div>
-          <div>
-            <div className="text-xl sm:text-2xl font-black text-fg truncate">
-              {currentUnitsSold} <span className="text-xs font-semibold text-muted">unit</span>
-            </div>
-            <span className="text-[10px] text-muted block mt-0.5">
-              vs {prevUnitsSold} unit lalu
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. The Core Visual: Shopify-Style Area Trend Graph with Hover Tooltip */}
-      <div className="bg-surface rounded-3xl p-5 sm:p-7 border border-line shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line">
-          <div>
-            <h3 className="text-base font-black text-fg flex items-center gap-2">
-              <span>Tren Penjualan</span>
-            </h3>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Chart Type Switcher: Garis vs Batang */}
-            <div className="flex items-center bg-card border border-line p-1 rounded-xl text-xs font-bold shadow-xs">
-              <button
-                type="button"
-                onClick={() => handleSelectChartType('line')}
-                className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
-                  chartType === 'line'
-                    ? 'bg-accent text-white font-black shadow-xs'
-                    : 'text-muted hover:text-fg'
-                }`}
-              >
-                <span><LineIcon name="chart" /></span>
-                <span>Garis</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectChartType('bar')}
-                className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
-                  chartType === 'bar'
-                    ? 'bg-accent text-white font-black shadow-xs'
-                    : 'text-muted hover:text-fg'
-                }`}
-              >
-                <span><LineIcon name="chart" /></span>
-                <span>Batang</span>
-              </button>
-            </div>
-
-            <span className="text-xs font-black text-accent-text bg-accent/10 px-3 py-1.5 rounded-xl border border-accent/20">
-              Akumulasi: Rp {currentGrossSales.toLocaleString("id-ID")}
-            </span>
-          </div>
-        </div>
-
-        {/* Interactive SVG Area / Bar Chart */}
-        <div className="relative pt-4 pb-2 select-none">
-          {/* Subtle Horizontal Reference Grid Lines & Y-Axis Scale */}
-          <div className="absolute inset-x-2 top-8 bottom-12 flex flex-col justify-between pointer-events-none">
-            {[1, 0.75, 0.5, 0.25, 0].map((ratio) => {
-              const val = Math.round(chartCeiling * ratio);
-              return (
-                <div key={ratio} className="border-b border-dashed border-line/60 w-full flex justify-end">
-                  <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 bg-surface px-2 py-0.5 -mt-3 rounded border border-line/50 shadow-xs">
-                    Rp {val >= 1000 ? `${Math.round(val / 1000)}k` : val}
-                  </span>
+      {/* ========================================================= */}
+      {/* TAB 1: RINGKASAN                                          */}
+      {/* ========================================================= */}
+      {activeTab === "summary" && (
+        <div className="space-y-6">
+          {/* 4 Kartu KPI Utama */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* KPI 1: Penjualan Bersih */}
+            <div className="bg-surface border border-line rounded-3xl p-5 shadow-xs flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-bold text-muted uppercase tracking-wider block mb-1">
+                  Penjualan Bersih
+                </span>
+                <div className="text-2xl font-black text-fg font-mono tracking-tight">
+                  Rp {report.sales.netSales.toLocaleString("id-ID")}
                 </div>
-              );
-            })}
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs">
+                <span className={`font-bold ${deltaSales >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                  {deltaSales >= 0 ? `+${deltaSales}%` : `${deltaSales}%`} vs lalu
+                </span>
+                <span className="text-[11px] text-muted">
+                  Gross: Rp {report.sales.grossSales.toLocaleString("id-ID")}
+                </span>
+              </div>
+            </div>
+
+            {/* KPI 2: Transaksi Selesai */}
+            <div className="bg-surface border border-line rounded-3xl p-5 shadow-xs flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-bold text-muted uppercase tracking-wider block mb-1">
+                  Transaksi Selesai
+                </span>
+                <div className="text-2xl font-black text-fg font-mono tracking-tight">
+                  {report.sales.orderCount} Nota
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs">
+                <span className={`font-bold ${deltaOrders >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                  {deltaOrders >= 0 ? `+${deltaOrders}%` : `${deltaOrders}%`} vs lalu
+                </span>
+                <span className="text-[11px] text-muted font-bold">
+                  AOV: Rp {currentAov.toLocaleString("id-ID")}
+                </span>
+              </div>
+            </div>
+
+            {/* KPI 3: Laba Kotor & Margin */}
+            <div className="bg-surface border border-line rounded-3xl p-5 shadow-xs flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-bold text-muted uppercase tracking-wider block mb-1">
+                  Laba Kotor
+                </span>
+                <div className="text-2xl font-black text-fg font-mono tracking-tight">
+                  Rp {report.sales.grossProfit.toLocaleString("id-ID")}
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs">
+                <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">
+                  Margin {report.sales.profitMarginPercent}%
+                </span>
+                {report.sales.hasIncompleteCOGS ? (
+                  <span className="text-[10px] text-amber-600 font-bold">
+                    Sebagian Tanpa HPP
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-muted font-bold">
+                    HPP Rp {report.sales.totalCOGS.toLocaleString("id-ID")}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* KPI 4: Penerimaan Pembayaran Netto */}
+            <div className="bg-surface border border-line rounded-3xl p-5 shadow-xs flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-bold text-muted uppercase tracking-wider block mb-1">
+                  Uang Diterima
+                </span>
+                <div className="text-2xl font-black text-fg font-mono tracking-tight">
+                  Rp {report.payments.netPayments.toLocaleString("id-ID")}
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs">
+                <span className="text-blue-600 font-bold">
+                  Kas Masuk Bersih
+                </span>
+                {report.reconciliation.openBillOutstanding > 0 && (
+                  <span className="text-[10px] text-amber-600 font-bold">
+                    Open: Rp {report.reconciliation.openBillOutstanding.toLocaleString("id-ID")}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* SVG Canvas */}
-          <div className="w-full overflow-visible relative">
-            <svg
-              viewBox={`0 0 ${svgW} ${svgH}`}
-              className="w-full h-56 sm:h-64 overflow-visible"
-            >
-              <defs>
-                <linearGradient id="shopifyGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#2563EB" stopOpacity="0.32" />
-                  <stop offset="60%" stopColor="#38BDF8" stopOpacity="0.10" />
-                  <stop offset="100%" stopColor="#2563EB" stopOpacity="0.00" />
-                </linearGradient>
-                <linearGradient id="shopifyBarGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3B82F6" />
-                  <stop offset="100%" stopColor="#1D4ED8" />
-                </linearGradient>
-                <linearGradient id="shopifyBarHoverGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#60A5FA" />
-                  <stop offset="100%" stopColor="#2563EB" />
-                </linearGradient>
-              </defs>
+          {/* Tren Penjualan Visual (Interactive Chart) */}
+          <div className="bg-surface border border-line rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-black text-fg tracking-tight">
+                  Tren Penjualan
+                </h3>
+                <span className="text-xs text-muted">
+                  Pergerakan omzet bersih dalam rentang {timeRange}
+                </span>
+              </div>
 
-              {chartType === 'line' ? (
-                <>
-                  {/* Gradient Area Fill */}
-                  {svgAreaD && (
-                    <path
-                      d={svgAreaD}
-                      fill="url(#shopifyGradient)"
-                      className="transition-all duration-300"
-                    />
-                  )}
+              <div className="flex items-center gap-1 bg-card border border-line p-1 rounded-xl text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setChartType("line")}
+                  className={`px-2.5 py-1 rounded-lg transition-all ${
+                    chartType === "line" ? "bg-blue-600 text-white" : "text-muted hover:text-fg"
+                  }`}
+                >
+                  Garis
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartType("bar")}
+                  className={`px-2.5 py-1 rounded-lg transition-all ${
+                    chartType === "bar" ? "bg-blue-600 text-white" : "text-muted hover:text-fg"
+                  }`}
+                >
+                  Batang
+                </button>
+              </div>
+            </div>
 
-                  {/* Stroke Curve Line */}
+            {/* Chart Canvas */}
+            <div className="relative w-full h-[230px] pt-2">
+              {chartType === "line" ? (
+                <svg
+                  viewBox={`0 0 ${svgW} ${svgH}`}
+                  className="w-full h-full overflow-visible"
+                  preserveAspectRatio="none"
+                >
+                  <defs>
+                    <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#2563EB" stopOpacity="0.25" />
+                      <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Horizontal grid lines */}
+                  {[0, 0.25, 0.5, 0.75, 1].map((pct, idx) => {
+                    const y = paddingY + usableH * (1 - pct);
+                    return (
+                      <line
+                        key={idx}
+                        x1={paddingX}
+                        y1={y}
+                        x2={svgW - paddingX}
+                        y2={y}
+                        stroke="#E2E8F0"
+                        strokeDasharray="4 4"
+                        strokeWidth="1"
+                      />
+                    );
+                  })}
+
+                  {/* Area fill */}
+                  {svgAreaD && <path d={svgAreaD} fill="url(#chartGradient)" />}
+
+                  {/* Spline stroke */}
                   {svgPathD && (
                     <path
                       d={svgPathD}
                       fill="none"
                       stroke="#2563EB"
-                      strokeWidth="3"
+                      strokeWidth="3.5"
                       strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="transition-all duration-300"
                     />
                   )}
 
-                  {/* Interactive Data Nodes */}
-                  {svgCoords.map((coord, idx) => {
-                    const isHovered = hoveredPoint?.label === coord.label && hoveredPoint?.sublabel === coord.sublabel;
-                    return (
-                      <g
-                        key={idx}
-                        onMouseEnter={() => setHoveredPoint(coord)}
-                        onClick={() => setHoveredPoint(coord)}
-                        className="cursor-pointer"
-                      >
-                        {/* Hover hotspot hit-box */}
-                        <circle cx={coord.x} cy={coord.y} r="18" fill="transparent" />
-
-                        {/* Visible Node */}
-                        <circle
-                          cx={coord.x}
-                          cy={coord.y}
-                          r={isHovered ? "6" : coord.omzet > 0 ? "4" : "2.5"}
-                          fill={isHovered ? "#2563EB" : coord.omzet > 0 ? "#2563EB" : "#94A3B8"}
-                          stroke="#FFFFFF"
-                          strokeWidth={isHovered ? "2.5" : "1.5"}
-                          className="transition-all duration-150"
-                        />
-                      </g>
-                    );
-                  })}
-                </>
-              ) : (
-                /* Bar Chart Columns */
-                <g>
-                  {(() => {
-                    const barWidth = Math.max(10, Math.min(36, (usableW / Math.max(1, svgCoords.length)) * 0.65));
-                    return svgCoords.map((coord, idx) => {
-                      const isHovered = hoveredPoint?.label === coord.label && hoveredPoint?.sublabel === coord.sublabel;
-                      const bHeight = Math.max(coord.omzet > 0 ? 6 : 2, (coord.omzet / chartCeiling) * usableH);
-                      const bY = paddingY + usableH - bHeight;
-                      const bX = coord.x - barWidth / 2;
-
-                      return (
-                        <g
-                          key={idx}
-                          onMouseEnter={() => setHoveredPoint(coord)}
-                          onClick={() => setHoveredPoint(coord)}
-                          className="cursor-pointer"
-                        >
-                          {/* Transparent full-height hit area */}
-                          <rect
-                            x={bX - 4}
-                            y={paddingY}
-                            width={barWidth + 8}
-                            height={usableH}
-                            fill="transparent"
-                          />
-                          {/* Column Bar with Rounded Top */}
-                          <rect
-                            x={bX}
-                            y={bY}
-                            width={barWidth}
-                            height={bHeight}
-                            rx="4"
-                            fill={
-                              isHovered
-                                ? "url(#shopifyBarHoverGradient)"
-                                : coord.omzet > 0
-                                ? "url(#shopifyBarGradient)"
-                                : "#CBD5E1"
-                            }
-                            className="transition-all duration-200"
-                          />
-                          {/* Highlight Top Cap when hovered */}
-                          {isHovered && (
-                            <rect
-                              x={bX}
-                              y={bY}
-                              width={barWidth}
-                              height="3"
-                              rx="1.5"
-                              fill="#FFFFFF"
-                            />
-                          )}
-                        </g>
-                      );
-                    });
-                  })()}
-                </g>
-              )}
-            </svg>
-
-            {/* Hover Tooltip Box */}
-            {hoveredPoint && (() => {
-              const isNearTop = (hoveredPoint.y / svgH) < 0.45;
-              const isNearLeft = (hoveredPoint.x / svgW) < 0.18;
-              const isNearRight = (hoveredPoint.x / svgW) > 0.82;
-
-              const xTranslate = isNearLeft ? 'translate-x-0' : isNearRight ? '-translate-x-full' : '-translate-x-1/2';
-              const yTranslate = isNearTop ? 'translate-y-4' : '-translate-y-full -translate-y-2';
-
-              return (
-                <div
-                  style={{
-                    left: `${(hoveredPoint.x / svgW) * 100}%`,
-                    top: `${(hoveredPoint.y / svgH) * 100}%`,
-                  }}
-                  className={`absolute z-30 pointer-events-none ${xTranslate} ${yTranslate}`}
-                >
-                  <div className="bg-slate-900/95 dark:bg-slate-950 text-white rounded-2xl px-4 py-2.5 shadow-2xl border-2 border-blue-500 text-xs min-w-[150px] text-center space-y-1 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md">
-                    <span className="text-xs text-slate-100 font-extrabold block tracking-wide">
-                      {hoveredPoint.sublabel} ({hoveredPoint.label})
-                    </span>
-                    <div className="text-base font-black text-sky-300 tracking-tight">
-                      Rp {hoveredPoint.omzet.toLocaleString("id-ID")}
-                    </div>
-                    <div className="pt-0.5">
-                      <span className="inline-block px-3 py-0.5 rounded-full bg-blue-500/25 text-blue-200 border border-blue-400/40 text-xs font-bold shadow-xs">
-                        {hoveredPoint.count} pesanan
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* Bottom X-Axis Labels */}
-          <div className="flex justify-between items-center px-2 pt-2.5 border-t border-line">
-            {chartPoints.map((p, idx) => (
-              <div key={idx} className="text-center flex-1 truncate px-0.5">
-                <span className="block text-xs font-black text-fg truncate">{p.label}</span>
-                <span className="text-[11px] font-semibold text-muted truncate block">{p.sublabel}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Two Lower Shopify Analytics Panels: Payment Channels & Top Products */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Panel A: Sales by Payment Method (Shopify Channel Breakdown) */}
-        <div className="bg-surface rounded-3xl p-5 sm:p-6 border border-line shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-line">
-            <div>
-              <h4 className="text-sm font-black text-fg flex items-center gap-2">
-                <span>Komposisi Metode Pembayaran</span>
-              </h4>
-            </div>
-            <span className="text-[11px] font-bold text-muted">
-              {currentOrderCount} transaksi
-            </span>
-          </div>
-
-          <div className="space-y-4 pt-1">
-            {paymentBreakdown.map((item) => {
-              const badgeColors: Record<string, string> = {
-                Cash: "bg-emerald-500",
-                QRIS: "bg-blue-600",
-                Transfer: "bg-indigo-600",
-              };
-              const color = badgeColors[item.method] || "bg-accent";
-
-              return (
-                <div key={item.method} className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
-                      <strong className="text-fg">{item.method}</strong>
-                      <span className="text-[10px] text-muted">({item.count} nota)</span>
-                    </div>
-                    <div className="text-right">
-                      <strong className="text-fg">Rp {item.total.toLocaleString("id-ID")}</strong>
-                      <span className="text-[10px] text-muted ml-2 font-bold">{item.percent}%</span>
-                    </div>
-                  </div>
-
-                  <div className="w-full h-2.5 bg-card rounded-full overflow-hidden border border-line">
-                    <div
-                      style={{ width: `${Math.max(2, item.percent)}%` }}
-                      className={`h-full ${color} rounded-full transition-all duration-500`}
+                  {/* Interactive points */}
+                  {svgCoords.map((pt, idx) => (
+                    <circle
+                      key={idx}
+                      cx={pt.x}
+                      cy={pt.y}
+                      r={hoveredPoint?.label === pt.label ? "6" : "3.5"}
+                      fill="#FFFFFF"
+                      stroke="#2563EB"
+                      strokeWidth="2.5"
+                      className="cursor-pointer transition-all hover:scale-125"
+                      onMouseEnter={() => setHoveredPoint(pt)}
+                      onMouseLeave={() => setHoveredPoint(null)}
                     />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Panel B: Top 5 Menu Paling Laris (Shopify Top Products) */}
-        <div className="bg-surface rounded-3xl p-5 sm:p-6 border border-line shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-line">
-            <div>
-              <h4 className="text-sm font-black text-fg flex items-center gap-2">
-                <span>5 Menu Terlaris</span>
-              </h4>
-            </div>
-            <Link
-              href="/admin/menu"
-              className="text-xs font-bold text-accent-text hover:underline"
-            >
-              Lihat Semua →
-            </Link>
-          </div>
-
-          <div className="space-y-3 pt-1">
-            {topProducts.length === 0 ? (
-              <div className="py-8 text-center text-muted text-xs">
-                Belum ada data unit terjual pada rentang waktu ini.
-              </div>
-            ) : (
-              topProducts.map((p, idx) => {
-                const maxQty = topProducts[0]?.qty || 1;
-                const percent = Math.round((p.qty / maxQty) * 100);
-
-                return (
-                  <div
-                    key={p.name}
-                    className="p-3 rounded-2xl bg-card border border-line flex items-center justify-between gap-3 text-xs"
-                  >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <span className="w-6 h-6 rounded-xl bg-accent/15 text-accent-text flex items-center justify-center font-black text-xs shrink-0">
-                        {idx + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <strong className="text-fg truncate block">{p.name}</strong>
-                        <span className="text-[10px] text-muted block">
-                          {p.kategori} • Rp {p.revenue.toLocaleString("id-ID")}
+                  ))}
+                </svg>
+              ) : (
+                /* Bar chart mode */
+                <div className="flex items-end justify-between gap-2 h-full px-4 pb-4">
+                  {chartPoints.map((pt, idx) => {
+                    const heightPercent = chartCeiling > 0 ? (pt.omzet / chartCeiling) * 100 : 0;
+                    return (
+                      <div
+                        key={idx}
+                        className="flex-1 flex flex-col items-center gap-2 group cursor-pointer h-full justify-end"
+                        onMouseEnter={() =>
+                          setHoveredPoint({
+                            label: pt.label,
+                            sublabel: pt.sublabel,
+                            omzet: pt.omzet,
+                            count: pt.count,
+                            x: 0,
+                            y: 0
+                          })
+                        }
+                        onMouseLeave={() => setHoveredPoint(null)}
+                      >
+                        <div
+                          className="w-full max-w-[42px] bg-blue-600/80 group-hover:bg-blue-600 rounded-t-xl transition-all"
+                          style={{ height: `${Math.max(4, heightPercent)}%` }}
+                        />
+                        <span className="text-[10px] text-muted font-bold truncate max-w-[50px]">
+                          {pt.label}
                         </span>
                       </div>
-                    </div>
+                    );
+                  })}
+                </div>
+              )}
 
-                    <div className="text-right shrink-0">
-                      <span className="font-black text-fg text-sm block">
-                        {p.qty} <span className="text-[10px] font-normal text-muted">unit</span>
-                      </span>
-                      <div className="w-20 h-1.5 bg-line rounded-full overflow-hidden mt-1 ml-auto">
-                        <div
-                          style={{ width: `${percent}%` }}
-                          className="h-full bg-accent rounded-full"
-                        />
+              {/* Tooltip on hover */}
+              {hoveredPoint && (
+                <div className="absolute top-2 right-4 bg-slate-900 text-white px-3 py-2 rounded-xl text-xs shadow-lg pointer-events-none z-10 animate-in fade-in">
+                  <div className="text-[11px] text-slate-400 font-bold">{hoveredPoint.sublabel}</div>
+                  <div className="font-mono font-black text-sm text-blue-400">
+                    Rp {hoveredPoint.omzet.toLocaleString("id-ID")}
+                  </div>
+                  <div className="text-[10px] text-slate-300">{hoveredPoint.count} Transaksi Selesai</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 2 Kolom: Produk Terlaris & Metode Pembayaran */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Produk Terlaris */}
+            <div className="bg-surface border border-line rounded-3xl p-5 shadow-xs space-y-3">
+              <h4 className="font-black text-sm text-fg">Produk Terlaris</h4>
+              <div className="divide-y divide-line text-xs">
+                {topProducts.length > 0 ? (
+                  topProducts.map((p, idx) => (
+                    <div key={idx} className="py-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 font-black flex items-center justify-center text-[11px]">
+                          {idx + 1}
+                        </span>
+                        <div>
+                          <strong className="font-bold text-fg block">{p.name}</strong>
+                          <span className="text-[10px] text-muted">{p.qty} Porsi Terjual</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-black text-fg font-mono block">
+                          Rp {p.revenue.toLocaleString("id-ID")}
+                        </span>
+                        {p.hasCost && (
+                          <span className="text-[10px] text-emerald-600 font-bold">
+                            Laba: Rp {p.profit.toLocaleString("id-ID")}
+                          </span>
+                        )}
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="py-6 text-center text-muted">Belum ada transaksi di periode ini</div>
+                )}
+              </div>
+            </div>
+
+            {/* Metode Pembayaran (Penerimaan Bersih per Metode) */}
+            <div className="bg-surface border border-line rounded-3xl p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-black text-sm text-fg">Metode Pembayaran</h4>
+                <span className="text-[11px] text-muted font-bold">Penerimaan Bersih</span>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                {report.payments.methods.map((m, idx) => (
+                  <div key={idx}>
+                    <div className="flex justify-between font-bold text-fg mb-0.5">
+                      <span>{m.method}</span>
+                      <span className="font-mono">
+                        Rp {m.netAmount.toLocaleString("id-ID")} ({m.percentageOfTotal}%)
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-muted mb-1">
+                      Bruto Rp {m.grossAmount.toLocaleString("id-ID")} − Refund Rp {m.refundAmount.toLocaleString("id-ID")}
+                    </div>
+                    <div className="w-full bg-line h-2 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${
+                          m.method === "Cash"
+                            ? "bg-emerald-500"
+                            : m.method === "QRIS"
+                            ? "bg-blue-600"
+                            : "bg-indigo-600"
+                        }`}
+                        style={{ width: `${Math.min(100, Math.max(0, m.percentageOfTotal))}%` }}
+                      />
+                    </div>
                   </div>
-                );
-              })
-            )}
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* 5. WhatsApp Export Modal */}
+      {/* ========================================================= */}
+      {/* TAB 2: ANALITIK                                           */}
+      {/* ========================================================= */}
+      {activeTab === "analytics" && (
+        <div className="space-y-6">
+          {/* Analisis Keuntungan per Kategori Produk */}
+          <div className="bg-surface border border-line rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-black text-fg tracking-tight">
+                  Analisis Keuntungan per Kategori Produk
+                </h3>
+                <span className="text-xs text-muted">
+                  Struktur omzet, modal (HPP), dan margin keuntungan usaha
+                </span>
+              </div>
+
+              <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 font-bold px-3 py-1 rounded-full self-start sm:self-auto">
+                Rekonsiliasi Cocok 100%
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-line text-muted">
+                    <th className="py-2.5 font-bold">Kategori</th>
+                    <th className="py-2.5 text-center font-bold">Porsi</th>
+                    <th className="py-2.5 text-right font-bold">Penjualan Bersih</th>
+                    <th className="py-2.5 text-right font-bold">Total HPP</th>
+                    <th className="py-2.5 text-right font-bold">Laba Kotor</th>
+                    <th className="py-2.5 text-right font-bold">Margin</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line font-mono">
+                  {categoryBreakdown.length > 0 ? (
+                    categoryBreakdown.map((c, idx) => (
+                      <tr key={idx} className="hover:bg-card/50 transition-colors">
+                        <td className="py-2.5 font-sans font-bold text-fg">{c.kategori}</td>
+                        <td className="py-2.5 text-center font-sans text-muted">{c.qty}</td>
+                        <td className="py-2.5 text-right text-fg">
+                          Rp {c.sales.toLocaleString("id-ID")}
+                        </td>
+                        <td className="py-2.5 text-right text-muted">
+                          Rp {c.cogs.toLocaleString("id-ID")}
+                        </td>
+                        <td className="py-2.5 text-right font-bold text-emerald-600">
+                          Rp {c.grossProfit.toLocaleString("id-ID")}
+                        </td>
+                        <td className="py-2.5 text-right font-sans font-bold text-emerald-600">
+                          {c.margin}%
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="py-6 text-center text-muted font-sans">
+                        Belum ada penjualan kategori pada rentang waktu ini
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-line font-bold font-mono bg-card/60">
+                    <td className="py-3 font-sans text-fg">Total Terverifikasi</td>
+                    <td className="py-3 text-center font-sans text-fg">
+                      {categoryBreakdown.reduce((s, c) => s + c.qty, 0)}
+                    </td>
+                    <td className="py-3 text-right text-fg">
+                      Rp {report.sales.netSales.toLocaleString("id-ID")}
+                    </td>
+                    <td className="py-3 text-right text-muted">
+                      Rp {report.sales.totalCOGS.toLocaleString("id-ID")}
+                    </td>
+                    <td className="py-3 text-right text-emerald-600">
+                      Rp {report.sales.grossProfit.toLocaleString("id-ID")}
+                    </td>
+                    <td className="py-3 text-right font-sans text-emerald-600">
+                      {report.sales.profitMarginPercent}%
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          {/* Rekonsiliasi Kasir & Arus Kas */}
+          <div className="bg-surface border border-line rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h4 className="font-black text-xs text-muted uppercase tracking-wider">
+                Rekonsiliasi Kasir & Arus Kas
+              </h4>
+              <span
+                className={`text-[11px] font-bold px-3 py-1 rounded-full border flex items-center gap-1.5 self-start sm:self-auto ${
+                  report.reconciliation.status === "VERIFIED"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-amber-50 text-amber-700 border-amber-200"
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    report.reconciliation.status === "VERIFIED" ? "bg-emerald-500" : "bg-amber-500"
+                  }`}
+                />
+                {report.reconciliation.badgeLabel}
+              </span>
+            </div>
+
+            {/* 4 Kartu Komponen Arus Kas */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <div className="p-3 bg-card rounded-2xl border border-line">
+                <span className="text-muted block text-[11px]">Penerimaan Bruto:</span>
+                <strong className="text-fg font-mono text-sm block mt-0.5">
+                  Rp {report.payments.grossPayments.toLocaleString("id-ID")}
+                </strong>
+              </div>
+
+              <div className="p-3 bg-card rounded-2xl border border-line">
+                <span className="text-muted block text-[11px]">Refund Pembayaran:</span>
+                <strong className="text-rose-600 font-mono text-sm block mt-0.5">
+                  -Rp {report.payments.refundPayments.toLocaleString("id-ID")}
+                </strong>
+              </div>
+
+              <div className="p-3 bg-card rounded-2xl border border-line">
+                <span className="text-muted block text-[11px]">Penerimaan Netto:</span>
+                <strong className="text-emerald-600 font-mono text-sm block mt-0.5">
+                  Rp {report.payments.netPayments.toLocaleString("id-ID")}
+                </strong>
+              </div>
+
+              <div className="p-3 bg-card rounded-2xl border border-line">
+                <span className="text-muted block text-[11px]">Tagihan Terbuka (Open):</span>
+                <strong className="text-amber-600 font-mono text-sm block mt-0.5">
+                  Rp {report.reconciliation.openBillOutstanding.toLocaleString("id-ID")}
+                </strong>
+              </div>
+            </div>
+
+            {/* Formula Pembuktian Transparan */}
+            <div className="p-3 bg-card rounded-2xl border border-line text-[11px] text-muted flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+              <span>
+                Penerimaan Pembayaran: Bruto (Rp {report.payments.grossPayments.toLocaleString("id-ID")}) − Refund (Rp {report.payments.refundPayments.toLocaleString("id-ID")}) = Netto (Rp {report.payments.netPayments.toLocaleString("id-ID")})
+              </span>
+              <span className="text-muted text-[10px]">
+                Saldo Open Bill dicatat terpisah sebagai aset operasional berjalan
+              </span>
+            </div>
+          </div>
+
+          {/* Insight Operasional & Stok Ringkas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Laci Kas & Shift */}
+            <div className="bg-surface border border-line rounded-3xl p-5 shadow-xs space-y-2">
+              <h4 className="font-bold text-xs text-muted uppercase tracking-wider">
+                Status Kas Laci Fisik (Tunai)
+              </h4>
+              <div className="text-lg font-black text-fg font-mono">
+                Saldo Fisik Diharapkan: Rp {report.payments.cashDrawer.expectedCash.toLocaleString("id-ID")}
+              </div>
+              <p className="text-xs text-muted">
+                Modal Awal: Rp {report.payments.cashDrawer.startingCash.toLocaleString("id-ID")} • Penjualan Tunai: Rp {report.payments.cashDrawer.cashSalesGross.toLocaleString("id-ID")} • Refund Tunai: Rp {report.payments.cashDrawer.cashRefundsOut.toLocaleString("id-ID")}
+              </p>
+            </div>
+
+            {/* Peringatan Stok Menipis */}
+            <div className="bg-surface border border-line rounded-3xl p-5 shadow-xs space-y-2">
+              <h4 className="font-bold text-xs text-muted uppercase tracking-wider">
+                Peringatan Stok Produk
+              </h4>
+              {lowStockItems.length > 0 ? (
+                <div className="space-y-1.5 text-xs">
+                  {lowStockItems.slice(0, 3).map((item: any, i: number) => (
+                    <div key={i} className="flex justify-between items-center text-rose-600 font-bold">
+                      <span>{item.nama}</span>
+                      <span className="font-mono">Sisa {item.stockQty} {item.stockUnit || "pcs"}</span>
+                    </div>
+                  ))}
+                  {lowStockItems.length > 3 && (
+                    <span className="text-[10px] text-muted block">
+                      +{lowStockItems.length - 3} produk lainnya menipis
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-emerald-600 font-bold">
+                  Seluruh stok produk berada dalam batas aman.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp Modal */}
       {isWaModalOpen && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setIsWaModalOpen(false)}
-        >
-          <div
-            className="bg-surface border border-line rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-line">
-              <h3 className="font-black text-sm text-fg flex items-center gap-2">
-                
-                <span>Kirim Laporan Omzet ke WhatsApp</span>
-              </h3>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-surface border border-line rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-line pb-3">
+              <h3 className="font-black text-sm text-fg">Bagikan Laporan WhatsApp</h3>
               <button
                 type="button"
                 onClick={() => setIsWaModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-card text-muted hover:text-fg font-bold flex items-center justify-center text-xs"
+                className="text-muted hover:text-fg text-lg font-bold"
               >
-                ×
+                ✕
               </button>
             </div>
 
-            <div className="p-3.5 bg-card rounded-2xl border border-line font-mono text-xs whitespace-pre-line text-fg max-h-56 overflow-y-auto leading-relaxed">
-              {generateWaReportMessage()}
-            </div>
+            <textarea
+              readOnly
+              rows={8}
+              value={generateWaReportMessage()}
+              className="w-full bg-card border border-line rounded-2xl p-3 text-xs font-mono text-fg resize-none focus:outline-none"
+            />
 
-            <div className="flex items-center gap-2 pt-2 border-t border-line">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={handleCopyWaReport}
-                className="flex-1 py-2.5 rounded-xl border border-line bg-card hover:bg-line text-xs font-bold text-fg transition-colors"
+                className="flex-1 py-2.5 bg-card hover:bg-line border border-line text-fg rounded-xl text-xs font-bold transition-all"
               >
                 {copiedReport ? "Tersalin!" : "Salin Teks"}
               </button>
               <button
                 type="button"
                 onClick={handleOpenWhatsAppUrl}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
               >
-                <span><LineIcon name="info" /></span>
-                <span>Buka WhatsApp</span>
+                Buka WhatsApp
               </button>
             </div>
           </div>

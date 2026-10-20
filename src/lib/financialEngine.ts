@@ -9,6 +9,19 @@ export interface DateRangePeriod {
   previousEnd?: Date;
 }
 
+export function dashboardPeriod(range: DashboardRange, now = new Date()): DateRangePeriod {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const end = new Date(start); end.setDate(end.getDate() + 1);
+  if (range === 'yesterday') { start.setDate(start.getDate() - 1); end.setDate(end.getDate() - 1); }
+  if (range === '7days' || range === '30days') start.setDate(start.getDate() - (range === '7days' ? 6 : 29));
+  if (range === 'thisMonth') start.setDate(1);
+  const previousEnd = new Date(start);
+  const previousStart = new Date(start);
+  if (range === 'thisMonth') previousStart.setMonth(previousStart.getMonth() - 1);
+  else previousStart.setDate(previousStart.getDate() - (range === '7days' ? 7 : range === '30days' ? 30 : 1));
+  return { start, end, previousStart, previousEnd };
+}
+
 export interface SalesMetrics {
   grossSales: number;           // Total harga sebelum diskon & retur
   totalDiscounts: number;       // Total diskon nota & promo
