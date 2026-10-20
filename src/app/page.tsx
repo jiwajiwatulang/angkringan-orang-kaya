@@ -8,6 +8,7 @@ import {
   CustomerOrder, 
   submitBuyerOrder, 
   checkOrderStatusServer,
+  uploadOrderProofServer,
   activateLicenseServer,
   registerBetaServer,
 } from "@/lib/ordersClient";
@@ -113,6 +114,9 @@ export default function SakuNotaLandingPage() {
   const [currentOrderId, setCurrentOrderId] = useState("");
   const [currentAccessCode, setCurrentAccessCode] = useState("");
   const [transferProofFileName, setTransferProofFileName] = useState("");
+  const [transferProofBase64, setTransferProofBase64] = useState("");
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
+  const [snapRedirectUrl, setSnapRedirectUrl] = useState("");
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [isInitiatingSnap, setIsInitiatingSnap] = useState(false);
   const [snapError, setSnapError] = useState("");
@@ -137,11 +141,10 @@ export default function SakuNotaLandingPage() {
   const [isSearchingOrder, setIsSearchingOrder] = useState(false);
   const [copiedLicense, setCopiedLicense] = useState(false);
 
-  // Load Midtrans Snap Script on demand when user opens Buy Modal
+  // Preload Midtrans Snap Script early so it is immediately ready when user wants to pay
   useEffect(() => {
-    if (!isBuyModalOpen) return;
     const snapScriptId = "midtrans-snap-js";
-    if (document.getElementById(snapScriptId)) return;
+    if (typeof document === "undefined" || document.getElementById(snapScriptId)) return;
 
     fetch("/api/payment/config")
       .then((res) => res.json())
@@ -151,13 +154,14 @@ export default function SakuNotaLandingPage() {
           script.id = snapScriptId;
           script.src = data.snapJsUrl || "https://app.midtrans.com/snap/snap.js";
           script.setAttribute("data-client-key", data.clientKey);
+          script.async = true;
           document.body.appendChild(script);
         }
       })
       .catch(() => {
         // Handled silently when offline
       });
-  }, [isBuyModalOpen]);
+  }, []);
 
   // Escape key listener to close modals
   useEffect(() => {
@@ -323,6 +327,9 @@ export default function SakuNotaLandingPage() {
       }
 
       if (data.success && data.token) {
+        if (data.redirect_url) {
+          setSnapRedirectUrl(data.redirect_url);
+        }
         if (typeof (window as any).snap !== "undefined" && (window as any).snap.pay) {
           (window as any).snap.pay(data.token, {
             onSuccess: async function () {
@@ -359,6 +366,73 @@ export default function SakuNotaLandingPage() {
       setSnapError("Koneksi gagal: " + err.message);
     } finally {
       setIsInitiatingSnap(false);
+    }
+  };
+
+  const handleProofFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setTransferProofFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const rawDataUrl = event.target?.result as string;
+      if (file.type.startsWith("image/")) {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1000;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, w, h);
+            const compressed = canvas.toDataURL("image/jpeg", 0.75);
+            setTransferProofBase64(compressed);
+          } else {
+            setTransferProofBase64(rawDataUrl);
+          }
+        };
+        img.src = rawDataUrl;
+      } else {
+        setTransferProofBase64(rawDataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSendTransferProof = async () => {
+    if (!transferProofBase64) {
+      setCheckoutStep("waiting");
+      return;
+    }
+    setIsUploadingProof(true);
+    try {
+      const res = await uploadOrderProofServer(
+        currentOrderId,
+        currentAccessCode,
+        transferProofFileName || "bukti_transfer.jpg",
+        transferProofBase64
+      );
+      if (res.success && res.order) {
+        setCreatedOrder(res.order);
+      }
+    } catch (_) {
+      // Offline safe fallback
+    } finally {
+      setIsUploadingProof(false);
+      setCheckoutStep("waiting");
     }
   };
 
@@ -2000,6 +2074,16 @@ export default function SakuNotaLandingPage() {
                   >
                     <span>{isInitiatingSnap ? "Membuka Gerbang Midtrans..." : "Bayar Otomatis Rp50.000 via Midtrans →"}</span>
                   </button>
+                  {snapRedirectUrl && (
+                    <a
+                      href={snapRedirectUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-center text-xs font-bold text-blue-600 underline pt-1"
+                    >
+                      Buka Langsung di Halaman Pembayaran Midtrans →
+                    </a>
+                  )}
                 </div>
 
                 <div className="relative flex py-1 items-center">
@@ -2020,18 +2104,18 @@ export default function SakuNotaLandingPage() {
                   </div>
 
                   <div className="space-y-1 bg-white p-3 rounded-xl border border-slate-200">
-                    <span className="text-[10px] text-slate-600 block font-bold uppercase">Nomor Rekening:</span>
+                    <span className="text-[10px] text-slate-600 block font-bold uppercase">Nomor Rekening BCA:</span>
                     <div className="flex items-center justify-between">
                       <strong className="text-lg font-mono font-black text-slate-900 select-all">
-                        8030 554 912
+                        {PAYMENT_ACCOUNT_NUMBER}
                       </strong>
                       <button
                         type="button"
                         onClick={() => {
                           navigator.clipboard.writeText(PAYMENT_ACCOUNT_NUMBER.replace(/\s+/g, ""));
-                          alert("Nomor rekening BCA berhasil disalin!");
+                          alert("Nomor rekening BCA (" + PAYMENT_ACCOUNT_NUMBER + ") berhasil disalin!");
                         }}
-                        className="text-[10px] font-bold text-blue-600 hover:underline"
+                        className="text-[11px] font-bold text-blue-600 hover:underline px-2 py-1 rounded bg-blue-50"
                       >
                         Salin No Rek
                       </button>
@@ -2046,11 +2130,34 @@ export default function SakuNotaLandingPage() {
                     </strong>
                   </div>
 
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-700">Nomor Pesanan (Berita Transfer):</span>
-                    <strong className="font-mono font-bold text-blue-600">
-                      {currentOrderId}
-                    </strong>
+                  {/* KARTU NOMOR PESANAN - JELAS & KONTRAS DI HP */}
+                  <div className="p-3 bg-amber-50/90 border-2 border-amber-300 rounded-xl space-y-1.5 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black text-amber-950 uppercase tracking-wider">
+                        Nomor Pesanan (Berita Transfer BCA):
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-200 text-amber-950 font-bold">
+                        Wajib Disalin
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <strong className="text-base sm:text-lg font-mono font-black text-slate-900 tracking-wider select-all break-all">
+                        {currentOrderId}
+                      </strong>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(currentOrderId);
+                          alert("Nomor pesanan (" + currentOrderId + ") berhasil disalin!");
+                        }}
+                        className="shrink-0 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white rounded-lg text-xs font-bold transition-all shadow-xs"
+                      >
+                        Salin No Pesanan
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-amber-900 leading-tight">
+                      Tulis nomor pesanan ini pada kolom berita/keterangan saat transfer m-Banking / ATM.
+                    </p>
                   </div>
 
                   {/* Real File Upload Bukti Transfer */}
@@ -2058,18 +2165,21 @@ export default function SakuNotaLandingPage() {
                     <span className="text-[11px] font-bold text-slate-700 block">
                       Lampirkan Foto Bukti Transfer:
                     </span>
-                    <label className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-slate-300 hover:border-blue-500 bg-white cursor-pointer transition-colors text-xs font-bold text-slate-700">
+                    <label className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-500 bg-white cursor-pointer transition-colors text-xs font-bold text-slate-700">
                       <input
                         type="file"
-                        accept="image/*,application/pdf"
+                        accept="image/*"
                         className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) setTransferProofFileName(file.name);
-                        }}
+                        onChange={handleProofFileChange}
                       />
                       <span>{transferProofFileName ? ` Terlampir: ${transferProofFileName}` : " Ketuk untuk Unggah Screenshot Bukti Transfer"}</span>
                     </label>
+                    {transferProofBase64 && (
+                      <div className="relative w-full max-h-48 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex flex-col items-center justify-center p-2">
+                        <img src={transferProofBase64} alt="Pratinjau Bukti Transfer" className="max-h-40 object-contain rounded-lg" />
+                        <span className="text-[10px] text-emerald-600 font-bold mt-1">Foto bukti siap dikirim ke Owner</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -2090,10 +2200,11 @@ export default function SakuNotaLandingPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setCheckoutStep("waiting")}
-                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95"
+                    disabled={isUploadingProof}
+                    onClick={handleSendTransferProof}
+                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50"
                   >
-                    Kirim Bukti Transfer Sekarang →
+                    {isUploadingProof ? "Mengirim Bukti Transfer..." : "Kirim Bukti Transfer Sekarang →"}
                   </button>
                 </div>
               </div>
@@ -2111,22 +2222,46 @@ export default function SakuNotaLandingPage() {
                   </p>
                 </div>
 
-                {/* Status Box with Secret Access Code */}
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left space-y-2.5 text-xs">
-                  <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                    <span className="text-slate-600">Nomor Pesanan:</span>
-                    <strong className="font-mono font-black text-slate-900 text-sm">{currentOrderId}</strong>
-                  </div>
-                  <div className="flex justify-between items-center pb-2 border-b border-slate-200 bg-blue-50 -mx-4 px-4 py-2">
-                    <div>
-                      <span className="text-[10px] text-slate-600 block uppercase font-bold">Kode Akses Rahasia Pembeli:</span>
-                      <strong className="font-mono font-black text-blue-600 text-sm select-all">{currentAccessCode}</strong>
+                {/* Status Box with Secret Access Code - Clear and Visible on Mobile */}
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left space-y-3 text-xs">
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
+                    <span className="text-[10px] text-slate-500 font-bold block uppercase">Nomor Pesanan Anda:</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <strong className="font-mono font-black text-slate-900 text-base select-all break-all">{currentOrderId}</strong>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(currentOrderId);
+                          alert("Nomor pesanan (" + currentOrderId + ") berhasil disalin!");
+                        }}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 shrink-0"
+                      >
+                        Salin
+                      </button>
                     </div>
-                    <span className="text-[9px] text-slate-600 max-w-[170px] text-right font-medium">
-                      Simpan kode ini untuk mengecek status pesanan secara privat
-                    </span>
                   </div>
-                  <div className="flex justify-between items-center">
+
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-blue-900 block uppercase font-bold">Kode Akses Rahasia Pembeli:</span>
+                      <span className="text-[9px] text-blue-700 font-bold">Simpan untuk cek status</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <strong className="font-mono font-black text-blue-700 text-base select-all break-all">{currentAccessCode}</strong>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(currentAccessCode);
+                          alert("Kode akses (" + currentAccessCode + ") berhasil disalin!");
+                        }}
+                        className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shrink-0"
+                      >
+                        Salin
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-1 border-t border-slate-200">
                     <span className="text-slate-600">Status:</span>
                     <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-black text-[11px] border border-blue-200">
                       Menunggu Verifikasi Owner

@@ -7,6 +7,7 @@ import {
   getAllOrdersD1,
   getOrderByIdD1,
   updateOrderStatusAndLicenseD1,
+  updateOrderProofD1,
   insertLicenseD1,
   getLicenseD1,
   bindLicenseToDeviceD1,
@@ -54,7 +55,7 @@ export type LicenseRecord = DbLicense;
 export type ServerTesterLicense = DbTesterLicense;
 export type ServerBetaRegistration = DbBetaRegistration;
 
-export { getD1, initD1Tables, resetDatabaseCleanD1 };
+export { getD1, initD1Tables, resetDatabaseCleanD1, updateOrderProofD1 };
 
 // Server Secrets (Strict: fail-closed with NO fallback defaults)
 export function getServerSecret(): string {
@@ -327,8 +328,8 @@ export async function authenticateOwner(
 }
 
 export async function createCustomerOrder(
-  dbOrData: D1Database | { buyerName: string; businessName: string; whatsapp: string; email?: string },
-  maybeData?: { buyerName: string; businessName: string; whatsapp: string; email?: string }
+  dbOrData: D1Database | { buyerName: string; businessName: string; whatsapp: string; email?: string; transferProofName?: string; transferProofData?: string },
+  maybeData?: { buyerName: string; businessName: string; whatsapp: string; email?: string; transferProofName?: string; transferProofData?: string }
 ): Promise<{ success: boolean; order: ServerCustomerOrder }> {
   const db = isD1(dbOrData) ? dbOrData : getD1();
   const data = (isD1(dbOrData) ? maybeData : (dbOrData as any)) || {};
@@ -361,8 +362,9 @@ export async function createCustomerOrder(
     email: data.email?.trim() || undefined,
     amount: 50000,
     paymentMethod: "Transfer Bank BCA",
-    bankAccount: "8030 554 912 a.n. SakuNota Official",
-    transferProofName: "bukti_transfer_pembeli.jpg",
+    bankAccount: "2582118451 a.n. REZA RESTU RENGGA HARDIANTO",
+    transferProofName: data.transferProofName || undefined,
+    transferProofData: data.transferProofData || undefined,
     status: "menunggu_verifikasi",
     createdAt: new Date().toISOString(),
   };

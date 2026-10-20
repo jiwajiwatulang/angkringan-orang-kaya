@@ -13,6 +13,7 @@ export interface DbCustomerOrder {
   paymentMethod: string;
   bankAccount: string;
   transferProofName?: string;
+  transferProofData?: string;
   status: "menunggu_verifikasi" | "lunas_lisensi_terbit" | "batal" | "arsip_uji" | "gagal" | "kedaluwarsa" | "dikembalikan";
   licenseKey?: string;
   boundDeviceId?: string;
@@ -207,8 +208,9 @@ export async function initD1Tables(db: D1Database): Promise<void> {
       email TEXT,
       amount INTEGER NOT NULL DEFAULT 50000,
       paymentMethod TEXT NOT NULL DEFAULT 'Transfer Bank BCA',
-      bankAccount TEXT NOT NULL DEFAULT '8030 554 912 a.n. SakuNota Official',
+      bankAccount TEXT NOT NULL DEFAULT '2582118451 a.n. REZA RESTU RENGGA HARDIANTO',
       transferProofName TEXT,
+      transferProofData TEXT,
       status TEXT NOT NULL DEFAULT 'menunggu_verifikasi',
       licenseKey TEXT,
       boundDeviceId TEXT,
@@ -296,6 +298,7 @@ export async function initD1Tables(db: D1Database): Promise<void> {
     "ALTER TABLE Licenses ADD COLUMN revoked INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE Licenses ADD COLUMN lastConnectedAt TEXT",
     "ALTER TABLE CustomerOrders ADD COLUMN lastSeenAt TEXT",
+    "ALTER TABLE CustomerOrders ADD COLUMN transferProofData TEXT",
   ];
 
   for (const query of columnMigrations) {
@@ -312,9 +315,9 @@ export async function insertOrderD1(db: D1Database, order: DbCustomerOrder): Pro
   const stmt = db.prepare(`
     INSERT INTO CustomerOrders (
       orderId, accessCode, buyerName, businessName, whatsapp, email,
-      amount, paymentMethod, bankAccount, transferProofName, status,
+      amount, paymentMethod, bankAccount, transferProofName, transferProofData, status,
       licenseKey, boundDeviceId, createdAt, verifiedAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   await stmt.bind(
@@ -326,8 +329,9 @@ export async function insertOrderD1(db: D1Database, order: DbCustomerOrder): Pro
     order.email || null,
     order.amount || 50000,
     order.paymentMethod || "Transfer Bank BCA",
-    order.bankAccount || "8030 554 912 a.n. SakuNota Official",
+    order.bankAccount || "2582118451 a.n. REZA RESTU RENGGA HARDIANTO",
     order.transferProofName || null,
+    order.transferProofData || null,
     order.status || "menunggu_verifikasi",
     order.licenseKey || null,
     order.boundDeviceId || null,
@@ -352,6 +356,7 @@ export async function getAllOrdersD1(db: D1Database): Promise<DbCustomerOrder[]>
       o.paymentMethod,
       o.bankAccount,
       o.transferProofName,
+      o.transferProofData,
       o.status,
       o.licenseKey,
       COALESCE(l.boundDeviceId, o.boundDeviceId) AS boundDeviceId,
@@ -382,6 +387,7 @@ export async function getOrderByIdD1(db: D1Database, orderId: string): Promise<D
       o.paymentMethod,
       o.bankAccount,
       o.transferProofName,
+      o.transferProofData,
       o.status,
       o.licenseKey,
       COALESCE(l.boundDeviceId, o.boundDeviceId) AS boundDeviceId,
@@ -406,6 +412,19 @@ export async function updateOrderPaymentMethodD1(
     .prepare(`UPDATE CustomerOrders SET paymentMethod = ? WHERE orderId = ?`)
     .bind(paymentMethod, orderId)
     .run();
+}
+
+export async function updateOrderProofD1(
+  db: D1Database,
+  orderId: string,
+  transferProofName: string,
+  transferProofData: string
+): Promise<DbCustomerOrder | null> {
+  await db
+    .prepare(`UPDATE CustomerOrders SET transferProofName = ?, transferProofData = ? WHERE orderId = ?`)
+    .bind(transferProofName, transferProofData, orderId)
+    .run();
+  return await getOrderByIdD1(db, orderId);
 }
 
 export async function updateOrderStatusAndLicenseD1(

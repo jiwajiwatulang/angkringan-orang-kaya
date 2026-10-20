@@ -1,5 +1,9 @@
 // Activate a new build only after every required offline asset is available.
-const CACHE_NAME = 'sakunota-pos-v2.6.7-1792417645207';
+<<<<<<< HEAD
+const CACHE_NAME = 'sakunota-pos-v2.6.7-1792461051322';
+=======
+const CACHE_NAME = 'sakunota-pos-v2.6.7-1792461007848';
+>>>>>>> c996652 (fix: update bank config, mobile pos pay button, order id card, and owner proof upload)
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {

@@ -89,6 +89,7 @@ export default function SakuNotaOwnerDashboardPage() {
   const [downloadedSecrets, setDownloadedSecrets] = useState<Record<string, boolean> | null>(null);
   const [isLoadingSecrets, setIsLoadingSecrets] = useState(false);
   const [secretsError, setSecretsError] = useState("");
+  const [activeProofModal, setActiveProofModal] = useState<{ title: string; image: string } | null>(null);
 
   // Load orders helper with silent polling support
   const loadOrders = async (token: string, silent = false) => {
@@ -1061,6 +1062,35 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                         </a>
                       </div>
                     </div>
+
+                    {/* Bukti Transfer Pembeli (Jika ada foto yang diunggah) */}
+                    {o.transferProofData ? (
+                      <div className="p-3 rounded-2xl bg-surface border border-line flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <img
+                            src={o.transferProofData}
+                            alt="Bukti Transfer"
+                            className="w-12 h-12 object-cover rounded-xl border border-line cursor-pointer hover:opacity-80 transition-opacity shrink-0"
+                            onClick={() => setActiveProofModal({ title: `Bukti Transfer - ${o.orderId} (${o.businessName})`, image: o.transferProofData! })}
+                          />
+                          <div className="min-w-0">
+                            <span className="text-[10px] text-muted font-bold block uppercase">Foto Bukti Transfer:</span>
+                            <span className="text-xs font-bold text-fg truncate block">{o.transferProofName || "bukti_transfer.jpg"}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveProofModal({ title: `Bukti Transfer - ${o.orderId} (${o.businessName})`, image: o.transferProofData! })}
+                          className="px-3 py-1.5 rounded-xl bg-card hover:bg-line border border-line text-xs font-bold text-fg shrink-0 transition-colors"
+                        >
+                          Lihat Foto Bukti
+                        </button>
+                      </div>
+                    ) : o.transferProofName ? (
+                      <div className="text-[11px] text-muted bg-surface/50 p-2.5 rounded-xl border border-line">
+                        <span className="font-bold">Info Bukti: </span>{o.transferProofName} (foto belum terlampir)
+                      </div>
+                    ) : null}
 
                     {/* License details & device binding status if paid */}
                     {o.licenseKey && (
@@ -2092,6 +2122,46 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
           </div>
         )}
       </main>
+
+      {/* Lightbox Modal Bukti Transfer */}
+      {activeProofModal && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setActiveProofModal(null)}
+        >
+          <div
+            className="bg-card border border-line rounded-3xl max-w-2xl w-full p-4 md:p-6 shadow-2xl relative space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-line">
+              <h4 className="font-black text-sm md:text-base text-fg">{activeProofModal.title}</h4>
+              <button
+                type="button"
+                onClick={() => setActiveProofModal(null)}
+                className="w-8 h-8 rounded-full bg-surface hover:bg-line text-fg flex items-center justify-center font-bold"
+              >
+                ×
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-auto flex items-center justify-center rounded-2xl bg-black/20 p-2">
+              <img
+                src={activeProofModal.image}
+                alt="Foto Bukti Transfer"
+                className="max-h-[65vh] object-contain rounded-xl shadow-lg"
+              />
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setActiveProofModal(null)}
+                className="px-4 py-2 rounded-xl bg-accent text-white font-bold text-xs"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

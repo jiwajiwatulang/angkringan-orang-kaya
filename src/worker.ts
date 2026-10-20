@@ -3,6 +3,7 @@ import * as licenseActivate from "../functions/api/license/activate";
 import * as licenseVerify from "../functions/api/license/verify";
 import * as ordersCheck from "../functions/api/orders/check";
 import * as ordersCreate from "../functions/api/orders/create";
+import * as ordersUploadProof from "../functions/api/orders/upload-proof";
 import * as ownerLicenses from "../functions/api/owner/licenses";
 import * as ownerLogin from "../functions/api/owner/login";
 import * as ownerLogout from "../functions/api/owner/logout";
@@ -155,6 +156,12 @@ export default {
         // Route: /api/orders/check
         else if (pathname === "/api/orders/check") {
           if (method === "POST") response = await ordersCheck.onRequestPost(context);
+          else response = new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), { status: 405 });
+        }
+
+        // Route: /api/orders/upload-proof
+        else if (pathname === "/api/orders/upload-proof") {
+          if (method === "POST") response = await ordersUploadProof.onRequestPost(context);
           else response = new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), { status: 405 });
         }
 

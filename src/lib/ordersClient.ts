@@ -11,6 +11,7 @@ export interface CustomerOrder {
   paymentMethod: string;
   bankAccount: string;
   transferProofName?: string;
+  transferProofData?: string;
   status: "menunggu_verifikasi" | "lunas_lisensi_terbit" | "batal";
   licenseKey?: string;
   createdAt: string;
@@ -106,6 +107,35 @@ export async function checkOrderStatusServer(
       } catch {}
     }
     return { success: false, error: "Pesanan tidak ditemukan atau server tidak dapat dihubungi." };
+  }
+}
+
+export async function uploadOrderProofServer(
+  orderId: string,
+  accessCode: string,
+  proofName: string,
+  proofData: string
+): Promise<{ success: boolean; order?: CustomerOrder; error?: string }> {
+  try {
+    const res = await fetch("/api/orders/upload-proof", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        orderId: orderId.trim(),
+        accessCode: accessCode.trim(),
+        transferProofName: proofName,
+        transferProofData: proofData,
+      }),
+    });
+
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && json.success && json.order) {
+      cacheOrderLocally(json.order);
+      return { success: true, order: json.order };
+    }
+    return { success: false, error: json.error || "Gagal mengunggah foto bukti transfer." };
+  } catch (_) {
+    return { success: false, error: "Gagal menghubungi server saat mengunggah bukti transfer." };
   }
 }
 
