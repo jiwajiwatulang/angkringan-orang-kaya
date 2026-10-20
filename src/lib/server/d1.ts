@@ -10,6 +10,9 @@ export interface DbCustomerOrder {
   whatsapp: string;
   email?: string;
   amount: number;
+  promoCode?: string;
+  discountAmount?: number;
+  originalAmount?: number;
   paymentMethod: string;
   bankAccount: string;
   transferProofName?: string;
@@ -63,6 +66,18 @@ export interface DbBetaRegistration {
   durationDays: number;
   rejectionReason?: string | null;
   auditLog?: string | null;
+}
+
+export interface DbPromoCode {
+  id?: number;
+  code: string;
+  discountType: "nominal" | "percent" | "fixed_price";
+  discountValue: number;
+  description?: string;
+  maxUsage?: number;
+  usageCount: number;
+  active: number;
+  createdAt: string;
 }
 
 // Official Cloudflare D1 TypeScript Interfaces
@@ -218,7 +233,10 @@ export async function initD1Tables(db: D1Database): Promise<void> {
       boundDeviceId TEXT,
       createdAt TEXT NOT NULL,
       verifiedAt TEXT,
-      lastSeenAt TEXT
+      lastSeenAt TEXT,
+      promoCode TEXT,
+      discountAmount INTEGER DEFAULT 0,
+      originalAmount INTEGER DEFAULT 50000
     )`,
     `CREATE TABLE IF NOT EXISTS Licenses (
       licenseKey TEXT PRIMARY KEY,
@@ -282,6 +300,17 @@ export async function initD1Tables(db: D1Database): Promise<void> {
       rejectionReason TEXT,
       auditLog TEXT
     )`,
+    `CREATE TABLE IF NOT EXISTS PromoCodes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT UNIQUE NOT NULL,
+      discountType TEXT NOT NULL DEFAULT 'nominal',
+      discountValue INTEGER NOT NULL,
+      description TEXT,
+      maxUsage INTEGER DEFAULT 0,
+      usageCount INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      createdAt TEXT NOT NULL
+    )`,
   ];
 
   for (const stmt of tableStatements) {
@@ -302,6 +331,9 @@ export async function initD1Tables(db: D1Database): Promise<void> {
     "ALTER TABLE CustomerOrders ADD COLUMN lastSeenAt TEXT",
     "ALTER TABLE CustomerOrders ADD COLUMN transferProofData TEXT",
     "ALTER TABLE CustomerOrders ADD COLUMN paymentLink TEXT",
+    "ALTER TABLE CustomerOrders ADD COLUMN promoCode TEXT",
+    "ALTER TABLE CustomerOrders ADD COLUMN discountAmount INTEGER DEFAULT 0",
+    "ALTER TABLE CustomerOrders ADD COLUMN originalAmount INTEGER DEFAULT 50000",
   ];
 
   for (const query of columnMigrations) {
@@ -319,8 +351,8 @@ export async function insertOrderD1(db: D1Database, order: DbCustomerOrder): Pro
     INSERT INTO CustomerOrders (
       orderId, accessCode, buyerName, businessName, whatsapp, email,
       amount, paymentMethod, bankAccount, transferProofName, transferProofData, paymentLink, status,
-      licenseKey, boundDeviceId, createdAt, verifiedAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      licenseKey, boundDeviceId, createdAt, verifiedAt, promoCode, discountAmount, originalAmount
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   await stmt.bind(
@@ -340,7 +372,10 @@ export async function insertOrderD1(db: D1Database, order: DbCustomerOrder): Pro
     order.licenseKey || null,
     order.boundDeviceId || null,
     order.createdAt,
-    order.verifiedAt || null
+    order.verifiedAt || null,
+    order.promoCode || null,
+    order.discountAmount || 0,
+    order.originalAmount || 50000
   ).run();
 
   return order;
@@ -370,7 +405,10 @@ export async function getAllOrdersD1(db: D1Database): Promise<DbCustomerOrder[]>
       l.lastConnectedAt AS lastConnectedAt,
       o.createdAt,
       o.verifiedAt,
-      o.lastSeenAt
+      o.lastSeenAt,
+      o.promoCode,
+      o.discountAmount,
+      o.originalAmount
     FROM CustomerOrders o
     LEFT JOIN Licenses l ON o.licenseKey = l.licenseKey
     ORDER BY o.id DESC
@@ -402,7 +440,10 @@ export async function getOrderByIdD1(db: D1Database, orderId: string): Promise<D
       l.lastConnectedAt AS lastConnectedAt,
       o.createdAt,
       o.verifiedAt,
-      o.lastSeenAt
+      o.lastSeenAt,
+      o.promoCode,
+      o.discountAmount,
+      o.originalAmount
     FROM CustomerOrders o
     LEFT JOIN Licenses l ON o.licenseKey = l.licenseKey
     WHERE o.orderId = ?
@@ -903,5 +944,99 @@ export async function convertBetaTrialToPaidD1(
     WHERE registrationId = ?
   `).bind(auditNote, registrationId).run();
   return true;
+}
+
+// Promo Codes Operations
+export function calculatePromoDiscount(
+  basePrice: number,
+  discountType: "nominal" | "percent" | "fixed_price",
+  discountValue: number
+): { discountAmount: number; finalAmount: number } {
+  let discountAmount = 0;
+  if (discountType === "nominal") {
+    discountAmount = Math.min(basePrice - 1000, Math.max(0, discountValue));
+  } else if (discountType === "percent") {
+    const pct = Math.min(99, Math.max(1, discountValue));
+    discountAmount = Math.round((basePrice * pct) / 100);
+  } else if (discountType === "fixed_price") {
+    const fixed = Math.max(1000, discountValue);
+    discountAmount = Math.max(0, basePrice - fixed);
+  }
+  const finalAmount = Math.max(1000, basePrice - discountAmount);
+  return { discountAmount, finalAmount };
+}
+
+export async function getPromoCodeByCodeD1(db: D1Database, code: string): Promise<DbPromoCode | null> {
+  const clean = code.trim().toUpperCase();
+  return await db
+    .prepare("SELECT * FROM PromoCodes WHERE UPPER(code) = ?")
+    .bind(clean)
+    .first<DbPromoCode>();
+}
+
+export async function getAllPromoCodesD1(db: D1Database): Promise<DbPromoCode[]> {
+  const res = await db
+    .prepare("SELECT * FROM PromoCodes ORDER BY id DESC")
+    .all<DbPromoCode>();
+  return res.results || [];
+}
+
+export async function insertPromoCodeD1(
+  db: D1Database,
+  promo: {
+    code: string;
+    discountType: "nominal" | "percent" | "fixed_price";
+    discountValue: number;
+    description?: string;
+    maxUsage?: number;
+  }
+): Promise<DbPromoCode> {
+  const cleanCode = promo.code.trim().toUpperCase();
+  const createdAt = new Date().toISOString();
+  const maxUsage = Number(promo.maxUsage) || 0;
+  const discountValue = Number(promo.discountValue) || 0;
+  const discountType = promo.discountType || "nominal";
+  const description = promo.description ? promo.description.trim() : null;
+
+  await db
+    .prepare(`
+      INSERT INTO PromoCodes (code, discountType, discountValue, description, maxUsage, usageCount, active, createdAt)
+      VALUES (?, ?, ?, ?, ?, 0, 1, ?)
+    `)
+    .bind(cleanCode, discountType, discountValue, description, maxUsage, createdAt)
+    .run();
+
+  const created = await getPromoCodeByCodeD1(db, cleanCode);
+  return created || {
+    code: cleanCode,
+    discountType,
+    discountValue,
+    description: description || undefined,
+    maxUsage,
+    usageCount: 0,
+    active: 1,
+    createdAt,
+  };
+}
+
+export async function togglePromoCodeD1(db: D1Database, id: number, active: number): Promise<void> {
+  await db
+    .prepare("UPDATE PromoCodes SET active = ? WHERE id = ?")
+    .bind(active ? 1 : 0, id)
+    .run();
+}
+
+export async function deletePromoCodeD1(db: D1Database, id: number): Promise<void> {
+  await db
+    .prepare("DELETE FROM PromoCodes WHERE id = ?")
+    .bind(id)
+    .run();
+}
+
+export async function incrementPromoUsageD1(db: D1Database, code: string): Promise<void> {
+  await db
+    .prepare("UPDATE PromoCodes SET usageCount = usageCount + 1 WHERE UPPER(code) = ?")
+    .bind(code.trim().toUpperCase())
+    .run();
 }
 

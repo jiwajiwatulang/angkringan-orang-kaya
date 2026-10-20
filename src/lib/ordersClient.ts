@@ -8,6 +8,9 @@ export interface CustomerOrder {
   whatsapp: string;
   email?: string;
   amount: number;
+  promoCode?: string;
+  discountAmount?: number;
+  originalAmount?: number;
   paymentMethod: string;
   bankAccount: string;
   transferProofName?: string;
@@ -39,6 +42,7 @@ export async function submitBuyerOrder(data: {
   businessName: string;
   whatsapp: string;
   email?: string;
+  promoCode?: string;
 }): Promise<{ success: boolean; order?: CustomerOrder; error?: string }> {
   try {
     const res = await fetch("/api/orders/create", {
@@ -789,6 +793,110 @@ export async function verifyLicenseServer(licenseKey: string, deviceId: string, 
     return await res.json();
   } catch (e: any) {
     throw new Error(e.message || "Gagal memverifikasi lisensi.");
+  }
+}
+
+export interface PromoCodeItem {
+  id?: number;
+  code: string;
+  discountType: "nominal" | "percent" | "fixed_price";
+  discountValue: number;
+  description?: string;
+  maxUsage?: number;
+  usageCount: number;
+  active: number;
+  createdAt: string;
+}
+
+export async function checkPromoCodeServer(code: string): Promise<{
+  valid: boolean;
+  code?: string;
+  discountType?: "nominal" | "percent" | "fixed_price";
+  discountValue?: number;
+  discountAmount?: number;
+  finalAmount?: number;
+  description?: string;
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/promo/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { valid: false, error: e.message || "Gagal memeriksa kode promo." };
+  }
+}
+
+export async function fetchOwnerPromosServer(token: string): Promise<{
+  success: boolean;
+  promos?: PromoCodeItem[];
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/owner/promos", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal memuat daftar kode promo." };
+  }
+}
+
+export async function createOwnerPromoServer(
+  token: string,
+  promo: {
+    code: string;
+    discountType: "nominal" | "percent" | "fixed_price";
+    discountValue: number;
+    description?: string;
+    maxUsage?: number;
+  }
+): Promise<{ success: boolean; promo?: PromoCodeItem; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/promos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: "create", ...promo }),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal membuat kode promo." };
+  }
+}
+
+export async function toggleOwnerPromoServer(
+  token: string,
+  id: number,
+  active: number
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/promos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: "toggle", id, active }),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal mengubah status kode promo." };
+  }
+}
+
+export async function deleteOwnerPromoServer(
+  token: string,
+  id: number
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/promos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: "delete", id }),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal menghapus kode promo." };
   }
 }
 

@@ -11,6 +11,7 @@ import {
   uploadOrderProofServer,
   activateLicenseServer,
   registerBetaServer,
+  checkPromoCodeServer,
 } from "@/lib/ordersClient";
 import {
   SUPPORT_WHATSAPP,
@@ -129,6 +130,19 @@ export default function SakuNotaLandingPage() {
   const [isActivatedHere, setIsActivatedHere] = useState(false);
   const [isCheckoutExitConfirmOpen, setIsCheckoutExitConfirmOpen] = useState(false);
 
+  // Promo code & discount voucher state
+  const [promoInput, setPromoInput] = useState("");
+  const [isCheckingPromo, setIsCheckingPromo] = useState(false);
+  const [promoError, setPromoError] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    discountType: "nominal" | "percent" | "fixed_price";
+    discountValue: number;
+    discountAmount: number;
+    finalAmount: number;
+    description?: string;
+  } | null>(null);
+
   // Check Order / Direct License Activation State
   const [isCheckStatusModalOpen, setIsCheckStatusModalOpen] = useState(false);
   const [statusModalTab, setStatusModalTab] = useState<"direct_license" | "order_lookup">("direct_license");
@@ -185,6 +199,9 @@ export default function SakuNotaLandingPage() {
     setTransferProofFileName("");
     setTransferProofBase64("");
     setSnapError("");
+    setAppliedPromo(null);
+    setPromoInput("");
+    setPromoError("");
   };
 
   // Escape key listener to close modals with unsaved confirmation
@@ -326,6 +343,43 @@ export default function SakuNotaLandingPage() {
     }
   };
 
+  const handleClaimPromo = async () => {
+    if (!promoInput.trim()) {
+      setPromoError("Masukkan kode promo terlebih dahulu.");
+      return;
+    }
+    setPromoError("");
+    setIsCheckingPromo(true);
+    try {
+      const res = await checkPromoCodeServer(promoInput.trim());
+      if (res.valid && res.code && res.finalAmount !== undefined) {
+        setAppliedPromo({
+          code: res.code,
+          discountType: res.discountType || "nominal",
+          discountValue: res.discountValue || 0,
+          discountAmount: res.discountAmount || 0,
+          finalAmount: res.finalAmount,
+          description: res.description,
+        });
+        setPromoInput(res.code);
+      } else {
+        setAppliedPromo(null);
+        setPromoError(res.error || "Kode promo tidak valid atau sudah kedaluwarsa.");
+      }
+    } catch (err: any) {
+      setAppliedPromo(null);
+      setPromoError("Gagal memeriksa promo: " + (err.message || "Periksa koneksi internet"));
+    } finally {
+      setIsCheckingPromo(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoInput("");
+    setPromoError("");
+  };
+
   const handleProceedToPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!buyerName.trim() || !businessName.trim() || !whatsappNumber.trim()) {
@@ -345,11 +399,13 @@ export default function SakuNotaLandingPage() {
         businessName,
         whatsapp: whatsappNumber,
         email: buyerEmail,
+        promoCode: appliedPromo?.code,
       });
 
       if (res.success && res.order) {
         setCurrentOrderId(res.order.orderId);
         setCurrentAccessCode(res.order.accessCode);
+        setCreatedOrder(res.order);
         setCheckoutStep("payment");
       } else {
         setFormError(res.error || "Gagal membuat pesanan.");
@@ -2078,15 +2134,96 @@ export default function SakuNotaLandingPage() {
                   </div>
                 </div>
 
+                {/* Promo Code / Voucher Claim Input */}
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-800">
+                      Punya Kode Promo / Voucher Diskon?
+                    </span>
+                    {appliedPromo && (
+                      <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                        Promo Aktif
+                      </span>
+                    )}
+                  </div>
+
+                  {!appliedPromo ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Contoh: DISKON15"
+                        value={promoInput}
+                        onChange={(e) => {
+                          setPromoInput(e.target.value.toUpperCase());
+                          if (promoError) setPromoError("");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleClaimPromo();
+                          }
+                        }}
+                        className="flex-1 px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono font-bold uppercase text-slate-900 placeholder-slate-400 focus:border-blue-600 outline-none"
+                      />
+                      <button
+                        type="button"
+                        disabled={isCheckingPromo}
+                        onClick={handleClaimPromo}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all shadow-xs shrink-0"
+                      >
+                        {isCheckingPromo ? "Mengecek..." : "Klaim"}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <strong className="font-mono font-black text-emerald-800 text-xs">{appliedPromo.code}</strong>
+                          <span className="text-[10px] text-emerald-700 font-bold">
+                            (Hemat Rp {appliedPromo.discountAmount.toLocaleString("id-ID")})
+                          </span>
+                        </div>
+                        {appliedPromo.description && (
+                          <p className="text-[10px] text-emerald-600 mt-0.5">{appliedPromo.description}</p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemovePromo}
+                        className="text-[11px] font-bold text-rose-600 hover:text-rose-800 px-2 py-1 bg-white rounded-lg border border-rose-200 shrink-0"
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  )}
+
+                  {promoError && (
+                    <p className="text-[10px] font-bold text-rose-600">{promoError}</p>
+                  )}
+                </div>
+
                 {/* Summary box */}
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="text-slate-600 block text-[10px]">Total Pembayaran Promo</span>
-                    <strong className="text-blue-600 font-black text-sm">
-                      Rp50.000
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 text-[11px]">Harga Resmi SakuNota:</span>
+                    <span className="text-[11px] text-slate-400 line-through">Rp 99.000</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 text-[11px]">Harga Promo Peluncuran:</span>
+                    <span className="text-[11px] font-bold text-slate-800">Rp 50.000</span>
+                  </div>
+                  {appliedPromo && (
+                    <div className="flex items-center justify-between text-emerald-700 pt-1 border-t border-slate-200">
+                      <span className="text-[11px] font-bold">Potongan Voucher ({appliedPromo.code}):</span>
+                      <strong className="font-mono text-xs font-black">-Rp {appliedPromo.discountAmount.toLocaleString("id-ID")}</strong>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-1.5 border-t border-slate-200">
+                    <span className="text-slate-900 font-bold text-xs">Total Pembayaran:</span>
+                    <strong className="text-blue-600 font-black text-base">
+                      Rp {(appliedPromo ? appliedPromo.finalAmount : 50000).toLocaleString("id-ID")}
                     </strong>
                   </div>
-                  <span className="text-[10px] text-slate-400 line-through">Rp99.000</span>
                 </div>
 
                 <div className="pt-2 flex gap-2">
@@ -2151,7 +2288,11 @@ export default function SakuNotaLandingPage() {
                     disabled={isInitiatingSnap}
                     className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-lg shadow-blue-600/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    <span>{isInitiatingSnap ? "Membuka Gerbang Midtrans..." : "Bayar Otomatis Rp50.000 via Midtrans →"}</span>
+                    <span>
+                      {isInitiatingSnap
+                        ? "Membuka Gerbang Midtrans..."
+                        : `Bayar Otomatis Rp ${(createdOrder?.amount || (appliedPromo ? appliedPromo.finalAmount : 50000)).toLocaleString("id-ID")} via Midtrans →`}
+                    </span>
                   </button>
                   {snapRedirectUrl && (
                     <a
@@ -2201,9 +2342,16 @@ export default function SakuNotaLandingPage() {
 
                   <div className="flex justify-between items-center text-xs pt-1">
                     <span className="text-slate-700">Nominal Transfer:</span>
-                    <strong className="text-base font-black text-slate-900">
-                      Rp 50.000
-                    </strong>
+                    <div className="text-right">
+                      <strong className="text-base font-black text-slate-900">
+                        Rp {(createdOrder?.amount || (appliedPromo ? appliedPromo.finalAmount : 50000)).toLocaleString("id-ID")}
+                      </strong>
+                      {(createdOrder?.promoCode || appliedPromo?.code) && (
+                        <span className="block text-[10px] text-emerald-600 font-bold">
+                          (Promo: {createdOrder?.promoCode || appliedPromo?.code} hemat Rp {(createdOrder?.discountAmount || appliedPromo?.discountAmount || 0).toLocaleString("id-ID")})
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* KARTU NOMOR PESANAN - JELAS & KONTRAS DI HP */}
@@ -2356,7 +2504,16 @@ export default function SakuNotaLandingPage() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-600">Nominal:</span>
-                    <strong className="text-slate-900 font-black">Rp 50.000</strong>
+                    <div className="text-right">
+                      <strong className="text-slate-900 font-black">
+                        Rp {(createdOrder?.amount || (appliedPromo ? appliedPromo.finalAmount : 50000)).toLocaleString("id-ID")}
+                      </strong>
+                      {createdOrder?.promoCode && (
+                        <span className="block text-[10px] text-emerald-600 font-bold">
+                          (Promo: {createdOrder.promoCode})
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -2371,7 +2528,7 @@ export default function SakuNotaLandingPage() {
 
                 <div className="pt-2 flex flex-col gap-2">
                   <a
-                    href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20sudah%20transfer%20Rp50.000%20untuk%20pesanan%20${currentOrderId}%20(${businessName}).%20Kode%20akses:%20${currentAccessCode}.%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
+                    href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20sudah%20transfer%20Rp${(createdOrder?.amount || (appliedPromo ? appliedPromo.finalAmount : 50000)).toLocaleString("id-ID")}%20untuk%20pesanan%20${currentOrderId}%20(${businessName}).%20Kode%20akses:%20${currentAccessCode}.%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
@@ -3000,9 +3157,19 @@ export default function SakuNotaLandingPage() {
                         <span className="text-[10px] text-slate-500">Akses kasir offline 1 perangkat seumur hidup, bebas biaya bulanan</span>
                       </td>
                       <td className="py-3 px-3 text-center">1</td>
-                      <td className="py-3 px-3 text-right">Rp {(invoiceData.amount || 50000).toLocaleString("id-ID")}</td>
-                      <td className="py-3 px-3 text-right font-black text-slate-900">Rp {(invoiceData.amount || 50000).toLocaleString("id-ID")}</td>
+                      <td className="py-3 px-3 text-right">Rp {(invoiceData.originalAmount || 50000).toLocaleString("id-ID")}</td>
+                      <td className="py-3 px-3 text-right font-black text-slate-900">Rp {(invoiceData.originalAmount || 50000).toLocaleString("id-ID")}</td>
                     </tr>
+                    {invoiceData.promoCode && (
+                      <tr className="bg-emerald-50/60 text-emerald-800">
+                        <td colSpan={3} className="py-2.5 px-3 text-right font-bold text-[11px]">
+                          Potongan Diskon Promo ({invoiceData.promoCode}):
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-black text-xs text-emerald-700">
+                          -Rp {(invoiceData.discountAmount || 0).toLocaleString("id-ID")}
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                   <tfoot className="bg-slate-50 text-xs font-black">
                     <tr>

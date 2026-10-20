@@ -33,6 +33,11 @@ import {
   revokeBetaTrialServer,
   unbindBetaTrialServer,
   convertBetaTrialToPaidServer,
+  PromoCodeItem,
+  fetchOwnerPromosServer,
+  createOwnerPromoServer,
+  toggleOwnerPromoServer,
+  deleteOwnerPromoServer,
 } from "@/lib/ordersClient";
 
 export default function SakuNotaOwnerDashboardPage() {
@@ -46,7 +51,7 @@ export default function SakuNotaOwnerDashboardPage() {
 
   // Dashboard Tabs & Data State
   const [activeTab, setActiveTab] = useState<
-    "orders" | "beta" | "summary" | "customers" | "devices" | "tester" | "settings"
+    "orders" | "beta" | "summary" | "customers" | "devices" | "tester" | "promos" | "settings"
   >("orders");
   const [orderFilter, setOrderFilter] = useState<"semua" | "menunggu" | "berhasil" | "gagal" | "kedaluwarsa" | "dikembalikan" | "arsip">("semua");
   const ORDERS_PER_PAGE = 20;
@@ -75,6 +80,17 @@ export default function SakuNotaOwnerDashboardPage() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [toastMsg, setToastMsg] = useState("");
+
+  // Promo Code State
+  const [promos, setPromos] = useState<PromoCodeItem[]>([]);
+  const [isLoadingPromos, setIsLoadingPromos] = useState(false);
+  const [newPromoCode, setNewPromoCode] = useState("");
+  const [newPromoType, setNewPromoType] = useState<"nominal" | "percent" | "fixed_price">("nominal");
+  const [newPromoValue, setNewPromoValue] = useState<number>(15000);
+  const [newPromoMaxUsage, setNewPromoMaxUsage] = useState<number>(0);
+  const [newPromoDesc, setNewPromoDesc] = useState("");
+  const [promoFormError, setPromoFormError] = useState("");
+  const [isCreatingPromo, setIsCreatingPromo] = useState(false);
 
   // Tester License Form State
   const [testerRecipient, setTesterRecipient] = useState("");
@@ -169,6 +185,20 @@ export default function SakuNotaOwnerDashboardPage() {
     }
   };
 
+  // Load promo codes & vouchers
+  const loadPromos = async (token: string) => {
+    setIsLoadingPromos(true);
+    try {
+      const res = await fetchOwnerPromosServer(token);
+      if (res.success && res.promos) {
+        setPromos(res.promos);
+      }
+    } catch (_) {}
+    finally {
+      setIsLoadingPromos(false);
+    }
+  };
+
   // Comprehensive data synchronizer for all owner tabs
   const refreshAllData = async (token: string, silent = false) => {
     await Promise.allSettled([
@@ -176,7 +206,105 @@ export default function SakuNotaOwnerDashboardPage() {
       loadLicenses(token),
       loadTesterLicenses(token),
       loadBetaRegistrations(token, silent),
+      loadPromos(token),
     ]);
+  };
+
+  const handleCreatePromo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ownerToken) return;
+    setPromoFormError("");
+
+    const code = newPromoCode.trim().toUpperCase();
+    if (!code || code.length < 3) {
+      setPromoFormError("Kode promo minimal 3 karakter.");
+      return;
+    }
+
+    if (newPromoValue <= 0) {
+      setPromoFormError("Nilai diskon harus lebih besar dari 0.");
+      return;
+    }
+
+    setIsCreatingPromo(true);
+    try {
+      const res = await createOwnerPromoServer(ownerToken, {
+        code,
+        discountType: newPromoType,
+        discountValue: Number(newPromoValue),
+        description: newPromoDesc.trim() || undefined,
+        maxUsage: Number(newPromoMaxUsage) || 0,
+      });
+
+      if (res.success && res.promo) {
+        showToast(`Kode promo "${code}" berhasil dibuat!`);
+        setNewPromoCode("");
+        setNewPromoValue(15000);
+        setNewPromoDesc("");
+        setNewPromoMaxUsage(0);
+        await loadPromos(ownerToken);
+      } else {
+        setPromoFormError(res.error || "Gagal membuat kode promo.");
+      }
+    } catch (err: any) {
+      setPromoFormError("Gagal menghubungi server: " + (err.message || err));
+    } finally {
+      setIsCreatingPromo(false);
+    }
+  };
+
+  const handleTogglePromo = async (id: number, currentActive: number) => {
+    if (!ownerToken) return;
+    const newActive = currentActive ? 0 : 1;
+    try {
+      const res = await toggleOwnerPromoServer(ownerToken, id, newActive);
+      if (res.success) {
+        showToast(`Status promo berhasil di${newActive ? "aktifkan" : "nonaktifkan"}!`);
+        await loadPromos(ownerToken);
+      } else {
+        showToast(`Gagal: ${res.error || "Gagal mengubah status"}`);
+      }
+    } catch (err: any) {
+      showToast(`Error: ${err.message}`);
+    }
+  };
+
+  const handleDeletePromo = async (id: number, code: string) => {
+    if (!ownerToken) return;
+    if (!window.confirm(`Hapus kode promo "${code}" secara permanen?`)) return;
+    try {
+      const res = await deleteOwnerPromoServer(ownerToken, id);
+      if (res.success) {
+        showToast(`Kode promo "${code}" berhasil dihapus.`);
+        await loadPromos(ownerToken);
+      } else {
+        showToast(`Gagal: ${res.error || "Gagal menghapus promo"}`);
+      }
+    } catch (err: any) {
+      showToast(`Error: ${err.message}`);
+    }
+  };
+
+  const handleCopyPromoShare = (p: PromoCodeItem) => {
+    let discountLabel = "";
+    if (p.discountType === "nominal") {
+      discountLabel = `Rp ${p.discountValue.toLocaleString("id-ID")}`;
+    } else if (p.discountType === "percent") {
+      discountLabel = `${p.discountValue}%`;
+    } else {
+      discountLabel = `harga spesial Rp ${p.discountValue.toLocaleString("id-ID")}`;
+    }
+
+    const shareText = `Halo Kak! Ada promo spesial SakuNota Kasir Jalan Tanpa Internet.
+
+Gunakan kode voucher *${p.code}* saat checkout untuk mendapatkan potongan ${discountLabel}!
+(Harga resmi Rp50.000 sekali bayar tanpa langganan).
+
+Beli & klaim langsung di:
+https://angkringan-orang-kaya.ranutarde.workers.dev/?beli=true`;
+
+    navigator.clipboard.writeText(shareText);
+    showToast(`Pesan promosi untuk kode ${p.code} berhasil disalin! Siap dikirim ke WhatsApp.`);
   };
 
   // Check and validate stored session token on mount
@@ -947,6 +1075,20 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
           </button>
           <button
             type="button"
+            onClick={() => {
+              setActiveTab("promos");
+              if (ownerToken) loadPromos(ownerToken);
+            }}
+            className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
+              activeTab === "promos"
+                ? "bg-purple-600 text-white shadow-sm"
+                : "bg-surface text-muted hover:text-fg border border-line"
+            }`}
+          >
+            Promo &amp; Voucher ({promos.length})
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab("settings")}
             className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
               activeTab === "settings"
@@ -1046,9 +1188,16 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
                       <div className="text-right">
                         <span className="text-xs text-muted block">Total Tagihan:</span>
-                        <strong className="text-base font-black text-emerald-600 dark:text-emerald-700">
-                          Rp {(o.amount || 50000).toLocaleString("id-ID")}
-                        </strong>
+                        <div className="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-1.5">
+                          <strong className="text-base font-black text-emerald-600 dark:text-emerald-700">
+                            Rp {(o.amount || 50000).toLocaleString("id-ID")}
+                          </strong>
+                          {o.promoCode && (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-bold text-[10px] border border-emerald-500/30">
+                              Promo: {o.promoCode} (-Rp {(o.discountAmount || 0).toLocaleString("id-ID")})
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -2069,6 +2218,250 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
           </div>
         )}
 
+        {/* TAB: PROMO & VOUCHER DISKON */}
+        {activeTab === "promos" && (
+          <div className="bg-surface rounded-3xl border border-line shadow-sm p-5 sm:p-6 space-y-6">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-base text-fg">Pengelolaan Kode Promo &amp; Voucher Diskon</h3>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-[10px] font-black border border-emerald-500/30">
+                  Marketing &amp; Diskon
+                </span>
+              </div>
+              <p className="text-xs text-muted mt-0.5">
+                Buat kode voucher untuk promosi di WhatsApp, media sosial, atau mitra UMKM. Nilai tagihan checkout akan berkurang otomatis saat pembeli memasukkan kode promo yang valid.
+              </p>
+            </div>
+
+            {/* Form Buat Kode Promo Baru */}
+            <form onSubmit={handleCreatePromo} className="p-4 sm:p-5 rounded-2xl bg-card border border-line space-y-4">
+              <h4 className="font-black text-xs text-fg uppercase tracking-wider">
+                Buat Kode Promo Baru
+              </h4>
+
+              {promoFormError && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold">
+                  {promoFormError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-fg mb-1">Kode Promo *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Misal: DISKON15"
+                    value={newPromoCode}
+                    onChange={(e) => setNewPromoCode(e.target.value.toUpperCase())}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs font-mono font-bold uppercase text-fg focus:border-purple-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-fg mb-1">Tipe Diskon *</label>
+                  <select
+                    value={newPromoType}
+                    onChange={(e) => {
+                      const type = e.target.value as "nominal" | "percent" | "fixed_price";
+                      setNewPromoType(type);
+                      if (type === "percent") setNewPromoValue(20);
+                      else if (type === "nominal") setNewPromoValue(15000);
+                      else setNewPromoValue(35000);
+                    }}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs text-fg focus:border-purple-500 outline-none font-semibold"
+                  >
+                    <option value="nominal">Potongan Nominal (Rp)</option>
+                    <option value="percent">Persentase Diskon (%)</option>
+                    <option value="fixed_price">Harga Akhir Tetap (Rp)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-fg mb-1">
+                    {newPromoType === "percent" ? "Persentase Diskon (%) *" : newPromoType === "fixed_price" ? "Harga Akhir (Rp) *" : "Potongan Nominal (Rp) *"}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={newPromoValue}
+                    onChange={(e) => setNewPromoValue(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs font-mono font-bold text-fg focus:border-purple-500 outline-none"
+                  />
+                  <span className="text-[10px] text-muted block mt-0.5">
+                    {newPromoType === "percent"
+                      ? `Diskon ${newPromoValue}% dari Rp 50.000 = bayar Rp ${(50000 - Math.round((50000 * newPromoValue) / 100)).toLocaleString("id-ID")}`
+                      : newPromoType === "fixed_price"
+                      ? `Pembeli bayar Rp ${newPromoValue.toLocaleString("id-ID")} (hemat Rp ${(50000 - newPromoValue).toLocaleString("id-ID")})`
+                      : `Potongan Rp ${newPromoValue.toLocaleString("id-ID")} = bayar Rp ${(50000 - newPromoValue).toLocaleString("id-ID")}`}
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-fg mb-1">Batas Kuota Pemakaian</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="0 = Tanpa batas"
+                    value={newPromoMaxUsage}
+                    onChange={(e) => setNewPromoMaxUsage(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs font-mono font-bold text-fg focus:border-purple-500 outline-none"
+                  />
+                  <span className="text-[10px] text-muted block mt-0.5">
+                    {newPromoMaxUsage > 0 ? `Maksimal ${newPromoMaxUsage} kali pakai` : "Tanpa batas pemakaian"}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-fg mb-1">Deskripsi / Catatan Promo (Opsional)</label>
+                <input
+                  type="text"
+                  placeholder="Misal: Promo Launching Komunitas Kuliner WhatsApp"
+                  value={newPromoDesc}
+                  onChange={(e) => setNewPromoDesc(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs text-fg focus:border-purple-500 outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="submit"
+                  disabled={isCreatingPromo}
+                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs shadow-md transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {isCreatingPromo ? "Menyimpan Kode Promo..." : "+ Simpan & Terbitkan Kode Promo"}
+                </button>
+              </div>
+            </form>
+
+            {/* List Kode Promo */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-black text-xs text-fg uppercase tracking-wider">
+                  Daftar Kode Promo ({promos.length})
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => ownerToken && loadPromos(ownerToken)}
+                  disabled={isLoadingPromos}
+                  className="text-xs font-bold text-purple-600 hover:underline disabled:opacity-50"
+                >
+                  {isLoadingPromos ? "Menyegarkan..." : "Segarkan"}
+                </button>
+              </div>
+
+              {promos.length === 0 ? (
+                <div className="p-8 text-center bg-card rounded-2xl border border-line space-y-1">
+                  <p className="text-xs font-bold text-fg">Belum Ada Kode Promo</p>
+                  <p className="text-[11px] text-muted">
+                    Gunakan formulir di atas untuk membuat kode promo pertama yang bisa dibagikan ke pembeli.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3">
+                  {promos.map((p) => {
+                    const isExhausted = p.maxUsage && p.maxUsage > 0 && p.usageCount >= p.maxUsage;
+                    const isActive = p.active === 1 && !isExhausted;
+
+                    return (
+                      <div
+                        key={p.id || p.code}
+                        className="p-4 rounded-2xl bg-card border border-line flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all"
+                      >
+                        <div className="space-y-1.5 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono font-black text-base text-fg tracking-wider select-all">
+                              {p.code}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                                isActive
+                                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+                                  : isExhausted
+                                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                                  : "bg-slate-500/15 text-slate-500 border-slate-500/30"
+                              }`}
+                            >
+                              {isActive ? "Aktif" : isExhausted ? "Kuota Habis" : "Nonaktif"}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-700 dark:text-purple-300 text-[10px] font-bold border border-purple-500/30">
+                              {p.discountType === "nominal"
+                                ? `Potongan Rp ${p.discountValue.toLocaleString("id-ID")}`
+                                : p.discountType === "percent"
+                                ? `Diskon ${p.discountValue}%`
+                                : `Harga Akhir Rp ${p.discountValue.toLocaleString("id-ID")}`}
+                            </span>
+                          </div>
+
+                          {p.description && (
+                            <p className="text-xs text-fg font-medium">{p.description}</p>
+                          )}
+
+                          <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted">
+                            <span>
+                              Terpakai: <strong className="text-fg">{p.usageCount}</strong> {p.maxUsage && p.maxUsage > 0 ? `/ ${p.maxUsage} kali` : "kali (tanpa batas)"}
+                            </span>
+                            <span>•</span>
+                            <span>Dibuat: {formatServerDate(p.createdAt)}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPromoShare(p)}
+                            className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-xs"
+                            title="Salin Pesan Promosi WhatsApp"
+                          >
+                            Bagikan ke WA
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(p.code);
+                              showToast(`Kode promo ${p.code} berhasil disalin!`);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-card hover:bg-line text-xs font-bold text-fg border border-line transition-colors"
+                          >
+                            Salin Kode
+                          </button>
+
+                          {p.id !== undefined && (
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePromo(p.id!, p.active)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                                p.active
+                                  ? "bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                                  : "bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                              }`}
+                            >
+                              {p.active ? "Nonaktifkan" : "Aktifkan"}
+                            </button>
+                          )}
+
+                          {p.id !== undefined && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePromo(p.id!, p.code)}
+                              className="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-700 text-xs font-bold border border-rose-500/30 transition-colors"
+                            >
+                              Hapus
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* TAB 5: PENGATURAN & PEMELIHARAAN */}
         {activeTab === "settings" && (
           <div className="bg-surface rounded-3xl border border-line shadow-sm p-5 sm:p-6 space-y-6">
@@ -2376,9 +2769,19 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                         <span className="text-[10px] text-slate-500">Akses kasir offline 1 perangkat seumur hidup, bebas biaya bulanan</span>
                       </td>
                       <td className="py-3 px-3 text-center">1</td>
-                      <td className="py-3 px-3 text-right">Rp {(selectedInvoiceOrder.amount || 50000).toLocaleString("id-ID")}</td>
-                      <td className="py-3 px-3 text-right font-black text-slate-900">Rp {(selectedInvoiceOrder.amount || 50000).toLocaleString("id-ID")}</td>
+                      <td className="py-3 px-3 text-right">Rp {(selectedInvoiceOrder.originalAmount || 50000).toLocaleString("id-ID")}</td>
+                      <td className="py-3 px-3 text-right font-black text-slate-900">Rp {(selectedInvoiceOrder.originalAmount || 50000).toLocaleString("id-ID")}</td>
                     </tr>
+                    {selectedInvoiceOrder.promoCode && (
+                      <tr className="bg-emerald-50/60 text-emerald-800">
+                        <td colSpan={3} className="py-2.5 px-3 text-right font-bold text-[11px]">
+                          Potongan Diskon Promo ({selectedInvoiceOrder.promoCode}):
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-black text-xs text-emerald-700">
+                          -Rp {(selectedInvoiceOrder.discountAmount || 0).toLocaleString("id-ID")}
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                   <tfoot className="bg-slate-50 text-xs font-black">
                     <tr>
