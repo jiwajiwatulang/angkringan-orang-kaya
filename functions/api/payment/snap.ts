@@ -81,6 +81,8 @@ export async function onRequestPost(context: any) {
       ],
       callbacks: {
         finish: `${hostOrigin}/?payment=finish&orderId=${encodeURIComponent(order.orderId)}&accessCode=${encodeURIComponent(order.accessCode)}`,
+        unfinish: `${hostOrigin}/?payment=unfinish&orderId=${encodeURIComponent(order.orderId)}&accessCode=${encodeURIComponent(order.accessCode)}`,
+        error: `${hostOrigin}/?payment=error&orderId=${encodeURIComponent(order.orderId)}&accessCode=${encodeURIComponent(order.accessCode)}`,
       },
     };
 

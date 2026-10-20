@@ -120,6 +120,9 @@ export default function SakuNotaLandingPage() {
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [isInitiatingSnap, setIsInitiatingSnap] = useState(false);
   const [snapError, setSnapError] = useState("");
+  const [snapNotice, setSnapNotice] = useState("");
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
+  const [invoiceData, setInvoiceData] = useState<CustomerOrder | null>(null);
   const [isActivatingHere, setIsActivatingHere] = useState(false);
   const [activateMsg, setActivateMsg] = useState("");
   const [isActivatedHere, setIsActivatedHere] = useState(false);
@@ -258,6 +261,18 @@ export default function SakuNotaLandingPage() {
         }).catch(() => {
           setIsSearchingOrder(false);
         });
+      } else if ((paymentStatus === "unfinish" || paymentStatus === "error") && ordId && code) {
+        setCurrentOrderId(ordId);
+        setCurrentAccessCode(code);
+        setSearchOrderId(ordId);
+        setSearchAccessCode(code);
+        setSnapNotice(
+          paymentStatus === "unfinish"
+            ? "Pembayaran Midtrans sebelumnya belum selesai. Pesanan Anda tetap aman. Silakan klik Bayar Sekarang untuk membuka kembali pembayaran, atau gunakan Transfer BCA."
+            : "Pembayaran Midtrans sebelumnya mengalami kendala. Silakan coba lagi atau gunakan Transfer Bank BCA."
+        );
+        setIsBuyModalOpen(true);
+        setCheckoutStep("payment");
       }
     }
   }, []);
@@ -402,7 +417,9 @@ export default function SakuNotaLandingPage() {
             onError: function (err: any) {
               setSnapError("Pembayaran gagal diproses: " + (err?.status_message || "Silakan coba lagi."));
             },
-            onClose: function () {},
+            onClose: function () {
+              setSnapNotice("Sesi pembayaran Midtrans ditutup. Anda belum menyelesaikan pembayaran Rp 50.000. Klik tombol Bayar Sekarang untuk membuka kembali pembayaran, atau gunakan Transfer Bank BCA.");
+            },
           });
         } else if (data.redirect_url) {
           window.location.href = data.redirect_url;
@@ -2101,6 +2118,13 @@ export default function SakuNotaLandingPage() {
                   </div>
                 )}
 
+                {snapNotice && (
+                  <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium space-y-1">
+                    <p className="font-bold text-amber-950">Pembayaran Belum Diselesaikan</p>
+                    <p className="text-[11px] leading-relaxed">{snapNotice}</p>
+                  </div>
+                )}
+
                 {/* PILIHAN 1: MIDTRANS SNAP (INSTAN) */}
                 <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-3">
                   <div className="flex items-center justify-between">
@@ -2465,6 +2489,20 @@ export default function SakuNotaLandingPage() {
                     </button>
                   )}
 
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (createdOrder) {
+                        setInvoiceData(createdOrder);
+                        setIsInvoiceOpen(true);
+                      }
+                    }}
+                    className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl border border-slate-300 transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <span><LineIcon name="receipt" /></span>
+                    <span>Lihat &amp; Unduh Invoice Resmi</span>
+                  </button>
+
                   <div className="grid grid-cols-2 gap-2">
                     <a
                       href="#panduan"
@@ -2768,6 +2806,18 @@ export default function SakuNotaLandingPage() {
                           </button>
                         )}
 
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInvoiceData(searchResult);
+                            setIsInvoiceOpen(true);
+                          }}
+                          className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl border border-slate-300 transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <span><LineIcon name="receipt" /></span>
+                          <span>Lihat &amp; Unduh Invoice Resmi</span>
+                        </button>
+
                         <div className="grid grid-cols-2 gap-2 pt-1">
                           <a
                             href="#panduan"
@@ -2843,6 +2893,137 @@ export default function SakuNotaLandingPage() {
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL INVOICE RESMI PEMBELIAN LISENSI */}
+      {isInvoiceOpen && invoiceData && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+          onClick={() => setIsInvoiceOpen(false)}
+        >
+          <div
+            className="bg-white text-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl relative border border-slate-200 my-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header Actions */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 print:hidden">
+              <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                  <LineIcon name="receipt" className="w-4 h-4" />
+                </span>
+                <span className="text-xs font-black uppercase text-slate-700 tracking-wider">Faktur &amp; Invoice Resmi</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1"
+                >
+                  <LineIcon name="printer" className="w-3.5 h-3.5" />
+                  <span>Cetak / PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsInvoiceOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-bold"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Invoice Body */}
+            <div className="space-y-4 text-xs text-slate-700">
+              {/* Header Toko / Perusahaan */}
+              <div className="flex justify-between items-start gap-4">
+                <div>
+                  <div className="text-lg font-black tracking-tight text-slate-900">SakuNota POS</div>
+                  <div className="text-[11px] text-slate-500 font-medium">PT Pemuda Gaya Bebas</div>
+                  <div className="text-[10px] text-slate-500">Dukungan WhatsApp: 0851-5874-8884</div>
+                </div>
+                <div className="text-right">
+                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    LUNAS / PAID
+                  </span>
+                  <div className="font-mono text-xs font-bold text-slate-900 mt-1">INV-{invoiceData.orderId}</div>
+                  <div className="text-[10px] text-slate-500">
+                    {invoiceData.createdAt ? new Date(invoiceData.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : new Date().toLocaleDateString("id-ID")}
+                  </div>
+                </div>
+              </div>
+
+              {/* Data Pelanggan */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 grid grid-cols-2 gap-2 text-[11px]">
+                <div>
+                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Diterbitkan Untuk:</span>
+                  <strong className="text-slate-900 text-xs block">{invoiceData.businessName}</strong>
+                  <span className="text-slate-600">Pemilik: {invoiceData.buyerName}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Metode Pembayaran:</span>
+                  <strong className="text-slate-900 text-xs block">{invoiceData.paymentMethod || "Midtrans Otomatis"}</strong>
+                  <span className="text-slate-600">WA: {invoiceData.whatsapp}</span>
+                </div>
+              </div>
+
+              {/* Rincian Produk */}
+              <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-100 text-[10px] font-black uppercase text-slate-600">
+                    <tr>
+                      <th className="py-2.5 px-3">Deskripsi Layanan</th>
+                      <th className="py-2.5 px-3 text-center">Qty</th>
+                      <th className="py-2.5 px-3 text-right">Harga</th>
+                      <th className="py-2.5 px-3 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 text-xs">
+                    <tr>
+                      <td className="py-3 px-3">
+                        <strong className="text-slate-900 block font-bold">Lisensi Resmi SakuNota POS</strong>
+                        <span className="text-[10px] text-slate-500">Akses kasir offline 1 perangkat seumur hidup, bebas biaya bulanan</span>
+                      </td>
+                      <td className="py-3 px-3 text-center">1</td>
+                      <td className="py-3 px-3 text-right">Rp {(invoiceData.amount || 50000).toLocaleString("id-ID")}</td>
+                      <td className="py-3 px-3 text-right font-black text-slate-900">Rp {(invoiceData.amount || 50000).toLocaleString("id-ID")}</td>
+                    </tr>
+                  </tbody>
+                  <tfoot className="bg-slate-50 text-xs font-black">
+                    <tr>
+                      <td colSpan={3} className="py-2.5 px-3 text-right uppercase text-[10px] text-slate-600">Total Pembayaran:</td>
+                      <td className="py-2.5 px-3 text-right text-emerald-700 text-sm">Rp {(invoiceData.amount || 50000).toLocaleString("id-ID")}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Info Lisensi */}
+              {invoiceData.licenseKey && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-center space-y-1">
+                  <span className="text-[10px] font-black uppercase text-blue-900 block">Nomor Lisensi Resmi Yang Diterbitkan:</span>
+                  <div className="font-mono font-black text-blue-700 text-sm tracking-wider select-all">
+                    {invoiceData.licenseKey}
+                  </div>
+                </div>
+              )}
+
+              {/* Catatan Legal */}
+              <div className="text-[10px] text-slate-400 text-center leading-relaxed">
+                Dokumen ini merupakan bukti pembelian dan kepemilikan lisensi resmi yang sah yang diterbitkan oleh sistem otomatis SakuNota POS.
+              </div>
+            </div>
+
+            <div className="pt-2 print:hidden">
+              <button
+                type="button"
+                onClick={() => setIsInvoiceOpen(false)}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
+              >
+                Tutup Invoice
               </button>
             </div>
           </div>
