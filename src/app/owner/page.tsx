@@ -1092,6 +1092,50 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                       </div>
                     ) : null}
 
+                    {/* Link Pembayaran Midtrans (Jika tersedia untuk dikirim ke WA Pembeli) */}
+                    {o.paymentLink && (
+                      <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-blue-900 dark:text-blue-300 uppercase">Link Pembayaran Midtrans:</span>
+                            <span className="text-[9px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/60 px-1.5 py-0.5 rounded">QRIS &amp; Transfer</span>
+                          </div>
+                          <a
+                            href={o.paymentLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-xs text-blue-600 dark:text-blue-400 hover:underline block truncate max-w-md font-semibold"
+                            title={o.paymentLink}
+                          >
+                            {o.paymentLink}
+                          </a>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(o.paymentLink || "");
+                              showToast("Link Midtrans berhasil disalin!");
+                            }}
+                            className="px-2.5 py-1.5 rounded-xl bg-card hover:bg-line text-fg border border-line font-bold text-xs transition-colors"
+                          >
+                            Salin Link
+                          </button>
+                          <a
+                            href={`https://wa.me/62${o.whatsapp.replace(/^0/, "")}?text=${encodeURIComponent(
+                              `Halo Kak *${o.buyerName}*, ini link pembayaran resmi SakuNota via Midtrans (QRIS / Transfer) untuk pesanan *${o.orderId}* (${o.businessName}):\n\n${o.paymentLink}\n\nSilakan selesaikan pembayaran Rp 50.000 agar lisensi langsung aktif otomatis. Terima kasih!`
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1 active:scale-95"
+                          >
+                            <LineIcon name="info" className="w-3.5 h-3.5" />
+                            <span>Kirim Link ke WA</span>
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
                     {/* License details & device binding status if paid */}
                     {o.licenseKey && (
                       <div className="p-3.5 rounded-2xl bg-surface border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">

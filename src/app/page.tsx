@@ -123,6 +123,7 @@ export default function SakuNotaLandingPage() {
   const [isActivatingHere, setIsActivatingHere] = useState(false);
   const [activateMsg, setActivateMsg] = useState("");
   const [isActivatedHere, setIsActivatedHere] = useState(false);
+  const [isCheckoutExitConfirmOpen, setIsCheckoutExitConfirmOpen] = useState(false);
 
   // Check Order / Direct License Activation State
   const [isCheckStatusModalOpen, setIsCheckStatusModalOpen] = useState(false);
@@ -163,11 +164,37 @@ export default function SakuNotaLandingPage() {
       });
   }, []);
 
-  // Escape key listener to close modals
+  const requestCloseBuyModal = () => {
+    const hasData = buyerName.trim() || businessName.trim() || whatsappNumber.trim() || checkoutStep !== "form";
+    if (hasData) {
+      setIsCheckoutExitConfirmOpen(true);
+    } else {
+      setIsBuyModalOpen(false);
+    }
+  };
+
+  const confirmExitCheckout = () => {
+    setIsCheckoutExitConfirmOpen(false);
+    setIsBuyModalOpen(false);
+    setCheckoutStep("form");
+    setFormError("");
+    setTransferProofFileName("");
+    setTransferProofBase64("");
+    setSnapError("");
+  };
+
+  // Escape key listener to close modals with unsaved confirmation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setIsBuyModalOpen(false);
+        if (isCheckoutExitConfirmOpen) {
+          setIsCheckoutExitConfirmOpen(false);
+          return;
+        }
+        if (isBuyModalOpen) {
+          requestCloseBuyModal();
+          return;
+        }
         setIsCheckStatusModalOpen(false);
         setIsBetaModalOpen(false);
         setShowDemoReceipt(false);
@@ -175,7 +202,30 @@ export default function SakuNotaLandingPage() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [isBuyModalOpen, isCheckoutExitConfirmOpen, buyerName, businessName, whatsappNumber, checkoutStep]);
+
+  // Mobile Hardware Back Button listener during checkout
+  useEffect(() => {
+    if (!isBuyModalOpen) return;
+    try {
+      window.history.pushState({ modal: "checkout" }, "");
+    } catch (_) {}
+
+    const handlePopState = () => {
+      const hasData = buyerName.trim() || businessName.trim() || whatsappNumber.trim() || checkoutStep !== "form";
+      if (hasData) {
+        try {
+          window.history.pushState({ modal: "checkout" }, "");
+        } catch (_) {}
+        setIsCheckoutExitConfirmOpen(true);
+      } else {
+        setIsBuyModalOpen(false);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [isBuyModalOpen, buyerName, businessName, whatsappNumber, checkoutStep]);
 
   // Handle URL query parameters and Midtrans callback
   useEffect(() => {
@@ -1894,7 +1944,7 @@ export default function SakuNotaLandingPage() {
       {/* MODAL 3: Purchase Modal (Midtrans Snap & BCA Transfer Manual) */}
       {isBuyModalOpen && (
         <div 
-          onClick={() => setIsBuyModalOpen(false)}
+          onClick={requestCloseBuyModal}
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto cursor-pointer"
         >
           <div 
@@ -1915,7 +1965,7 @@ export default function SakuNotaLandingPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setIsBuyModalOpen(false)}
+                onClick={requestCloseBuyModal}
                 className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-sm flex items-center justify-center transition-colors"
               >
                 ×
@@ -2020,7 +2070,7 @@ export default function SakuNotaLandingPage() {
                 <div className="pt-2 flex gap-2">
                   <button
                     type="button"
-                    onClick={() => setIsBuyModalOpen(false)}
+                    onClick={requestCloseBuyModal}
                     className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
                   >
                     Batal
@@ -2055,7 +2105,7 @@ export default function SakuNotaLandingPage() {
                 <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black text-blue-700">
-                      Gerbang Pembayaran Otomatis
+                      Payment with Midtrans
                     </span>
                     <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-black uppercase">
                       QRIS &amp; Transfer
@@ -2097,9 +2147,6 @@ export default function SakuNotaLandingPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black text-blue-700">
                       BANK BCA
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">
-                      Rekening Resmi SakuNota
                     </span>
                   </div>
 
@@ -2453,6 +2500,45 @@ export default function SakuNotaLandingPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Exit Checkout Confirmation Dialog */}
+      {isCheckoutExitConfirmOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          onClick={() => setIsCheckoutExitConfirmOpen(false)}
+        >
+          <div
+            className="bg-white border border-slate-200 rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl mx-auto">
+              <LineIcon name="warning" />
+            </div>
+            <div className="text-center space-y-1">
+              <h4 className="font-black text-base text-slate-900">Batalkan Pembelian Lisensi?</h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Data formulir atau sesi pesanan Anda belum selesai diproses. Apakah Anda yakin ingin keluar dari halaman pembelian?
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsCheckoutExitConfirmOpen(false)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors"
+              >
+                Lanjut Membeli
+              </button>
+              <button
+                type="button"
+                onClick={confirmExitCheckout}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-md transition-all active:scale-95"
+              >
+                Ya, Keluar
+              </button>
+            </div>
           </div>
         </div>
       )}

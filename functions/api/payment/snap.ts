@@ -1,7 +1,7 @@
 // Cloudflare Pages Function: POST /api/payment/snap
 // Initiates Midtrans Snap Transaction for QRIS, Virtual Account, and E-Wallets
 import { getD1, initD1Tables } from "../../../src/lib/server/sakunotaServer";
-import { getOrderByIdD1 } from "../../../src/lib/server/d1";
+import { getOrderByIdD1, updateOrderPaymentLinkD1 } from "../../../src/lib/server/d1";
 
 export async function onRequestPost(context: any) {
   try {
@@ -118,6 +118,15 @@ export async function onRequestPost(context: any) {
         }),
         { status: 502, headers: { "Content-Type": "application/json" } }
       );
+    }
+
+    // Save Midtrans payment link so Owner can send/remind buyer via WhatsApp
+    if (snapJson.redirect_url) {
+      try {
+        await updateOrderPaymentLinkD1(db, order.orderId, snapJson.redirect_url, "Midtrans Otomatis");
+      } catch (_) {
+        // Safe fallback
+      }
     }
 
     return new Response(

@@ -8,6 +8,7 @@ import {
   getOrderByIdD1,
   updateOrderStatusAndLicenseD1,
   updateOrderProofD1,
+  updateOrderPaymentLinkD1,
   insertLicenseD1,
   getLicenseD1,
   bindLicenseToDeviceD1,
@@ -55,7 +56,7 @@ export type LicenseRecord = DbLicense;
 export type ServerTesterLicense = DbTesterLicense;
 export type ServerBetaRegistration = DbBetaRegistration;
 
-export { getD1, initD1Tables, resetDatabaseCleanD1, updateOrderProofD1 };
+export { getD1, initD1Tables, resetDatabaseCleanD1, updateOrderProofD1, updateOrderPaymentLinkD1 };
 
 // Server Secrets (Strict: fail-closed with NO fallback defaults)
 export function getServerSecret(): string {

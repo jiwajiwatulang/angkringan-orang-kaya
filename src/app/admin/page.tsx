@@ -194,6 +194,207 @@ export default function AdminDashboardPage() {
   // WhatsApp Report Export Modal State
   const [isWaModalOpen, setIsWaModalOpen] = useState(false);
   const [copiedReport, setCopiedReport] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+
+  const createReportCanvas = (): HTMLCanvasElement => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 800;
+    canvas.height = 960;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return canvas;
+
+    // Background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 800, 960);
+
+    // Decorative top header bar
+    ctx.fillStyle = "#2563eb";
+    ctx.fillRect(0, 0, 800, 16);
+
+    // Store Name & Title
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 32px sans-serif";
+    const store = storeSettings.storeName || "SakuNota";
+    ctx.fillText(store, 40, 70);
+
+    ctx.fillStyle = "#64748b";
+    ctx.font = "bold 16px sans-serif";
+    const dateFormatted = new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    ctx.fillText(`Laporan Ringkas Penjualan • ${dateFormatted}`, 40, 102);
+
+    // Separator
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(40, 125);
+    ctx.lineTo(760, 125);
+    ctx.stroke();
+
+    // Hero Omzet Box
+    ctx.fillStyle = "#eff6ff";
+    ctx.beginPath();
+    ctx.roundRect(40, 145, 720, 140, 20);
+    ctx.fill();
+    ctx.strokeStyle = "#bfdbfe";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = "#1e40af";
+    ctx.font = "bold 14px sans-serif";
+    ctx.fillText("TOTAL OMZET PENJUALAN", 65, 185);
+
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "900 48px sans-serif";
+    ctx.fillText(`Rp ${currentGrossSales.toLocaleString("id-ID")}`, 65, 250);
+
+    // 3 Stat Cards
+    const statCards = [
+      { label: "TRANSAKSI SELESAI", val: `${currentOrderCount} Nota` },
+      { label: "PORSI TERJUAL", val: `${currentUnitsSold} Porsi` },
+      { label: "RATA-RATA NOTA", val: `Rp ${currentAov.toLocaleString("id-ID")}` },
+    ];
+
+    statCards.forEach((c, i) => {
+      const x = 40 + i * 248;
+      ctx.fillStyle = "#f8fafc";
+      ctx.beginPath();
+      ctx.roundRect(x, 305, 224, 100, 16);
+      ctx.fill();
+      ctx.strokeStyle = "#e2e8f0";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = "#64748b";
+      ctx.font = "bold 11px sans-serif";
+      ctx.fillText(c.label, x + 18, 335);
+
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "bold 22px sans-serif";
+      ctx.fillText(c.val, x + 18, 375);
+    });
+
+    // Top Products Box
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 20px sans-serif";
+    ctx.fillText("Menu Paling Laris Hari Ini", 40, 450);
+
+    ctx.fillStyle = "#f8fafc";
+    ctx.beginPath();
+    ctx.roundRect(40, 470, 720, 370, 20);
+    ctx.fill();
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    if (topProducts.length === 0) {
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "italic 16px sans-serif";
+      ctx.fillText("Belum ada transaksi menu tercatat pada periode ini.", 65, 540);
+    } else {
+      topProducts.slice(0, 5).forEach((p, idx) => {
+        const rowY = 515 + idx * 64;
+
+        // Rank Circle
+        ctx.fillStyle = idx === 0 ? "#2563eb" : "#e2e8f0";
+        ctx.beginPath();
+        ctx.arc(75, rowY, 16, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = idx === 0 ? "#ffffff" : "#475569";
+        ctx.font = "bold 14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(String(idx + 1), 75, rowY + 5);
+        ctx.textAlign = "left";
+
+        // Product Name & Qty
+        ctx.fillStyle = "#0f172a";
+        ctx.font = "bold 17px sans-serif";
+        ctx.fillText(p.name, 110, rowY - 2);
+
+        ctx.fillStyle = "#64748b";
+        ctx.font = "13px sans-serif";
+        ctx.fillText(`${p.qty} porsi terjual`, 110, rowY + 18);
+
+        // Revenue
+        ctx.fillStyle = "#0f172a";
+        ctx.font = "bold 17px sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(`Rp ${p.revenue.toLocaleString("id-ID")}`, 735, rowY + 6);
+        ctx.textAlign = "left";
+
+        // Light row divider
+        if (idx < 4 && idx < topProducts.length - 1) {
+          ctx.strokeStyle = "#f1f5f9";
+          ctx.beginPath();
+          ctx.moveTo(60, rowY + 32);
+          ctx.lineTo(740, rowY + 32);
+          ctx.stroke();
+        }
+      });
+    }
+
+    // Footer
+    ctx.fillStyle = "#2563eb";
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("SakuNota • Kasir Jalan Tanpa Internet", 400, 895);
+
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "11px sans-serif";
+    ctx.fillText("Laporan ringkas otomatis 100% offline dari perangkat kasir", 400, 920);
+    ctx.textAlign = "left";
+
+    return canvas;
+  };
+
+  const handleShareReportImage = async () => {
+    setIsGeneratingImage(true);
+    try {
+      const canvas = createReportCanvas();
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          handleOpenWhatsAppUrl();
+          return;
+        }
+        const file = new File([blob], `Laporan_${storeSettings.storeName || "SakuNota"}.png`, { type: "image/png" });
+        if (typeof navigator !== "undefined" && (navigator as any).canShare && (navigator as any).canShare({ files: [file] })) {
+          try {
+            await (navigator as any).share({
+              files: [file],
+              title: `Laporan Penjualan - ${storeSettings.storeName || "SakuNota"}`,
+              text: generateWaReportMessage(),
+            });
+          } catch (_) {}
+        } else {
+          // Fallback on desktop: download image and open WhatsApp text
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `Laporan_${storeSettings.storeName || "SakuNota"}.png`;
+          a.click();
+          URL.revokeObjectURL(url);
+          handleOpenWhatsAppUrl();
+        }
+      }, "image/png");
+    } catch (_) {
+      handleOpenWhatsAppUrl();
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const handleDownloadReportImage = () => {
+    const canvas = createReportCanvas();
+    const url = canvas.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Laporan_SakuNota_${new Date().toISOString().slice(0, 10)}.png`;
+    a.click();
+  };
 
   const generateWaReportMessage = () => {
     const store = storeSettings.storeName || "SakuNota";
@@ -789,8 +990,7 @@ export default function AdminDashboardPage() {
           >
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <h3 className="font-black text-sm text-fg flex items-center gap-2">
-                
-                <span>Kirim Laporan Omzet ke WhatsApp</span>
+                <span>Bagikan Laporan Penjualan</span>
               </h3>
               <button
                 type="button"
@@ -801,25 +1001,61 @@ export default function AdminDashboardPage() {
               </button>
             </div>
 
-            <div className="p-3.5 bg-card rounded-2xl border border-line font-mono text-xs whitespace-pre-line text-fg max-h-56 overflow-y-auto leading-relaxed">
-              {generateWaReportMessage()}
+            {/* OPSI UTAMA: BAGIKAN KARTU GAMBAR (100% OFFLINE) */}
+            <div className="p-3.5 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-2xl space-y-2.5">
+              <div>
+                <span className="text-[10px] font-black uppercase text-blue-800 dark:text-blue-300 block">
+                  Format Gambar Visual HD (Rekomendasi)
+                </span>
+                <p className="text-[11px] text-muted leading-tight mt-0.5">
+                  Dibuat instan di perangkat tanpa internet. Rapi dikirim sebagai foto ke WhatsApp.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  disabled={isGeneratingImage}
+                  onClick={handleShareReportImage}
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-black transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  <LineIcon name="info" className="w-3.5 h-3.5" />
+                  <span>{isGeneratingImage ? "Membuat Gambar..." : "Bagikan Gambar ke WA"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadReportImage}
+                  className="py-2.5 px-3 rounded-xl bg-card hover:bg-line border border-line text-xs font-bold text-fg transition-colors"
+                >
+                  Unduh PNG
+                </button>
+              </div>
+            </div>
+
+            {/* OPSI CADANGAN: TEKS MONOSPACE */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-bold text-muted uppercase block">
+                Pratinjau Ringkasan Teks:
+              </span>
+              <div className="p-3 bg-card rounded-2xl border border-line font-mono text-[11px] whitespace-pre-line text-fg max-h-40 overflow-y-auto leading-relaxed">
+                {generateWaReportMessage()}
+              </div>
             </div>
 
             <div className="flex items-center gap-2 pt-2 border-t border-line">
               <button
                 type="button"
                 onClick={handleCopyWaReport}
-                className="flex-1 py-2.5 rounded-xl border border-line bg-card hover:bg-line text-xs font-bold text-fg transition-colors"
+                className="flex-1 py-2 rounded-xl border border-line bg-card hover:bg-line text-xs font-bold text-fg transition-colors"
               >
                 {copiedReport ? "Tersalin!" : "Salin Teks"}
               </button>
               <button
                 type="button"
                 onClick={handleOpenWhatsAppUrl}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all border border-slate-300 flex items-center justify-center gap-1.5"
               >
-                <span><LineIcon name="info" /></span>
-                <span>Buka WhatsApp</span>
+                <span>Buka WA (Teks)</span>
               </button>
             </div>
           </div>

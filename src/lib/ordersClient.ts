@@ -12,6 +12,7 @@ export interface CustomerOrder {
   bankAccount: string;
   transferProofName?: string;
   transferProofData?: string;
+  paymentLink?: string;
   status: "menunggu_verifikasi" | "lunas_lisensi_terbit" | "batal";
   licenseKey?: string;
   createdAt: string;
