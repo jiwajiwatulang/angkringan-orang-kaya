@@ -21,6 +21,7 @@ export interface MenuItem {
   sku?: string; // Kode unik produk / SKU untuk pencocokan bulk import
   nama: string;
   harga: number;
+  costPrice?: number; // HPP / Harga Pokok Penjualan modal per porsi
   kategori: string;
   isSoldOut: boolean;
   urutan: number;
@@ -60,6 +61,7 @@ export interface OrderItem {
   qty: number;
   paidQty?: number;      // Jumlah porsi yang sudah terbayar via Split by Item
   hargaSatuan: number;   // Snapshot harga dasar satuan
+  costPrice?: number;    // Snapshot HPP modal dasar satuan saat transaksi dibuat (immutable)
   selectedModifiers?: SelectedModifier[]; // Snapshot catatan add-on terpilih
   menuItem?: MenuItem;   // Joined property (backward compatibility)
 }

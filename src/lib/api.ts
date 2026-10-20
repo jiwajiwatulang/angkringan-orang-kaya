@@ -224,12 +224,13 @@ export async function seedDemoMenus(type: string = 'angkringan', adminPin?: stri
   return menusToInsert.length;
 }
 
-export async function createMenu(data: { sku?: string, nama: string, harga: number, kategori: string, isSoldOut?: boolean, modifiers?: any[], imageData?: string | null }) {
+export async function createMenu(data: { sku?: string, nama: string, harga: number, costPrice?: number, kategori: string, isSoldOut?: boolean, modifiers?: any[], imageData?: string | null }) {
   await requireMerchantAdmin();
   const imageData = validateProductPhoto(data.imageData);
   const cleanName = data.nama.trim();
   const cleanCategory = data.kategori.trim();
   const cleanSku = data.sku ? data.sku.trim() : '';
+  const cleanCost = typeof data.costPrice === 'number' && Number.isFinite(data.costPrice) && data.costPrice >= 0 ? data.costPrice : undefined;
 
   // Validasi keunikan SKU jika diisi
   if (cleanSku) {
@@ -244,6 +245,7 @@ export async function createMenu(data: { sku?: string, nama: string, harga: numb
     sku: cleanSku || undefined,
     nama: cleanName,
     harga: Number(data.harga),
+    costPrice: cleanCost,
     kategori: cleanCategory,
     isSoldOut: Boolean(data.isSoldOut),
     urutan: count,
@@ -266,9 +268,12 @@ export async function reorderMenus(items: {id: number, urutan: number}[]) {
   });
 }
 
-export async function updateMenu(id: number, data: { sku?: string; nama?: string; harga?: number; kategori?: string; isSoldOut?: boolean; modifiers?: any[]; imageData?: string | null }) {
+export async function updateMenu(id: number, data: { sku?: string; nama?: string; harga?: number; costPrice?: number; kategori?: string; isSoldOut?: boolean; modifiers?: any[]; imageData?: string | null }) {
   await requireMerchantAdmin();
   const updateData: any = {};
+  if (data.costPrice !== undefined) {
+    updateData.costPrice = typeof data.costPrice === 'number' && Number.isFinite(data.costPrice) && data.costPrice >= 0 ? data.costPrice : undefined;
+  }
   if (data.sku !== undefined) {
     const cleanSku = data.sku.trim();
     if (cleanSku) {
@@ -580,17 +585,30 @@ export async function createOrder(data: any) {
       updatedAt: new Date().toISOString(),
     });
 
-    // 4. Simpan Order Items dengan IMMUTABLE SNAPSHOT (namaMenu, kategoriMenu, hargaSatuan)
-    const itemsToInsert = data.items.map((item: any) => ({
-      orderId: orderId as number,
-      menuItemId: item.id || item.menuItemId,
-      namaMenu: item.nama || item.namaMenu || 'Item',
-      kategoriMenu: item.kategori || item.kategoriMenu || 'Umum',
-      qty: item.qty,
-      paidQty: isPaid ? item.qty : (item.paidQty || 0),
-      hargaSatuan: item.harga ?? item.hargaSatuan ?? 0,
-      selectedModifiers: item.selectedModifiers || []
-    }));
+    // 4. Simpan Order Items dengan IMMUTABLE SNAPSHOT (namaMenu, kategoriMenu, hargaSatuan, costPrice)
+    const catalogItemIds = data.items.map((i: any) => i.id || i.menuItemId).filter(Boolean);
+    const catalogItems = catalogItemIds.length > 0 ? await db.table('menuItems').where('id').anyOf(catalogItemIds).toArray() : [];
+    const catalogMap = new Map<number, any>(catalogItems.map(c => [c.id, c]));
+
+    const itemsToInsert = data.items.map((item: any) => {
+      const mid = item.id || item.menuItemId;
+      const fromCatalog = catalogMap.get(mid);
+      const snapshotCost = typeof item.costPrice === 'number'
+        ? item.costPrice
+        : (typeof fromCatalog?.costPrice === 'number' ? fromCatalog.costPrice : undefined);
+
+      return {
+        orderId: orderId as number,
+        menuItemId: mid,
+        namaMenu: item.nama || item.namaMenu || fromCatalog?.nama || 'Item',
+        kategoriMenu: item.kategori || item.kategoriMenu || fromCatalog?.kategori || 'Umum',
+        qty: item.qty,
+        paidQty: isPaid ? item.qty : (item.paidQty || 0),
+        hargaSatuan: item.harga ?? item.hargaSatuan ?? fromCatalog?.harga ?? 0,
+        costPrice: typeof snapshotCost === 'number' && Number.isFinite(snapshotCost) && snapshotCost >= 0 ? snapshotCost : undefined,
+        selectedModifiers: item.selectedModifiers || []
+      };
+    });
 
     await db.table('orderItems').bulkAdd(itemsToInsert);
     if (!data.isHistorical && orderStatus !== 'void') {
@@ -681,16 +699,29 @@ export async function updateOrder(id: number, data: any) {
     const oldItemIds = oldItems.map(i => i.id!).filter(Boolean);
     await db.table('orderItems').bulkDelete(oldItemIds);
 
-    const itemsToInsert = data.items.map((item: any) => ({
-      orderId: id,
-      menuItemId: item.id || item.menuItemId,
-      namaMenu: item.nama || item.namaMenu || 'Item',
-      kategoriMenu: item.kategori || item.kategoriMenu || 'Umum',
-      qty: item.qty,
-      paidQty: item.paidQty || 0,
-      hargaSatuan: item.harga ?? item.hargaSatuan ?? 0,
-      selectedModifiers: item.selectedModifiers || []
-    }));
+    const updateItemIds = data.items.map((i: any) => i.id || i.menuItemId).filter(Boolean);
+    const updateCatalogItems = updateItemIds.length > 0 ? await db.table('menuItems').where('id').anyOf(updateItemIds).toArray() : [];
+    const updateCatalogMap = new Map<number, any>(updateCatalogItems.map(c => [c.id, c]));
+
+    const itemsToInsert = data.items.map((item: any) => {
+      const mid = item.id || item.menuItemId;
+      const fromCatalog = updateCatalogMap.get(mid);
+      const snapshotCost = typeof item.costPrice === 'number'
+        ? item.costPrice
+        : (typeof fromCatalog?.costPrice === 'number' ? fromCatalog.costPrice : undefined);
+
+      return {
+        orderId: id,
+        menuItemId: mid,
+        namaMenu: item.nama || item.namaMenu || fromCatalog?.nama || 'Item',
+        kategoriMenu: item.kategori || item.kategoriMenu || fromCatalog?.kategori || 'Umum',
+        qty: item.qty,
+        paidQty: item.paidQty || 0,
+        hargaSatuan: item.harga ?? item.hargaSatuan ?? fromCatalog?.harga ?? 0,
+        costPrice: typeof snapshotCost === 'number' && Number.isFinite(snapshotCost) && snapshotCost >= 0 ? snapshotCost : undefined,
+        selectedModifiers: item.selectedModifiers || []
+      };
+    });
     await db.table('orderItems').bulkAdd(itemsToInsert);
     if (!existingOrder.isHistorical) await applyOrderStock(id, oldItems, itemsToInsert, 'Perubahan pesanan');
     if (data.status === 'paid' && existingOrder.status !== 'paid' && data.total > 0) {
