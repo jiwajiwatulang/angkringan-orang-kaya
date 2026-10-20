@@ -3189,7 +3189,7 @@ export default function SakuNotaLandingPage() {
               {/* Header Toko / Perusahaan */}
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 pb-3 border-b-2 border-slate-900">
                 <div>
-                  <div className="text-lg font-black tracking-tight text-slate-900">SakuNota POS</div>
+                  <div className="text-lg font-black tracking-tight text-slate-900">SakuNota</div>
                   <div className="text-[11px] font-bold text-blue-600">Kasir Jalan Tanpa Internet</div>
                   <div className="text-[11px] text-slate-600 font-medium mt-0.5">PT Pemuda Gaya Bebas</div>
                   <div className="text-[10px] text-slate-500">NPWP: 125383232617000 • sakunota.my.id</div>
@@ -3352,7 +3352,7 @@ export default function SakuNotaLandingPage() {
               {/* Info Lisensi */}
               {invoiceData.licenseKey && (
                 <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl text-center space-y-1">
-                  <span className="text-[10px] font-black uppercase text-blue-900 block">Nomor Lisensi Resmi SakuNota POS:</span>
+                  <span className="text-[10px] font-black uppercase text-blue-900 block">Nomor Lisensi Resmi SakuNota:</span>
                   <div className="font-mono font-black text-blue-700 text-sm tracking-wider select-all bg-white py-1.5 px-3 rounded-xl border border-blue-200 inline-block">
                     {invoiceData.licenseKey}
                   </div>
@@ -3361,7 +3361,7 @@ export default function SakuNotaLandingPage() {
 
               {/* Catatan Legal */}
               <div className="text-[10px] text-slate-500 text-center leading-relaxed pt-1 border-t border-slate-200">
-                Faktur / Invoice ini diterbitkan secara elektronik oleh sistem SakuNota POS (PT Pemuda Gaya Bebas) dan sah tanpa tanda tangan basah.
+                Faktur / Invoice ini diterbitkan secara elektronik oleh sistem SakuNota (PT Pemuda Gaya Bebas) dan sah tanpa tanda tangan basah.
               </div>
             </div>
 

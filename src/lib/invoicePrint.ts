@@ -358,7 +358,7 @@ export function generateOfficialInvoiceHtml(order: CustomerOrder): string {
   <div class="invoice-page">
     <div class="header-row">
       <div>
-        <div class="brand-title">SakuNota POS</div>
+        <div class="brand-title">SakuNota</div>
         <div class="brand-sub">Kasir Jalan Tanpa Internet</div>
         <div class="company-meta">
           <strong>PT Pemuda Gaya Bebas</strong><br />
@@ -521,10 +521,10 @@ export function generateOfficialInvoiceHtml(order: CustomerOrder): string {
     ${
       licenseKey
         ? `<div class="license-box">
-      <div class="license-label">Kode Lisensi Resmi SakuNota POS</div>
+      <div class="license-label">Kode Lisensi Resmi SakuNota</div>
       <div class="license-code">${licenseKey}</div>
       <div style="font-size: 10.5px; color: #334155; margin-top: 6px;">
-        Masukkan kode lisensi di atas pada menu <strong>Aktivasi Lisensi</strong> di aplikasi SakuNota POS perangkat kasir Anda.
+        Masukkan kode lisensi di atas pada menu <strong>Aktivasi Lisensi</strong> di aplikasi SakuNota perangkat kasir Anda.
       </div>
     </div>`
         : ""
@@ -533,7 +533,7 @@ export function generateOfficialInvoiceHtml(order: CustomerOrder): string {
     <div class="footer-row">
       <div style="max-width: 480px;">
         <strong>Catatan Resmi:</strong><br />
-        Faktur / Invoice ini diterbitkan secara elektronik oleh sistem SakuNota POS dan merupakan bukti pembayaran yang sah termasuk PPN 11% tanpa memerlukan tanda tangan basah.
+        Faktur / Invoice ini diterbitkan secara elektronik oleh sistem SakuNota dan merupakan bukti pembayaran yang sah termasuk PPN 11% tanpa memerlukan tanda tangan basah.
       </div>
       <div class="stamp-box">
         <div class="stamp-title">PT Pemuda Gaya Bebas</div>

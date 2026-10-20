@@ -617,7 +617,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
       ? new Date(o.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
       : new Date().toLocaleDateString("id-ID");
 
-    let text = `*FAKTUR / INVOICE RESMI SAKUNOTA POS*
+    let text = `*FAKTUR / INVOICE RESMI SAKUNOTA*
 Nomor Faktur: INV-${o.orderId}
 Tanggal: ${dateStr}
 Status: ${isPaid ? "LUNAS / PAID" : "MENUNGGU PEMBAYARAN / UNPAID"}
@@ -2977,7 +2977,7 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
             <div className="space-y-4 text-xs text-slate-700">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 pb-3 border-b-2 border-slate-900">
                 <div>
-                  <div className="text-lg font-black tracking-tight text-slate-900">SakuNota POS</div>
+                  <div className="text-lg font-black tracking-tight text-slate-900">SakuNota</div>
                   <div className="text-[11px] font-bold text-purple-700">Kasir Jalan Tanpa Internet</div>
                   <div className="text-[11px] text-slate-600 font-medium mt-0.5">PT Pemuda Gaya Bebas</div>
                   <div className="text-[10px] text-slate-500">NPWP: 125383232617000 • sakunota.my.id</div>
@@ -3146,7 +3146,7 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
               {/* Info Lisensi */}
               {selectedInvoiceOrder.licenseKey && (
                 <div className="p-3.5 bg-purple-50 border border-purple-200 rounded-2xl text-center space-y-1">
-                  <span className="text-[10px] font-black uppercase text-purple-900 block">Nomor Lisensi Resmi SakuNota POS:</span>
+                  <span className="text-[10px] font-black uppercase text-purple-900 block">Nomor Lisensi Resmi SakuNota:</span>
                   <div className="font-mono font-black text-purple-700 text-sm tracking-wider select-all bg-white py-1.5 px-3 rounded-xl border border-purple-200 inline-block">
                     {selectedInvoiceOrder.licenseKey}
                   </div>
@@ -3155,7 +3155,7 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
 
               {/* Catatan Legal */}
               <div className="text-[10px] text-slate-500 text-center leading-relaxed pt-1 border-t border-slate-200">
-                Faktur / Invoice ini diterbitkan secara elektronik oleh sistem SakuNota POS (PT Pemuda Gaya Bebas) dan sah tanpa tanda tangan basah.
+                Faktur / Invoice ini diterbitkan secara elektronik oleh sistem SakuNota (PT Pemuda Gaya Bebas) dan sah tanpa tanda tangan basah.
               </div>
             </div>
 
