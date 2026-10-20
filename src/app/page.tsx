@@ -2023,223 +2023,227 @@ export default function SakuNotaLandingPage() {
       {isBuyModalOpen && (
         <div 
           onClick={requestCloseBuyModal}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto cursor-pointer"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4 overflow-hidden cursor-pointer"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="bg-white border border-slate-200 rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl my-8 cursor-default animate-in zoom-in-95 duration-150"
+            className="bg-white border-t sm:border border-slate-200 rounded-t-3xl sm:rounded-3xl max-w-lg w-full max-h-[92dvh] sm:max-h-[90vh] flex flex-col shadow-2xl cursor-default animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-150 overflow-hidden"
           >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+            {/* Modal Header (Sticky Top) */}
+            <div className="shrink-0 px-5 py-3.5 sm:px-6 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-white rounded-t-3xl">
               <div className="flex items-center gap-2.5">
                 <img
                   src="/logo-sakunota.png"
                   alt="SakuNota"
-                  className="h-8 w-auto object-contain"
+                  className="h-7 sm:h-8 w-auto object-contain"
                 />
                 <div>
-                  <h3 className="font-black text-base text-slate-900">Formulir Pembelian SakuNota</h3>
+                  <h3 className="font-black text-sm sm:text-base text-slate-900">Formulir Pembelian SakuNota</h3>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={requestCloseBuyModal}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-sm flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-base flex items-center justify-center transition-colors font-bold"
+                aria-label="Tutup"
               >
-                ×
+                ✕
               </button>
             </div>
 
             {/* Step 1: Form Isi Data Pelanggan */}
             {checkoutStep === "form" && (
-              <form onSubmit={handleProceedToPayment} className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-700">Langkah 1 dari 2: Data Pemilik Usaha</span>
-                </div>
-
-                {formError && (
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold">
-                    {formError}
-                  </div>
-                )}
-
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Nama Pemilik <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Nama pemilik"
-                      value={buyerName}
-                      onChange={(e) => setBuyerName(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:bg-white outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Nama Usaha <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Nama warung / toko kuliner"
-                      value={businessName}
-                      onChange={(e) => setBusinessName(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:bg-white outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Nomor WhatsApp <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="0812xxxxxxxx"
-                      value={whatsappNumber}
-                      onChange={(e) => setWhatsappNumber(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:bg-white outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Email (Opsional)
-                    </label>
-                    <input
-                      type="email"
-                      placeholder="email@anda.com"
-                      value={buyerEmail}
-                      onChange={(e) => setBuyerEmail(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:bg-white outline-none"
-                    />
-                  </div>
-
-                  <div className="pt-1">
-                    <label className="flex items-start gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={consentChecked}
-                        onChange={(e) => setConsentChecked(e.target.checked)}
-                        className="mt-0.5 rounded border-slate-300 text-blue-600"
-                      />
-                      <span className="text-[11px] text-slate-600 leading-relaxed">
-                        Saya memahami bahwa data pembelian dipakai untuk pembayaran, aktivasi lisensi, dan dukungan SakuNota.
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Promo Code / Voucher Claim Input */}
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+              <form onSubmit={handleProceedToPayment} className="flex flex-col flex-1 min-h-0">
+                <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 sm:py-5 space-y-3.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-800">
-                      Punya Kode Promo / Voucher Diskon?
-                    </span>
-                    {appliedPromo && (
-                      <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                        Promo Aktif
+                    <span className="text-xs font-bold text-slate-700">Langkah 1 dari 2: Data Pemilik Usaha</span>
+                  </div>
+
+                  {formError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold">
+                      {formError}
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 mb-1">
+                        Nama Pemilik <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Nama pemilik"
+                        value={buyerName}
+                        onChange={(e) => setBuyerName(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:bg-white outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 mb-1">
+                        Nama Usaha <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Nama warung / toko kuliner"
+                        value={businessName}
+                        onChange={(e) => setBusinessName(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:bg-white outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 mb-1">
+                        Nomor WhatsApp <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="0812xxxxxxxx"
+                        value={whatsappNumber}
+                        onChange={(e) => setWhatsappNumber(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:bg-white outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 mb-1">
+                        Email <span className="text-slate-500 font-normal">(Opsional)</span>
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="email@anda.com"
+                        value={buyerEmail}
+                        onChange={(e) => setBuyerEmail(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:bg-white outline-none"
+                      />
+                    </div>
+
+                    <div className="pt-1">
+                      <label className="flex items-start gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={consentChecked}
+                          onChange={(e) => setConsentChecked(e.target.checked)}
+                          className="mt-0.5 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 shrink-0"
+                        />
+                        <span className="text-xs text-slate-700 leading-relaxed font-medium">
+                          Saya memahami bahwa data pembelian dipakai untuk pembayaran, aktivasi lisensi, dan dukungan SakuNota.
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Promo Code / Voucher Claim Input */}
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800">
+                        Punya Kode Promo / Voucher Diskon?
                       </span>
+                      {appliedPromo && (
+                        <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                          Promo Aktif
+                        </span>
+                      )}
+                    </div>
+
+                    {!appliedPromo ? (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Contoh: DISKON15"
+                          value={promoInput}
+                          onChange={(e) => {
+                            setPromoInput(e.target.value.toUpperCase());
+                            if (promoError) setPromoError("");
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleClaimPromo();
+                            }
+                          }}
+                          className="flex-1 px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono font-bold uppercase text-slate-900 placeholder:text-slate-400 placeholder:normal-case placeholder:font-sans focus:border-blue-600 outline-none"
+                        />
+                        <button
+                          type="button"
+                          disabled={isCheckingPromo}
+                          onClick={handleClaimPromo}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all shadow-xs shrink-0"
+                        >
+                          {isCheckingPromo ? "Mengecek..." : "Klaim"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <strong className="font-mono font-black text-emerald-800 text-xs">{appliedPromo.code}</strong>
+                            <span className="text-[10px] text-emerald-700 font-bold">
+                              (Hemat Rp {appliedPromo.discountAmount.toLocaleString("id-ID")})
+                            </span>
+                          </div>
+                          {appliedPromo.description && (
+                            <p className="text-[10px] text-emerald-600 mt-0.5">{appliedPromo.description}</p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemovePromo}
+                          className="text-[11px] font-bold text-rose-600 hover:text-rose-800 px-2 py-1 bg-white rounded-lg border border-rose-200 shrink-0"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    )}
+
+                    {promoError && (
+                      <p className="text-[10px] font-bold text-rose-600">{promoError}</p>
                     )}
                   </div>
 
-                  {!appliedPromo ? (
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Contoh: DISKON15"
-                        value={promoInput}
-                        onChange={(e) => {
-                          setPromoInput(e.target.value.toUpperCase());
-                          if (promoError) setPromoError("");
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleClaimPromo();
-                          }
-                        }}
-                        className="flex-1 px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono font-bold uppercase text-slate-900 placeholder-slate-400 focus:border-blue-600 outline-none"
-                      />
-                      <button
-                        type="button"
-                        disabled={isCheckingPromo}
-                        onClick={handleClaimPromo}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all shadow-xs shrink-0"
-                      >
-                        {isCheckingPromo ? "Mengecek..." : "Klaim"}
-                      </button>
+                  {/* Summary box - High Contrast & Jelas di Layar Mobile */}
+                  <div className="p-3.5 rounded-2xl bg-slate-100/90 border border-slate-200 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-700 text-xs font-medium">Harga Resmi SakuNota:</span>
+                      <span className="text-xs text-slate-500 line-through font-semibold">Rp 99.000</span>
                     </div>
-                  ) : (
-                    <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <strong className="font-mono font-black text-emerald-800 text-xs">{appliedPromo.code}</strong>
-                          <span className="text-[10px] text-emerald-700 font-bold">
-                            (Hemat Rp {appliedPromo.discountAmount.toLocaleString("id-ID")})
-                          </span>
-                        </div>
-                        {appliedPromo.description && (
-                          <p className="text-[10px] text-emerald-600 mt-0.5">{appliedPromo.description}</p>
-                        )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-700 text-xs font-medium">Harga Promo Peluncuran:</span>
+                      <span className="text-xs font-bold text-slate-900">Rp 50.000</span>
+                    </div>
+                    {appliedPromo && (
+                      <div className="flex items-center justify-between text-emerald-800 pt-1 border-t border-slate-200">
+                        <span className="text-xs font-bold">Potongan Voucher ({appliedPromo.code}):</span>
+                        <strong className="font-mono text-xs font-black text-emerald-700">-Rp {appliedPromo.discountAmount.toLocaleString("id-ID")}</strong>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleRemovePromo}
-                        className="text-[11px] font-bold text-rose-600 hover:text-rose-800 px-2 py-1 bg-white rounded-lg border border-rose-200 shrink-0"
-                      >
-                        Hapus
-                      </button>
+                    )}
+                    <div className="flex items-center justify-between pt-1.5 border-t border-slate-300">
+                      <span className="text-slate-900 font-extrabold text-xs sm:text-sm">Total Pembayaran:</span>
+                      <strong className="text-blue-700 font-black text-base sm:text-lg">
+                        Rp {(appliedPromo ? appliedPromo.finalAmount : 50000).toLocaleString("id-ID")}
+                      </strong>
                     </div>
-                  )}
-
-                  {promoError && (
-                    <p className="text-[10px] font-bold text-rose-600">{promoError}</p>
-                  )}
-                </div>
-
-                {/* Summary box */}
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600 text-[11px]">Harga Resmi SakuNota:</span>
-                    <span className="text-[11px] text-slate-400 line-through">Rp 99.000</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600 text-[11px]">Harga Promo Peluncuran:</span>
-                    <span className="text-[11px] font-bold text-slate-800">Rp 50.000</span>
-                  </div>
-                  {appliedPromo && (
-                    <div className="flex items-center justify-between text-emerald-700 pt-1 border-t border-slate-200">
-                      <span className="text-[11px] font-bold">Potongan Voucher ({appliedPromo.code}):</span>
-                      <strong className="font-mono text-xs font-black">-Rp {appliedPromo.discountAmount.toLocaleString("id-ID")}</strong>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between pt-1.5 border-t border-slate-200">
-                    <span className="text-slate-900 font-bold text-xs">Total Pembayaran:</span>
-                    <strong className="text-blue-600 font-black text-base">
-                      Rp {(appliedPromo ? appliedPromo.finalAmount : 50000).toLocaleString("id-ID")}
-                    </strong>
                   </div>
                 </div>
 
-                <div className="pt-2 flex gap-2">
+                {/* Sticky Action Footer */}
+                <div className="shrink-0 p-3.5 sm:p-5 bg-slate-50 border-t border-slate-200 flex gap-2.5 rounded-b-3xl">
                   <button
                     type="button"
                     onClick={requestCloseBuyModal}
-                    className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
+                    className="flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition-colors"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmittingOrder}
-                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-black rounded-xl shadow-md shadow-blue-600/30 transition-all active:scale-95"
+                    className="flex-2 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-black rounded-xl shadow-md shadow-blue-600/30 transition-all active:scale-95"
                   >
-                    {isSubmittingOrder ? "Memproses..." : "Lanjut ke Pembayaran →"}
+                    {isSubmittingOrder ? "Memproses..." : "Lanjut ke Pembayaran ->"}
                   </button>
                 </div>
               </form>
@@ -2247,185 +2251,190 @@ export default function SakuNotaLandingPage() {
 
             {/* Step 2: Pembayaran Midtrans Otomatis atau Transfer Bank BCA */}
             {checkoutStep === "payment" && (
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <span className="text-xs font-bold text-slate-900">Langkah 2 dari 2: Pembayaran SakuNota</span>
-                  <p className="text-[11px] text-slate-600">
-                    Selesaikan pembayaran untuk pesanan <strong>{currentOrderId}</strong> ({businessName}).
-                  </p>
-                </div>
-
-                {snapError && (
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold"><LineIcon name="warning" />{snapError}
-                  </div>
-                )}
-
-                {snapNotice && (
-                  <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium space-y-1">
-                    <p className="font-bold text-amber-950">Pembayaran Belum Diselesaikan</p>
-                    <p className="text-[11px] leading-relaxed">{snapNotice}</p>
-                  </div>
-                )}
-
-                {/* PILIHAN 1: MIDTRANS SNAP (INSTAN) */}
-                <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-blue-700">
-                      Payment with Midtrans
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-black uppercase">
-                      QRIS &amp; Transfer
-                    </span>
+              <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 sm:py-5 space-y-4">
+                  <div className="space-y-1">
+                    <span className="text-xs font-bold text-slate-900">Langkah 2 dari 2: Pembayaran SakuNota</span>
+                    <p className="text-[11px] text-slate-600">
+                      Selesaikan pembayaran untuk pesanan <strong>{currentOrderId}</strong> ({businessName}).
+                    </p>
                   </div>
 
-                  <p className="text-[11px] text-slate-700 leading-relaxed">
-                    Bayar instan dengan scan QRIS atau transfer bank. Lisensi langsung terbit otomatis setelah pembayaran terverifikasi.
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={handlePayWithMidtrans}
-                    disabled={isInitiatingSnap}
-                    className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-lg shadow-blue-600/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    <span>
-                      {isInitiatingSnap
-                        ? "Membuka Gerbang Midtrans..."
-                        : `Bayar Otomatis Rp ${(createdOrder?.amount || (appliedPromo ? appliedPromo.finalAmount : 50000)).toLocaleString("id-ID")} via Midtrans →`}
-                    </span>
-                  </button>
-                  {snapRedirectUrl && (
-                    <a
-                      href={snapRedirectUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block text-center text-xs font-bold text-blue-600 underline pt-1"
-                    >
-                      Buka Langsung di Halaman Pembayaran Midtrans →
-                    </a>
-                  )}
-                </div>
-
-                <div className="relative flex py-1 items-center">
-                  <div className="flex-grow border-t border-slate-200"></div>
-                  <span className="flex-shrink mx-3 text-[10px] font-bold text-slate-500 uppercase">Atau Transfer Bank Manual</span>
-                  <div className="flex-grow border-t border-slate-200"></div>
-                </div>
-
-                {/* PILIHAN 2: TRANSFER BANK BCA RESMI */}
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-blue-700">
-                      BANK BCA
-                    </span>
-                  </div>
-
-                  <div className="space-y-1 bg-white p-3 rounded-xl border border-slate-200">
-                    <span className="text-[10px] text-slate-600 block font-bold uppercase">Nomor Rekening BCA:</span>
-                    <div className="flex items-center justify-between">
-                      <strong className="text-lg font-mono font-black text-slate-900 select-all">
-                        {PAYMENT_ACCOUNT_NUMBER}
-                      </strong>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(PAYMENT_ACCOUNT_NUMBER.replace(/\s+/g, ""));
-                          alert("Nomor rekening BCA (" + PAYMENT_ACCOUNT_NUMBER + ") berhasil disalin!");
-                        }}
-                        className="text-[11px] font-bold text-blue-600 hover:underline px-2 py-1 rounded bg-blue-50"
-                      >
-                        Salin No Rek
-                      </button>
+                  {snapError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold flex items-center gap-1.5">
+                      <LineIcon name="warning" />
+                      <span>{snapError}</span>
                     </div>
-                    <span className="text-[11px] text-slate-700 block">Atas Nama: <strong>{PAYMENT_ACCOUNT_NAME}</strong></span>
+                  )}
+
+                  {snapNotice && (
+                    <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium space-y-1">
+                      <p className="font-bold text-amber-950">Pembayaran Belum Diselesaikan</p>
+                      <p className="text-[11px] leading-relaxed">{snapNotice}</p>
+                    </div>
+                  )}
+
+                  {/* PILIHAN 1: MIDTRANS SNAP (INSTAN) */}
+                  <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-blue-700">
+                        Payment with Midtrans
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-black uppercase">
+                        QRIS &amp; Transfer
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-700 leading-relaxed">
+                      Bayar instan dengan scan QRIS atau transfer bank. Lisensi langsung terbit otomatis setelah pembayaran terverifikasi.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={handlePayWithMidtrans}
+                      disabled={isInitiatingSnap}
+                      className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-lg shadow-blue-600/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <span>
+                        {isInitiatingSnap
+                          ? "Membuka Gerbang Midtrans..."
+                          : `Bayar Otomatis Rp ${(createdOrder?.amount || (appliedPromo ? appliedPromo.finalAmount : 50000)).toLocaleString("id-ID")} via Midtrans ->`}
+                      </span>
+                    </button>
+                    {snapRedirectUrl && (
+                      <a
+                        href={snapRedirectUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-center text-xs font-bold text-blue-600 underline pt-1"
+                      >
+                        Buka Langsung di Halaman Pembayaran Midtrans &rarr;
+                      </a>
+                    )}
                   </div>
 
-                  <div className="flex justify-between items-center text-xs pt-1">
-                    <span className="text-slate-700">Nominal Transfer:</span>
-                    <div className="text-right">
-                      <strong className="text-base font-black text-slate-900">
-                        Rp {(createdOrder?.amount || (appliedPromo ? appliedPromo.finalAmount : 50000)).toLocaleString("id-ID")}
-                      </strong>
-                      {(createdOrder?.promoCode || appliedPromo?.code) && (
-                        <span className="block text-[10px] text-emerald-600 font-bold">
-                          (Promo: {createdOrder?.promoCode || appliedPromo?.code} hemat Rp {(createdOrder?.discountAmount || appliedPromo?.discountAmount || 0).toLocaleString("id-ID")})
+                  <div className="relative flex py-1 items-center">
+                    <div className="flex-grow border-t border-slate-200"></div>
+                    <span className="flex-shrink mx-3 text-[10px] font-bold text-slate-500 uppercase">Atau Transfer Bank Manual</span>
+                    <div className="flex-grow border-t border-slate-200"></div>
+                  </div>
+
+                  {/* PILIHAN 2: TRANSFER BANK BCA RESMI */}
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-blue-700">
+                        BANK BCA
+                      </span>
+                    </div>
+
+                    <div className="space-y-1 bg-white p-3 rounded-xl border border-slate-200">
+                      <span className="text-[10px] text-slate-600 block font-bold uppercase">Nomor Rekening BCA:</span>
+                      <div className="flex items-center justify-between">
+                        <strong className="text-lg font-mono font-black text-slate-900 select-all">
+                          {PAYMENT_ACCOUNT_NUMBER}
+                        </strong>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(PAYMENT_ACCOUNT_NUMBER.replace(/\s+/g, ""));
+                            alert("Nomor rekening BCA (" + PAYMENT_ACCOUNT_NUMBER + ") berhasil disalin!");
+                          }}
+                          className="text-[11px] font-bold text-blue-600 hover:underline px-2 py-1 rounded bg-blue-50"
+                        >
+                          Salin No Rek
+                        </button>
+                      </div>
+                      <span className="text-[11px] text-slate-700 block">Atas Nama: <strong>{PAYMENT_ACCOUNT_NAME}</strong></span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs pt-1">
+                      <span className="text-slate-700 font-medium">Nominal Transfer:</span>
+                      <div className="text-right">
+                        <strong className="text-base font-black text-slate-900">
+                          Rp {(createdOrder?.amount || (appliedPromo ? appliedPromo.finalAmount : 50000)).toLocaleString("id-ID")}
+                        </strong>
+                        {(createdOrder?.promoCode || appliedPromo?.code) && (
+                          <span className="block text-[10px] text-emerald-600 font-bold">
+                            (Promo: {createdOrder?.promoCode || appliedPromo?.code} hemat Rp {(createdOrder?.discountAmount || appliedPromo?.discountAmount || 0).toLocaleString("id-ID")})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* KARTU NOMOR PESANAN - JELAS & KONTRAS DI HP */}
+                    <div className="p-3 bg-amber-50/90 border-2 border-amber-300 rounded-xl space-y-1.5 shadow-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-amber-950 uppercase tracking-wider">
+                          Nomor Pesanan (Berita Transfer BCA):
                         </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-200 text-amber-950 font-bold">
+                          Wajib Disalin
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <strong className="text-base sm:text-lg font-mono font-black text-slate-900 tracking-wider select-all break-all">
+                          {currentOrderId}
+                        </strong>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(currentOrderId);
+                            alert("Nomor pesanan (" + currentOrderId + ") berhasil disalin!");
+                          }}
+                          className="shrink-0 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white rounded-lg text-xs font-bold transition-all shadow-xs"
+                        >
+                          Salin No Pesanan
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-amber-900 leading-tight">
+                        Tulis nomor pesanan ini pada kolom berita/keterangan saat transfer m-Banking / ATM.
+                      </p>
+                    </div>
+
+                    {/* Real File Upload Bukti Transfer */}
+                    <div className="pt-2 border-t border-slate-200 space-y-2">
+                      <span className="text-[11px] font-bold text-slate-700 block">
+                        Lampirkan Foto Bukti Transfer:
+                      </span>
+                      <label className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-500 bg-white cursor-pointer transition-colors text-xs font-bold text-slate-700">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleProofFileChange}
+                        />
+                        <span>{transferProofFileName ? `Terlampir: ${transferProofFileName}` : "Ketuk untuk Unggah Screenshot Bukti Transfer"}</span>
+                      </label>
+                      {transferProofBase64 && (
+                        <div className="relative w-full max-h-48 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex flex-col items-center justify-center p-2">
+                          <img src={transferProofBase64} alt="Pratinjau Bukti Transfer" className="max-h-40 object-contain rounded-lg" />
+                          <span className="text-[10px] text-emerald-600 font-bold mt-1">Foto bukti siap dikirim ke Owner</span>
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  {/* KARTU NOMOR PESANAN - JELAS & KONTRAS DI HP */}
-                  <div className="p-3 bg-amber-50/90 border-2 border-amber-300 rounded-xl space-y-1.5 shadow-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black text-amber-950 uppercase tracking-wider">
-                        Nomor Pesanan (Berita Transfer BCA):
-                      </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-200 text-amber-950 font-bold">
-                        Wajib Disalin
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <strong className="text-base sm:text-lg font-mono font-black text-slate-900 tracking-wider select-all break-all">
-                        {currentOrderId}
-                      </strong>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(currentOrderId);
-                          alert("Nomor pesanan (" + currentOrderId + ") berhasil disalin!");
-                        }}
-                        className="shrink-0 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white rounded-lg text-xs font-bold transition-all shadow-xs"
-                      >
-                        Salin No Pesanan
-                      </button>
-                    </div>
-                    <p className="text-[10px] text-amber-900 leading-tight">
-                      Tulis nomor pesanan ini pada kolom berita/keterangan saat transfer m-Banking / ATM.
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed space-y-1">
+                    <strong className="text-slate-800 block">Proses Verifikasi:</strong>
+                    <p>
+                      Setelah bukti transfer terlampir, status pesanan akan menjadi <strong>Menunggu Verifikasi</strong>. Tim SakuNota akan mencocokkan mutasi rekening sebelum lisensi terbit.
                     </p>
                   </div>
 
-                  {/* Real File Upload Bukti Transfer */}
-                  <div className="pt-2 border-t border-slate-200 space-y-2">
-                    <span className="text-[11px] font-bold text-slate-700 block">
-                      Lampirkan Foto Bukti Transfer:
-                    </span>
-                    <label className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-500 bg-white cursor-pointer transition-colors text-xs font-bold text-slate-700">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleProofFileChange}
-                      />
-                      <span>{transferProofFileName ? ` Terlampir: ${transferProofFileName}` : " Ketuk untuk Unggah Screenshot Bukti Transfer"}</span>
-                    </label>
-                    {transferProofBase64 && (
-                      <div className="relative w-full max-h-48 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex flex-col items-center justify-center p-2">
-                        <img src={transferProofBase64} alt="Pratinjau Bukti Transfer" className="max-h-40 object-contain rounded-lg" />
-                        <span className="text-[10px] text-emerald-600 font-bold mt-1">Foto bukti siap dikirim ke Owner</span>
-                      </div>
-                    )}
-                  </div>
+                  {uploadProofError && (
+                    <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold leading-relaxed flex items-start gap-2">
+                      <LineIcon name="warning" className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      <span>{uploadProofError}</span>
+                    </div>
+                  )}
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed space-y-1">
-                  <strong className="text-slate-800 block"> Proses Verifikasi:</strong>
-                  <p>
-                    Setelah bukti transfer terlampir, status pesanan akan menjadi <strong>Menunggu Verifikasi</strong>. Tim SakuNota akan mencocokkan mutasi rekening sebelum lisensi terbit.
-                  </p>
-                </div>
-
-                {uploadProofError && (
-                  <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold leading-relaxed flex items-start gap-2">
-                    <LineIcon name="warning" className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                    <span>{uploadProofError}</span>
-                  </div>
-                )}
-
-                <div className="pt-2 flex gap-2">
+                {/* Sticky Action Footer */}
+                <div className="shrink-0 p-3.5 sm:p-5 bg-slate-50 border-t border-slate-200 flex gap-2.5 rounded-b-3xl">
                   <button
                     type="button"
                     onClick={() => setCheckoutStep("form")}
-                    className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
+                    className="py-3 px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition-colors"
                   >
                     ← Kembali
                   </button>
@@ -2435,7 +2444,7 @@ export default function SakuNotaLandingPage() {
                     onClick={handleSendTransferProof}
                     className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50"
                   >
-                    {isUploadingProof ? "Mengirim Bukti Transfer..." : "Kirim Bukti Transfer Sekarang →"}
+                    {isUploadingProof ? "Mengirim Bukti Transfer..." : "Kirim Bukti Transfer Sekarang ->"}
                   </button>
                 </div>
               </div>
@@ -2443,90 +2452,93 @@ export default function SakuNotaLandingPage() {
 
             {/* Step 3: Status Menunggu Verifikasi */}
             {checkoutStep === "waiting" && (
-              <div className="space-y-5 text-center">
-                <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 text-2xl mx-auto flex items-center justify-center border border-blue-200"><LineIcon name="waiting" /></div>
+              <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 sm:py-6 space-y-4 text-center">
+                  <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 text-2xl mx-auto flex items-center justify-center border border-blue-200"><LineIcon name="waiting" /></div>
 
-                <div className="space-y-1">
-                  <h4 className="text-lg font-black text-slate-900">Bukti Transfer Telah Dikirim!</h4>
-                  <p className="text-xs text-slate-600">
-                    Pesanan Anda sedang menunggu pengecekan mutasi bank oleh Owner SakuNota.
-                  </p>
+                  <div className="space-y-1">
+                    <h4 className="text-lg font-black text-slate-900">Bukti Transfer Telah Dikirim!</h4>
+                    <p className="text-xs text-slate-600">
+                      Pesanan Anda sedang menunggu pengecekan mutasi bank oleh Owner SakuNota.
+                    </p>
+                  </div>
+
+                  {/* Status Box with Secret Access Code - Clear and Visible on Mobile */}
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left space-y-3 text-xs">
+                    <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
+                      <span className="text-[10px] text-slate-500 font-bold block uppercase">Nomor Pesanan Anda:</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <strong className="font-mono font-black text-slate-900 text-base select-all break-all">{currentOrderId}</strong>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(currentOrderId);
+                            alert("Nomor pesanan (" + currentOrderId + ") berhasil disalin!");
+                          }}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 shrink-0"
+                        >
+                          Salin
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-blue-900 block uppercase font-bold">Kode Akses Rahasia Pembeli:</span>
+                        <span className="text-[9px] text-blue-700 font-bold">Simpan untuk cek status</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <strong className="font-mono font-black text-blue-700 text-base select-all break-all">{currentAccessCode}</strong>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(currentAccessCode);
+                            alert("Kode akses (" + currentAccessCode + ") berhasil disalin!");
+                          }}
+                          className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shrink-0"
+                        >
+                          Salin
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-1 border-t border-slate-200">
+                      <span className="text-slate-600">Status:</span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-black text-[11px] border border-blue-200">
+                        Menunggu Verifikasi Owner
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-600">Nama Usaha:</span>
+                      <strong className="text-slate-900">{businessName}</strong>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-600">Nominal:</span>
+                      <div className="text-right">
+                        <strong className="text-slate-900 font-black">
+                          Rp {(createdOrder?.amount || (appliedPromo ? appliedPromo.finalAmount : 50000)).toLocaleString("id-ID")}
+                        </strong>
+                        {createdOrder?.promoCode && (
+                          <span className="block text-[10px] text-emerald-600 font-bold">
+                            (Promo: {createdOrder.promoCode})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-white border border-slate-200 text-left text-xs text-slate-600 space-y-1.5 leading-relaxed">
+                    <strong className="text-slate-900 block">Apa yang terjadi selanjutnya?</strong>
+                    <p>
+                      1. Tim SakuNota memeriksa dana masuk di mutasi BCA.<br />
+                      2. Setelah dana cocok, lisensi resmi akan langsung diterbitkan.<br />
+                      3. Buka tombol <strong>Cek Status Lisensi</strong> dengan nomor pesanan <strong>{currentOrderId}</strong> dan kode akses <strong>{currentAccessCode}</strong> untuk mengambil lisensi Anda.
+                    </p>
+                  </div>
                 </div>
 
-                {/* Status Box with Secret Access Code - Clear and Visible on Mobile */}
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left space-y-3 text-xs">
-                  <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-                    <span className="text-[10px] text-slate-500 font-bold block uppercase">Nomor Pesanan Anda:</span>
-                    <div className="flex items-center justify-between gap-2">
-                      <strong className="font-mono font-black text-slate-900 text-base select-all break-all">{currentOrderId}</strong>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(currentOrderId);
-                          alert("Nomor pesanan (" + currentOrderId + ") berhasil disalin!");
-                        }}
-                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 shrink-0"
-                      >
-                        Salin
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-blue-900 block uppercase font-bold">Kode Akses Rahasia Pembeli:</span>
-                      <span className="text-[9px] text-blue-700 font-bold">Simpan untuk cek status</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <strong className="font-mono font-black text-blue-700 text-base select-all break-all">{currentAccessCode}</strong>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(currentAccessCode);
-                          alert("Kode akses (" + currentAccessCode + ") berhasil disalin!");
-                        }}
-                        className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shrink-0"
-                      >
-                        Salin
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center pt-1 border-t border-slate-200">
-                    <span className="text-slate-600">Status:</span>
-                    <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-black text-[11px] border border-blue-200">
-                      Menunggu Verifikasi Owner
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-600">Nama Usaha:</span>
-                    <strong className="text-slate-900">{businessName}</strong>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-600">Nominal:</span>
-                    <div className="text-right">
-                      <strong className="text-slate-900 font-black">
-                        Rp {(createdOrder?.amount || (appliedPromo ? appliedPromo.finalAmount : 50000)).toLocaleString("id-ID")}
-                      </strong>
-                      {createdOrder?.promoCode && (
-                        <span className="block text-[10px] text-emerald-600 font-bold">
-                          (Promo: {createdOrder.promoCode})
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-white border border-slate-200 text-left text-xs text-slate-600 space-y-1.5 leading-relaxed">
-                  <strong className="text-slate-900 block"> Apa yang terjadi selanjutnya?</strong>
-                  <p>
-                    1. Tim SakuNota memeriksa dana masuk di mutasi BCA.<br />
-                    2. Setelah dana cocok, lisensi resmi akan langsung diterbitkan.<br />
-                    3. Buka tombol <strong>Cek Status Lisensi</strong> dengan nomor pesanan <strong>{currentOrderId}</strong> dan kode akses <strong>{currentAccessCode}</strong> untuk mengambil lisensi Anda.
-                  </p>
-                </div>
-
-                <div className="pt-2 flex flex-col gap-2">
+                {/* Sticky Action Footer */}
+                <div className="shrink-0 p-3.5 sm:p-5 bg-slate-50 border-t border-slate-200 flex flex-col gap-2 rounded-b-3xl">
                   <a
                     href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Halo%20SakuNota,%20saya%20sudah%20transfer%20Rp${(createdOrder?.amount || (appliedPromo ? appliedPromo.finalAmount : 50000)).toLocaleString("id-ID")}%20untuk%20pesanan%20${currentOrderId}%20(${businessName}).%20Kode%20akses:%20${currentAccessCode}.%20Mohon%20verifikasi%20dan%20terbitkan%20lisensi.`}
                     target="_blank"
@@ -2549,103 +2561,105 @@ export default function SakuNotaLandingPage() {
 
             {/* Step 4: Pembayaran Berhasil & Lisensi Resmi Terbit */}
             {checkoutStep === "success" && (
-              <div className="space-y-5 text-center">
-                <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 text-3xl mx-auto flex items-center justify-center border border-blue-200"><LineIcon name="success" /></div>
+              <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 sm:py-6 space-y-4 text-center">
+                  <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 text-3xl mx-auto flex items-center justify-center border border-blue-200"><LineIcon name="success" /></div>
 
-                <div className="space-y-1">
-                  <h4 className="text-xl font-black text-slate-900">Pembayaran Berhasil!</h4>
-                  <p className="text-xs text-slate-600">
-                    Lisensi SakuNota Anda sudah tersedia dan siap diaktifkan di HP kasir.
-                  </p>
-                </div>
-
-                {/* License Card */}
-                <div className="p-4 rounded-2xl bg-slate-50 border border-blue-200 text-left space-y-3 text-xs">
-                  <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                    <span className="text-slate-600">Nomor Pesanan:</span>
-                    <strong className="font-mono font-black text-slate-900">{currentOrderId || createdOrder?.orderId}</strong>
+                  <div className="space-y-1">
+                    <h4 className="text-xl font-black text-slate-900">Pembayaran Berhasil!</h4>
+                    <p className="text-xs text-slate-600">
+                      Lisensi SakuNota Anda sudah tersedia dan siap diaktifkan di HP kasir.
+                    </p>
                   </div>
 
-                  {/* Secret Access Code */}
-                  <div className="flex justify-between items-center pb-2 border-b border-slate-200 bg-blue-50 -mx-4 px-4 py-2">
-                    <div>
-                      <span className="text-[10px] text-slate-600 block uppercase font-bold">Kode Akses Rahasia Pembeli:</span>
-                      <strong className="font-mono font-black text-blue-600 text-sm select-all">
-                        {currentAccessCode || createdOrder?.accessCode}
-                      </strong>
+                  {/* License Card */}
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-blue-200 text-left space-y-3 text-xs">
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+                      <span className="text-slate-600">Nomor Pesanan:</span>
+                      <strong className="font-mono font-black text-slate-900">{currentOrderId || createdOrder?.orderId}</strong>
                     </div>
-                  </div>
 
-                  {/* License Key Display */}
-                  <div className="space-y-1.5 pt-1">
-                    <span className="text-[10px] text-slate-600 block uppercase font-bold">Nomor Lisensi SakuNota:</span>
-                    {createdOrder?.licenseKey ? (
-                      <div className="p-3 rounded-xl bg-white border border-blue-500 text-center font-mono font-black text-base text-blue-600 select-all tracking-wider">
-                        {createdOrder.licenseKey}
+                    {/* Secret Access Code */}
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-200 bg-blue-50 -mx-4 px-4 py-2">
+                      <div>
+                        <span className="text-[10px] text-slate-600 block uppercase font-bold">Kode Akses Rahasia Pembeli:</span>
+                        <strong className="font-mono font-black text-blue-600 text-sm select-all">
+                          {currentAccessCode || createdOrder?.accessCode}
+                        </strong>
                       </div>
-                    ) : (
-                      <div className="p-3 rounded-xl bg-white border border-slate-200 text-center text-xs text-slate-600">
-                        Sedang menyinkronkan nomor lisensi...
+                    </div>
+
+                    {/* License Key Display */}
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[10px] text-slate-600 block uppercase font-bold">Nomor Lisensi SakuNota:</span>
+                      {createdOrder?.licenseKey ? (
+                        <div className="p-3 rounded-xl bg-white border border-blue-500 text-center font-mono font-black text-base text-blue-600 select-all tracking-wider">
+                          {createdOrder.licenseKey}
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-white border border-slate-200 text-center text-xs text-slate-600">
+                          Sedang menyinkronkan nomor lisensi...
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const chk = await checkOrderStatusServer(currentOrderId, currentAccessCode);
+                              if (chk.success && chk.order) setCreatedOrder(chk.order);
+                            }}
+                            className="block mx-auto mt-2 text-xs font-bold text-blue-600 underline"
+                          >
+                            Muat Ulang Lisensi
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 pt-1">
                         <button
                           type="button"
-                          onClick={async () => {
-                            const chk = await checkOrderStatusServer(currentOrderId, currentAccessCode);
-                            if (chk.success && chk.order) setCreatedOrder(chk.order);
+                          onClick={() => {
+                            const key = createdOrder?.licenseKey;
+                            if (key) {
+                              navigator.clipboard.writeText(key);
+                              setCopiedLicense(true);
+                              setTimeout(() => setCopiedLicense(false), 2000);
+                            }
                           }}
-                          className="block mx-auto mt-2 text-xs font-bold text-blue-600 underline"
-                        > Muat Ulang Lisensi
+                          className="flex-1 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <span>{copiedLicense ? "Berhasil Disalin!" : "Salin Nomor Lisensi"}</span>
                         </button>
                       </div>
-                    )}
+                    </div>
 
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const key = createdOrder?.licenseKey;
-                          if (key) {
-                            navigator.clipboard.writeText(key);
-                            setCopiedLicense(true);
-                            setTimeout(() => setCopiedLicense(false), 2000);
-                          }
-                        }}
-                        className="flex-1 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors flex items-center justify-center gap-1.5"
-                      >
-                        <span>{copiedLicense ? "Berhasil Disalin!" : " Salin Nomor Lisensi"}</span>
-                      </button>
+                    {/* Device Binding Status */}
+                    <div className="pt-2 border-t border-slate-200">
+                      <span className="text-[10px] text-slate-600 block uppercase font-bold mb-1">Status Perangkat Kasir:</span>
+                      {createdOrder?.boundDeviceId ? (
+                        <div className="flex items-center gap-2 text-blue-700 font-bold text-xs bg-blue-50 p-2.5 rounded-xl border border-blue-200">
+                          <span>Terikat di: {createdOrder.deviceName || createdOrder.boundDeviceId}</span>
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200 leading-relaxed">
+                          <span className="text-slate-900 font-bold block">Belum Terikat ke HP Kasir</span>
+                          <span>Lisensi baru diikat saat Anda pertama kali mengaktifkannya di HP kasir fisik.</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  {/* Device Binding Status */}
-                  <div className="pt-2 border-t border-slate-200">
-                    <span className="text-[10px] text-slate-600 block uppercase font-bold mb-1">Status Perangkat Kasir:</span>
-                    {createdOrder?.boundDeviceId ? (
-                      <div className="flex items-center gap-2 text-blue-700 font-bold text-xs bg-blue-50 p-2.5 rounded-xl border border-blue-200">
-                        <span></span>
-                        <span>Terikat di: {createdOrder.deviceName || createdOrder.boundDeviceId}</span>
-                      </div>
-                    ) : (
-                      <div className="text-[11px] text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200 leading-relaxed">
-                        <span className="text-slate-900 font-bold block">Belum Terikat ke HP Kasir</span>
-                        <span>Lisensi baru diikat saat Anda pertama kali mengaktifkannya di HP kasir fisik.</span>
-                      </div>
-                    )}
-                  </div>
+                  {/* Activation on This Device Feedback */}
+                  {activateMsg && (
+                    <div className={`p-3 rounded-xl text-xs font-bold leading-relaxed ${
+                      activateMsg.trimStart().startsWith("Lisensi resmi berhasil")
+                        ? "bg-blue-50 border border-blue-200 text-blue-800"
+                        : "bg-rose-50 border border-rose-200 text-rose-600"
+                    }`}>
+                      {activateMsg}
+                    </div>
+                  )}
                 </div>
 
-                {/* Activation on This Device Feedback */}
-                {activateMsg && (
-                  <div className={`p-3 rounded-xl text-xs font-bold leading-relaxed ${
-                    activateMsg.trimStart().startsWith("Lisensi resmi berhasil")
-                      ? "bg-blue-50 border border-blue-200 text-blue-800"
-                      : "bg-rose-50 border border-rose-200 text-rose-600"
-                  }`}>
-                    {activateMsg}
-                  </div>
-                )}
-
-                {/* Quick Next Step Actions */}
-                <div className="space-y-2 pt-1">
+                {/* Sticky Action Footer */}
+                <div className="shrink-0 p-3.5 sm:p-5 bg-slate-50 border-t border-slate-200 flex flex-col gap-2 rounded-b-3xl">
                   {createdOrder?.licenseKey && !isActivatedHere && !createdOrder.boundDeviceId && (
                     <button
                       type="button"
@@ -2694,7 +2708,8 @@ export default function SakuNotaLandingPage() {
                     href="/panduan"
                     target="_blank"
                     className="block text-center text-[11px] text-slate-600 hover:text-blue-600 font-semibold pt-1 underline"
-                  > Baca Panduan Aktivasi &amp; Pemasangan di HP
+                  >
+                    Baca Panduan Aktivasi &amp; Pemasangan di HP
                   </Link>
 
                   <button
