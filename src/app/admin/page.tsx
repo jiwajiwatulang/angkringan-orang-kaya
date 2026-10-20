@@ -520,7 +520,7 @@ export default function AdminDashboardPage() {
         </div>
         <div className="text-left sm:text-right sm:border-l sm:border-line sm:pl-6 shrink-0">
           <div className="text-2xl font-black text-fg tracking-tight">
-            {new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} WIB
+            {new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
           </div>
           <div className="text-xs text-muted font-medium mt-0.5">
             {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}
