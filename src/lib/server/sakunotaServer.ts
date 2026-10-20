@@ -473,11 +473,17 @@ export async function checkCustomerOrderStatus(
     return { success: false, error: "Pesanan dengan nomor tersebut tidak ditemukan." };
   }
 
-  // Security check: Access code must match
-  if (order.accessCode.trim().toUpperCase() !== accessCode.trim().toUpperCase()) {
+  // Security check: Access code must match, or registered WhatsApp phone must match
+  const cleanInput = accessCode.trim().toUpperCase();
+  const cleanOrderAccess = (order.accessCode || "").trim().toUpperCase();
+  const inputDigits = accessCode.replace(/\D/g, "");
+  const orderDigits = (order.whatsapp || "").replace(/\D/g, "");
+  const phoneMatches = inputDigits.length >= 8 && (orderDigits.endsWith(inputDigits) || inputDigits.endsWith(orderDigits));
+
+  if (cleanOrderAccess !== cleanInput && !phoneMatches) {
     return {
       success: false,
-      error: "Kode akses rahasia tidak cocok dengan pesanan ini. Periksa kembali tautan atau kode bukti pembelian Anda.",
+      error: "Kode akses tidak cocok dengan pesanan ini. Masukkan Kode Akses Rahasia (KOD-XXXX) atau nomor WhatsApp yang Anda gunakan saat memesan.",
     };
   }
 

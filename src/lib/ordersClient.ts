@@ -99,8 +99,14 @@ export async function checkOrderStatusServer(
           const list: CustomerOrder[] = JSON.parse(raw);
           const found = list.find((o) => o.orderId.toUpperCase() === orderId.trim().toUpperCase());
           if (found) {
-            if (found.accessCode && found.accessCode.toUpperCase() !== accessCode.trim().toUpperCase()) {
-              return { success: false, error: "Kode akses rahasia tidak cocok dengan pesanan ini." };
+            const cleanInput = accessCode.trim().toUpperCase();
+            const cleanFoundAccess = (found.accessCode || "").toUpperCase();
+            const inputDigits = accessCode.replace(/\D/g, "");
+            const orderDigits = (found.whatsapp || "").replace(/\D/g, "");
+            const phoneMatches = inputDigits.length >= 8 && (orderDigits.endsWith(inputDigits) || inputDigits.endsWith(orderDigits));
+
+            if (cleanFoundAccess && cleanFoundAccess !== cleanInput && !phoneMatches) {
+              return { success: false, error: "Kode akses tidak cocok dengan pesanan ini. Masukkan Kode Akses (KOD-XXXX) atau nomor WhatsApp yang Anda gunakan saat memesan." };
             }
             return { success: true, order: found };
           }

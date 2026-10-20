@@ -1042,7 +1042,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                     </div>
 
                     {/* Customer & Business Details */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                       <div>
                         <span className="text-[10px] text-muted font-bold block uppercase">Nama Usaha:</span>
                         <strong className="text-fg">{o.businessName}</strong>
@@ -1060,6 +1060,22 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                           className="text-emerald-600 dark:text-emerald-700 font-bold hover:underline"
                         ><LineIcon name="info" />{o.whatsapp}
                         </a>
+                      </div>
+                      <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                        <span className="text-[10px] text-purple-700 dark:text-purple-300 font-bold block uppercase">Kode Akses Pembeli:</span>
+                        <div className="flex items-center justify-between gap-1 mt-0.5">
+                          <strong className="font-mono text-fg font-black text-xs select-all">{o.accessCode}</strong>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(o.accessCode);
+                              showToast(`Kode akses ${o.accessCode} disalin!`);
+                            }}
+                            className="px-2 py-0.5 text-[10px] font-bold bg-card hover:bg-line border border-line rounded-lg text-fg transition-colors"
+                          >
+                            Salin
+                          </button>
+                        </div>
                       </div>
                     </div>
 
