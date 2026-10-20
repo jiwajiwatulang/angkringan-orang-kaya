@@ -121,6 +121,7 @@ export default function SakuNotaLandingPage() {
   const [isInitiatingSnap, setIsInitiatingSnap] = useState(false);
   const [snapError, setSnapError] = useState("");
   const [snapNotice, setSnapNotice] = useState("");
+  const [uploadProofError, setUploadProofError] = useState("");
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [invoiceData, setInvoiceData] = useState<CustomerOrder | null>(null);
   const [isActivatingHere, setIsActivatingHere] = useState(false);
@@ -439,6 +440,7 @@ export default function SakuNotaLandingPage() {
   const handleProofFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setUploadProofError("");
     setTransferProofFileName(file.name);
 
     const reader = new FileReader();
@@ -480,8 +482,9 @@ export default function SakuNotaLandingPage() {
   };
 
   const handleSendTransferProof = async () => {
+    setUploadProofError("");
     if (!transferProofBase64) {
-      setCheckoutStep("waiting");
+      setUploadProofError("Silakan pilih dan lampirkan foto atau screenshot bukti transfer Anda terlebih dahulu sebelum mengonfirmasi.");
       return;
     }
     setIsUploadingProof(true);
@@ -494,12 +497,14 @@ export default function SakuNotaLandingPage() {
       );
       if (res.success && res.order) {
         setCreatedOrder(res.order);
+        setCheckoutStep("waiting");
+      } else {
+        setUploadProofError(res.error || "Gagal mengunggah bukti transfer. Silakan periksa file Anda dan coba lagi.");
       }
-    } catch (_) {
-      // Offline safe fallback
+    } catch (err: any) {
+      setUploadProofError("Koneksi gagal saat mengunggah foto: " + (err.message || "Periksa koneksi Anda."));
     } finally {
       setIsUploadingProof(false);
-      setCheckoutStep("waiting");
     }
   };
 
@@ -2260,6 +2265,13 @@ export default function SakuNotaLandingPage() {
                     Setelah bukti transfer terlampir, status pesanan akan menjadi <strong>Menunggu Verifikasi</strong>. Tim SakuNota akan mencocokkan mutasi rekening sebelum lisensi terbit.
                   </p>
                 </div>
+
+                {uploadProofError && (
+                  <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold leading-relaxed flex items-start gap-2">
+                    <LineIcon name="warning" className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <span>{uploadProofError}</span>
+                  </div>
+                )}
 
                 <div className="pt-2 flex gap-2">
                   <button
