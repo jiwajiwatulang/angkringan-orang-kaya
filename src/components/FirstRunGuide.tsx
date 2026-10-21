@@ -28,7 +28,8 @@ export default function FirstRunGuide(props: Props) {
   const [rect, setRect] = useState<{ step: GuideStep; top: number; left: number; width: number; height: number } | null>(null);
   const panel = useRef<HTMLDivElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
-  const lastRestart = useRef(0);
+  // A remount must not replay a request already handled by the previous instance.
+  const lastRestart = useRef(props.restartToken);
   const navigate = useRef(props.onNavigate);
   useEffect(() => { navigate.current = props.onNavigate; }, [props.onNavigate]);
 
