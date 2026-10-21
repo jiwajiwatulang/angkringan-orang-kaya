@@ -1,5 +1,6 @@
 import Dexie, { type Table as DexieTable } from 'dexie';
 import { isDemoMode } from './demoMode';
+import type { RetailDraftProduct } from './retailDraft';
 
 export interface ModifierOption {
   id: string;
@@ -52,6 +53,7 @@ export interface SelectedModifier {
 }
 
 export interface OrderItem {
+  pendingRetailProduct?: RetailDraftProduct;
   id?: number;
   orderId: number;
   menuItemId: number;

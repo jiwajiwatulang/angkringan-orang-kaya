@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import RetailPhotoSettings from "@/components/RetailPhotoSettings";
 import LineIcon from "@/components/LineIcon";
 import { useAdmin } from "../AdminContext";
 
@@ -62,6 +63,8 @@ export default function AdminPengaturanHubPage() {
           <span>Pusat Pengaturan SakuNota</span>
         </h2>
       </div>
+
+      {storeSettings.businessType === 'retail' && <RetailPhotoSettings />}
 
       {/* Settings Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">

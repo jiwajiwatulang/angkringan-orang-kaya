@@ -32,6 +32,10 @@ self.addEventListener('fetch', event => {
     event.respondWith(fetch(req).catch(() => new Response(null, { status: 204 })));
     return;
   }
+  if (url.pathname.startsWith('/retail-photo/v1/')) {
+    event.respondWith(caches.open('sakunota-retail-photo-v1').then(async cache => (await cache.match(req, { ignoreSearch: true })) || fetch(req)));
+    return;
+  }
   const navigation = req.mode === 'navigate' || req.headers.get('accept')?.includes('text/html');
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);

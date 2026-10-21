@@ -759,93 +759,12 @@ export default function SakuNotaLandingPage() {
                 </button>
               </div>
 
-              {/* Compact 4-Grid Nav Links */}
-              <div>
-                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-2">
-                  Menu Navigasi Cepat:
-                </span>
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  <a 
-                    href="#fitur" 
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
-                  >
-                    <span className="text-base"><LineIcon name="lightning" /></span>
-                    <span className="text-[11px] font-extrabold">Fitur</span>
-                  </a>
-                  <a 
-                    href="#jenis-usaha" 
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
-                  >
-                    <span className="text-base"><LineIcon name="demo" /></span>
-                    <span className="text-[11px] font-extrabold">Usaha</span>
-                  </a>
-                  <a 
-                    href="#harga" 
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
-                  >
-                    <span className="text-base"><LineIcon name="receipt" /></span>
-                    <span className="text-[11px] font-extrabold">Harga</span>
-                  </a>
-                  <Link 
-                    href="/panduan" 
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="py-2.5 px-1.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-slate-900 hover:border-blue-600 hover:bg-blue-100 transition-all flex flex-col items-center justify-center gap-1 active:scale-95"
-                  >
-                    <span className="text-base"><LineIcon name="guide" /></span>
-                    <span className="text-[11px] font-extrabold">Panduan</span>
-                  </Link>
-                </div>
-
-                {/* Second Row: Tentang Kami & Aktivasi Lisensi */}
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  <Link
-                    href="/tentang"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="py-2.5 px-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 font-extrabold text-xs flex items-center justify-center gap-1.5 hover:border-blue-500 hover:text-blue-600 transition-all"
-                  >
-                    <span>Tentang Kami</span>
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      handleOpenLicenseModal("direct_license");
-                    }}
-                    className="py-2.5 px-3 rounded-2xl bg-blue-50 border border-blue-300 text-blue-700 font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-blue-100 transition-all"
-                  >
-                    <span>Aktivasi Lisensi</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
-                <a
-                  href="/pos?demo=true"
-                  onClick={(event) => {
-                event.preventDefault();
-                try { sessionStorage.setItem("sakunota_demo_mode", "true"); } catch (_) {}
-                window.location.assign("/pos?demo=true");
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full py-3 text-center rounded-2xl bg-slate-100 border border-slate-300 text-xs font-extrabold text-slate-900 hover:bg-slate-200 transition-all active:scale-95"
-                >
-                  Coba Demo Kasir
-                </a>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    handleOpenBuyModal();
-                  }}
-                  className="w-full py-3.5 text-center rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-600/30 transition-all active:scale-95"
-                >
-                  Beli SakuNota - Rp50.000
-                </button>
-              </div>
+              <nav aria-label="Menu utama HP" className="flex flex-col gap-2">
+                <button type="button" onClick={() => { setMobileMenuOpen(false); handleOpenBuyModal(); }} className="min-h-11 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700">Beli Rp50.000</button>
+                <button type="button" onClick={() => { setMobileMenuOpen(false); setIsBetaModalOpen(true); }} className="min-h-11 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-100">Trial 7 Hari</button>
+                <Link href="/panduan" onClick={() => setMobileMenuOpen(false)} className="flex min-h-11 items-center justify-center rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Buku Panduan</Link>
+                <Link href="/tentang" onClick={() => setMobileMenuOpen(false)} className="flex min-h-11 items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Tentang Kami</Link>
+              </nav>
             </div>
           </div>
         )}

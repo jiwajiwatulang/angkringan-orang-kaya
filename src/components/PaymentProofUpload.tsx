@@ -1,4 +1,5 @@
 "use client";
+import CameraCapture from "@/components/CameraCapture";
 import LineIcon from "@/components/LineIcon";
 
 import React, { useRef, useState } from "react";
@@ -17,15 +18,13 @@ export default function PaymentProofUpload({
   paymentMethod,
   disabled = false,
 }: PaymentProofUploadProps) {
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processFile = async (file: File) => {
 
     setIsCompressing(true);
     setErrorMessage(null);
@@ -38,8 +37,7 @@ export default function PaymentProofUpload({
       setErrorMessage(err.message || "Gagal mengompresi gambar.");
     } finally {
       setIsCompressing(false);
-      // Reset input value agar dapat memilih file yang sama jika diinginkan
-      e.target.value = "";
+
     }
   };
 
@@ -63,22 +61,14 @@ export default function PaymentProofUpload({
         </span>
       </div>
 
-      {/* Hidden inputs untuk Kamera dan Galeri */}
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={handleFileChange}
-        disabled={disabled || isCompressing}
-      />
+      {isCameraOpen && <CameraCapture onClose={() => setIsCameraOpen(false)} onCapture={processFile} onChooseGallery={() => { setIsCameraOpen(false); galleryInputRef.current?.click(); }} />}
+      {/* Gallery selection is separate from the live camera. */}
       <input
         ref={galleryInputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp"
         className="hidden"
-        onChange={handleFileChange}
+        onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void processFile(file); }}
         disabled={disabled || isCompressing}
       />
 
@@ -149,7 +139,7 @@ export default function PaymentProofUpload({
           <div className="grid grid-cols-2 gap-2 mt-1">
             <button
               type="button"
-              onClick={() => cameraInputRef.current?.click()}
+              onClick={() => { setErrorMessage(null); setIsCameraOpen(true); }}
               disabled={disabled}
               className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-card border border-line text-fg hover:border-accent hover:text-accent-text text-xs font-bold transition-all shadow-sm active:scale-95"
             >

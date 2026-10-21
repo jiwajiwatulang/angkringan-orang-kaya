@@ -62,3 +62,21 @@ test('offline route identity is preserved and API responses never enter cache', 
   assert.equal(await navigate('/api/owner/metrics'), undefined);
   assert.equal(await navigate('/api/payment/config'), undefined);
 });
+
+test('Retail photo assets remain optional and their prepared copy survives offline', async () => {
+  const h = harness();
+  const file = '/retail-photo/v1/worker.min.js';
+  h.stores.set('sakunota-retail-photo-v1', new Map([[file, new Response('prepared local worker')]]));
+  let pending: Promise<void> | undefined;
+  h.handlers.install({ waitUntil: (promise: Promise<void>) => { pending = promise; } });
+  await pending;
+  const appCache = [...h.stores.entries()].find(([name]) => name.startsWith('sakunota-pos-'))!;
+  assert.equal(appCache[1].has(file), false, 'base install does not download optional recognition');
+  h.handlers.activate({ waitUntil: (promise: Promise<void>) => { pending = promise; } });
+  await pending;
+  assert.ok(h.stores.has('sakunota-retail-photo-v1'));
+  h.setOffline();
+  let response: Promise<Response> | undefined;
+  h.handlers.fetch({ request: new Request('https://local.test'+file), respondWith: (value: Promise<Response>) => { response = value; } });
+  assert.equal(await (await response!).text(), 'prepared local worker');
+});

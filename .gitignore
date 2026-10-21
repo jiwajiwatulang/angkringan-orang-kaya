@@ -52,3 +52,6 @@ data/*.db*
 
 
 
+
+# Generated optional product recognition assets
+/public/retail-photo/

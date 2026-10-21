@@ -1112,7 +1112,7 @@ async function runTestSuite() {
     const authCheckFail = await checkCustomerOrderStatus(d1, testOrderId, 'KOD-SALAH-1234');
     assert(authCheckFail.success === false, 'Order retrieval with invalid access code is blocked');
     assert(
-      typeof authCheckFail.error === 'string' && authCheckFail.error.includes('Kode akses rahasia tidak cocok'),
+      typeof authCheckFail.error === 'string' && authCheckFail.error.includes('Kode akses tidak cocok dengan pesanan ini'),
       'Access rejection clarifies secret code mismatch'
     );
 

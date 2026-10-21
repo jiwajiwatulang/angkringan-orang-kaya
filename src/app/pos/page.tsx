@@ -1,6 +1,8 @@
 "use client";
 import LockIcon from "@/components/LockIcon";
 import LineIcon from "@/components/LineIcon";
+import RetailAddProduct from '@/components/RetailAddProduct';
+import { normalizeRetailName, type RetailDraftProduct } from '@/lib/retailDraft';
 import ProductPhoto from "@/components/ProductPhoto";
 import CategoryScroller from "@/components/CategoryScroller";
 import TableShapeIcon from "@/components/TableShapeIcon";
@@ -40,7 +42,7 @@ import CashierShiftPanel from '@/components/CashierShiftPanel';
 import CashierPrinter from '@/components/CashierPrinter';
 
 type MenuItem = { id: number; sku?: string; imageData?: string | null; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; modifiers?: any[]; };
-type CartItem = MenuItem & { qty: number; selectedModifiers?: { groupName: string; optionName: string; harga: number }[]; itemKey?: string };
+type CartItem = MenuItem & { pendingRetailProduct?: RetailDraftProduct; qty: number; selectedModifiers?: { groupName: string; optionName: string; harga: number }[]; itemKey?: string };
 
 export default function POSPage() {
   const [menuData, setMenuData] = useState<MenuItem[]>([]);
@@ -98,6 +100,8 @@ export default function POSPage() {
   const [refundTargetPayment, setRefundTargetPayment] = useState<any>(null);
   const [refundPinInput, setRefundPinInput] = useState<string>("");
   const [refundReasonInput, setRefundReasonInput] = useState<string>("");
+
+  const [isRetailAddOpen, setIsRetailAddOpen] = useState(false);
 
   // --- BARCODE SCANNER STATES ---
   const [isBarcodeScanOpen, setIsBarcodeScanOpen] = useState(false);
@@ -1029,6 +1033,8 @@ export default function POSPage() {
       const mods = i.selectedModifiers || [];
       const modSignature = mods.map((m: any) => `${m.groupName}:${m.optionName}`).sort().join('|');
       return {
+        pendingRetailProduct: i.pendingRetailProduct,
+        imageData: i.pendingRetailProduct?.imageData,
         id: i.menuItemId,
         nama: i.nama || i.namaMenu || menuData.find(m => m.id === i.menuItemId)?.nama || 'Item Terhapus',
         harga: i.hargaSatuan,
@@ -1548,6 +1554,20 @@ export default function POSPage() {
         selectedModifiers: mods,
         itemKey
       }];
+    });
+  };
+
+  const addRetailToCart = (product: RetailDraftProduct, qty: number) => {
+    if (storeSettings.businessType !== 'retail') return;
+    const existing = menuData.find(item => normalizeRetailName(item.nama) === normalizeRetailName(product.nama));
+    if (existing && (existing.harga !== product.harga || existing.isSoldOut || existing.modifiers?.length || existing.isGroup)) {
+      throw new Error('Barang ini sudah ada di katalog. Pilih barang dari katalog untuk melanjutkan.');
+    }
+    setCart(previous => {
+      const match = previous.find(item => existing ? item.id === existing.id && !item.selectedModifiers?.length : item.pendingRetailProduct && normalizeRetailName(item.nama) === normalizeRetailName(product.nama) && item.harga === product.harga);
+      if (match) return previous.map(item => item === match ? { ...item, qty: item.qty + qty } : item);
+      const id = existing?.id ?? -(Date.now() * 1000 + Math.floor(Math.random() * 1000));
+      return [...previous, { ...(existing || product), id, kategori: existing?.kategori || 'Retail', qty, itemKey: String(id), pendingRetailProduct: existing ? undefined : product }];
     });
   };
 
@@ -2670,7 +2690,7 @@ export default function POSPage() {
       <div className="flex flex-col h-screen bg-surface text-fg items-center justify-center p-6 text-center">
         <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mb-4" />
         <h2 className="text-base font-bold text-fg">Memuat Data Kasir...</h2>
-        <p className="text-xs text-muted mt-1">Menyiapkan menu, meja, dan database lokal</p>
+        <p className="text-xs text-muted mt-1">Menyiapkan kasir Anda</p>
       </div>
     );
   }
@@ -3592,6 +3612,8 @@ export default function POSPage() {
                         Pindai Barcode
                       </button>
 
+                      {storeSettings.businessType === 'retail' && <button type="button" onClick={() => setIsRetailAddOpen(true)} className="min-h-11 shrink-0 rounded-xl bg-accent px-3 py-2 text-xs font-bold text-white hover:bg-accent-hover">Tambah Barang</button>}
+
                       {/* Density Controls (S / M / L) */}
                       <div className="hidden sm:flex items-center gap-1 bg-card border border-line rounded-xl p-1 max-lg:landscape:p-0.5 shrink-0 shadow-xs" title="Ukuran Tombol Menu Kasir">
                         <button
@@ -3901,6 +3923,7 @@ export default function POSPage() {
                   addToCart(item);
                 }
               }}
+              onAddRetailProduct={storeSettings.businessType === 'retail' ? () => setIsRetailAddOpen(true) : undefined}
               onOpenBarcodeScan={() => setIsBarcodeScanOpen(true)}
             />
           )}
@@ -5197,6 +5220,8 @@ export default function POSPage() {
         }}
         currentSettings={storeSettings}
       />
+
+      {isRetailAddOpen && storeSettings.businessType === 'retail' && <RetailAddProduct onClose={() => setIsRetailAddOpen(false)} onAdd={addRetailToCart} />}
 
       {/* Barcode Camera Scanner Modal */}
       <BarcodeCameraModal

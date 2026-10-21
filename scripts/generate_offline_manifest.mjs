@@ -32,6 +32,7 @@ const allFiles = walkDir(outDir);
 
 // Filter out Next.js build trace / txt files and redundant dev artifacts
 const validFiles = allFiles.filter(f => {
+  if (f.path.startsWith('/retail-photo/')) return false; // Optional: downloaded only from Retail settings.
   if (f.path.endsWith('.txt')) return false;
   if (f.path.endsWith('.map')) return false;
   if (f.path === '/sw.js') return false; // sw.js manages itself

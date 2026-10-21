@@ -24,6 +24,7 @@ interface MobileCatalogScreenProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
   onAddToCart: (item: MenuItem) => void;
+  onAddRetailProduct?: () => void;
   onOpenBarcodeScan?: () => void;
 }
 
@@ -36,6 +37,7 @@ export default function MobileCatalogScreen({
   onSearchChange,
   onAddToCart,
   onOpenBarcodeScan,
+  onAddRetailProduct,
 }: MobileCatalogScreenProps) {
   const [gridCols, setGridCols] = useState<2 | 4>(2);
 
@@ -153,6 +155,8 @@ export default function MobileCatalogScreen({
             </button>
           )}
         </div>
+
+        {onAddRetailProduct && <button type="button" onClick={onAddRetailProduct} className="mb-2.5 min-h-11 w-full rounded-xl bg-blue-600 px-3 py-2 text-sm font-bold text-white active:bg-blue-700">Tambah Barang</button>}
 
         {/* 3. Compact 4-Grid Category Selector (Tanpa Geser / Slide) */}
         <CategoryScroller categories={categories} value={activeCategory} onChange={onSelectCategory} />

@@ -7,6 +7,8 @@ import { requireMerchantAdmin } from './merchantAccess';
 import { cashierCanSeeOrder } from './cashierScope';
 import { validateProductPhoto } from './productPhoto';
 import { requireCashierWriteAccess } from './licenseGuard';
+import { resolveRetailProduct, finishRetailOrder } from './retailCatalog';
+import { validateRetailDraft } from './retailDraft';
 import { DEMO_ORDER_LIMIT } from './demoMode';
 import { applyBusinessDemoPreset, BusinessDemoType, BUSINESS_DEMO_PRESETS } from './demoCatalog';
 
@@ -580,10 +582,22 @@ export async function createOrder(data: any) {
       updatedAt: new Date().toISOString(),
     });
 
+    for (const item of data.items) {
+      if (!item.pendingRetailProduct) continue;
+      validateRetailDraft(item.pendingRetailProduct);
+      if (typeof window !== 'undefined' && getStoreSettings().businessType !== 'retail') throw new Error('Tambah Barang hanya tersedia untuk Retail.');
+      if (!Number.isSafeInteger(item.qty) || item.qty <= 0 || item.harga !== item.pendingRetailProduct.harga || item.nama !== item.pendingRetailProduct.nama) throw new Error('Data barang belum lengkap.');
+    }
+    const retailIds = new Map<any, number>();
+    if (isPaid) for (const item of data.items) {
+      if (item.pendingRetailProduct) retailIds.set(item, await resolveRetailProduct(item.pendingRetailProduct));
+    }
+
     // 4. Simpan Order Items dengan IMMUTABLE SNAPSHOT (namaMenu, kategoriMenu, hargaSatuan)
     const itemsToInsert = data.items.map((item: any) => ({
       orderId: orderId as number,
-      menuItemId: item.id || item.menuItemId,
+      menuItemId: retailIds.get(item) ?? (item.id || item.menuItemId),
+      pendingRetailProduct: !isPaid ? item.pendingRetailProduct : undefined,
       namaMenu: item.nama || item.namaMenu || 'Item',
       kategoriMenu: item.kategori || item.kategoriMenu || 'Umum',
       qty: item.qty,
@@ -676,6 +690,13 @@ export async function updateOrder(id: number, data: any) {
       updatedAt: new Date().toISOString(),
     });
 
+    for (const item of data.items) {
+      if (!item.pendingRetailProduct) continue;
+      validateRetailDraft(item.pendingRetailProduct);
+      if (typeof window !== 'undefined' && getStoreSettings().businessType !== 'retail') throw new Error('Tambah Barang hanya tersedia untuk Retail.');
+      if (!Number.isSafeInteger(item.qty) || item.qty <= 0 || item.harga !== item.pendingRetailProduct.harga || item.nama !== item.pendingRetailProduct.nama) throw new Error('Data barang belum lengkap.');
+    }
+
     // Hapus item lama dan simpan item baru dengan snapshot lengkap
     const oldItems = await db.table('orderItems').where({ orderId: id }).toArray();
     const oldItemIds = oldItems.map(i => i.id!).filter(Boolean);
@@ -684,6 +705,7 @@ export async function updateOrder(id: number, data: any) {
     const itemsToInsert = data.items.map((item: any) => ({
       orderId: id,
       menuItemId: item.id || item.menuItemId,
+      pendingRetailProduct: item.pendingRetailProduct,
       namaMenu: item.nama || item.namaMenu || 'Item',
       kategoriMenu: item.kategori || item.kategoriMenu || 'Umum',
       qty: item.qty,
@@ -743,7 +765,7 @@ export async function recordPayment(data: {
   proof?: { imageData: string; fileName?: string; fileSize?: number; mimeType?: string; notes?: string };
 }) {
   await Dexie.waitFor(requireCashierWriteAccess());
-  return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'paymentProofs', 'tables', 'shifts', 'auditLogs'], async () => {
+  return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'paymentProofs', 'tables', 'shifts', 'auditLogs', 'menuItems'], async () => {
     const order = await db.table('orders').get(data.orderId);
     if (!order) throw new Error('Nota tidak ditemukan.');
     if (order.status === 'void') throw new Error('Nota sudah dibatalkan (void).');
@@ -843,6 +865,8 @@ export async function recordPayment(data: {
     const newTotalPaid = alreadyPaid + payAmount;
     const remainingAfter = Math.max(0, order.total - newTotalPaid);
     const isFullyPaid = remainingAfter === 0;
+
+    if (isFullyPaid) await finishRetailOrder(data.orderId);
 
     // 5. Update Nota Induk
     await db.table('orders').update(data.orderId, {

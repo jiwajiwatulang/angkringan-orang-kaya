@@ -4,11 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
+    "predev": "node scripts/prepare-retail-photo.mjs",
+    "prebuild": "node scripts/prepare-retail-photo.mjs",
+    "postinstall": "node scripts/prepare-retail-photo.mjs",
     "build": "next build && node scripts/generate_offline_manifest.mjs",
     "start": "next start -H 0.0.0.0",
     "lint": "eslint",
     "test": "tsx test_suite.ts",
-    "test:stability": "tsx --test tests/stability.test.ts tests/offline-worker.test.ts tests/waiter.test.ts tests/products-cashier.test.ts tests/security.test.ts tests/promo.test.ts",
+    "test:stability": "tsx --test tests/stability.test.ts tests/offline-worker.test.ts tests/waiter.test.ts tests/products-cashier.test.ts tests/security.test.ts tests/promo.test.ts tests/retail-add.test.ts",
     "test:offline": "tsx test_offline_readiness.ts",
     "typecheck": "tsc --noEmit",
     "preview:local": "tsx scripts/preview-local.ts"
@@ -27,7 +30,9 @@
     "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "xlsx": "^0.18.5"
+    "tesseract.js": "^7.0.0",
+    "xlsx": "^0.18.5",
+    "@tesseract.js-data/eng": "^1.0.0"
   },
   "devDependencies": {
     "@prisma/client": "^5.22.0",

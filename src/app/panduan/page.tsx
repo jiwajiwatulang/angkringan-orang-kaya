@@ -233,7 +233,7 @@ export default function PanduanPage() {
     <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white antialiased">
       {/* 1. Header / Navbar (Clean White + Subtle Border) */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
           {/* Brand Logo & Name */}
           <Link href="/" className="flex items-center gap-2.5 group" title="SakuNota - Beranda">
             <img
@@ -243,37 +243,12 @@ export default function PanduanPage() {
             />
           </Link>
 
-          {/* Center Navigation Links */}
-          <nav className="hidden md:flex items-center gap-7 text-xs font-semibold text-slate-600">
-            <Link href="/" className="hover:text-blue-600 transition-colors">
-              Fitur
-            </Link>
-            <Link href="/tentang" className="hover:text-blue-600 transition-colors">
-              Tentang
-            </Link>
-            <Link href="/?beli=true" className="hover:text-blue-600 transition-colors">
-              Harga
-            </Link>
-            <Link href="/panduan" className="text-blue-600 font-bold transition-colors">
-              Panduan
-            </Link>
+          <nav aria-label="Navigasi utama" className="grid grid-cols-2 gap-2 text-xs font-semibold sm:flex sm:flex-wrap sm:items-center">
+            <Link href="/?beli=true" className="flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-3 py-2 text-white hover:bg-blue-700">Beli Rp50.000</Link>
+            <Link href="/?beta=register" className="flex min-h-11 items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-slate-700 hover:bg-blue-50">Trial 7 Hari</Link>
+            <Link href="/panduan" aria-current="page" className="flex min-h-11 items-center justify-center rounded-xl px-3 py-2 text-blue-600">Buku Panduan</Link>
+            <Link href="/tentang" className="flex min-h-11 items-center justify-center rounded-xl px-3 py-2 text-slate-700 hover:text-blue-600">Tentang Kami</Link>
           </nav>
-
-          {/* Right Action Buttons */}
-          <div className="flex items-center gap-2">
-            <a
-              href="/pos?demo=true"
-              className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 border border-slate-200 transition-all"
-            >
-              Coba Demo Kasir
-            </a>
-            <Link
-              href="/?beli=true"
-              className="px-4 py-2 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 transition-all"
-            >
-              Beli Rp50.000
-            </Link>
-          </div>
         </div>
       </header>
 
@@ -325,6 +300,20 @@ export default function PanduanPage() {
             )}
           </div>
         </div>
+
+        {!searchQuery && <section aria-labelledby="retail-quick-guide" className="mb-6 rounded-2xl border border-blue-200 bg-white p-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 id="retail-quick-guide" className="text-lg font-bold text-slate-900">Panduan Singkat Retail</h2>
+            <button type="button" onClick={() => setSelectedTopic(TOPICS.find(topic => topic.id === 'retail-add-product')!)} className="min-h-11 rounded-xl bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">Lihat Panduan Retail</button>
+          </div>
+          <ol className="grid list-inside list-decimal gap-3 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
+            <li>Di HP, buka <strong>Kasir → Menu</strong> pada usaha Retail. Tekan <strong>Tambah Barang</strong> di bawah pencarian.</li>
+            <li>Foto produk atau pilih <strong>Isi Manual</strong>.</li>
+            <li>Periksa nama, isi harga dan jumlah, lalu tambah ke keranjang.</li>
+            <li>Selesaikan pembayaran agar barang tersimpan ke katalog.</li>
+          </ol>
+          <p className="mt-3 text-sm text-slate-500">Kasbon masuk katalog setelah lunas. Persiapan pengenalan foto tersedia di Pengaturan, khusus Retail.</p>
+        </section>}
 
         {/* 3. Cards Grid: 3 Columns Desktop, 2 Tablet, 1 Mobile (Exact Sentrik POS Reference Pattern) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
@@ -515,7 +504,7 @@ export default function PanduanPage() {
       {/* 5. Modern Dark Footer (Matching Reference Screenshot) */}
       <footer className="mt-auto bg-black text-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-14 pb-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
             {/* Col 1: Brand Info (Spans 2 columns on lg) */}
             <div className="lg:col-span-2 space-y-4">
               <Link href="/" className="flex items-center gap-2 group">
@@ -578,25 +567,6 @@ export default function PanduanPage() {
               </ul>
             </div>
 
-            {/* Col 3: Company */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                Perusahaan
-              </h3>
-              <ul className="space-y-2 text-xs text-neutral-300">
-                <li>
-                  <Link href="/tentang" className="hover:text-white transition-colors">
-                    Tentang Kami
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/tentang#cerita" className="hover:text-white transition-colors">
-                    Cerita Kami
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
             {/* Col 4: Support */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">
@@ -622,6 +592,9 @@ export default function PanduanPage() {
                   >
                     Kontak Bantuan
                   </a>
+                </li>
+                <li>
+                  <Link href="/tentang" className="hover:text-white transition-colors">Tentang Kami</Link>
                 </li>
               </ul>
             </div>

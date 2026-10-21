@@ -85,3 +85,31 @@ npx wrangler deploy
 ## Hak Cipta & Perusahaan
 
 © 2026 **SakuNota**, PT Pemuda Gaya Bebas
+
+## Tambah Barang Retail dari Kasir
+
+Khusus jenis usaha **Retail**, kasir dapat memilih **Tambah Barang**, memotret
+kemasan atau mengisi nama secara manual, mengisi harga jual dan jumlah, lalu
+menambahkan barang ke keranjang. Produk baru masuk katalog dalam transaksi yang
+sama dengan pelunasan nota. Kasbon dan pembayaran sebagian belum membuat produk
+katalog; pembatalan dan kegagalan transaksi tidak menyisakan produk baru.
+Barcode dan pengelolaan katalog yang sudah ada tetap tersedia.
+
+Persiapan pengenalan foto berada di **Admin → Pengaturan → Foto Produk Retail**.
+Unduhan opsional sekitar 10 MB hanya dilakukan dari Pengaturan. Pemrosesan foto
+berjalan lokal dengan Tesseract.js 7 dan data bahasa Inggris untuk tulisan Latin;
+hasilnya merupakan saran nama yang wajib diperiksa pengguna, bukan identifikasi
+merek/produk atau penentuan harga otomatis. Foto tidak dikirim ke server.
+Perangkat membutuhkan konteks aman, Web Worker, WebAssembly, Cache Storage, dan
+service worker aktif. **Isi Manual** tetap dapat digunakan bila tidak didukung.
+
+`npm ci`, `npm run dev`, dan `npm run build` menyiapkan aset dari paket npm yang
+terkunci melalui `scripts/prepare-retail-photo.mjs`. Aset hasil generasi berada di
+`public/retail-photo/v1` (diabaikan Git), ikut ekspor produksi, tetapi dikecualikan
+dari unduhan offline dasar. Pengaturan memverifikasi SHA-256 seluruh aset dan
+menguji pengenalan lokal sebelum menandai fitur siap. Versi aset/cache perlu
+dinaikkan bersamaan jika engine atau data pengenalan diganti. Penghapusan data
+situs mengharuskan persiapan ulang. Data pengenalan bukan bagian dari backup toko;
+foto katalog dan foto barang pada kasbon tetap ikut backup.
+
+Panduan pengguna dan panduan singkat Retail tersedia di `/panduan`.
