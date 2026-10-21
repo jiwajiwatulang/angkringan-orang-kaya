@@ -62,3 +62,47 @@ test('offline route identity is preserved and API responses never enter cache', 
   assert.equal(await navigate('/api/owner/metrics'), undefined);
   assert.equal(await navigate('/api/payment/config'), undefined);
 });
+
+test('upgrade keeps the immediately previous production cache and its chunks for open tabs', async () => {
+  const h = harness();
+  const previous = 'sakunota-pos-v2.6.7-1792545587300';
+  h.stores.set('sakunota-pos-older-build', new Map());
+  h.stores.set(previous, new Map([['/_next/static/previous.js', new Response('previous chunk')]]));
+  h.stores.set('unrelated-app-cache', new Map());
+  let pending: Promise<void> | undefined;
+  h.handlers.install({ waitUntil: (promise: Promise<void>) => { pending = promise; } });
+  await pending;
+  h.handlers.activate({ waitUntil: (promise: Promise<void>) => { pending = promise; } });
+  await pending;
+  assert.ok(h.stores.has(previous));
+  assert.equal(h.stores.has('sakunota-pos-older-build'), false);
+  assert.ok(h.stores.has('unrelated-app-cache'));
+  h.setOffline();
+  let result: Promise<Response> | undefined;
+  h.handlers.fetch({ request: new Request('https://local.test/_next/static/previous.js'), respondWith: (response: Promise<Response>) => { result = response; } });
+  assert.equal(await (await result!).text(), 'previous chunk');
+});
+
+test('new cached stock route remains available after activation while offline', async () => {
+  const h = harness();
+  let pending: Promise<void> | undefined;
+  for (const lifecycle of ['install', 'activate']) {
+    h.handlers[lifecycle]({ waitUntil: (promise: Promise<void>) => { pending = promise; } });
+    await pending;
+  }
+  h.setOffline();
+  let result: Promise<Response> | undefined;
+  h.handlers.fetch({ request: new Request('https://local.test/admin/stok/', { headers: { accept: 'text/html' } }), respondWith: (response: Promise<Response>) => { result = response; } });
+  assert.equal(await (await result!).text(), '/admin/stok');
+});
+
+test('failed update leaves previous production assets intact and never calls skipWaiting', async () => {
+  const h = harness(true);
+  const previous = 'sakunota-pos-v2.6.7-1792545587300';
+  h.stores.set(previous, new Map([['/pos', new Response('working production POS')]]));
+  let pending: Promise<void> | undefined;
+  h.handlers.install({ waitUntil: (promise: Promise<void>) => { pending = promise; } });
+  await assert.rejects(pending!, /Asset unavailable/);
+  assert.equal(h.activated(), false);
+  assert.equal(await h.stores.get(previous)!.get('/pos')!.text(), 'working production POS');
+});
