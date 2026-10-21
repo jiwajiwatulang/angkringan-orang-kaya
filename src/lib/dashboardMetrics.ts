@@ -42,3 +42,5 @@ export function buildSalesSeries(orders: any[], range: DashboardRange, now = new
   }
   return result;
 }
+
+export * from './financialEngine';

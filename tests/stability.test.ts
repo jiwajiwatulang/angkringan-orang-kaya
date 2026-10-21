@@ -76,18 +76,19 @@ test('dashboard: full 24 hours, full month, local dates, paid sales only', () =>
   assert.equal(buildSalesSeries([], '7days', now).length, 7);
 });
 
-test('IndexedDB schema 8 upgrades to 9 without losing existing merchant data', async () => {
+test('IndexedDB schema upgrades to 10 without losing existing merchant data', async () => {
   await db.delete();
   const legacy = new Dexie(db.name);
-  const stores = Object.fromEntries(db.tables.filter(t => t.name !== 'inventoryMovements').map(t => [t.name, [t.schema.primKey.src, ...t.schema.indexes.map(index => index.src)].join(',')]));
+  const stores = Object.fromEntries(db.tables.filter(t => !['inventoryMovements', 'refundEvents'].includes(t.name)).map(t => [t.name, [t.schema.primKey.src, ...t.schema.indexes.map(index => index.src)].join(',')]));
   legacy.version(8).stores(stores); await legacy.open();
   await legacy.table('menuItems').add({ id: 99, nama: 'Produk sebelum update', harga: 5000, kategori: 'Retail', urutan: 0, isSoldOut: false });
   await legacy.table('orders').add({ id: 88, status: 'paid', total: 5000, createdAt: new Date().toISOString() });
   legacy.close(); await db.open();
-  assert.equal(db.verno, 9);
+  assert.equal(db.verno, 10);
   assert.equal((await db.table('menuItems').get(99)).nama, 'Produk sebelum update');
   assert.equal((await db.table('orders').get(88)).total, 5000);
   assert.equal(await db.table('inventoryMovements').count(), 0);
+  assert.equal(await db.table('refundEvents').count(), 0);
   assert.equal((await db.table('menuItems').get(99)).trackStock, undefined, 'existing products are not forced to zero stock');
   db.close();
 });

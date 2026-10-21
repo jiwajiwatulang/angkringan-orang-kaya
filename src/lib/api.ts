@@ -1,5 +1,5 @@
 import Dexie from 'dexie';
-import { db, MenuItem, Order, OrderItem, Payment, SelectedModifier, PaymentProof, ModifierGroup, TableShape } from './dexie';
+import { db, MenuItem, Order, OrderItem, Payment, SelectedModifier, PaymentProof, ModifierGroup, TableShape, RefundEvent, RefundEventType } from './dexie';
 import initialData from './initialData.json';
 import { getStoreSettings, SETTINGS_STORAGE_KEY } from './settings';
 import { applyOrderStock } from './inventory';
@@ -8,6 +8,7 @@ import { cashierCanSeeOrder } from './cashierScope';
 import { validateProductPhoto } from './productPhoto';
 import { requireCashierWriteAccess } from './licenseGuard';
 import { DEMO_ORDER_LIMIT } from './demoMode';
+import { retainedPaymentAmount, paymentRefundEvents } from './paymentLedger';
 import { applyBusinessDemoPreset, BusinessDemoType, BUSINESS_DEMO_PRESETS } from './demoCatalog';
 
 async function requireActiveCashierShift(shiftId: number) {
@@ -224,12 +225,13 @@ export async function seedDemoMenus(type: string = 'angkringan', adminPin?: stri
   return menusToInsert.length;
 }
 
-export async function createMenu(data: { sku?: string, nama: string, harga: number, kategori: string, isSoldOut?: boolean, modifiers?: any[], imageData?: string | null }) {
+export async function createMenu(data: { sku?: string, nama: string, harga: number, costPrice?: number, kategori: string, isSoldOut?: boolean, modifiers?: any[], imageData?: string | null }) {
   await requireMerchantAdmin();
   const imageData = validateProductPhoto(data.imageData);
   const cleanName = data.nama.trim();
   const cleanCategory = data.kategori.trim();
   const cleanSku = data.sku ? data.sku.trim() : '';
+  const cleanCost = typeof data.costPrice === 'number' && Number.isFinite(data.costPrice) && data.costPrice >= 0 ? data.costPrice : undefined;
 
   // Validasi keunikan SKU jika diisi
   if (cleanSku) {
@@ -244,6 +246,7 @@ export async function createMenu(data: { sku?: string, nama: string, harga: numb
     sku: cleanSku || undefined,
     nama: cleanName,
     harga: Number(data.harga),
+    costPrice: cleanCost,
     kategori: cleanCategory,
     isSoldOut: Boolean(data.isSoldOut),
     urutan: count,
@@ -266,9 +269,12 @@ export async function reorderMenus(items: {id: number, urutan: number}[]) {
   });
 }
 
-export async function updateMenu(id: number, data: { sku?: string; nama?: string; harga?: number; kategori?: string; isSoldOut?: boolean; modifiers?: any[]; imageData?: string | null }) {
+export async function updateMenu(id: number, data: { sku?: string; nama?: string; harga?: number; costPrice?: number | null; kategori?: string; isSoldOut?: boolean; modifiers?: any[]; imageData?: string | null }) {
   await requireMerchantAdmin();
   const updateData: any = {};
+  if (data.costPrice !== undefined) {
+    updateData.costPrice = typeof data.costPrice === 'number' && Number.isFinite(data.costPrice) && data.costPrice >= 0 ? data.costPrice : undefined;
+  }
   if (data.sku !== undefined) {
     const cleanSku = data.sku.trim();
     if (cleanSku) {
@@ -496,8 +502,7 @@ async function readOrders(orders: Order[]) {
     });
 
     const orderProofs = proofs.filter(pr => pr.orderId === order.id);
-    const completedPayments = orderPayments.filter(p => p.status === 'completed');
-    const totalPaid = completedPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
+    const totalPaid = orderPayments.reduce((sum: number, p: Payment) => sum + retainedPaymentAmount(p), 0);
     const remainingBalance = Math.max(0, order.total - totalPaid);
 
     return {
@@ -508,7 +513,7 @@ async function readOrders(orders: Order[]) {
       proof: orderProofs.length > 0 ? orderProofs[0] : undefined,
       proofStatus: orderPayments.length > 0 ? orderPayments[0].proofStatus : undefined,
       paidAmount: orderPayments.length > 0 ? totalPaid : (order.status === 'paid' ? order.total : 0),
-      remainingBalance: orderPayments.length > 0 ? remainingBalance : (order.status === 'paid' ? 0 : order.total)
+      remainingBalance: order.status === 'void' ? 0 : orderPayments.length > 0 ? remainingBalance : (order.status === 'paid' ? 0 : order.total)
     };
   });
 }
@@ -580,17 +585,30 @@ export async function createOrder(data: any) {
       updatedAt: new Date().toISOString(),
     });
 
-    // 4. Simpan Order Items dengan IMMUTABLE SNAPSHOT (namaMenu, kategoriMenu, hargaSatuan)
-    const itemsToInsert = data.items.map((item: any) => ({
-      orderId: orderId as number,
-      menuItemId: item.id || item.menuItemId,
-      namaMenu: item.nama || item.namaMenu || 'Item',
-      kategoriMenu: item.kategori || item.kategoriMenu || 'Umum',
-      qty: item.qty,
-      paidQty: isPaid ? item.qty : (item.paidQty || 0),
-      hargaSatuan: item.harga ?? item.hargaSatuan ?? 0,
-      selectedModifiers: item.selectedModifiers || []
-    }));
+    // 4. Simpan Order Items dengan IMMUTABLE SNAPSHOT (namaMenu, kategoriMenu, hargaSatuan, costPrice)
+    const catalogItemIds = data.items.map((i: any) => i.id || i.menuItemId).filter(Boolean);
+    const catalogItems = catalogItemIds.length > 0 ? await db.table('menuItems').where('id').anyOf(catalogItemIds).toArray() : [];
+    const catalogMap = new Map<number, any>(catalogItems.map(c => [c.id, c]));
+
+    const itemsToInsert = data.items.map((item: any) => {
+      const mid = item.id || item.menuItemId;
+      const fromCatalog = catalogMap.get(mid);
+      const snapshotCost = typeof item.costPrice === 'number'
+        ? item.costPrice
+        : (typeof fromCatalog?.costPrice === 'number' ? fromCatalog.costPrice : undefined);
+
+      return {
+        orderId: orderId as number,
+        menuItemId: mid,
+        namaMenu: item.nama || item.namaMenu || fromCatalog?.nama || 'Item',
+        kategoriMenu: item.kategori || item.kategoriMenu || fromCatalog?.kategori || 'Umum',
+        qty: item.qty,
+        paidQty: isPaid ? item.qty : (item.paidQty || 0),
+        hargaSatuan: item.harga ?? item.hargaSatuan ?? fromCatalog?.harga ?? 0,
+        costPrice: typeof snapshotCost === 'number' && Number.isFinite(snapshotCost) && snapshotCost >= 0 ? snapshotCost : undefined,
+        selectedModifiers: item.selectedModifiers || []
+      };
+    });
 
     await db.table('orderItems').bulkAdd(itemsToInsert);
     if (!data.isHistorical && orderStatus !== 'void') {
@@ -681,16 +699,29 @@ export async function updateOrder(id: number, data: any) {
     const oldItemIds = oldItems.map(i => i.id!).filter(Boolean);
     await db.table('orderItems').bulkDelete(oldItemIds);
 
-    const itemsToInsert = data.items.map((item: any) => ({
-      orderId: id,
-      menuItemId: item.id || item.menuItemId,
-      namaMenu: item.nama || item.namaMenu || 'Item',
-      kategoriMenu: item.kategori || item.kategoriMenu || 'Umum',
-      qty: item.qty,
-      paidQty: item.paidQty || 0,
-      hargaSatuan: item.harga ?? item.hargaSatuan ?? 0,
-      selectedModifiers: item.selectedModifiers || []
-    }));
+    const updateItemIds = data.items.map((i: any) => i.id || i.menuItemId).filter(Boolean);
+    const updateCatalogItems = updateItemIds.length > 0 ? await db.table('menuItems').where('id').anyOf(updateItemIds).toArray() : [];
+    const updateCatalogMap = new Map<number, any>(updateCatalogItems.map(c => [c.id, c]));
+
+    const itemsToInsert = data.items.map((item: any) => {
+      const mid = item.id || item.menuItemId;
+      const fromCatalog = updateCatalogMap.get(mid);
+      const snapshotCost = typeof item.costPrice === 'number'
+        ? item.costPrice
+        : (typeof fromCatalog?.costPrice === 'number' ? fromCatalog.costPrice : undefined);
+
+      return {
+        orderId: id,
+        menuItemId: mid,
+        namaMenu: item.nama || item.namaMenu || fromCatalog?.nama || 'Item',
+        kategoriMenu: item.kategori || item.kategoriMenu || fromCatalog?.kategori || 'Umum',
+        qty: item.qty,
+        paidQty: item.paidQty || 0,
+        hargaSatuan: item.harga ?? item.hargaSatuan ?? fromCatalog?.harga ?? 0,
+        costPrice: typeof snapshotCost === 'number' && Number.isFinite(snapshotCost) && snapshotCost >= 0 ? snapshotCost : undefined,
+        selectedModifiers: item.selectedModifiers || []
+      };
+    });
     await db.table('orderItems').bulkAdd(itemsToInsert);
     if (!existingOrder.isHistorical) await applyOrderStock(id, oldItems, itemsToInsert, 'Perubahan pesanan');
     if (data.status === 'paid' && existingOrder.status !== 'paid' && data.total > 0) {
@@ -704,7 +735,7 @@ export async function updateOrder(id: number, data: any) {
 
 export async function updateOrderVerificationStatus(orderId: number) {
   const orderPayments = await db.table('payments').where('orderId').equals(orderId).toArray();
-  const nonCashPayments = orderPayments.filter((p: any) => p.status === 'completed' && p.paymentMethod !== 'Cash');
+  const nonCashPayments = orderPayments.filter((p: Payment) => retainedPaymentAmount(p) > 0 && p.paymentMethod !== 'Cash');
 
   if (nonCashPayments.length === 0) {
     await db.table('orders').update(orderId, { verificationStatus: 'terverifikasi' });
@@ -758,10 +789,9 @@ export async function recordPayment(data: {
     // 2. Ambil seluruh pembayaran aktif sebelumnya
     const existingPayments = await db.table('payments')
       .where('orderId').equals(data.orderId)
-      .and((p: any) => p.status === 'completed')
       .toArray();
 
-    const alreadyPaid = existingPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
+    const alreadyPaid = existingPayments.reduce((sum: number, p: Payment) => sum + retainedPaymentAmount(p), 0);
     const remainingBefore = Math.max(0, order.total - alreadyPaid);
 
     if (remainingBefore <= 0) {
@@ -885,50 +915,117 @@ export async function recordPayment(data: {
   });
 }
 
-export async function refundPartialPayment(paymentId: number, options: { reason: string, operator: string, adminPin?: string }) {
+export async function refundPartialPayment(paymentId: number, options: { 
+  amount?: number; 
+  reason: string; 
+  operator: string; 
+  adminPin?: string;
+  idempotencyKey?: string;
+  type?: RefundEventType;
+  itemsRefunded?: { menuItemId: number; qty: number; amount: number; costPrice?: number }[];
+}) {
   await requireMerchantAdmin(options.adminPin);
-  return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'tables', 'auditLogs', 'shifts'], async () => {
+  return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'tables', 'auditLogs', 'shifts', 'refundEvents'], async () => {
     const payment = await db.table('payments').get(paymentId);
     if (!payment) throw new Error('Data pembayaran tidak ditemukan.');
-    if (payment.status === 'refunded') throw new Error('Pembayaran ini sudah pernah di-refund.');
+    
+    // Idempotency check: jika idempotencyKey sudah pernah diproses, kembalikan data yang tersimpan
+    if (options.idempotencyKey) {
+      const existingRefund = await db.table('refundEvents')
+        .where('idempotencyKey').equals(options.idempotencyKey)
+        .first();
+      if (existingRefund) {
+        if (existingRefund.paymentId !== paymentId || (options.amount !== undefined && existingRefund.amount !== Number(options.amount))) {
+          throw new Error('Kunci idempotensi refund sudah digunakan untuk permintaan lain.');
+        }
+        console.warn(`Idempotency guard hit: Refund already processed with key ${options.idempotencyKey}`);
+        const currentOrder = await db.table('orders').get(payment.orderId);
+        return {
+          paymentId,
+          refundEventId: existingRefund.id,
+          refundedAmount: existingRefund.amount,
+          newTotalPaid: currentOrder?.paidAmount || 0,
+          remainingBalance: currentOrder?.remainingBalance || 0
+        };
+      }
+    }
+
+    const alreadyRefunded = payment.refundedAmount || 0;
+    const maxRefundable = payment.amount - alreadyRefunded;
+    if (payment.status === 'refunded' || maxRefundable <= 0) {
+      throw new Error('Pembayaran ini sudah pernah di-refund penuh.');
+    }
+
+    const refundAmount = options.amount !== undefined ? Number(options.amount) : maxRefundable;
+    if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
+      throw new Error('Nominal refund tidak valid.');
+    }
+    if (refundAmount > maxRefundable) {
+      throw new Error(`Nominal refund melebihi sisa pembayaran yang dapat dikembalikan (Maks: Rp ${maxRefundable.toLocaleString('id-ID')}).`);
+    }
 
     const order = await db.table('orders').get(payment.orderId);
     if (!order) throw new Error('Nota tidak ditemukan.');
     const refundShift = await getActiveShift();
 
-    // 1. Tandai pembayaran sebagai refunded
+    const newRefundedTotal = alreadyRefunded + refundAmount;
+    const isFullRefundOnPayment = newRefundedTotal >= payment.amount;
+
+    // 1. Catat event refund ke tabel refundEvents
+    const idempotencyKey = options.idempotencyKey || `ref_${paymentId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const refundEventId = await db.table('refundEvents').add({
+      idempotencyKey,
+      orderId: payment.orderId,
+      paymentId: paymentId,
+      shiftId: refundShift?.id ?? null,
+      type: options.type || 'PARTIAL_REFUND',
+      amount: refundAmount,
+      method: payment.paymentMethod === 'Cash' ? 'Cash' : (payment.paymentMethod as any),
+      reason: options.reason || 'Refund Pembayaran Parsial',
+      itemsRefunded: options.itemsRefunded,
+      operatorName: options.operator || 'Admin',
+      createdAt: new Date().toISOString()
+    });
+
+    // 2. Perbarui record pembayaran
     await db.table('payments').update(paymentId, {
-      status: 'refunded',
+      status: isFullRefundOnPayment ? 'refunded' : 'partially_refunded',
+      refundedAmount: newRefundedTotal,
       refundReason: options.reason || 'Refund Pembayaran Parsial',
       refundedAt: new Date().toISOString(),
       refundOperator: options.operator || 'Admin',
-      cashRefundAmount: payment.paymentMethod === 'Cash' ? payment.amount : 0,
+      cashRefundAmount: payment.paymentMethod === 'Cash' ? (payment.cashRefundAmount || 0) + refundAmount : 0,
       refundShiftId: refundShift?.id ?? payment.shiftId
     });
 
-    // 2. Kembalikan paidQty item jika tipe split per item
+    // 3. Kembalikan paidQty item jika tipe split per item
     if (payment.splitType === 'item' && payment.itemsPaid && payment.itemsPaid.length > 0) {
       const orderItems = await db.table('orderItems').where('orderId').equals(payment.orderId).toArray();
+      const refundRatio = refundAmount / payment.amount;
       for (const paidItem of payment.itemsPaid) {
         const oi = orderItems.find((i: any) => i.menuItemId === paidItem.menuItemId);
         if (oi && oi.paidQty) {
-          await db.table('orderItems').update(oi.id, {
-            paidQty: Math.max(0, oi.paidQty - paidItem.qty)
-          });
+          const qtyToDeduct = Math.round(paidItem.qty * refundRatio);
+          if (qtyToDeduct > 0) {
+            await db.table('orderItems').update(oi.id, {
+              paidQty: Math.max(0, oi.paidQty - qtyToDeduct)
+            });
+          }
         }
       }
     }
 
-    // 3. Hitung ulang akumulasi pembayaran aktif
-    const activePayments = await db.table('payments')
+    // 4. Hitung ulang akumulasi pembayaran aktif untuk nota ini
+    const allOrderPayments = await db.table('payments')
       .where('orderId').equals(payment.orderId)
-      .and((p: any) => p.status === 'completed')
       .toArray();
 
-    const newTotalPaid = activePayments.reduce((sum: number, p: any) => sum + p.amount, 0);
+    // Nilai pembayaran bersih yang masih aktif (nominal asli - total refund yang terjadi)
+    const newTotalPaid = allOrderPayments.reduce((sum: number, p: Payment) => sum + retainedPaymentAmount(p), 0);
+
     const newRemaining = Math.max(0, order.total - newTotalPaid);
 
-    // 4. Update status nota induk
+    // 5. Update status nota induk
     await db.table('orders').update(payment.orderId, {
       paidAmount: newTotalPaid,
       remainingBalance: newRemaining,
@@ -936,7 +1033,7 @@ export async function refundPartialPayment(paymentId: number, options: { reason:
       updatedAt: new Date().toISOString()
     });
 
-    // 5. Update meja kembali ke open jika ada sisa tagihan
+    // 6. Update meja kembali ke open jika ada sisa tagihan
     if (order.tableId) {
       if (newRemaining > 0) {
         await setTableStatus(order.tableId, 'open');
@@ -945,12 +1042,12 @@ export async function refundPartialPayment(paymentId: number, options: { reason:
       }
     }
 
-    // 6. Catat log audit
+    // 7. Catat log audit
     await db.table('auditLogs').add({
       action: 'PARTIAL_REFUND',
       orderId: payment.orderId,
-      amount: payment.amount,
-      reason: `Refund pembayaran parsial #${paymentId} (${payment.paymentMethod}): ${options.reason}`,
+      amount: refundAmount,
+      reason: `Refund pembayaran #${paymentId} (${payment.paymentMethod}): Rp ${refundAmount.toLocaleString('id-ID')} - ${options.reason}`,
       refundMethod: payment.paymentMethod === 'Cash' ? 'Tunai' : payment.paymentMethod,
       operator: options.operator || 'Admin',
       timestamp: new Date().toISOString()
@@ -958,11 +1055,20 @@ export async function refundPartialPayment(paymentId: number, options: { reason:
 
     return {
       paymentId,
-      refundedAmount: payment.amount,
+      refundEventId,
+      refundedAmount: refundAmount,
+      totalRefundedOnPayment: newRefundedTotal,
       newTotalPaid,
       remainingBalance: newRemaining
     };
   });
+}
+
+export async function getRefundEvents(orderId?: number) {
+  if (orderId) {
+    return await db.table('refundEvents').where('orderId').equals(orderId).toArray();
+  }
+  return await db.table('refundEvents').reverse().toArray();
 }
 
 export async function getOrderPayments(orderId: number) {
@@ -981,7 +1087,7 @@ export async function getAuditLogs() {
 
 export async function processVoidRefund(orderId: number, options: { reason: string, isRefunded: boolean, refundAmount: number, refundMethod: string, operator: string }) {
   await requireMerchantAdmin();
-  await db.transaction('rw', ['orders', 'orderItems', 'payments', 'tables', 'auditLogs', 'menuItems', 'inventoryMovements', 'shifts'], async () => {
+  await db.transaction('rw', ['orders', 'orderItems', 'payments', 'tables', 'auditLogs', 'menuItems', 'inventoryMovements', 'shifts', 'refundEvents'], async () => {
     const order = await db.table('orders').get(orderId);
     if (!order) throw new Error('Nota tidak ditemukan.');
     if (order.status === 'void') throw new Error('Nota sudah dibatalkan.');
@@ -1003,24 +1109,37 @@ export async function processVoidRefund(orderId: number, options: { reason: stri
     // Tandai seluruh payment dari nota ini sebagai refunded jika ada
     const orderPayments = await db.table('payments').where('orderId').equals(orderId).toArray();
     const refundShift = await getActiveShift();
-    const paidTotal = orderPayments.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0);
+    const paidTotal = orderPayments.reduce((sum: number, p: Payment) => sum + retainedPaymentAmount(p), 0);
     const requestedRefund = Number(options.refundAmount);
     if (!Number.isFinite(requestedRefund) || requestedRefund < 0 || requestedRefund > paidTotal) throw new Error('Nominal refund tidak valid atau melebihi pembayaran.');
-    let cashRefundRemaining = options.isRefunded && ['Cash', 'Tunai'].includes(options.refundMethod) ? requestedRefund : 0;
+    if (!options.isRefunded && requestedRefund !== 0) throw new Error('Refund tanpa pengembalian dana harus bernilai nol.');
+    const method = options.refundMethod === 'Tunai' ? 'Cash' : options.refundMethod;
+    if (options.isRefunded && requestedRefund > 0 && !['Cash', 'QRIS', 'Transfer'].includes(method)) throw new Error('Metode refund tidak valid.');
+    let refundRemaining = options.isRefunded ? requestedRefund : 0;
+    const refundTime = new Date().toISOString();
     for (const p of orderPayments) {
-      if (p.status === 'completed') {
-        const cashRefundAmount = Math.min(cashRefundRemaining, p.amount);
-        cashRefundRemaining -= cashRefundAmount;
+      if (retainedPaymentAmount(p) > 0) {
+        const amount = Math.min(refundRemaining, retainedPaymentAmount(p));
+        refundRemaining -= amount;
+        if (amount > 0) {
+          await db.table('refundEvents').add({
+            idempotencyKey: `void_${orderId}_${p.id}`, orderId, paymentId: p.id,
+            shiftId: refundShift?.id ?? null, type: 'ORDER_CANCELED', amount,
+            method, reason: options.reason, operatorName: options.operator || 'Admin', createdAt: refundTime
+          });
+        }
         await db.table('payments').update(p.id, {
           status: 'refunded',
+          refundedAmount: (p.refundedAmount || 0) + amount,
           refundReason: `Void Nota: ${options.reason}`,
-          refundedAt: new Date().toISOString(),
+          refundedAt: refundTime,
           refundOperator: options.operator || 'Admin',
-          cashRefundAmount,
+          cashRefundAmount: (p.cashRefundAmount || 0) + (method === 'Cash' ? amount : 0),
           refundShiftId: refundShift?.id ?? p.shiftId
         });
       }
     }
+    await db.table('orders').update(orderId, { paidAmount: 0, remainingBalance: 0 });
 
     // Catat log audit
     await db.table('auditLogs').add({
@@ -1702,57 +1821,42 @@ export async function getShiftLiveStats(shiftId: number) {
   const shift = await db.table('shifts').get(shiftId);
   if (!shift) throw new Error('Shift tidak ditemukan.');
 
+  // Shift Immutability: Jika shift sudah ditutup, kembalikan snapshot stat yang telah dibekukan saat tutup shift
+  if (shift.status === 'closed' && shift.expectedCash !== undefined) {
+    const movements = await db.table('cashMovements').where({ shiftId }).toArray();
+    const allPayments = await db.table('payments').where({ shiftId }).toArray();
+    const shiftOrders = await db.table('orders').where({ shiftId }).toArray();
+    const verifiedNonCash = allPayments.filter((p: Payment) => p.paymentMethod !== 'Cash' && p.proofStatus === 'terverifikasi').reduce((s: number, p: Payment) => s + retainedPaymentAmount(p), 0);
+    const unverifiedNonCash = Math.max(0, (shift.nonCashSales || 0) - verifiedNonCash);
+    return {
+      ...shift,
+      totalTransactions: allPayments.length > 0 ? allPayments.filter((p: any) => p.status === 'completed' || p.status === 'refunded' || p.status === 'partially_refunded').length : shiftOrders.length,
+      cashSales: shift.cashSales,
+      nonCashSales: shift.nonCashSales,
+      verifiedNonCashSales: verifiedNonCash,
+      unverifiedNonCashSales: unverifiedNonCash,
+      cashRefunds: shift.cashRefunds,
+      cashIn: shift.cashIn,
+      cashOut: shift.cashOut,
+      expectedCash: shift.expectedCash,
+      movements
+    };
+  }
+
   const storePayments = await db.table('payments').toArray();
   const allPayments = storePayments.filter(p => p.shiftId === shiftId);
   const allOrders = await db.table('orders').toArray();
   const shiftOrders = allOrders.filter(o => o.shiftId === shiftId);
 
-  let cashSales = 0;
-  let nonCashSales = 0;
-  let cashRefunds = 0;
-
-  if (allPayments.length > 0) {
-    // 1. Penjualan Tunai Murni: HANYA dari pembayaran berstatus 'completed' dengan metode Cash
-    cashSales = allPayments
-      .filter((p: any) => (p.status === 'completed' || p.status === 'refunded') && p.paymentMethod === 'Cash')
-      .reduce((sum: number, p: any) => sum + p.amount, 0);
-
-    // 2. Penjualan Non-Tunai: QRIS & Transfer Bank (Tercatat terpisah, TIDAK masuk kas fisik laci)
-    nonCashSales = allPayments
-      .filter((p: any) => p.status === 'completed' && p.paymentMethod !== 'Cash')
-      .reduce((sum: number, p: any) => sum + p.amount, 0);
-
-    const verifiedNonCashSales = allPayments
-      .filter((p: any) => p.status === 'completed' && p.paymentMethod !== 'Cash' && p.proofStatus === 'terverifikasi')
-      .reduce((sum: number, p: any) => sum + p.amount, 0);
-
-    const unverifiedNonCashSales = Math.max(0, nonCashSales - verifiedNonCashSales);
-
-    // 3. Refund Tunai
-    const refundedPaymentsCash = storePayments
-      .filter((p: any) => p.status === 'refunded' && (p.refundShiftId ?? p.shiftId) === shiftId)
-      .reduce((sum: number, p: any) => sum + (p.cashRefundAmount ?? (p.paymentMethod === 'Cash' ? p.amount : 0)), 0);
-
-    const voidedOrdersCash = shiftOrders
-      .filter(o => o.status === 'void' && o.isRefunded && o.refundMethod === 'Tunai')
-      .reduce((sum, o) => sum + (o.refundAmount || o.total), 0);
-
-    const legacyRefunds = allPayments.some((p: any) => p.status === 'refunded' && p.cashRefundAmount === undefined);
-    cashRefunds = legacyRefunds ? Math.max(refundedPaymentsCash, voidedOrdersCash) : refundedPaymentsCash;
-  } else {
-    // Fallback transaksi legacy
-    cashSales = shiftOrders
-      .filter(o => o.status !== 'void' && o.paymentMethod === 'Cash')
-      .reduce((sum, o) => sum + o.total, 0);
-
-    nonCashSales = shiftOrders
-      .filter(o => o.status !== 'void' && o.paymentMethod !== 'Cash')
-      .reduce((sum, o) => sum + o.total, 0);
-
-    cashRefunds = shiftOrders
-      .filter(o => o.status === 'void' && o.isRefunded && o.refundMethod === 'Tunai')
-      .reduce((sum, o) => sum + (o.refundAmount || o.total), 0);
-  }
+  const refundEvents = paymentRefundEvents(storePayments, await db.table('refundEvents').toArray());
+  const shiftRefunds = refundEvents.filter(r => r.shiftId === shiftId);
+  // Receipts stay in the original shift; each refund belongs to its outgoing shift.
+  const cashSales = allPayments.filter(p => p.paymentMethod === 'Cash').reduce((s, p) => s + p.amount, 0)
+    + shiftOrders.filter(o => !storePayments.some(p => p.orderId === o.id) && o.status === 'paid' && o.paymentMethod === 'Cash').reduce((s, o) => s + o.total, 0);
+  const nonCashSales = allPayments.filter(p => p.paymentMethod !== 'Cash').reduce((s, p) => s + p.amount, 0)
+    - shiftRefunds.filter(r => r.method !== 'Cash').reduce((s, r) => s + r.amount, 0)
+    + shiftOrders.filter(o => !storePayments.some(p => p.orderId === o.id) && o.status === 'paid' && o.paymentMethod !== 'Cash').reduce((s, o) => s + o.total, 0);
+  const cashRefunds = shiftRefunds.filter(r => r.method === 'Cash').reduce((s, r) => s + r.amount, 0);
 
   // 4. Pergerakan Kas Operasional Manual (Kas Masuk & Kas Keluar)
   const movements = await db.table('cashMovements').where({ shiftId }).toArray();
@@ -1762,17 +1866,16 @@ export async function getShiftLiveStats(shiftId: number) {
   // Rumus Finansial Kas Fisik Standar Akuntansi POS:
   // Expected Cash = Modal Awal + Penjualan Tunai - Refund Tunai + Kas Masuk - Kas Keluar
   // A refund can belong to this shift even when its original sale was in a previous shift.
-  if (allPayments.length === 0) cashRefunds += storePayments.filter((p: any) => p.refundShiftId === shiftId && p.shiftId !== shiftId).reduce((sum: number, p: any) => sum + (p.cashRefundAmount || 0), 0);
   const expectedCash = (Number(shift.startingCash) || 0) + cashSales - cashRefunds + cashIn - cashOut;
 
   const verifiedNonCash = typeof allPayments !== 'undefined'
-    ? allPayments.filter((p: any) => p.status === 'completed' && p.paymentMethod !== 'Cash' && p.proofStatus === 'terverifikasi').reduce((s: number, p: any) => s + p.amount, 0)
+    ? allPayments.filter((p: Payment) => p.paymentMethod !== 'Cash' && p.proofStatus === 'terverifikasi').reduce((s: number, p: Payment) => s + retainedPaymentAmount(p), 0)
     : 0;
   const unverifiedNonCash = Math.max(0, nonCashSales - verifiedNonCash);
 
   return {
     ...shift,
-    totalTransactions: allPayments.length > 0 ? allPayments.filter((p: any) => p.status === 'completed').length : shiftOrders.filter(o => o.status !== 'void').length,
+    totalTransactions: allPayments.length > 0 ? allPayments.length : shiftOrders.filter(o => o.status !== 'void').length,
     cashSales,
     nonCashSales,
     verifiedNonCashSales: verifiedNonCash,
@@ -1825,7 +1928,7 @@ export async function openShift(data: { operatorName: string, startingCash: numb
 export async function closeShift(shiftId: number, data: { actualCash: number, notes?: string, operatorName?: string }) {
   await requireActiveCashierShift(shiftId);
   if (!Number.isFinite(data.actualCash) || data.actualCash < 0) throw new Error('Jumlah uang fisik tidak valid.');
-  return db.transaction('rw', ['shifts', 'orders', 'payments', 'cashMovements', 'auditLogs'], async () => {
+  return db.transaction('rw', ['shifts', 'orders', 'payments', 'cashMovements', 'auditLogs', 'refundEvents'], async () => {
   const stats = await getShiftLiveStats(shiftId);
   if (stats.status !== 'open') throw new Error('Shift sudah ditutup.');
   const actual = Number(data.actualCash) || 0;
@@ -1914,7 +2017,8 @@ export async function deleteCashMovement(id: number) {
 
 export async function resetAllTransactions() {
   await requireMerchantAdmin();
-  await db.transaction('rw', ['orders', 'orderItems', 'payments', 'paymentProofs', 'tables', 'auditLogs', 'shifts', 'cashMovements'], async () => {
+  await db.transaction('rw', ['orders', 'orderItems', 'payments', 'paymentProofs', 'tables', 'auditLogs', 'shifts', 'cashMovements', 'refundEvents'], async () => {
+    await db.table('refundEvents').clear();
     await db.table('orderItems').clear();
     await db.table('orders').clear();
     await db.table('payments').clear();
@@ -2004,6 +2108,7 @@ export async function exportAllData() {
   const shifts = await db.table('shifts').toArray();
   const cashMovements = await db.table('cashMovements').toArray();
   const inventoryMovements = await db.table('inventoryMovements').toArray();
+  const refundEvents = await db.table('refundEvents').toArray();
   
   let settings = null;
   try {
@@ -2052,7 +2157,8 @@ export async function exportAllData() {
     auditLogs,
     shifts,
     cashMovements,
-    inventoryMovements
+    inventoryMovements,
+    refundEvents
   };
   });
 }
@@ -2149,7 +2255,9 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
 
   // Helper pemulihan data ke tabel Dexie - SEMUA tabel DAN pengaturan dieksekusi dalam 1 transaksi ACID
   const restoreToTables = async (payload: any) => {
-    await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems', 'payments', 'paymentProofs', 'auditLogs', 'shifts', 'cashMovements', 'settings', 'inventoryMovements'], async () => {
+    await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems', 'payments', 'paymentProofs', 'auditLogs', 'shifts', 'cashMovements', 'settings', 'inventoryMovements', 'refundEvents'], async () => {
+      await db.table('refundEvents').clear();
+      if (payload.refundEvents?.length) await db.table('refundEvents').bulkAdd(payload.refundEvents);
       await db.table('inventoryMovements').clear();
       if (payload.inventoryMovements?.length) await db.table('inventoryMovements').bulkAdd(payload.inventoryMovements);
       await db.table('auditLogs').clear();

@@ -1112,9 +1112,10 @@ async function runTestSuite() {
     const authCheckFail = await checkCustomerOrderStatus(d1, testOrderId, 'KOD-SALAH-1234');
     assert(authCheckFail.success === false, 'Order retrieval with invalid access code is blocked');
     assert(
-      typeof authCheckFail.error === 'string' && authCheckFail.error.includes('Kode akses rahasia tidak cocok'),
-      'Access rejection clarifies secret code mismatch'
+      typeof authCheckFail.error === 'string' && /Kode akses.*tidak cocok/i.test(authCheckFail.error),
+      'Access rejection explains that the access code does not match'
     );
+    assert(authCheckFail.order === undefined, 'Rejected access never returns customer order data');
 
     // 10. WhatsApp Ready Message Formatting Integrity
     const waMessage = `Halo Kak ${testOrder.buyerName}, terima kasih telah membeli SakuNota!

@@ -21,6 +21,7 @@ export interface MenuItem {
   sku?: string; // Kode unik produk / SKU untuk pencocokan bulk import
   nama: string;
   harga: number;
+  costPrice?: number; // HPP / Harga Pokok Penjualan modal per porsi
   kategori: string;
   isSoldOut: boolean;
   urutan: number;
@@ -60,6 +61,7 @@ export interface OrderItem {
   qty: number;
   paidQty?: number;      // Jumlah porsi yang sudah terbayar via Split by Item
   hargaSatuan: number;   // Snapshot harga dasar satuan
+  costPrice?: number;    // Snapshot HPP modal dasar satuan saat transaksi dibuat (immutable)
   selectedModifiers?: SelectedModifier[]; // Snapshot catatan add-on terpilih
   menuItem?: MenuItem;   // Joined property (backward compatibility)
 }
@@ -93,13 +95,38 @@ export interface Payment {
   paidAt: string;
   operatorName: string;
   notes?: string;
-  status: 'completed' | 'refunded';
+  status: 'completed' | 'refunded' | 'partially_refunded';
+  refundedAmount?: number;
   proofStatus?: 'menunggu_bukti' | 'menunggu_verifikasi' | 'terverifikasi';
   proofId?: number;
   proof?: PaymentProof;     // Joined property
   refundReason?: string;
   refundedAt?: string;
   refundOperator?: string;
+  cashRefundAmount?: number;
+  refundShiftId?: number | null;
+}
+
+export type RefundEventType =
+  | 'ITEM_RETURN'
+  | 'OVERPAYMENT_CORRECTION'
+  | 'ORDER_CANCELED'
+  | 'DP_RETURN'
+  | 'PARTIAL_REFUND';
+
+export interface RefundEvent {
+  id?: number;
+  idempotencyKey: string;
+  orderId: number;
+  paymentId?: number | null;
+  shiftId: number | null;
+  type: RefundEventType;
+  amount: number;
+  method: 'Cash' | 'QRIS' | 'Transfer' | 'Lainnya';
+  reason: string;
+  itemsRefunded?: { menuItemId: number; qty: number; amount: number; costPrice?: number }[];
+  operatorName: string;
+  createdAt: string;
 }
 
 export interface Order {
@@ -267,6 +294,11 @@ db.version(8).stores({
 // Additive migration: existing products keep their current availability until stock is enabled.
 db.version(9).stores({
   inventoryMovements: '++id, menuItemId, orderId, type, timestamp',
+});
+
+// Version 10: Event-driven refund ledger for partial refunds and multi-refund audit trail.
+db.version(10).stores({
+  refundEvents: '++id, idempotencyKey, orderId, paymentId, shiftId, method, type, createdAt'
 });
 
 export { db };

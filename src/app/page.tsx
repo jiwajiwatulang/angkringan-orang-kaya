@@ -1,5 +1,8 @@
 "use client";
 import LineIcon from "@/components/LineIcon";
+import MerchantLoginButton from '@/components/MerchantLoginButton';
+import { clearDemoForLogin, isMerchantLoginRequest, openMerchantCashier } from '@/lib/merchantEntry';
+import { isDemoMode } from '@/lib/demoMode';
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -256,11 +259,16 @@ export default function SakuNotaLandingPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
+      if (isMerchantLoginRequest(window.location.search)) {
+        try { openMerchantCashier(); } catch { setDirectActivateError('Login belum dapat dibuka. Izinkan penyimpanan browser lalu coba kembali.'); setIsCheckStatusModalOpen(true); }
+        return;
+      }
       if (params.get("beta") === "register") {
         setIsBetaModalOpen(true);
       } else if (params.get("beli") === "true") {
         setIsBuyModalOpen(true);
       } else if (params.get("aktivasi") === "true") {
+        if (isDemoMode()) { try { clearDemoForLogin(window.sessionStorage); window.location.replace('/?aktivasi=true'); return; } catch { setDirectActivateError('Keluar dari demo melalui Login sebelum mengaktifkan lisensi.'); } }
         setStatusModalTab("direct_license");
         setIsCheckStatusModalOpen(true);
       }
@@ -312,6 +320,10 @@ export default function SakuNotaLandingPage() {
   };
 
   const handleOpenLicenseModal = (tab: "direct_license" | "order_lookup" = "direct_license") => {
+    if (tab === 'direct_license' && isDemoMode()) {
+      try { clearDemoForLogin(window.sessionStorage); window.location.assign('/?aktivasi=true'); return; }
+      catch { setDirectActivateError('Keluar dari demo melalui Login sebelum mengaktifkan lisensi.'); setIsCheckStatusModalOpen(true); return; }
+    }
     setStatusModalTab(tab);
     setDirectActivateError("");
     setDirectActivateSuccess(null);
@@ -672,7 +684,7 @@ export default function SakuNotaLandingPage() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6 text-xs font-bold text-slate-700">
+          <nav className="hidden md:flex items-center gap-3 lg:gap-6 text-xs font-bold text-slate-700">
             <a href="#fitur" className="hover:text-blue-600 transition-colors">Fitur</a>
             <a href="#jenis-usaha" className="hover:text-blue-600 transition-colors">Jenis Usaha</a>
             <a href="#harga" className="hover:text-blue-600 transition-colors">Harga</a>
@@ -682,13 +694,7 @@ export default function SakuNotaLandingPage() {
 
           {/* Action CTAs & Controls (Light Mode Only - No Dark Toggle) */}
           <div className="hidden sm:flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => handleOpenLicenseModal("direct_license")}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all border border-blue-200 flex items-center gap-1.5"
-            >
-              <span>Aktivasi Lisensi</span>
-            </button>
+            <MerchantLoginButton className="px-4 py-2 rounded-xl text-xs font-black text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200" />
             <a
               href="/pos?demo=true"
               onClick={(event) => {
@@ -711,13 +717,7 @@ export default function SakuNotaLandingPage() {
 
           {/* Mobile Hamburger Button (High Contrast Light Blue) */}
           <div className="flex items-center gap-2 sm:hidden">
-            <button
-              type="button"
-              onClick={() => handleOpenLicenseModal("direct_license")}
-              className="px-2.5 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-extrabold text-[11px] flex items-center gap-1 shadow-xs active:scale-95"
-            >
-              <span>Aktivasi</span>
-            </button>
+            <MerchantLoginButton className="px-3 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-extrabold text-xs shadow-xs" />
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -906,12 +906,14 @@ export default function SakuNotaLandingPage() {
 
           {/* Direct License Activation & Trial Links */}
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3 text-xs">
+            <span className="font-semibold text-slate-700">Sudah punya lisensi?</span>
+            <MerchantLoginButton className="px-4 py-2 rounded-xl bg-blue-600 text-white font-extrabold hover:bg-blue-700" />
             <button
               type="button"
               onClick={() => handleOpenLicenseModal("direct_license")}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-extrabold transition-all shadow-2xs"
             >
-              <span>Sudah Punya Lisensi / Kode Tester? Aktifkan Langsung</span>
+              <span>Aktivasi Kode</span>
               <span>→</span>
             </button>
 
@@ -1563,7 +1565,7 @@ export default function SakuNotaLandingPage() {
               },
               {
                 q: "Bagaimana cara mengaktifkan Lisensi SakuNota atau Lisensi Tester?",
-                a: "Sangat mudah! Anda tidak perlu memasukkan Nomor Pesanan atau Kode Akses jika sudah memegang Kode Lisensi (misal SN-XXXX-XXXX-XXXX atau SN-TEST-XXXX). Cukup klik tombol ' Aktivasi Lisensi' di bagian atas halaman ini atau langsung buka halaman Kasir (/pos), tempel kode lisensi Anda, lalu klik Aktifkan.",
+                a: "Jika lisensi sudah aktif pada browser ini, pilih Login untuk masuk kembali ke kasir usaha tanpa memasukkan kode lagi. Untuk kode baru, pilih Aktivasi Kode atau buka Login lalu masukkan kode lisensi Anda. Nomor pesanan tidak diperlukan jika Anda sudah memiliki kode lisensi.",
               },
               {
                 q: "Berapa harga SakuNota?",

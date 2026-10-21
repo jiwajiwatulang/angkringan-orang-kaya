@@ -1,5 +1,7 @@
 "use client";
 import LineIcon from "@/components/LineIcon";
+import OrderLabelButton from "@/components/OrderLabelButton";
+import { printSavedOrderLabels } from '@/lib/orderLabelPrinting';
 
 import React, { useState, useEffect, useRef } from "react";
 import { useAdmin } from "../AdminContext";
@@ -314,12 +316,14 @@ export default function AdminTransaksiPage() {
       await processVoidRefund(voidTargetOrder.id, {
         reason: voidReason,
         isRefunded: isRefundCash,
-        refundAmount: voidTargetOrder.total,
+        refundAmount: isRefundCash ? Math.max(0, voidTargetOrder.paidAmount || 0) : 0,
         refundMethod: isRefundCash ? "Tunai" : voidTargetOrder.paymentMethod,
         operator: "Admin",
       });
 
       showToast(`Nota #${voidTargetOrder.id} berhasil di-VOID`);
+      try { await printSavedOrderLabels(voidTargetOrder.id, storeSettings, true); }
+      catch (error) { showToast(error instanceof Error ? error.message : 'Label pembatalan gagal dikirim.', 'error'); }
       setVoidTargetOrder(null);
       await loadData();
     } catch (err: any) {
@@ -1709,6 +1713,7 @@ export default function AdminTransaksiPage() {
 
             {/* Print Buttons */}
             <div className="space-y-2 pt-3 border-t border-line">
+              <OrderLabelButton orderId={Number(receiptData.id ?? receiptData.orderId)} settings={storeSettings} />
               <button
                 type="button"
                 onClick={() => handlePrint('all')}
