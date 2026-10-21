@@ -1,4 +1,5 @@
 import { Order, Payment, RefundEvent, CashMovement, OrderItem } from './dexie';
+import { paymentRefundEvents, retainedPaymentAmount } from './paymentLedger';
 
 export type DashboardRange = 'today' | 'yesterday' | '7days' | '30days' | 'thisMonth';
 
@@ -137,7 +138,7 @@ export function computeSalesMetrics(
     if (order.items && order.items.length > 0) {
       for (const item of order.items) {
         totalItemsCount += item.qty;
-        const itemCost = (item as any).costPrice ?? (item.menuItem as any)?.costPrice;
+        const itemCost = item.costPrice;
         if (typeof itemCost === 'number' && Number.isFinite(itemCost) && itemCost >= 0) {
           totalCOGS += itemCost * item.qty;
           totalItemsWithCOGS += item.qty;
@@ -155,6 +156,8 @@ export function computeSalesMetrics(
   const salesRefundEvents = refundEvents.filter(r => {
     const isSalesRefundType = r.type === 'ITEM_RETURN' || r.type === 'ORDER_CANCELED';
     if (!isSalesRefundType) return false;
+    // Void orders are already excluded from sales; do not deduct their cash refund twice.
+    if (orders.some(o => o.id === r.orderId && o.status === 'void')) return false;
     if (period) return isWithinPeriod(r.createdAt, period.start, period.end);
     return true;
   });
@@ -162,7 +165,7 @@ export function computeSalesMetrics(
   const salesRefunds = salesRefundEvents.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 
   // Penjualan Bersih = Gross Sales - Diskon - Retur Penjualan (di luar titipan PB1)
-  const netSales = Math.max(0, grossSales - totalDiscounts - salesRefunds);
+  const netSales = grossSales - totalDiscounts - salesRefunds;
 
   // Laba Kotor = Penjualan Bersih - Total HPP
   const grossProfit = netSales - totalCOGS;
@@ -199,9 +202,10 @@ export function computePaymentMetrics(
     ? payments.filter(p => isWithinPeriod(p.paidAt, period.start, period.end))
     : payments;
 
+  const effectiveRefunds = paymentRefundEvents(payments, refundEvents);
   const filteredRefunds = period
-    ? refundEvents.filter(r => isWithinPeriod(r.createdAt, period.start, period.end))
-    : refundEvents;
+    ? effectiveRefunds.filter(r => isWithinPeriod(r.createdAt, period.start, period.end))
+    : effectiveRefunds;
 
   const filteredMovements = period
     ? cashMovements.filter(m => isWithinPeriod(m.timestamp, period.start, period.end))
@@ -299,7 +303,8 @@ export function computeReconciliation(
   payments: PaymentMetrics,
   orders: Order[] = [],
   refundEvents: RefundEvent[] = [],
-  period?: { start: Date; end: Date }
+  period?: { start: Date; end: Date },
+  paymentRows?: Payment[]
 ): ReconciliationStatus {
   const notes: string[] = [];
   let isIntegrityVerified = true;
@@ -354,16 +359,51 @@ export function computeReconciliation(
     }
   }
 
-  // 4. Jembatan Rekonsiliasi Matematis:
-  // Penjualan Bersih (netSales) + Pajak (taxCollected) vs Penerimaan Pembayaran Netto (netPayments)
-  // Perbedaan sah berasal dari: (Open Bill baru periode ini) dan (Timing Difference refund masa lalu)
-  const effectiveExpectedSalesCash = sales.netSales + sales.taxCollected;
+  // Bridge invoice value to receipts using the change in receivables, not all-time open bills.
+  const effectiveExpectedSalesCash = sales.netSales + sales.taxCollected + sales.serviceCharge;
   
   // Selisih mentah antara omzet bertagihan dengan uang bersih yang masuk
   const delta = effectiveExpectedSalesCash - payments.netPayments;
 
   // Selisih anomali yang belum teridentifikasi ledger
-  const unexplainedDifference = Math.abs(delta - (openBillOutstanding - timingDifference));
+  let expectedDifference = openBillOutstanding;
+  if (paymentRows) {
+    let receivableChange = 0;
+    for (const order of orders) {
+      if (order.status === 'void') continue;
+      const rows = paymentRows.filter(p => p.orderId === order.id);
+      const bill = Number(order.subtotal ?? (order.total + (order.discount || 0) - (order.tax || 0) - (order.serviceCharge || 0)))
+        - (order.discount || 0) + (order.tax || 0) + (order.serviceCharge || 0);
+      const at = (boundary: Date) => {
+        if (new Date(order.createdAt).getTime() >= boundary.getTime()) return 0;
+        if (!rows.length) return order.status === 'unpaid' ? (order.remainingBalance ?? order.total) : 0;
+        const receipts = rows.filter(p => new Date(p.paidAt).getTime() < boundary.getTime()).reduce((s, p) => s + p.amount, 0);
+        return Math.max(0, bill - receipts);
+      };
+      const balance = period ? at(period.end) - at(period.start)
+        : rows.length ? Math.max(0, bill - rows.reduce((s, p) => s + p.amount, 0))
+        : order.status === 'unpaid' ? (order.remainingBalance ?? order.total) : 0;
+      receivableChange += balance;
+      // A paid marker cannot hide a missing or excessive payment.
+      const retained = rows.reduce((s, p) => s + retainedPaymentAmount(p), 0);
+      if (rows.length && order.status === 'paid' && Math.abs(retained - order.total) > 1) {
+        isIntegrityVerified = false;
+        notes.push(`Pembayaran nota #${order.id} tidak sesuai status lunas.`);
+      }
+    }
+    const nonSalesRefunds = refundEvents.filter(r => !orders.some(o => o.id === r.orderId && o.status === 'void')
+      && (!period || isWithinPeriod(r.createdAt, period.start, period.end))
+      && r.type !== 'ITEM_RETURN' && r.type !== 'ORDER_CANCELED').reduce((s, r) => s + r.amount, 0);
+    expectedDifference = receivableChange + nonSalesRefunds;
+    if (paymentRows.some(p => !orders.some(o => o.id === p.orderId) || !Number.isFinite(p.amount) || p.amount <= 0 || !Number.isFinite(new Date(p.paidAt).getTime()))) {
+      isIntegrityVerified = false;
+      notes.push('Ditemukan pembayaran tanpa nota atau nominal/tanggal tidak valid.');
+    }
+  } else if (period) {
+    expectedDifference = orders.filter(o => o.status === 'unpaid' && isWithinPeriod(o.createdAt, period.start, period.end))
+      .reduce((s, o) => s + (o.remainingBalance || 0), 0);
+  }
+  const unexplainedDifference = Math.abs(delta - expectedDifference);
 
   if (unexplainedDifference > 1) {
     // Toleransi pembulatan pecahan Rp 1
@@ -394,13 +434,13 @@ export function computeFinancialDashboard(params: {
   startingCash?: number;
   period?: { start: Date; end: Date };
 }): UnifiedFinancialReport {
-  const refunds = params.refundEvents || [];
+  const refunds = paymentRefundEvents(params.payments, params.refundEvents || []);
   const movements = params.cashMovements || [];
   const startCash = params.startingCash || 0;
 
   const sales = computeSalesMetrics(params.orders, refunds, params.period);
   const payments = computePaymentMetrics(params.payments, refunds, movements, startCash, params.period);
-  const reconciliation = computeReconciliation(sales, payments, params.orders, refunds, params.period);
+  const reconciliation = computeReconciliation(sales, payments, params.orders, refunds, params.period, params.payments);
 
   return {
     period: {
