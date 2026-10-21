@@ -12,6 +12,7 @@
     "test:labels": "tsx --test tests/order-labels.test.ts",
     "test:guide": "tsx --test tests/first-run-guide.test.ts tests/tutorial-lock.test.ts tests/guide-component.test.ts",
     "test:dashboard": "tsx --test tests/chart-interaction.test.ts tests/sales-chart-component.test.ts",
+    "test:login": "tsx --test tests/merchant-login.test.ts",
     "test:stability": "tsx --test tests/stability.test.ts tests/offline-worker.test.ts tests/waiter.test.ts tests/products-cashier.test.ts tests/security.test.ts tests/promo.test.ts",
     "test:offline": "tsx test_offline_readiness.ts",
     "typecheck": "tsc --noEmit",

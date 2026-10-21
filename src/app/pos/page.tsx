@@ -10,6 +10,7 @@ import type { BusinessDemoType } from "@/lib/demoCatalog";
 
 import { useState, useEffect, useRef } from "react";
 import { isDemoMode, preserveDemoUrl, restartDemoSession } from '@/lib/demoMode';
+import { clearDemoForLogin, isMerchantLoginRequest } from '@/lib/merchantEntry';
 import Link from "next/link";
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
@@ -963,6 +964,17 @@ export default function POSPage() {
   };
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && isMerchantLoginRequest(window.location.search)) {
+      try { clearDemoForLogin(window.sessionStorage); }
+      catch {
+        setAccessStatus({ isValid: false, isDemo: false, status: 'unregistered', error: 'Login belum dapat dibuka. Izinkan penyimpanan browser, lalu coba kembali.' });
+        setIsAccessChecking(false); setIsLoading(false); return;
+      }
+      if (db.name === 'SakuNotaDemoDB') { window.location.replace('/pos?login=true'); return; }
+      const url = new URL(window.location.href);
+      url.searchParams.delete('demo'); url.searchParams.delete('login');
+      window.history.replaceState(window.history.state, '', url.toString());
+    }
     if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "true") {
       try {
         sessionStorage.setItem("sakunota_demo_mode", "true");

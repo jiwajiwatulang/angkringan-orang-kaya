@@ -1,4 +1,6 @@
 import { createDeviceProof } from './deviceIdentity';
+import { db } from './dexie';
+import { isDemoMode } from './demoMode';
 
 export interface CustomerOrder {
   orderId: string;
@@ -320,6 +322,7 @@ export async function activateLicenseServer(
   licenseKey: string,
   deviceName: string = "Perangkat Kasir"
 ): Promise<{ success: boolean; error?: string; status?: number; businessName?: string }> {
+  if (isDemoMode() || db.name === 'SakuNotaDemoDB') return { success: false, error: 'Keluar dari mode demo melalui tombol Login, lalu aktifkan lisensi pada kasir usaha.' };
   const deviceId = getLocalDeviceId();
 
   try {

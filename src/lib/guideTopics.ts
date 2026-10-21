@@ -2,10 +2,24 @@
 export const GUIDE_TOPICS = [
   {
     "id": "license-security-update",
-    "title": "Pembaruan Lisensi & Batas Demo",
+    "title": "Login, Lisensi & Batas Demo",
     "shortDesc": "Tetap satu perangkat satu lisensi, dengan data toko lokal.",
     "iconType": "shield",
     "articles": [
+      {
+        "title": "Login ke kasir yang sudah aktif",
+        "summary": "Masuk kembali memakai lisensi yang tersimpan pada browser Anda.",
+        "steps": [
+          "Buka halaman utama SakuNota, lalu pilih Login. Tombol ini membuka kasir usaha dan keluar dari mode demo.",
+          "Gunakan perangkat, browser, dan alamat situs yang sama dengan saat mengaktifkan lisensi. Lisensi yang masih aktif akan dikenali otomatis tanpa memasukkan kode lagi.",
+          "Jika belum ada lisensi tersimpan pada browser tersebut, masukkan kode lisensi pada layar kasir untuk aktivasi.",
+          "Pastikan banner Demo Kasir tidak muncul saat mulai mencatat transaksi usaha.",
+          "PIN Admin hanya dipakai untuk membuka pengelolaan usaha atau tindakan yang memerlukan izin pemilik."
+        ],
+        "tips": "Hindari mode privat dan jangan menghapus data situs. Jika kode dinyatakan terikat pada perangkat lain, gunakan browser asal atau hubungi pemilik lisensi untuk memeriksa perangkatnya.",
+        "targetHref": "/pos?login=true",
+        "targetLabel": "Login"
+      },
       {
         "title": "Memperbarui aktivasi lama",
         "summary": "Pembeli lama tidak perlu membeli ulang.",
