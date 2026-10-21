@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { chartPointAtPointer } from '@/lib/chartInteraction';
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, MenuItem } from "@/lib/dexie";
 import {
@@ -610,7 +611,7 @@ export default function AdminDashboardPage() {
               <button
                 key={t.id}
                 type="button"
-                onClick={() => setTimeRange(t.id as any)}
+                onClick={() => { setTimeRange(t.id as any); setHoveredPoint(null); }}
                 className={`px-3 py-1.5 rounded-xl transition-all ${
                   timeRange === t.id
                     ? "bg-blue-600 text-white shadow-sm font-black"
@@ -777,7 +778,7 @@ export default function AdminDashboardPage() {
               <div className="flex items-center gap-1 bg-card border border-line p-1 rounded-xl text-xs font-bold">
                 <button
                   type="button"
-                  onClick={() => setChartType("line")}
+                  onClick={() => { setChartType("line"); setHoveredPoint(null); }}
                   className={`px-2.5 py-1 rounded-lg transition-all ${
                     chartType === "line" ? "bg-blue-600 text-white" : "text-muted hover:text-fg"
                   }`}
@@ -786,7 +787,7 @@ export default function AdminDashboardPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setChartType("bar")}
+                  onClick={() => { setChartType("bar"); setHoveredPoint(null); }}
                   className={`px-2.5 py-1 rounded-lg transition-all ${
                     chartType === "bar" ? "bg-blue-600 text-white" : "text-muted hover:text-fg"
                   }`}
@@ -803,6 +804,31 @@ export default function AdminDashboardPage() {
                   viewBox={`0 0 ${svgW} ${svgH}`}
                   className="w-full h-full overflow-visible"
                   preserveAspectRatio="none"
+                  tabIndex={0}
+                  role="group"
+                  aria-label="Grafik penjualan. Arahkan kursor, sentuh grafik, atau gunakan panah kiri dan kanan untuk melihat nilai."
+                  onPointerMove={(event) => {
+                    const bounds = event.currentTarget.getBoundingClientRect();
+                    const index = chartPointAtPointer(event.clientX, bounds.left, bounds.width, svgCoords.length);
+                    if (index !== null) setHoveredPoint(svgCoords[index]);
+                  }}
+                  onPointerDown={(event) => {
+                    const bounds = event.currentTarget.getBoundingClientRect();
+                    const index = chartPointAtPointer(event.clientX, bounds.left, bounds.width, svgCoords.length);
+                    if (index !== null) setHoveredPoint(svgCoords[index]);
+                  }}
+                  onPointerLeave={(event) => { if (event.pointerType !== 'touch') setHoveredPoint(null); }}
+                  onPointerCancel={() => setHoveredPoint(null)}
+                  onFocus={() => setHoveredPoint(svgCoords[0] || null)}
+                  onBlur={() => setHoveredPoint(null)}
+                  onKeyDown={(event) => {
+                    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Escape'].includes(event.key)) return;
+                    event.preventDefault();
+                    if (event.key === 'Escape') { setHoveredPoint(null); return; }
+                    const current = Math.max(0, svgCoords.findIndex(point => point.label === hoveredPoint?.label));
+                    const next = event.key === 'Home' ? 0 : event.key === 'End' ? svgCoords.length - 1 : Math.max(0, Math.min(svgCoords.length - 1, current + (event.key === 'ArrowRight' ? 1 : -1)));
+                    setHoveredPoint(svgCoords[next] || null);
+                  }}
                 >
                   <defs>
                     <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
@@ -810,6 +836,7 @@ export default function AdminDashboardPage() {
                       <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
                     </linearGradient>
                   </defs>
+                  <rect width={svgW} height={svgH} fill="transparent" pointerEvents="all" />
 
                   {/* Horizontal grid lines */}
                   {[0, 0.25, 0.5, 0.75, 1].map((pct, idx) => {
@@ -852,9 +879,7 @@ export default function AdminDashboardPage() {
                       fill="#FFFFFF"
                       stroke="#2563EB"
                       strokeWidth="2.5"
-                      className="cursor-pointer transition-all hover:scale-125"
-                      onMouseEnter={() => setHoveredPoint(pt)}
-                      onMouseLeave={() => setHoveredPoint(null)}
+                      className="pointer-events-none"
                     />
                   ))}
                 </svg>
@@ -894,7 +919,7 @@ export default function AdminDashboardPage() {
 
               {/* Tooltip on hover */}
               {hoveredPoint && (
-                <div className="absolute top-2 right-4 bg-slate-900 text-white px-3 py-2 rounded-xl text-xs shadow-lg pointer-events-none z-10 animate-in fade-in">
+                <div role="status" className="absolute top-2 right-4 bg-slate-900 text-white px-3 py-2 rounded-xl text-xs shadow-lg pointer-events-none z-10">
                   <div className="text-[11px] text-slate-400 font-bold">{hoveredPoint.sublabel}</div>
                   <div className="font-mono font-black text-sm text-blue-400">
                     Rp {hoveredPoint.omzet.toLocaleString("id-ID")}

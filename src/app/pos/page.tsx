@@ -25,6 +25,7 @@ import {
 } from '@/lib/receipt';
 import PaymentProofUpload from '@/components/PaymentProofUpload';
 import OnboardingWizard from '@/components/OnboardingWizard';
+import FirstRunGuide from '@/components/FirstRunGuide';
 import { canOpenStoreOnboarding } from '@/lib/onboarding';
 import MobileHeader from '@/components/mobile/MobileHeader';
 import MobileCatalogScreen from '@/components/mobile/MobileCatalogScreen';
@@ -77,6 +78,7 @@ export default function POSPage() {
   const [checkoutProof, setCheckoutProof] = useState<{ imageData: string; fileName: string; fileSize: number; mimeType: string } | null>(null);
   const [splitProof, setSplitProof] = useState<{ imageData: string; fileName: string; fileSize: number; mimeType: string } | null>(null);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [guideRestartToken, setGuideRestartToken] = useState(0);
 
   // Form states for Shift
   const [shiftOperatorName, setShiftOperatorName] = useState("Kasir");
@@ -1910,7 +1912,7 @@ export default function POSPage() {
 
     if (!isMobile) {
       return (
-        <div className={`flex ${isFullWorkspace ? 'flex-col sm:flex-row landscape:flex-row' : 'flex-col'} flex-1 min-h-0 h-full overflow-hidden`}>
+        <div data-guide="cart" className={`flex ${isFullWorkspace ? 'flex-col sm:flex-row landscape:flex-row' : 'flex-col'} flex-1 min-h-0 h-full overflow-hidden`}>
           {/* Left Column (or Top+Middle in sidebar): Header + Scrollable Cart Items */}
           <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
             <div className="p-3 sm:p-4 lg:p-5 max-lg:landscape:px-3 max-lg:landscape:py-2 border-b border-line bg-surface rounded-t-3xl md:rounded-none shrink-0">
@@ -2129,7 +2131,7 @@ export default function POSPage() {
 
     // 2. MOBILE & TABLET VIEW (Responsive Landscape Split-Screen + Portrait Sheet)
     return (
-      <div className="flex flex-col landscape:flex-row flex-1 min-h-0 h-full w-full overflow-hidden bg-card">
+      <div data-guide="cart" className="flex flex-col landscape:flex-row flex-1 min-h-0 h-full w-full overflow-hidden bg-card">
         {/* LEFT PANE in landscape / TOP & MIDDLE in portrait: Header + Cart Items List */}
         <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden bg-card">
           {/* Header */}
@@ -2492,7 +2494,7 @@ export default function POSPage() {
                 pushModalHistory('splitbill');
               }}
             />);
-  const renderShiftPanel = () => <CashierShiftPanel shift={activeShift} onOpen={() => setIsOpenShiftModalOpen(true)} onCash={() => setIsCashMovementModalOpen(true)} onClose={openCloseShiftModal} />;
+  const renderShiftPanel = () => <><button type="button" onClick={() => setGuideRestartToken(n => n + 1)} className="m-3 px-3 py-2 rounded-xl border border-line text-xs font-bold">Panduan Singkat</button><CashierShiftPanel shift={activeShift} onOpen={() => setIsOpenShiftModalOpen(true)} onCash={() => setIsCashMovementModalOpen(true)} onClose={openCloseShiftModal} /></>;
 
   if (isAccessChecking) {
     return (
@@ -2768,7 +2770,7 @@ export default function POSPage() {
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4 max-lg:landscape:p-2 overflow-y-auto animate-in fade-in duration-200"
           onClick={handleClosePaymentModal}
         >
-          <div 
+          <div data-guide="payment"
             className="bg-card p-4 sm:p-6 md:p-8 max-lg:landscape:p-3.5 rounded-t-3xl sm:rounded-2xl w-full max-w-md max-lg:landscape:max-w-xl shadow-2xl relative flex flex-col max-h-[90vh] landscape:max-h-[95dvh] transition-transform ease-out"
             style={{
               transform: paymentSheetDragY > 0 ? `translateY(${paymentSheetDragY}px)` : undefined,
@@ -3127,7 +3129,7 @@ export default function POSPage() {
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
           onClick={closeReceipt}
         >
-          <div 
+          <div data-guide="receipt"
             className="bg-card text-fg p-6 rounded-2xl w-full max-w-sm shadow-2xl relative flex flex-col max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
@@ -3391,6 +3393,7 @@ export default function POSPage() {
           )}
 
           <CashierPrinter settings={storeSettings} />
+          <button type="button" onClick={() => setGuideRestartToken(n => n + 1)} className="px-2 py-2 rounded-xl border border-line text-xs font-bold">Panduan Singkat</button>
           <button type="button" onClick={enterAdmin} className="px-3 py-2 max-lg:landscape:py-1 max-lg:landscape:px-2.5 rounded-xl border border-line bg-card text-fg font-bold text-xs hover:bg-line/80 hover:border-accent/40 cursor-pointer transition-all duration-150 active:scale-95 shadow-xs">Admin</button>
 
         </div>
@@ -3583,7 +3586,7 @@ export default function POSPage() {
             const paginatedMenu = filteredMenu.slice((menuPage - 1) * menuItemsPerPage, menuPage * menuItemsPerPage);
 
             return (
-              <div className="flex-1 flex flex-col h-full overflow-hidden">
+              <div data-guide="catalog" className="flex-1 flex flex-col h-full overflow-hidden">
                 <div className="p-4 md:p-6 pb-2 max-lg:landscape:px-3 max-lg:landscape:pt-2 max-lg:landscape:pb-1.5 shrink-0">
                   <div className="flex flex-col space-y-3 max-lg:landscape:space-y-1.5 mb-2 max-lg:landscape:mb-1">
                     <CategoryScroller categories={categories} value={activeCategory} onChange={setActiveCategory} />
@@ -3991,7 +3994,7 @@ export default function POSPage() {
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
           onClick={handleCloseOpenShift}
         >
-          <div 
+          <div data-guide="shift"
             className=" bg-card rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-line"
             onClick={(e) => e.stopPropagation()}
           >
@@ -5200,6 +5203,26 @@ export default function POSPage() {
       )}
 
       {/* Onboarding Wizard Toko Baru */}
+      <FirstRunGuide
+        ready={!isLoading && !isAccessChecking && accessStatus.isValid && !isOnboardingOpen}
+        demo={accessStatus.isDemo}
+        hasShift={!!activeShift}
+        hasItems={cart.length > 0}
+        paymentOpen={isPaymentModalOpen}
+        savedReceipt={!!receiptData?.persistedOrder && !receiptData?.isDraft}
+        hasMenus={menuData.some(item => !item.isSoldOut)}
+        labelsEnabled={!!storeSettings.orderLabel?.enabled}
+        restartToken={guideRestartToken}
+        onNavigate={(step) => {
+          if (step === 'shift') setIsOpenShiftModalOpen(true);
+          if (step === 'catalog') navigateWorkspace('menu');
+          if (step === 'cart') {
+            navigateWorkspace('kasir');
+            setIsMobileCartOpen(false);
+          }
+          if (step === 'payment' && !isPaymentModalOpen) openPaymentModal();
+        }}
+      />
       <OnboardingWizard
         isOpen={isOnboardingOpen && !isAccessChecking && canOpenStoreOnboarding(accessStatus)}
         onComplete={async () => {

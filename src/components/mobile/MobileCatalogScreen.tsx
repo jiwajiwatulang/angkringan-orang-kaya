@@ -87,7 +87,7 @@ export default function MobileCatalogScreen({
   });
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden select-none bg-slate-50 text-slate-900">
+    <div data-guide="catalog" className="flex-1 flex flex-col h-full overflow-hidden select-none bg-slate-50 text-slate-900">
       {/* 1. Header Bar: Title, Grid Mode Switcher & Search */}
       <div className="p-3.5 pb-2.5 shrink-0 border-b border-blue-100 bg-white shadow-2xs">
         <div className="flex items-center justify-between mb-2.5">

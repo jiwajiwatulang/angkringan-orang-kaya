@@ -38,6 +38,7 @@ type MenuItem = {
   sku?: string;
   nama: string;
   harga: number;
+  costPrice?: number;
   kategori: string;
   isSoldOut?: boolean;
   modifiers?: ModifierGroup[];
@@ -97,6 +98,7 @@ function CatalogPanel() {
   const [isBarcodeScanOpen, setIsBarcodeScanOpen] = useState(false);
   const [formNama, setFormNama] = useState("");
   const [formHarga, setFormHarga] = useState("");
+  const [formCostPrice, setFormCostPrice] = useState("");
   const [formKategori, setFormKategori] = useState("Lauk");
   const [isCustomKategori, setIsCustomKategori] = useState(false);
   const [customKategori, setCustomKategori] = useState("");
@@ -173,6 +175,7 @@ function CatalogPanel() {
     selectedMenuIds,
     formNama,
     formHarga,
+    formCostPrice,
     formKategori,
     customKategori,
   ]);
@@ -241,6 +244,7 @@ function CatalogPanel() {
     setFormSku(""); // SKU benar-benar opsional & kosong
     setFormNama("");
     setFormHarga("");
+    setFormCostPrice("");
     const defaultCat = categories.find((c) => c !== "Semua") || "Lauk";
     setFormKategori(defaultCat);
     setIsCustomKategori(false);
@@ -257,6 +261,7 @@ function CatalogPanel() {
     setFormSku(menu.sku || "");
     setFormNama(menu.nama);
     setFormHarga(menu.harga.toString());
+    setFormCostPrice(menu.costPrice == null ? '' : String(menu.costPrice));
     setFormKategori(menu.kategori || "Lauk");
     setIsCustomKategori(false);
     setCustomKategori("");
@@ -396,6 +401,7 @@ function CatalogPanel() {
       return (
         formNama.trim() !== editingMenu.nama.trim() ||
         Number(formHarga) !== editingMenu.harga ||
+        (formCostPrice.trim() === '' ? undefined : Number(formCostPrice)) !== editingMenu.costPrice ||
         finalKat !== origKat ||
         formSku.trim() !== origSku ||
         formIsSoldOut !== Boolean(editingMenu.isSoldOut) ||
@@ -406,6 +412,7 @@ function CatalogPanel() {
       return (
         formNama.trim() !== "" ||
         formHarga.trim() !== "" ||
+        formCostPrice.trim() !== "" ||
         formSku.trim() !== "" ||
         Boolean(formImage) ||
         formEnableModifiers ||
@@ -436,7 +443,12 @@ function CatalogPanel() {
 
     const finalKat = isCustomKategori ? customKategori.trim() || "Lainnya" : formKategori.trim();
     const finalHarga = Number(formHarga);
+    const finalCostPrice = formCostPrice.trim() === '' ? undefined : Number(formCostPrice);
     const cleanNama = formNama.trim();
+    if (finalCostPrice !== undefined && (!Number.isFinite(finalCostPrice) || finalCostPrice < 0)) {
+      showToast('HPP harus berupa angka valid, minimal Rp 0, atau kosong jika belum diketahui.', 'error');
+      return;
+    }
 
     if (!cleanNama) {
       showToast("Nama menu tidak boleh kosong.", "error");
@@ -476,6 +488,7 @@ function CatalogPanel() {
     try {
       if (editingMenu) {
         await updateMenu(editingMenu.id, {
+          costPrice: finalCostPrice ?? null,
           sku: formSku.trim(),
           nama: cleanNama,
           harga: finalHarga,
@@ -487,6 +500,7 @@ function CatalogPanel() {
         showToast(`Menu "${cleanNama}" berhasil diperbarui`, "success");
       } else {
         await createMenu({
+          costPrice: finalCostPrice,
           sku: formSku.trim() || undefined,
           nama: cleanNama,
           harga: finalHarga,
@@ -1777,6 +1791,11 @@ function CatalogPanel() {
               </div>
 
               {/* Kategori Menu */}
+              <div>
+                <label htmlFor="product-cost-price" className="block text-xs font-bold text-fg mb-1">HPP / Modal per Unit (Rp)</label>
+                <input id="product-cost-price" type="number" min="0" step="any" placeholder="Kosong jika belum diketahui" value={formCostPrice} onChange={event => setFormCostPrice(event.target.value)} className="w-full bg-card border border-line rounded-xl p-3 text-fg outline-none focus:border-accent" aria-describedby="product-cost-help" />
+                <p id="product-cost-help" className="text-xs text-muted mt-1">Modal satu porsi/unit. Kosong berarti belum diketahui; 0 berarti tanpa biaya. Berlaku untuk transaksi baru.</p>
+              </div>
               <div>
                 <label className="block text-xs font-bold text-fg mb-1">
                   Kategori Menu *

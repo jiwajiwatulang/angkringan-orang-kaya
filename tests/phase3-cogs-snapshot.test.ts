@@ -83,6 +83,20 @@ test('Tahap 3: HPP Produk & Snapshot Biaya Transaksi (Immutability & Integrity)'
     assert.strictEqual(salesMetrics.cogsCoveragePercent, 100, 'Cakupan data modal 100%');
   });
 
+  await t.test('mengosongkan HPP membedakan biaya tidak diketahui dari nol dan menjaga snapshot lama', async () => {
+    const id = Number(await createMenu({ nama: 'Produk HPP opsional', harga: 10000, costPrice: 4000, kategori: 'Tes' }));
+    const first = await createOrder({ total: 10000, status: 'paid', paymentMethod: 'Cash', items: [{ id, nama: 'Produk HPP opsional', harga: 10000, qty: 1 }] });
+    await updateMenu(id, { costPrice: null });
+    assert.equal((await db.table('menuItems').get(id)).costPrice, undefined);
+    assert.equal((await db.table('orderItems').where('orderId').equals(Number(first.id)).first()).costPrice, 4000);
+    const second = await createOrder({ total: 10000, status: 'paid', paymentMethod: 'Cash', items: [{ id, nama: 'Produk HPP opsional', harga: 10000, qty: 1 }] });
+    assert.equal((await db.table('orderItems').where('orderId').equals(Number(second.id)).first()).costPrice, undefined);
+    await updateMenu(id, { costPrice: 0 });
+    assert.equal((await db.table('menuItems').get(id)).costPrice, 0);
+    await updateMenu(id, { nama: 'Nama baru tanpa mengganti HPP' });
+    assert.equal((await db.table('menuItems').get(id)).costPrice, 0);
+  });
+
   await t.test('6. Transaksi tanpa HPP tidak memalsukan modal dan menandai incomplete status', async () => {
     // Menu lama tanpa HPP
     const legacyMenuId = Number(await createMenu({

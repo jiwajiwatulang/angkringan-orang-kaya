@@ -269,7 +269,7 @@ export async function reorderMenus(items: {id: number, urutan: number}[]) {
   });
 }
 
-export async function updateMenu(id: number, data: { sku?: string; nama?: string; harga?: number; costPrice?: number; kategori?: string; isSoldOut?: boolean; modifiers?: any[]; imageData?: string | null }) {
+export async function updateMenu(id: number, data: { sku?: string; nama?: string; harga?: number; costPrice?: number | null; kategori?: string; isSoldOut?: boolean; modifiers?: any[]; imageData?: string | null }) {
   await requireMerchantAdmin();
   const updateData: any = {};
   if (data.costPrice !== undefined) {
