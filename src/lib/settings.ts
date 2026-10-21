@@ -1,6 +1,15 @@
 import { db } from './dexie';
 
 export interface StoreSettings {
+  orderLabel?: {
+    enabled: boolean;
+    widthMm: number;
+    heightMm: number;
+    gapMm: number;
+    connection: 'system' | 'bluetooth';
+    automatic: boolean;
+    categories: string[];
+  };
   storeName: string;
   storeAddress: string;
   storePhone: string;

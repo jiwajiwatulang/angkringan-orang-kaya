@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "tsx test_suite.ts",
     "test:financial": "tsx --test tests/phase1-refund-ledger.test.ts tests/phase2-financial-engine.test.ts tests/phase3-cogs-snapshot.test.ts tests/financial-integrity.test.ts",
+    "test:labels": "tsx --test tests/order-labels.test.ts",
     "test:stability": "tsx --test tests/stability.test.ts tests/offline-worker.test.ts tests/waiter.test.ts tests/products-cashier.test.ts tests/security.test.ts tests/promo.test.ts",
     "test:offline": "tsx test_offline_readiness.ts",
     "typecheck": "tsc --noEmit",

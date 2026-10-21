@@ -1,5 +1,6 @@
 "use client";
 import LineIcon from "@/components/LineIcon";
+import OrderLabelSettings from "@/components/OrderLabelSettings";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -232,7 +233,7 @@ export default function PengaturanPrinterPage() {
           </Link>
           <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
             
-            <span>Koneksi Printer Bluetooth Thermal</span>
+            <span>Printer &amp; Cetak Pesanan</span>
           </h2>
           <p className="text-xs text-muted mt-0.5">
             Konfigurasi printer thermal ESC/POS 58mm atau 80mm untuk cetak struk kasir, dapur, dan Z-Report.
@@ -262,6 +263,7 @@ export default function PengaturanPrinterPage() {
       </div>
 
       {/* Platform & Connection Status Banner */}
+      <OrderLabelSettings settings={storeSettings} refresh={refreshSettings} toast={showToast} />
       <div className="p-5 rounded-3xl bg-surface border border-line shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>

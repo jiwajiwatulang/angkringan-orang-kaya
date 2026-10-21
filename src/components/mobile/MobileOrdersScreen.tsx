@@ -1,5 +1,7 @@
 "use client";
 import LineIcon from "@/components/LineIcon";
+import OrderLabelButton from '@/components/OrderLabelButton';
+import type { StoreSettings } from '@/lib/settings';
 
 import React, { useState } from "react";
 
@@ -8,6 +10,7 @@ interface MobileOrdersScreenProps {
   onReprintReceipt: (order: any) => void;
   onOpenSplitBill: (order: any) => void;
   onResumeOrder?: (order: any) => void;
+  labelSettings?: StoreSettings;
 }
 
 export default function MobileOrdersScreen({
@@ -15,6 +18,7 @@ export default function MobileOrdersScreen({
   onReprintReceipt,
   onOpenSplitBill,
   onResumeOrder,
+  labelSettings,
 }: MobileOrdersScreenProps) {
   const [search, setSearch] = useState("");
 
@@ -112,6 +116,7 @@ export default function MobileOrdersScreen({
                 </div>
 
                 {/* Bottom Row: Actions */}
+                {labelSettings && <OrderLabelButton orderId={Number(order.id)} settings={labelSettings} />}
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-line/40">
                   {!isPaid && (
                     <button

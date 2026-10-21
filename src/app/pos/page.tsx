@@ -1,6 +1,8 @@
 "use client";
 import LockIcon from "@/components/LockIcon";
 import LineIcon from "@/components/LineIcon";
+import OrderLabelButton from "@/components/OrderLabelButton";
+import { printSavedOrderLabels } from '@/lib/orderLabelPrinting';
 import ProductPhoto from "@/components/ProductPhoto";
 import CategoryScroller from "@/components/CategoryScroller";
 import TableShapeIcon from "@/components/TableShapeIcon";
@@ -1767,6 +1769,7 @@ export default function POSPage() {
       const changeAmount = paymentMethod === 'Cash' ? Math.max(0, tenderAmount - finalTotal) : 0;
 
       const newReceipt = {
+        persistedOrder: true,
         cashTendered: tenderAmount,
         change: changeAmount,
         subtotal: rawSubtotal,
@@ -1791,6 +1794,12 @@ export default function POSPage() {
       };
 
       setReceiptData(newReceipt);
+      try {
+        const labelMessage = await printSavedOrderLabels(Number(resultId), storeSettings, true);
+        if (labelMessage) setReceiptData({ ...newReceipt, labelMessage });
+      } catch (error) {
+        setReceiptData({ ...newReceipt, labelMessage: error instanceof Error ? error.message : 'Label gagal dikirim. Pesanan tetap tersimpan.' });
+      }
       pushModalHistory("receipt");
 
       resetCart();
@@ -2457,6 +2466,7 @@ export default function POSPage() {
   const renderCashierOrders = () => (<MobileOrdersScreen
               onResumeOrder={order => { loadOrderIntoCart(order); navigateWorkspace('kasir'); navigateMobile('home'); }}
               allOrders={allOrders}
+              labelSettings={storeSettings}
               onReprintReceipt={(order) => {
                 const receiptDoc = {
                   id: order.id,
@@ -3260,6 +3270,8 @@ export default function POSPage() {
 
             {/* theme-skip-end */}
             <div className="mt-6 flex flex-col space-y-2 border-t pt-4">
+              {(!receiptData.isDraft || receiptData.persistedOrder) && <OrderLabelButton orderId={Number(receiptData.orderId)} settings={storeSettings} />}
+              {receiptData.labelMessage && <p role="status" className="text-xs">{receiptData.labelMessage}</p>}
               {receiptData.isDraft && (
                 <button onClick={() => { closeReceipt(); processPayment(false, 'paid'); }} className="w-full py-3 mb-2 rounded-xl bg-accent hover:bg-accent-hover text-white font-bold text-lg shadow-lg shadow-accent/20 flex justify-center items-center space-x-2 transition-transform active:scale-95">
                   <span>Bayar Lunas Sekarang</span>

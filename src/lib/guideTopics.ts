@@ -42,20 +42,147 @@ export const GUIDE_TOPICS = [
     { title: 'Buku pelanggan & catatan kasbon (piutang)', summary: 'Catat transaksi kasbon / bayar nanti untuk pelanggan tetap, pantau sisa piutang, dan terima cicilan.', steps: ['Pada saat checkout di kasir POS, pilih metode pembayaran "Kasbon".', 'Ketik Nama Pelanggan (wajib) dan Nomor WhatsApp / HP (opsional).', 'Tekan Simpan Kasbon. Pesanan tersimpan sebagai tagihan belum lunas dan stok produk langsung terpotong.', 'Untuk melihat seluruh daftar kasbon pelanggan, buka Admin → Riwayat Transaksi → Tab Buku Kasbon.', 'Admin dapat melihat total sisa tagihan per pelanggan, rincian nota, serta mengirim rekapan tagihan langsung ke WhatsApp pelanggan dalam 1 klik.', 'Tekan + Bayar / Cicil untuk mencatat pembayaran pelunasan atau cicilan bertahap dengan Tunai, QRIS, atau Transfer Bank.'], targetHref: '/admin/transaksi', targetLabel: 'Buka buku kasbon' },
     { title: 'Tampilan kasir fleksibel & keranjang mobile responsif', summary: 'Tarik pembatas nota, atur tinggi sheet mobile, dan sesuaikan kerapatan tombol menu agar pas di segala ukuran layar.', steps: ['Pada layar monitor PC/laptop kasir, tahan dan geser garis pembatas vertikal antara katalog menu dan nota belanja ke kiri atau kanan (280px hingga 650px, klik 2x untuk reset ke 380px).', 'Ukuran teks dan tombol nota di PC membesar otomatis secara proporsional saat ditarik melebar.', 'Gunakan tombol kerapatan [S] Padat, [M] Standar, atau [L] Besar di bilah pencarian untuk mengatur ukuran kartu menu katalog.', 'Di HP mode portrait (berdiri), atur tinggi keranjang sesuka Anda lewat tombol [60% Kompak], [82% Nyaman] (standar baru), atau [96% Penuh], serta gunakan gestur geser naik/turun.', 'Ubah ukuran tombol nota kasir mobile antara [Normal] (36px) atau [Jumbo Ramah Jari] (44px) agar nyaman disentuh jempol tanpa salah pencet.', 'Gunakan tombol tong sampah merah di tiap baris pesanan untuk menghapus item secara instan tanpa perlu menekan tombol minus berkali-kali.', 'Nama Pelanggan dan Kasir dibatasi maksimal 30 karakter agar nota rapi.'], tips: 'Ukuran yang Anda atur tersimpan otomatis di perangkat dan tidak akan reset saat aplikasi ditutup atau dibuka kembali.', targetHref: '/pos', targetLabel: 'Coba di kasir' }
   ] },
+  {
+  "id": "refund-ledger",
+  "title": "Refund & Pembatalan Nota",
+  "shortDesc": "Sisa tagihan, kas shift, dan catatan pengembalian dana.",
+  "iconType": "file-text",
+  "articles": [
+    {
+      "title": "Memeriksa pembayaran setelah refund",
+      "summary": "Pengembalian dana dan pembatalan nota adalah tindakan yang berbeda.",
+      "steps": [
+        "Buka pembayaran nota melalui Bayar / Split Bill, lalu periksa catatan pembayarannya.",
+        "Gunakan Refund pada catatan pembayaran yang tersedia, masukkan alasan dan PIN Admin, lalu konfirmasi nominal yang ditampilkan.",
+        "Periksa kembali dana yang masih diterima dan sisa tagihan. Pengembalian dana dapat membuka kembali tagihan.",
+        "Untuk membatalkan seluruh nota, gunakan tindakan Void melalui Admin → Transaksi. Pilih pengembalian uang hanya jika dana memang dikembalikan.",
+        "Periksa arus refund pada periode/shift saat uang keluar. Snapshot kas shift yang sudah ditutup tidak ditulis ulang karena refund berikutnya."
+      ],
+      "tips": "Refund uang tidak mengembalikan stok secara otomatis. Periksa barang fisik sebelum mencatat barang masuk.",
+      "targetHref": "/admin/transaksi",
+      "targetLabel": "Buka transaksi"
+    }
+  ]
+},
   { id: 'shift', title: 'Shift, Biaya & Estimasi Laba Bersih', shortDesc: 'Kas awal, pengeluaran operasional, Z-Report, dan estimasi laba bersih toko.', iconType: 'file-text', articles: [
     { title: 'Tutup shift dengan hitungan fisik', summary: 'Selisih baru ditampilkan setelah penutupan disimpan.', steps: ['Catat seluruh kas masuk dan keluar beserta alasannya selama shift.', 'Pilih Tutup Shift dari kasir.', 'Hitung uang kertas dan koin di laci, lalu masukkan jumlah fisik.', 'Simpan penutupan. Aplikasi menghitung kas seharusnya dan menampilkan selisih.', 'Periksa atau cetak Z-Report; laporan lengkap berada di Admin → Shift & Kas Laci.'], tips: 'Kas seharusnya = modal awal + penjualan tunai − refund tunai + kas masuk − kas keluar. QRIS/transfer tidak menambah uang laci.' },
     { title: 'Kas keluar, pengeluaran biaya & estimasi laba bersih', summary: 'Catat belanja bahan baku, operasional harian, dan pantau estimasi laba bersih usaha.', steps: ['Buka Admin → Shift & Kas Laci → Tab Kas & Biaya Operasional atau ketuk tombol Arus Kas di kasir POS.', 'Pilih Kas Keluar (Pengeluaran) atau Kas Masuk (Penambahan Modal).', 'Pilih kategori biaya: Bahan Baku & Dapur, Perlengkapan & Kemasan, Operasional & Utilitas, Gaji/Upah Harian, atau Lainnya.', 'Pilih Sumber Dana: Kas Fisik Laci (memotong uang laci kasir saat tutup shift) atau Rekening Toko (transfer/modal luar).', 'Ketik nominal uang dan keterangan, atau gunakan tombol pilihan cepat (Es Batu, Gas LPG, Plastik, Air Galon, Parkir, Belanja Pasar, Bensin).', 'Simpan pencatatan. Kartu Ringkasan Keuangan langsung menghitung Estimasi Laba Bersih Operasional = Total Omzet Penjualan - Total Pengeluaran Biaya Toko.'], targetHref: '/admin/shift', targetLabel: 'Buka arus kas & laba' }
   ] },
-  { id: 'reports', title: 'Dashboard & Laporan', shortDesc: 'Grafik garis penjualan, periode, pembayaran, dan produk terlaris.', iconType: 'chart', articles: [
-    { title: 'Membaca grafik penjualan (Garis vs Batang)', summary: 'Dashboard menampilkan grafik interaktif dengan pilihan model Garis atau Batang dan skala kontras tinggi.', steps: ['Buka Admin → Dashboard.', 'Gunakan Banner Status Shift dan tombol Aksi Cepat untuk akses 1-ketuk ke kasir, meja, menu, nota, stok, dan laporan WA.', 'Pilih filter periode: Hari ini, Kemarin, 7 Hari, 30 Hari, atau Bulan Ini.', 'Pilih Tipe Grafik: Tekan tombol [Garis] untuk melihat fluktuasi tren ritme halus, atau pilih [Batang] untuk perbandingan volume omzet antar kolom secara tegas. Pilihan Anda tersimpan di perangkat.', 'Sentuh atau arahkan kursor ke titik/batang grafik untuk melihat kotak detail omzet dan jumlah nota (posisi tooltip otomatis menyesuaikan agar tidak pernah terpotong di tepi atas).', 'Skala nominal sumbu Y dan tanggal sumbu X disajikan dengan angka tegas berkontras tinggi.', 'Periksa komposisi metode pembayaran dan produk terlaris tanpa data yang tertutup.'], targetHref: '/admin', targetLabel: 'Lihat dashboard' }
-  ] },
-  { id: 'hardware', title: 'Printer & Struk', shortDesc: 'Format 58/80 mm, kustomisasi struk, dan jalur cetak.', iconType: 'printer', articles: [
-    { title: 'Menyiapkan printer thermal', summary: 'Aplikasi Android dan browser memiliki jalur cetak yang berbeda.', steps: ['Buka Admin → Pengaturan → Printer.', 'Pilih ukuran kertas 58 mm atau 80 mm dan isi identitas struk.', 'Pada aplikasi Android, pasangkan printer Bluetooth yang kompatibel lalu uji cetak.', 'Pada browser/PWA, gunakan dialog cetak sistem dan printer yang tersedia.', 'Uji produk, angka, dan panjang struk sebelum dipakai saat toko ramai.'], tips: 'Kompatibilitas printer, pemotong kertas, dan laci kasir bergantung pada perangkat. Jangan menganggap semua model mendukung fitur yang sama.', targetHref: '/admin/pengaturan/printer', targetLabel: 'Pengaturan printer' },
-    { title: 'Kustomisasi format & elemen struk belanja', summary: 'Atur slogan header, info WiFi/medsos di footer, serta sembunyikan logo, kasir, meja, atau catatan pesanan.', steps: ['Buka Admin → Pengaturan → Printer & Struk.', 'Isi Slogan Toko / Header Nota (contoh: "Cita Rasa Asli Nusantara" atau "Belanja Hemat Setiap Hari").', 'Isi Catatan Kaki / Info Toko (contoh: "Password WiFi: sakunota2026 | IG: @warungberkah | Barang yang dibeli tidak dapat ditukar").', 'Atur sakelar tampilan: Logo Toko, Nama Kasir yang Bertugas, Nomor Meja / Area, dan Catatan Khusus Menu.', 'Klik "Pratinjau Struk" untuk memeriksa tata letak dan keterbacaan teks secara instan sebelum mencetak fisik.', 'Klik Simpan Pengaturan Struk. Format langsung sinkron ke printer Bluetooth thermal ESC/POS dan cetak dialog sistem.'], targetHref: '/admin/pengaturan/printer', targetLabel: 'Kustomisasi struk' }
-  ] },
+  {
+  "id": "reports",
+  "title": "Dashboard v3 & Laporan",
+  "shortDesc": "Ringkasan, Analitik, HPP, dan rekonsiliasi penerimaan.",
+  "iconType": "chart",
+  "articles": [
+    {
+      "title": "Membaca Ringkasan dan Analitik",
+      "summary": "Pisahkan penjualan, penerimaan uang, dan laba saat membaca laporan.",
+      "steps": [
+        "Buka Admin → Dashboard, lalu pilih tab Ringkasan atau Analitik.",
+        "Pilih periode Hari ini, Kemarin, 7 Hari, 30 Hari, atau Bulan Ini.",
+        "Pada Ringkasan, periksa Penjualan Bersih, jumlah transaksi, Laba Kotor, serta penerimaan pembayaran.",
+        "Penjualan dan penerimaan dapat berbeda karena uang muka, tagihan belum lunas, pelunasan nota lama, atau refund.",
+        "Gunakan grafik Garis atau Batang; sentuh atau arahkan kursor untuk melihat nilai pada periode tersebut.",
+        "Pada Analitik, periksa perincian kategori, arus kas, Distribusi Jam Sibuk, serta Kecepatan Perputaran Menu."
+      ],
+      "tips": "Jika ada penanda Sebagian Tanpa HPP, data modal belum lengkap. Laba kotor bukan laba bersih setelah seluruh biaya usaha.",
+      "targetHref": "/admin",
+      "targetLabel": "Buka dashboard"
+    },
+    {
+      "title": "Memeriksa rekonsiliasi dan refund",
+      "summary": "Status rekonsiliasi menunjukkan apakah selisih telah dijelaskan oleh data yang tersedia.",
+      "steps": [
+        "Periksa status Terverifikasi dari Ledger Transaksi atau Belum Dapat Direkonsiliasi pada dashboard.",
+        "Bandingkan penerimaan bruto, refund pembayaran, dan penerimaan netto untuk masing-masing metode.",
+        "Pembayaran tunai dan refund tunai memengaruhi kas fisik; QRIS dan transfer diperiksa pada metode masing-masing.",
+        "Periksa nota belum lunas, pembayaran lintas tanggal, dan data refund ketika ada selisih.",
+        "Data HPP transaksi memakai snapshot yang tersimpan. Transaksi historis tanpa snapshot tetap ditandai belum lengkap meskipun master produk kemudian berubah."
+      ],
+      "tips": "Penanda terverifikasi bukan bukti saldo bank atau uang fisik sudah diperiksa. Tetap cocokkan dengan uang laci dan bukti pembayaran.",
+      "targetHref": "/admin",
+      "targetLabel": "Periksa analitik"
+    },
+    {
+      "title": "Membagikan ringkasan laporan",
+      "summary": "Buat laporan teks atau gambar dari periode dashboard yang dipilih.",
+      "steps": [
+        "Pilih periode yang ingin dilaporkan pada dashboard.",
+        "Buka laporan WhatsApp, lalu periksa ringkasan sebelum membagikannya.",
+        "Gunakan Salin Teks atau Buka WhatsApp untuk laporan teks.",
+        "Gunakan Bagikan Gambar atau Unduh Gambar untuk menyimpan atau mengirim ringkasan gambar melalui fasilitas perangkat."
+      ],
+      "tips": "Data laporan berasal dari perangkat toko ini. Periksa periode dan isinya sebelum dikirim."
+    }
+  ]
+},
+
+  {
+  "id": "hardware",
+  "title": "Printer, Struk & Label Cup",
+  "shortDesc": "Struk 58/80 mm, label pesanan, cetak ulang, dan uji printer.",
+  "iconType": "printer",
+  "articles": [
+    {
+      "title": "Menyiapkan printer struk",
+      "summary": "Pengaturan printer struk dan printer label dipisahkan.",
+      "steps": [
+        "Buka Admin → Pengaturan → Printer.",
+        "Untuk struk kasir, pilih kertas 58 mm atau 80 mm dan sesuaikan header, footer, serta informasi yang ditampilkan.",
+        "Pada APK Android, pasangkan printer Bluetooth struk lalu pilih printer kasir yang sesuai.",
+        "Pada browser/PWA, gunakan dialog printer sistem dan driver yang tersedia pada perangkat.",
+        "Gunakan Pratinjau Struk dan Tes Cetak Struk sebelum dipakai saat toko ramai."
+      ],
+      "tips": "Printer label memakai pengaturan tersendiri. Mengganti target label tidak mengganti printer struk.",
+      "targetHref": "/admin/pengaturan/printer",
+      "targetLabel": "Atur printer"
+    },
+    {
+      "title": "Mengaktifkan Label Pesanan untuk cup",
+      "summary": "Cetak satu stiker untuk setiap unit minuman atau item yang dipilih.",
+      "steps": [
+        "Buka Admin → Pengaturan → Printer → bagian Label Pesanan.",
+        "Aktifkan label, pilih 40 × 30 mm, 50 × 30 mm, atau isi lebar dan tinggi khusus.",
+        "Pilih Semua kategori atau kategori tertentu, misalnya Minuman.",
+        "Untuk browser/PWA, pilih Dialog printer sistem. Printer USB/LAN yang tersedia lewat driver sistem dipilih di dialog cetak, bukan melalui koneksi langsung dari aplikasi.",
+        "Untuk APK Android dengan printer label yang sesuai, pilih Bluetooth printer label TSPL dan isi atau pilih MAC printer label yang sudah dipasangkan.",
+        "Tekan Simpan Label, periksa Pratinjau Label, lalu Tes Cetak Label pada perangkat yang akan dipakai."
+      ],
+      "tips": "Profil Bluetooth langsung memakai TSPL 203 dpi. Kompatibilitas dan hasil fisik wajib diuji pada printer Anda; bukan semua printer struk mendukung label.",
+      "targetHref": "/admin/pengaturan/printer#label-pesanan",
+      "targetLabel": "Atur label cup"
+    },
+    {
+      "title": "Mencetak label dari pesanan tersimpan",
+      "summary": "Label memuat item, pilihan tambahan, pelanggan/meja, jenis pesanan, waktu, serta nomor cup.",
+      "steps": [
+        "Simpan atau bayar pesanan terlebih dahulu; pratinjau nota yang belum disimpan tidak mencetak label.",
+        "Tekan Cetak Label Pesanan pada nota tersimpan atau daftar Pesanan di kasir. Label juga tersedia pada detail nota di Admin → Transaksi.",
+        "Pada dialog sistem, pilih printer label, ukuran media yang sesuai, dan skala cetak yang tidak mengubah ukuran label.",
+        "Cetak otomatis dapat diaktifkan khusus pada APK Android dengan Bluetooth TSPL setelah pesanan disimpan.",
+        "Pelunasan Open Bill dengan isi yang sama tidak mengirim ulang label otomatis. Perubahan isi pesanan mengirim satu set label baru bertanda PERUBAHAN; gunakan set terbaru.",
+        "Cetak ulang dari tombol yang sama ditandai CETAK ULANG. Nota yang sudah void menghasilkan penanda PEMBATALAN saat label dicetak."
+      ],
+      "tips": "Batas satu pekerjaan adalah 200 label dan jumlah item harus bulat. Jika catatan terlalu panjang, besarkan label; aplikasi menolak cetak agar instruksi tidak terpotong."
+    },
+    {
+      "title": "Menangani label gagal atau belum terkonfirmasi",
+      "summary": "Kegagalan printer tidak membatalkan transaksi yang sudah disimpan.",
+      "steps": [
+        "Periksa daya, media, koneksi, dan printer tujuan. Dialog terbuka atau data terkirim belum membuktikan label fisik sudah keluar.",
+        "Buka Pengaturan → Printer → Label Pesanan untuk melihat status pengiriman terakhir.",
+        "Pengiriman gagal tidak dicoba ulang otomatis. Setelah printer diperiksa, buka pesanan lalu tekan Cetak Label Pesanan.",
+        "Jika status Pengiriman berjalan / belum terkonfirmasi tertinggal setelah aplikasi tertutup, periksa printer lalu pilih Periksa & izinkan cetak ulang.",
+        "Pastikan label belum keluar sebelum mencoba lagi agar tidak ada cup yang diproses ganda."
+      ],
+      "tips": "Riwayat pengiriman tersimpan lokal pada perangkat. Printer fisik tidak memberikan jaminan tepat satu cetakan ketika koneksi terputus di tengah pengiriman."
+    }
+  ]
+},
+
   { id: 'data-security', title: 'Offline, Backup & Keamanan', shortDesc: 'Lindungi data lokal, PIN, dan cadangan toko.', iconType: 'shield', articles: [
     { title: 'Menyiapkan mode offline', summary: 'Unduh aset sebelum mematikan internet.', steps: ['Buka Admin → Pengaturan → Tentang Aplikasi & Bantuan.', 'Gunakan pemeriksaan atau persiapan offline yang tersedia.', 'Tunggu semua aset siap, lalu uji membuka ulang kasir tanpa internet.', 'Jangan hapus data situs/browser karena transaksi disimpan di perangkat.'], tips: 'Aktivasi awal, pembayaran lisensi, dan portal Owner memerlukan internet.' },
-    { title: 'Backup dan restore lengkap', summary: 'Cadangan mencakup produk, transaksi, shift, dan pergerakan stok.', steps: ['Buka Admin → Pengaturan → Data & Cadangan.', 'Unduh cadangan JSON dan simpan salinan di lokasi aman di luar perangkat kasir.', 'Untuk memulihkan, pilih file cadangan dan periksa ringkasannya sebelum konfirmasi.', 'PIN dan recovery code perangkat tujuan tidak diambil dari file backup. Siapkan kembali keamanan bila diminta.', 'Periksa jumlah produk, transaksi, serta saldo stok setelah restore.'], tips: 'File JSON bukan file terenkripsi. Lindungi file karena memuat data usaha. Backup toko berbeda dari backup D1 yang berisi penjualan lisensi.', targetHref: '/admin/pengaturan/data', targetLabel: 'Buka cadangan' },
+    { title: 'Backup dan restore lengkap', summary: 'Cadangan mencakup produk, transaksi, event refund, shift, dan pergerakan stok.', steps: ['Buka Admin → Pengaturan → Data & Cadangan.', 'Unduh cadangan JSON dan simpan salinan di lokasi aman di luar perangkat kasir.', 'Untuk memulihkan, pilih file cadangan dan periksa ringkasannya sebelum konfirmasi.', 'PIN dan recovery code perangkat tujuan tidak diambil dari file backup. Siapkan kembali keamanan bila diminta.', 'Periksa jumlah produk, transaksi, serta saldo stok setelah restore.'], tips: 'File JSON bukan file terenkripsi. Lindungi file karena memuat data usaha. Backup toko berbeda dari backup D1 yang berisi penjualan lisensi.', targetHref: '/admin/pengaturan/data', targetLabel: 'Buka cadangan' },
     { title: 'PIN Admin dan recovery code', summary: 'Simpan recovery code terpisah dari perangkat toko.', steps: ['Buka pengaturan keamanan dan buat PIN Admin.', 'Simpan recovery code di tempat yang hanya dapat diakses pemilik usaha.', 'Gunakan PIN untuk membuka halaman Admin dan tindakan yang membutuhkan otorisasi.', 'Jika lupa PIN, ikuti proses pemulihan dengan recovery code.'], targetHref: '/admin/pengaturan/keamanan', targetLabel: 'Atur keamanan' }
   ] }
 ];
