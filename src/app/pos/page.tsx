@@ -2034,9 +2034,9 @@ export default function POSPage() {
                     <p className={`text-accent-text font-extrabold mt-0.5 transition-all ${isWideCart ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'} max-lg:landscape:text-xs`}>Rp {item.harga.toLocaleString('id-ID')}</p>
                   </div>
                   <div className={`flex items-center bg-surface rounded-xl border border-line shadow-sm shrink-0 transition-all ${isWideCart ? 'p-1 gap-1' : 'p-0.5'} max-lg:landscape:p-0.5`}>
-                    <button onClick={() => updateQty(item.itemKey || item.id, -1)} className={`${isWideCart ? 'w-8 h-8 text-sm' : 'w-7 h-7 text-xs'} max-lg:landscape:w-7 max-lg:landscape:h-7 max-lg:landscape:text-xs rounded-lg bg-card text-fg hover:bg-card flex items-center justify-center font-black transition-colors`}>-</button>
+                    <button data-guide-quantity onClick={() => updateQty(item.itemKey || item.id, -1)} className={`${isWideCart ? 'w-8 h-8 text-sm' : 'w-7 h-7 text-xs'} max-lg:landscape:w-7 max-lg:landscape:h-7 max-lg:landscape:text-xs rounded-lg bg-card text-fg hover:bg-card flex items-center justify-center font-black transition-colors`}>-</button>
                     <span className={`${isWideCart ? 'w-8 text-sm' : 'w-7 text-xs'} max-lg:landscape:w-6 max-lg:landscape:text-xs text-center font-bold text-fg`}>{item.qty}</span>
-                    <button onClick={() => updateQty(item.itemKey || item.id, 1)} className={`${isWideCart ? 'w-8 h-8 text-sm' : 'w-7 h-7 text-xs'} max-lg:landscape:w-7 max-lg:landscape:h-7 max-lg:landscape:text-xs rounded-lg bg-accent hover:bg-accent-hover text-white flex items-center justify-center font-black transition-colors`}>+</button>
+                    <button data-guide-quantity onClick={() => updateQty(item.itemKey || item.id, 1)} className={`${isWideCart ? 'w-8 h-8 text-sm' : 'w-7 h-7 text-xs'} max-lg:landscape:w-7 max-lg:landscape:h-7 max-lg:landscape:text-xs rounded-lg bg-accent hover:bg-accent-hover text-white flex items-center justify-center font-black transition-colors`}>+</button>
                   </div>
                 </div>
               ))}
@@ -2117,7 +2117,7 @@ export default function POSPage() {
                 </button>
               )}
               <button
-                onClick={openPaymentModal}
+                data-guide-checkout onClick={openPaymentModal}
                 className={`flex-1 bg-accent hover:bg-accent-hover text-white rounded-xl font-extrabold shadow-lg shadow-accent/25 active:scale-95 transition-all disabled:opacity-40 ${isWideCart ? 'py-3 sm:py-3.5 text-sm sm:text-base' : 'py-2.5 sm:py-3 text-sm'} max-lg:landscape:py-2 max-lg:landscape:text-xs`}
                 disabled={cart.length === 0}
               >
@@ -2340,7 +2340,7 @@ export default function POSPage() {
                   <div className="flex items-center bg-surface rounded-xl p-0.5 sm:p-1 border border-line shadow-xs">
                     <button 
                       type="button"
-                      onClick={() => updateQty(item.itemKey || item.id, -1)} 
+                      data-guide-quantity onClick={() => updateQty(item.itemKey || item.id, -1)}
                       className={`${mobileCartDensity === 'jumbo' ? 'w-10 h-10 sm:w-11 sm:h-11 text-base' : 'w-8 h-8 sm:w-9 sm:h-9 text-sm'} rounded-lg bg-card text-fg hover:bg-line flex items-center justify-center font-black transition-all active:scale-90`}
                       aria-label="Kurangi jumlah"
                     >
@@ -2351,7 +2351,7 @@ export default function POSPage() {
                     </span>
                     <button 
                       type="button"
-                      onClick={() => updateQty(item.itemKey || item.id, 1)} 
+                      data-guide-quantity onClick={() => updateQty(item.itemKey || item.id, 1)}
                       className={`${mobileCartDensity === 'jumbo' ? 'w-10 h-10 sm:w-11 sm:h-11 text-base' : 'w-8 h-8 sm:w-9 sm:h-9 text-sm'} rounded-lg bg-accent hover:bg-accent-hover text-white flex items-center justify-center font-black transition-all active:scale-90 shadow-xs`}
                       aria-label="Tambah jumlah"
                     >
@@ -2452,7 +2452,7 @@ export default function POSPage() {
                 </button>
               )}
               <button 
-                onClick={openPaymentModal} 
+                data-guide-checkout onClick={openPaymentModal}
                 className="flex-1 bg-accent hover:bg-accent-hover text-white py-2.5 sm:py-3.5 rounded-xl font-extrabold text-sm md:text-base shadow-lg shadow-accent/25 active:scale-95 transition-all disabled:opacity-40" 
                 disabled={cart.length === 0}
               >
@@ -2829,7 +2829,7 @@ export default function POSPage() {
                     <div className="flex space-x-2">
                       {["Dine-in", "Takeaway"].map((type) => (
                         <button 
-                          key={type}
+                          key={type} data-guide-payment-detail
                           type="button"
                           onClick={() => setOrderType(type)}
                           className={`flex-1 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border ${orderType === type ? 'bg-accent border-accent text-white shadow-sm' : ' bg-surface border-line text-muted'}`}
@@ -2848,7 +2848,7 @@ export default function POSPage() {
                         { type: "Takeaway", label: "Takeaway (Bungkus)" }
                       ].map((item) => (
                         <button 
-                          key={item.type}
+                          key={item.type} data-guide-payment-detail
                           type="button"
                           onClick={() => setOrderType(item.type)}
                           className={`flex-1 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border ${orderType === item.type ? 'bg-accent border-accent text-white shadow-sm' : ' bg-surface border-line text-muted'}`}
@@ -2876,7 +2876,7 @@ export default function POSPage() {
                           <button
                             key={table.id}
                             type="button"
-                            onClick={() => setSelectedTable(table.id.toString())}
+                            data-guide-payment-detail onClick={() => setSelectedTable(table.id.toString())}
                             className={`py-2 px-1 rounded-xl border text-xs font-bold transition-all ${bgClass} ${isSelected ? 'ring-2 ring-accent ring-offset-1 scale-105 shadow-sm font-black' : 'opacity-80 hover:opacity-100'}`}
                           >
                             {table.nomor.replace(/^Meja\s*/i, '')}
@@ -2940,7 +2940,7 @@ export default function POSPage() {
                       { id: "Kasbon", label: "Kasbon" }
                     ].map((method) => (
                       <button 
-                        key={method.id}
+                        key={method.id} data-guide-payment-method={method.id === "Kasbon" ? undefined : method.id}
                         type="button"
                         onClick={() => setPaymentMethod(method.id)}
                         className={`py-2.5 px-1 rounded-xl text-xs font-bold transition-all border flex flex-col items-center justify-center gap-1 ${
@@ -2981,7 +2981,7 @@ export default function POSPage() {
 
                 {/* Kalkulator Uang Masuk & Kembalian */}
                 {paymentMethod === "Cash" && (
-                  <div className="mt-2 p-3.5 bg-surface/80 rounded-2xl border border-line">
+                  <div data-guide-payment-cash className="mt-2 p-3.5 bg-surface/80 rounded-2xl border border-line">
                     <div className="flex justify-between items-center mb-1.5">
                       <label className="text-xs font-bold text-fg">Uang Diterima (Rp)</label>
                       <button 
@@ -3095,7 +3095,7 @@ export default function POSPage() {
               <button 
                 type="button"
                 disabled={isProcessingPayment}
-                onClick={() => {
+                data-guide-payment-confirm onClick={() => {
                   if (paymentMethod === 'Cash') {
                     const tendered = Number(cashTendered) || 0;
                     if (tendered < totalPrice) {
@@ -3303,7 +3303,7 @@ export default function POSPage() {
           onClick={() => setActiveVariantGroup(null)}
         >
           <div 
-            className=" bg-card p-6 rounded-3xl w-full max-w-sm shadow-2xl relative border border-line"
+            data-guide="options" className=" bg-card p-6 rounded-3xl w-full max-w-sm shadow-2xl relative border border-line"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-black mb-4 text-fg text-center">Pilih Varian {activeVariantGroup.title}</h2>
@@ -3670,7 +3670,7 @@ export default function POSPage() {
 
                         return (
                           <button 
-                            key={item.id} 
+                            key={item.id} data-guide-product={!isSoldOut || undefined}
                             disabled={isSoldOut}
                             onClick={() => {
                               if (isSoldOut) return;
@@ -4335,7 +4335,7 @@ export default function POSPage() {
           onClick={handleCloseModifiers}
         >
           <div 
-            className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl border-2 border-blue-200 relative flex flex-col max-h-[88vh] transition-transform ease-out text-slate-900"
+            data-guide="options" className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl border-2 border-blue-200 relative flex flex-col max-h-[88vh] transition-transform ease-out text-slate-900"
             style={{
               transform: modSheetDragY > 0 ? `translateY(${modSheetDragY}px)` : undefined,
               touchAction: 'pan-y'
@@ -5215,12 +5215,12 @@ export default function POSPage() {
         restartToken={guideRestartToken}
         onNavigate={(step) => {
           if (step === 'shift') setIsOpenShiftModalOpen(true);
-          if (step === 'catalog') navigateWorkspace('menu');
+          if (step === 'catalog') { navigateWorkspace('menu'); setSearchQuery(''); setActiveCategory('Semua'); setMenuPage(1); }
           if (step === 'cart') {
             navigateWorkspace('kasir');
             setIsMobileCartOpen(false);
           }
-          if (step === 'payment' && !isPaymentModalOpen) openPaymentModal();
+          if (step === 'payment' && !isPaymentModalOpen) { if (paymentMethod === 'Kasbon') setPaymentMethod('Cash'); openPaymentModal(); }
         }}
       />
       <OnboardingWizard

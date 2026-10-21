@@ -185,7 +185,7 @@ export default function MobileCatalogScreen({
               if (gridCols === 4) {
                 return (
                   <button
-                    key={item.id}
+                    key={item.id} data-guide-product={!isSoldOut || undefined}
                     type="button"
                     disabled={isSoldOut}
                     onClick={() => onAddToCart(item)}
@@ -217,7 +217,7 @@ export default function MobileCatalogScreen({
 
               return (
                 <div
-                  key={item.id}
+                  key={item.id} data-guide-product={!isSoldOut || undefined}
                   onClick={() => {
                     if (!isSoldOut) onAddToCart(item);
                   }}

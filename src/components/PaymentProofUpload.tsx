@@ -44,7 +44,7 @@ export default function PaymentProofUpload({
   };
 
   return (
-    <div className="mt-3 p-3.5 bg-surface/80 rounded-2xl border border-line">
+    <div data-guide-payment-proof className="mt-3 p-3.5 bg-surface/80 rounded-2xl border border-line">
       <div className="flex justify-between items-center mb-2">
         <div className="flex items-center gap-1.5">
           <span className="text-sm"><LineIcon name="receipt" /></span>

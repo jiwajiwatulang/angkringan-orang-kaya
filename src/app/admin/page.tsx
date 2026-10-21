@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { chartPointAtPointer } from '@/lib/chartInteraction';
+import SalesTrendChart from '@/components/SalesTrendChart';
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, MenuItem } from "@/lib/dexie";
 import {
@@ -20,15 +20,6 @@ export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<"summary" | "analytics">("summary");
   const [timeRange, setTimeRange] = useState<DashboardRange>("7days");
   const [chartType, setChartType] = useState<"line" | "bar">("line");
-  const [hoveredPoint, setHoveredPoint] = useState<{
-    label: string;
-    sublabel: string;
-    omzet: number;
-    count: number;
-    x: number;
-    y: number;
-  } | null>(null);
-
   const [activeShift, setActiveShift] = useState<any>(null);
   const [shiftStats, setShiftStats] = useState<any>(null);
   const [isWaModalOpen, setIsWaModalOpen] = useState(false);
@@ -158,47 +149,6 @@ export default function AdminDashboardPage() {
     }
     return result;
   }, [period, timeRange, rawOrders, rawRefundEvents]);
-
-  const maxChartOmzet = Math.max(...chartPoints.map((p) => p.omzet), 50000);
-  const chartCeiling = maxChartOmzet > 0 ? Math.ceil(maxChartOmzet * 1.15) : 100000;
-
-  // SVG Chart Geometry
-  const svgW = 800;
-  const svgH = 220;
-  const paddingX = 40;
-  const paddingY = 25;
-  const usableW = svgW - paddingX * 2;
-  const usableH = svgH - paddingY * 2;
-
-  const svgCoords = chartPoints.map((p, i) => {
-    const x = paddingX + (i / Math.max(1, chartPoints.length - 1)) * usableW;
-    const y = paddingY + usableH - (p.omzet / chartCeiling) * usableH;
-    return { x, y, ...p };
-  });
-
-  const svgPathD = useMemo(() => {
-    if (svgCoords.length === 0) return "";
-    let d = `M ${svgCoords[0].x} ${svgCoords[0].y}`;
-    for (let i = 0; i < svgCoords.length - 1; i++) {
-      const p0 = svgCoords[i];
-      const p1 = svgCoords[i + 1];
-      const cp1x = p0.x + (p1.x - p0.x) / 2;
-      const cp1y = p0.y;
-      const cp2x = p0.x + (p1.x - p0.x) / 2;
-      const cp2y = p1.y;
-      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
-    }
-    return d;
-  }, [svgCoords]);
-
-  const svgAreaD = useMemo(() => {
-    if (svgCoords.length === 0) return "";
-    const bottomY = paddingY + usableH;
-    let d = svgPathD;
-    d += ` L ${svgCoords[svgCoords.length - 1].x} ${bottomY}`;
-    d += ` L ${svgCoords[0].x} ${bottomY} Z`;
-    return d;
-  }, [svgPathD, svgCoords, paddingY, usableH]);
 
   // Top Products Ranking
   const topProducts = useMemo(() => {
@@ -557,7 +507,7 @@ export default function AdminDashboardPage() {
     let msg = `*RINGKASAN KEUANGAN SAKUNOTA*\n`;
     msg += `Toko: ${store}\n`;
     msg += `Tanggal: ${dateFormatted}\n`;
-    msg += `Periode: ${timeRange}\n\n`;
+    msg += `Periode: ${{ today: 'Hari ini', yesterday: 'Kemarin', '7days': '7 hari terakhir', '30days': '30 hari terakhir', thisMonth: 'Bulan ini' }[timeRange]}\n\n`;
     msg += `• *Penjualan Bersih*: Rp ${report.sales.netSales.toLocaleString("id-ID")}\n`;
     msg += `• *Laba Kotor*: Rp ${report.sales.grossProfit.toLocaleString("id-ID")} (${report.sales.profitMarginPercent}%)\n`;
     msg += `• *Uang Diterima*: Rp ${report.payments.netPayments.toLocaleString("id-ID")}\n`;
@@ -565,7 +515,7 @@ export default function AdminDashboardPage() {
     if (report.reconciliation.openBillOutstanding > 0) {
       msg += `• *Tagihan Terbuka (Open Bill)*: Rp ${report.reconciliation.openBillOutstanding.toLocaleString("id-ID")}\n`;
     }
-    msg += `\n_Dibuat dengan Aplikasi Kasir SakuNota v3.0_`;
+    msg += `\n_Dibuat dengan Aplikasi Kasir SakuNota_`;
     return msg;
   };
 
@@ -611,7 +561,7 @@ export default function AdminDashboardPage() {
               <button
                 key={t.id}
                 type="button"
-                onClick={() => { setTimeRange(t.id as any); setHoveredPoint(null); }}
+                onClick={() => { setTimeRange(t.id as any); }}
                 className={`px-3 py-1.5 rounded-xl transition-all ${
                   timeRange === t.id
                     ? "bg-blue-600 text-white shadow-sm font-black"
@@ -771,14 +721,14 @@ export default function AdminDashboardPage() {
                   Tren Penjualan
                 </h3>
                 <span className="text-xs text-muted">
-                  Pergerakan omzet bersih dalam rentang {timeRange}
+                  Penjualan bersih · {{ today: 'Hari ini', yesterday: 'Kemarin', '7days': '7 hari terakhir', '30days': '30 hari terakhir', thisMonth: 'Bulan ini' }[timeRange]}
                 </span>
               </div>
 
               <div className="flex items-center gap-1 bg-card border border-line p-1 rounded-xl text-xs font-bold">
                 <button
                   type="button"
-                  onClick={() => { setChartType("line"); setHoveredPoint(null); }}
+                  onClick={() => { setChartType("line"); }}
                   className={`px-2.5 py-1 rounded-lg transition-all ${
                     chartType === "line" ? "bg-blue-600 text-white" : "text-muted hover:text-fg"
                   }`}
@@ -787,7 +737,7 @@ export default function AdminDashboardPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setChartType("bar"); setHoveredPoint(null); }}
+                  onClick={() => { setChartType("bar"); }}
                   className={`px-2.5 py-1 rounded-lg transition-all ${
                     chartType === "bar" ? "bg-blue-600 text-white" : "text-muted hover:text-fg"
                   }`}
@@ -797,137 +747,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Chart Canvas */}
-            <div className="relative w-full h-[230px] pt-2">
-              {chartType === "line" ? (
-                <svg
-                  viewBox={`0 0 ${svgW} ${svgH}`}
-                  className="w-full h-full overflow-visible"
-                  preserveAspectRatio="none"
-                  tabIndex={0}
-                  role="group"
-                  aria-label="Grafik penjualan. Arahkan kursor, sentuh grafik, atau gunakan panah kiri dan kanan untuk melihat nilai."
-                  onPointerMove={(event) => {
-                    const bounds = event.currentTarget.getBoundingClientRect();
-                    const index = chartPointAtPointer(event.clientX, bounds.left, bounds.width, svgCoords.length);
-                    if (index !== null) setHoveredPoint(svgCoords[index]);
-                  }}
-                  onPointerDown={(event) => {
-                    const bounds = event.currentTarget.getBoundingClientRect();
-                    const index = chartPointAtPointer(event.clientX, bounds.left, bounds.width, svgCoords.length);
-                    if (index !== null) setHoveredPoint(svgCoords[index]);
-                  }}
-                  onPointerLeave={(event) => { if (event.pointerType !== 'touch') setHoveredPoint(null); }}
-                  onPointerCancel={() => setHoveredPoint(null)}
-                  onFocus={() => setHoveredPoint(svgCoords[0] || null)}
-                  onBlur={() => setHoveredPoint(null)}
-                  onKeyDown={(event) => {
-                    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Escape'].includes(event.key)) return;
-                    event.preventDefault();
-                    if (event.key === 'Escape') { setHoveredPoint(null); return; }
-                    const current = Math.max(0, svgCoords.findIndex(point => point.label === hoveredPoint?.label));
-                    const next = event.key === 'Home' ? 0 : event.key === 'End' ? svgCoords.length - 1 : Math.max(0, Math.min(svgCoords.length - 1, current + (event.key === 'ArrowRight' ? 1 : -1)));
-                    setHoveredPoint(svgCoords[next] || null);
-                  }}
-                >
-                  <defs>
-                    <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#2563EB" stopOpacity="0.25" />
-                      <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
-                    </linearGradient>
-                  </defs>
-                  <rect width={svgW} height={svgH} fill="transparent" pointerEvents="all" />
-
-                  {/* Horizontal grid lines */}
-                  {[0, 0.25, 0.5, 0.75, 1].map((pct, idx) => {
-                    const y = paddingY + usableH * (1 - pct);
-                    return (
-                      <line
-                        key={idx}
-                        x1={paddingX}
-                        y1={y}
-                        x2={svgW - paddingX}
-                        y2={y}
-                        stroke="#E2E8F0"
-                        strokeDasharray="4 4"
-                        strokeWidth="1"
-                      />
-                    );
-                  })}
-
-                  {/* Area fill */}
-                  {svgAreaD && <path d={svgAreaD} fill="url(#chartGradient)" />}
-
-                  {/* Spline stroke */}
-                  {svgPathD && (
-                    <path
-                      d={svgPathD}
-                      fill="none"
-                      stroke="#2563EB"
-                      strokeWidth="3.5"
-                      strokeLinecap="round"
-                    />
-                  )}
-
-                  {/* Interactive points */}
-                  {svgCoords.map((pt, idx) => (
-                    <circle
-                      key={idx}
-                      cx={pt.x}
-                      cy={pt.y}
-                      r={hoveredPoint?.label === pt.label ? "6" : "3.5"}
-                      fill="#FFFFFF"
-                      stroke="#2563EB"
-                      strokeWidth="2.5"
-                      className="pointer-events-none"
-                    />
-                  ))}
-                </svg>
-              ) : (
-                /* Bar chart mode */
-                <div className="flex items-end justify-between gap-2 h-full px-4 pb-4">
-                  {chartPoints.map((pt, idx) => {
-                    const heightPercent = chartCeiling > 0 ? (pt.omzet / chartCeiling) * 100 : 0;
-                    return (
-                      <div
-                        key={idx}
-                        className="flex-1 flex flex-col items-center gap-2 group cursor-pointer h-full justify-end"
-                        onMouseEnter={() =>
-                          setHoveredPoint({
-                            label: pt.label,
-                            sublabel: pt.sublabel,
-                            omzet: pt.omzet,
-                            count: pt.count,
-                            x: 0,
-                            y: 0
-                          })
-                        }
-                        onMouseLeave={() => setHoveredPoint(null)}
-                      >
-                        <div
-                          className="w-full max-w-[42px] bg-blue-600/80 group-hover:bg-blue-600 rounded-t-xl transition-all"
-                          style={{ height: `${Math.max(4, heightPercent)}%` }}
-                        />
-                        <span className="text-[10px] text-muted font-bold truncate max-w-[50px]">
-                          {pt.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Tooltip on hover */}
-              {hoveredPoint && (
-                <div role="status" className="absolute top-2 right-4 bg-slate-900 text-white px-3 py-2 rounded-xl text-xs shadow-lg pointer-events-none z-10">
-                  <div className="text-[11px] text-slate-400 font-bold">{hoveredPoint.sublabel}</div>
-                  <div className="font-mono font-black text-sm text-blue-400">
-                    Rp {hoveredPoint.omzet.toLocaleString("id-ID")}
-                  </div>
-                  <div className="text-[10px] text-slate-300">{hoveredPoint.count} Transaksi Selesai</div>
-                </div>
-              )}
-            </div>
+            <SalesTrendChart key={`${timeRange}-${chartType}`} points={chartPoints} type={chartType} />
           </div>
 
           {/* 2 Kolom: Produk Terlaris & Metode Pembayaran */}
