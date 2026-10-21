@@ -56,9 +56,9 @@ export async function setupPhotoRecognition(progress: (percent: number) => void,
   signal.throwIfAborted();
   await confirmPhotoRecognitionReady();
 }
-export async function recognizeProductPhoto(image: string, signal: AbortSignal, preparing = false): Promise<string> {
+export async function recognizeProductPhoto(image: string, signal: AbortSignal, preparing = false, fullText = false): Promise<string> {
   if (!await photoRecognitionReady(preparing) || !navigator.serviceWorker.controller) throw new Error('Pengenalan foto belum tersedia di perangkat ini.');
-  const { createWorker, OEM } = await import('tesseract.js');
+  const { createWorker, OEM, PSM } = await import('tesseract.js');
   let worker: Awaited<ReturnType<typeof createWorker>> | undefined;
   let stopped = false;
   let rejectStopped: (reason: Error) => void = () => {};
@@ -71,11 +71,25 @@ export async function recognizeProductPhoto(image: string, signal: AbortSignal, 
     const task = (async () => {
       worker = await createWorker('eng', OEM.LSTM_ONLY, { workerPath: `${ROOT}/worker.min.js`, corePath: `${ROOT}/tesseract-core-lstm.wasm.js`, langPath: ROOT, cacheMethod: 'none', workerBlobURL: false, gzip: true, errorHandler: () => stop() });
       if (stopped) { await worker.terminate(); throw new Error('Foto belum terbaca'); }
-      const result = await worker.recognize(image);
+      await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT });
+      let result = await worker.recognize(image, {}, { blocks: true });
       if (stopped) throw new Error('Foto belum terbaca');
-      const name = productNameFromText(result.data.text);
-      if (!name || result.data.confidence < 35) throw new Error('Foto belum terbaca');
-      return name;
+      const readableLines = () => (result.data.blocks || []).flatMap(b => b.paragraphs.flatMap(p => p.lines)).filter(line => line.confidence >= 45 && /[a-zA-Z]{3}/.test(line.text)).map(line => line.text.trim()).filter(Boolean).join('\n');
+      // A second, contrast-adjusted pass helps colored packaging without retaining another photo.
+      if (!productNameFromText(readableLines()) && result.data.confidence < 35 && typeof createImageBitmap === 'function') {
+        let bitmap: ImageBitmap | undefined;
+        try {
+          bitmap = await createImageBitmap(await (await fetch(image)).blob());
+          const canvas = document.createElement('canvas'); canvas.width = bitmap.width; canvas.height = bitmap.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx && !stopped) { ctx.filter = 'grayscale(1) contrast(1.6)'; ctx.drawImage(bitmap, 0, 0); result = await worker.recognize(canvas, {}, { blocks: true }); }
+        } finally { bitmap?.close(); }
+      }
+      if (stopped) throw new Error('Foto belum terbaca');
+      const text = readableLines() || (result.data.confidence >= 35 ? result.data.text : '');
+      const name = productNameFromText(text);
+      if (!name) throw new Error('Foto belum terbaca');
+      return fullText ? text.slice(0, 4000) : name;
     })();
     return await Promise.race([task, interrupted]);
   } finally {

@@ -2,6 +2,7 @@
 import LockIcon from "@/components/LockIcon";
 import LineIcon from "@/components/LineIcon";
 import RetailAddProduct from '@/components/RetailAddProduct';
+import { sameBarcode } from '@/lib/productReference';
 import { normalizeRetailName, type RetailDraftProduct } from '@/lib/retailDraft';
 import ProductPhoto from "@/components/ProductPhoto";
 import CategoryScroller from "@/components/CategoryScroller";
@@ -102,6 +103,7 @@ export default function POSPage() {
   const [refundReasonInput, setRefundReasonInput] = useState<string>("");
 
   const [isRetailAddOpen, setIsRetailAddOpen] = useState(false);
+  const [retailBarcode, setRetailBarcode] = useState<string | undefined>();
 
   // --- BARCODE SCANNER STATES ---
   const [isBarcodeScanOpen, setIsBarcodeScanOpen] = useState(false);
@@ -1577,7 +1579,7 @@ export default function POSPage() {
 
     // Cari produk di menuData berdasarkan SKU atau ID
     const matched = menuData.find((m: MenuItem) => {
-      const matchSku = m.sku && m.sku.toLowerCase() === clean.toLowerCase();
+      const matchSku = m.sku && (m.sku.toLowerCase() === clean.toLowerCase() || sameBarcode(m.sku, clean));
       const matchId = m.id && String(m.id) === clean;
       return matchSku || matchId;
     });
@@ -1594,6 +1596,8 @@ export default function POSPage() {
       addToCart(matched);
       setBarcodeScanToast({ message: `+1 "${matched.nama}" masuk keranjang`, type: 'success' });
       setTimeout(() => setBarcodeScanToast(null), 3000);
+    } else if (storeSettings.businessType === 'retail') {
+      setRetailBarcode(clean); setIsBarcodeScanOpen(false); setIsRetailAddOpen(true);
     } else {
       playScannerBeep('error');
       setBarcodeScanToast({ message: `Barcode "${clean}" tidak ditemukan di daftar menu!`, type: 'error' });
@@ -1606,7 +1610,7 @@ export default function POSPage() {
       handleBarcodeScanned(code);
     });
     return cleanup;
-  }, [menuData]);
+  }, [menuData, storeSettings.businessType]);
 
   const updateQty = (keyOrId: string | number, delta: number) => {
     setCart(prev => prev.map(item => {
@@ -5221,7 +5225,7 @@ export default function POSPage() {
         currentSettings={storeSettings}
       />
 
-      {isRetailAddOpen && storeSettings.businessType === 'retail' && <RetailAddProduct onClose={() => setIsRetailAddOpen(false)} onAdd={addRetailToCart} />}
+      {isRetailAddOpen && storeSettings.businessType === 'retail' && <RetailAddProduct onClose={() => { setIsRetailAddOpen(false); setRetailBarcode(undefined); }} onAdd={addRetailToCart} initialBarcode={retailBarcode} />}
 
       {/* Barcode Camera Scanner Modal */}
       <BarcodeCameraModal

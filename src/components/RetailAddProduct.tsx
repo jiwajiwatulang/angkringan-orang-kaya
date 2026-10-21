@@ -7,9 +7,11 @@ import CameraCapture from './CameraCapture';
 import { compressPaymentProof } from '@/lib/imageUtils';
 import { MAX_PRODUCT_PHOTO_BYTES } from '@/lib/productPhoto';
 import { validateRetailDraft, type RetailDraftProduct } from '@/lib/retailDraft';
+import { productNameFromText } from '@/lib/retailDraft';
+import { barcodeFromPhoto, loadProductReferences, referenceByBarcode, referenceSuggestions, referenceDisplayName, validGtin, type ProductReference } from '@/lib/productReference';
 import { photoRecognitionReady, recognizeProductPhoto, setupPhotoRecognition, supportsPhotoRecognition } from '@/lib/retailPhotoRecognition';
 
-export default function RetailAddProduct({ onClose, onAdd }: { onClose: () => void; onAdd: (product: RetailDraftProduct, qty: number) => void }) {
+export default function RetailAddProduct({ onClose, onAdd, initialBarcode }: { onClose: () => void; onAdd: (product: RetailDraftProduct, qty: number) => void; initialBarcode?: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -24,29 +26,52 @@ export default function RetailAddProduct({ onClose, onAdd }: { onClose: () => vo
   const [recognitionReady, setRecognitionReady] = useState(false);
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [suggestions, setSuggestions] = useState<ProductReference[]>([]);
+  const [sku, setSku] = useState<string | undefined>(initialBarcode && validGtin(initialBarcode) ? initialBarcode : undefined);
+  const [referenceMatched, setReferenceMatched] = useState(false);
+  const [usedReference, setUsedReference] = useState(false);
   useEffect(() => {
     dialog.current?.showModal();
     let active = true;
-    void photoRecognitionReady().then(ready => { if (active) { setRecognitionReady(ready); if (!ready) setStatus(supportsPhotoRecognition() ? 'unprepared' : 'unsupported'); } }).catch(() => { if (active) setStatus('unsupported'); });
+    if (initialBarcode) void loadProductReferences().then(pack => {
+      const product = referenceByBarcode(pack.products, initialBarcode);
+      if (active && product) { setName(referenceDisplayName(product)); setSku(product.code); setReferenceMatched(true); setUsedReference(true); setStatus('found'); }
+    }).catch(() => {});
+    void photoRecognitionReady().then(ready => { if (active) { setRecognitionReady(ready); if (!ready) setStatus(current => current === 'found' ? current : supportsPhotoRecognition() ? 'unprepared' : 'unsupported'); } }).catch(() => { if (active) setStatus(current => current === 'found' ? current : 'unsupported'); });
     return () => { active = false; attempt.current?.abort(); };
-  }, []);
-  const manual = () => { attempt.current?.abort(); setProcessing(false); setPreparation(null); setStatus('idle'); nameInput.current?.focus(); };
+  }, [initialBarcode]);
+  const manual = () => { attempt.current?.abort(); setProcessing(false); setPreparation(null); setStatus('idle'); setSuggestions([]); setReferenceMatched(false); nameInput.current?.focus(); };
+  const applyText = async (text: string, signal: AbortSignal) => {
+    const pack = await loadProductReferences().catch(() => null);
+    if (signal.aborted) return;
+    setName(productNameFromText(text)); setStatus('found'); setReferenceMatched(false);
+    setSuggestions(pack ? referenceSuggestions(pack.products, text) : []);
+  };
   const readPhoto = async (file?: File) => {
     if (!file) return;
     attempt.current?.abort();
     const controller = new AbortController(); attempt.current = controller;
-    setProcessing(true); setPreparation(null); setError(''); setPhoto(null); setName(''); setStatus('reading');
+    setProcessing(true); setPreparation(null); setError(''); setPhoto(null); setName(''); setSuggestions([]); setSku(undefined); setReferenceMatched(false); setUsedReference(false); setStatus('reading');
     try {
       if (file.size > 20 * 1024 * 1024) throw new Error('Foto terlalu besar. Pilih foto di bawah 20 MB.');
       const result = await compressPaymentProof(file, file.name, { maxDim: 1200, maxBytes: MAX_PRODUCT_PHOTO_BYTES });
       if (controller.signal.aborted) return;
       setPhoto(result.imageData);
+      const barcode = await barcodeFromPhoto(result.imageData);
+      if (controller.signal.aborted) return;
+      if (barcode) {
+        setSku(barcode);
+        const pack = await loadProductReferences().catch(() => null);
+        const match = pack && referenceByBarcode(pack.products, barcode);
+        if (controller.signal.aborted) return;
+        if (match) { setName(referenceDisplayName(match)); setReferenceMatched(true); setUsedReference(true); setStatus('found'); return; }
+      }
       const ready = await photoRecognitionReady();
       if (controller.signal.aborted) return;
       if (!ready) { setStatus(supportsPhotoRecognition() ? 'unprepared' : 'unsupported'); return; }
       try {
-        const suggestion = await recognizeProductPhoto(result.imageData, controller.signal);
-        if (!controller.signal.aborted) { setName(suggestion); setStatus('found'); }
+        const text = await recognizeProductPhoto(result.imageData, controller.signal, false, true);
+        await applyText(text, controller.signal);
       } catch {
         if (!controller.signal.aborted) setStatus('failed');
       }
@@ -64,7 +89,7 @@ export default function RetailAddProduct({ onClose, onAdd }: { onClose: () => vo
       setRecognitionReady(true); setStatus('idle');
       if (photo) {
         setStatus('reading');
-        try { const suggestion = await recognizeProductPhoto(photo, controller.signal); if (!controller.signal.aborted) { setName(suggestion); setStatus('found'); } }
+        try { const text = await recognizeProductPhoto(photo, controller.signal, false, true); await applyText(text, controller.signal); }
         catch { if (!controller.signal.aborted) setStatus('failed'); }
       }
     } catch (cause) {
@@ -74,7 +99,7 @@ export default function RetailAddProduct({ onClose, onAdd }: { onClose: () => vo
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     try {
-      const product = validateRetailDraft({ nama: name, harga: Number(price), imageData: photo });
+      const product = validateRetailDraft({ nama: name, harga: Number(price), imageData: photo, ...(sku ? { sku } : {}) });
       const amount = Number(qty);
       if (!Number.isSafeInteger(amount) || amount < 1 || amount > 9999) throw new Error('Isi jumlah antara 1 dan 9.999.');
       onAdd(product, amount); onClose();
@@ -100,11 +125,14 @@ export default function RetailAddProduct({ onClose, onAdd }: { onClose: () => vo
         </div>
         <div aria-live="polite" className="text-sm">
           {status === 'reading' && <p className="text-muted">Mengenali produk…</p>}
-          {status === 'found' && <p className="font-semibold text-emerald-700">Produk ditemukan</p>}
-          {status === 'failed' && <p className="text-amber-800">Foto belum terbaca</p>}
-          {!recognitionReady && status !== 'unsupported' && <p className="text-muted">Siapkan pengenalan foto sekali dengan internet (sekitar 10 MB). Setelah itu bisa offline.</p>}
+          {status === 'found' && <p className="font-semibold text-emerald-700">{referenceMatched ? 'Barcode cocok. Periksa nama dan ukuran.' : 'Tulisan terbaca. Periksa nama barang.'}</p>}
+          {suggestions.length > 0 && <div className="mt-2 space-y-2"><p className="text-muted">Pilih produk yang sesuai kemasan:</p>{suggestions.map(product => <button key={product.code} type="button" onClick={() => { setName(referenceDisplayName(product)); setSku(undefined); setSuggestions([]); setReferenceMatched(false); setUsedReference(true); }} className="min-h-11 w-full rounded-xl border border-line bg-card px-3 py-2 text-left font-semibold">{referenceDisplayName(product)}</button>)}</div>}
+          {(usedReference || suggestions.length > 0) && <p className="text-xs text-muted">Referensi <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer" className="underline">Open Food Facts</a> · <a href="/product-reference/indonesia-v1.json" download className="underline">ODbL, unduh data</a></p>}
+          {sku && <p className="mt-1 text-xs text-muted">Barcode: {sku}</p>}
+          {status === 'failed' && <p className="text-amber-800">Foto belum terbaca. Coba bagian barcode atau Isi Manual.</p>}
+          {!recognitionReady && !referenceMatched && status !== 'unsupported' && <p className="text-muted">Siapkan pengenalan foto sekali dengan internet (sekitar 10 MB). Setelah itu bisa offline.</p>}
           {status === 'unsupported' && <p className="text-muted">Browser ini belum mendukung pengenalan foto atau penyimpanannya dibatasi. Foto tetap bisa dipakai; isi nama barang manual.</p>}
-          {!recognitionReady && status !== 'unsupported' && <button type="button" disabled={processing} onClick={() => void prepare()} className="mt-2 min-h-11 rounded-xl bg-accent px-3 py-2 font-semibold text-white disabled:opacity-50">{preparation !== null ? `Menyiapkan… ${preparation}%` : 'Siapkan Pengenalan Foto'}</button>}
+          {!recognitionReady && !referenceMatched && status !== 'unsupported' && <button type="button" disabled={processing} onClick={() => void prepare()} className="mt-2 min-h-11 rounded-xl bg-accent px-3 py-2 font-semibold text-white disabled:opacity-50">{preparation !== null ? `Menyiapkan… ${preparation}%` : 'Siapkan Pengenalan Foto'}</button>}
           {recognitionReady && status === 'idle' && <p className="text-muted">Pengenalan foto siap digunakan offline.</p>}
           {(status !== 'found') && <button type="button" onClick={manual} className="mt-1 min-h-11 font-semibold text-accent-text">Isi Manual</button>}
         </div>
