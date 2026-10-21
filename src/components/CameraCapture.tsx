@@ -1,4 +1,5 @@
 'use client';
+import { closeOwnDialog } from '@/lib/dialogCancel';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -69,7 +70,7 @@ export default function CameraCapture({ onCapture, onClose, onChooseGallery }: {
     }
   };
 
-  return <dialog ref={dialog} onCancel={onClose} aria-labelledby="capture-camera-title" className="m-auto w-[calc(100%-1.5rem)] max-w-lg max-h-[94dvh] overflow-y-auto rounded-2xl border border-line bg-surface p-0 text-fg shadow-xl backdrop:bg-slate-950/60">
+  return <dialog ref={dialog} onCancel={event => closeOwnDialog(event, onClose)} aria-labelledby="capture-camera-title" className="m-auto w-[calc(100%-1.5rem)] max-w-lg max-h-[94dvh] overflow-y-auto rounded-2xl border border-line bg-surface p-0 text-fg shadow-xl backdrop:bg-slate-950/60">
     <header className="flex items-center justify-between border-b border-line px-4 py-2">
       <h2 id="capture-camera-title" className="text-lg font-bold">Ambil Foto</h2>
       <button type="button" onClick={onClose} aria-label="Tutup Kamera" className="min-h-11 min-w-11 rounded-xl text-2xl">×</button>

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { photoRecognitionReady, preparePhotoRecognition, confirmPhotoRecognitionReady, supportsPhotoRecognition } from '@/lib/retailPhotoRecognition';
+import { photoRecognitionReady, setupPhotoRecognition, supportsPhotoRecognition } from '@/lib/retailPhotoRecognition';
 
 export default function RetailPhotoSettings() {
   const [ready, setReady] = useState(false);
@@ -19,15 +19,7 @@ export default function RetailPhotoSettings() {
   const prepare = async () => {
     setError(''); setProgress(0);
     try {
-      await preparePhotoRecognition(setProgress);
-      // Ensure the local worker actually initializes, including on this device, before claiming readiness.
-      const { recognizeProductPhoto } = await import('@/lib/retailPhotoRecognition');
-      if (!navigator.serviceWorker.controller) throw new Error('Buka ulang aplikasi untuk menyelesaikan persiapan.');
-      const canvas = document.createElement('canvas'); canvas.width = 300; canvas.height = 80;
-      const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Pengenalan foto belum tersedia di perangkat ini.');
-      ctx.fillStyle = 'white'; ctx.fillRect(0, 0, 300, 80); ctx.fillStyle = 'black'; ctx.font = '32px Arial'; ctx.fillText('KOPI ORIGINAL', 10, 50);
-      await recognizeProductPhoto(canvas.toDataURL('image/png'), new AbortController().signal, true);
-      await confirmPhotoRecognitionReady();
+      await setupPhotoRecognition(setProgress);
       setReady(true);
     } catch (cause) {
       setReady(false);

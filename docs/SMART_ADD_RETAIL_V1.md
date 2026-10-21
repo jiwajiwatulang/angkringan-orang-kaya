@@ -93,3 +93,28 @@ perangkat pengguna. Tes utama 198 lulus, stabilitas 30 lulus, typecheck, build,
 pemeriksaan ekspor offline, regresi browser Retail, dan Wrangler deploy dry-run
 lulus. Deploy produksi memerlukan autentikasi Cloudflare yang belum tersedia
 di environment saat pemeriksaan awal.
+
+## Perbaikan persiapan foto dan batal galeri
+
+Paket pengenalan perlu disiapkan sekali per browser/perangkat. Tambah Barang
+sekarang membedakan belum disiapkan dari browser yang tidak mendukung, dan
+menawarkan Siapkan Pengenalan Foto langsung tanpa masuk Admin. Unduhan sekitar
+10 MB tetap atas tindakan pengguna; setelah unduhan dan pemeriksaan mesin lokal
+berhasil, foto yang sudah dipilih langsung dibaca. Persiapan Admin memakai
+prosedur yang sama dan menunggu service worker siap tanpa langsung meminta
+pengguna membuka ulang aplikasi. Jika gagal, foto dan isian manual tetap ada.
+
+Event cancel dari input file atau dialog kamera tidak boleh menutup dialog
+Tambah Barang. Penutupan hanya diproses bila sumber event adalah dialog itu
+sendiri. Tombol tutup dan Escape pada dialog tetap bekerja. Batal galeri tidak
+menghapus nama, harga, jumlah, atau foto yang sudah dipilih.
+
+Navigasi publik tetap Beli Rp50.000, Trial 7 Hari, Buku Panduan, Tentang Kami
+tanpa ikon. Footer Panduan tidak memiliki kolom Perusahaan/Cerita Kami;
+Tentang Kami berada paling bawah pada Bantuan.
+
+Validasi patch: 198 tes utama dan 32 tes stabilitas lulus; lint berkas yang
+diubah, build dengan TypeScript, 150 URL offline, dan Wrangler dry-run lulus.
+Preview browser memverifikasi formulir/isian tetap ada setelah pemilih galeri
+ditutup, serta persiapan langsung berhasil menjalankan mesin lokal hingga status
+siap offline. Uji ini bukan pengganti uji pemilih foto pada HP fisik pengguna.

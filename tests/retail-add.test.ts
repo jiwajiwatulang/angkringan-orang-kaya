@@ -4,10 +4,51 @@ import assert from 'node:assert/strict';
 import { db } from '../src/lib/dexie';
 import { createOrder, updateOrder, recordPayment, voidOrder, exportAllData, importAllData } from '../src/lib/api';
 import { productNameFromText, validateRetailDraft } from '../src/lib/retailDraft';
+import { closeOwnDialog } from '../src/lib/dialogCancel';
+import { photoRecognitionReady, supportsPhotoRecognition, preparePhotoRecognition } from '../src/lib/retailPhotoRecognition';
 
 const photo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j3ioAAAAASUVORK5CYII=';
 const draft = (nama = 'Kopi Instan Original 20 g', id = -1) => ({ id, nama, harga: 2000, qty: 1, kategori: 'Retail', pendingRetailProduct: { nama, harga: 2000, imageData: photo } });
 const pay = (orderId: number, amount: number) => recordPayment({ orderId, amount, paymentMethod: 'Cash', splitType: 'partial', operatorName: 'Kasir' });
+
+test('Retail gallery cancel and nested camera cancel preserve the parent dialog; its own cancel closes it', () => {
+  const dialog = new EventTarget(), fileInput = new EventTarget(), cameraDialog = new EventTarget();
+  let closed = 0, prevented = 0, stopped = 0;
+  for (const target of [fileInput, cameraDialog, dialog]) {
+    closeOwnDialog({ target, currentTarget: dialog, preventDefault: () => prevented++, stopPropagation: () => stopped++ }, () => closed++);
+    assert.equal(closed, target === dialog ? 1 : 0);
+  }
+  assert.equal(prevented, 3); assert.equal(stopped, 3);
+});
+
+test('Retail recognition distinguishes supported but unprepared devices; interrupted preparation never becomes ready', async () => {
+  const originals = new Map(['window', 'navigator', 'caches', 'fetch'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  const records = new Map<string, Response>();
+  const cachesMock = { open: async () => ({ match: async (url: string) => records.get(url), put: async (url: string, value: Response) => { records.set(url, value); } }) };
+  try {
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: { isSecureContext: true, caches: cachesMock, Worker: class {}, WebAssembly } });
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { serviceWorker: {} } });
+    Object.defineProperty(globalThis, 'caches', { configurable: true, value: cachesMock });
+    assert.equal(supportsPhotoRecognition(), true);
+    assert.equal(await photoRecognitionReady(), false, 'not prepared does not mean unsupported');
+    const names = ['worker.min.js', 'tesseract-core-lstm.wasm.js', 'tesseract-core-lstm.wasm', 'eng.traineddata.gz'];
+    const bytes = new TextEncoder().encode('test asset');
+    const hash = Buffer.from(await crypto.subtle.digest('SHA-256', bytes)).toString('hex');
+    Object.defineProperty(globalThis, 'fetch', { configurable: true, value: async (url: string) => {
+      if (url.endsWith('manifest.json')) return Response.json({ assets: names.map(name => ({ url: '/retail-photo/v1/'+name, bytes: bytes.length, sha256: hash })) });
+      if (url.endsWith(names[1])) throw new Error('Network interrupted');
+      return new Response(bytes);
+    } });
+    await assert.rejects(() => preparePhotoRecognition(() => {}), /Network interrupted/);
+    assert.equal(records.size, 0); assert.equal(await photoRecognitionReady(), false);
+    names.forEach(name => records.set('/retail-photo/v1/'+name, new Response('cached')));
+    assert.equal(await photoRecognitionReady(), false, 'downloaded assets need a successful device check');
+    records.set('/retail-photo/v1/ready.json', new Response('1'));
+    assert.equal(await photoRecognitionReady(), true);
+  } finally {
+    for (const [key, descriptor] of originals) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else Reflect.deleteProperty(globalThis, key); }
+  }
+});
 
 test('Retail: catalog and payment commit together, duplicate retries reuse the catalog', async () => {
   await db.delete(); await db.open();

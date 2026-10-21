@@ -1,4 +1,5 @@
 'use client';
+import { closeOwnDialog } from '@/lib/dialogCancel';
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
@@ -6,7 +7,7 @@ import CameraCapture from './CameraCapture';
 import { compressPaymentProof } from '@/lib/imageUtils';
 import { MAX_PRODUCT_PHOTO_BYTES } from '@/lib/productPhoto';
 import { validateRetailDraft, type RetailDraftProduct } from '@/lib/retailDraft';
-import { photoRecognitionReady, recognizeProductPhoto } from '@/lib/retailPhotoRecognition';
+import { photoRecognitionReady, recognizeProductPhoto, setupPhotoRecognition, supportsPhotoRecognition } from '@/lib/retailPhotoRecognition';
 
 export default function RetailAddProduct({ onClose, onAdd }: { onClose: () => void; onAdd: (product: RetailDraftProduct, qty: number) => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -18,19 +19,23 @@ export default function RetailAddProduct({ onClose, onAdd }: { onClose: () => vo
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [qty, setQty] = useState('1');
-  const [status, setStatus] = useState<'idle' | 'reading' | 'found' | 'failed' | 'unavailable'>('idle');
+  const [status, setStatus] = useState<'idle' | 'reading' | 'found' | 'failed' | 'unprepared' | 'unsupported'>('idle');
+  const [preparation, setPreparation] = useState<number | null>(null);
+  const [recognitionReady, setRecognitionReady] = useState(false);
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
   useEffect(() => {
     dialog.current?.showModal();
-    return () => attempt.current?.abort();
+    let active = true;
+    void photoRecognitionReady().then(ready => { if (active) { setRecognitionReady(ready); if (!ready) setStatus(supportsPhotoRecognition() ? 'unprepared' : 'unsupported'); } }).catch(() => { if (active) setStatus('unsupported'); });
+    return () => { active = false; attempt.current?.abort(); };
   }, []);
-  const manual = () => { attempt.current?.abort(); setProcessing(false); setStatus('idle'); nameInput.current?.focus(); };
+  const manual = () => { attempt.current?.abort(); setProcessing(false); setPreparation(null); setStatus('idle'); nameInput.current?.focus(); };
   const readPhoto = async (file?: File) => {
     if (!file) return;
     attempt.current?.abort();
     const controller = new AbortController(); attempt.current = controller;
-    setProcessing(true); setError(''); setPhoto(null); setName(''); setStatus('reading');
+    setProcessing(true); setPreparation(null); setError(''); setPhoto(null); setName(''); setStatus('reading');
     try {
       if (file.size > 20 * 1024 * 1024) throw new Error('Foto terlalu besar. Pilih foto di bawah 20 MB.');
       const result = await compressPaymentProof(file, file.name, { maxDim: 1200, maxBytes: MAX_PRODUCT_PHOTO_BYTES });
@@ -38,16 +43,33 @@ export default function RetailAddProduct({ onClose, onAdd }: { onClose: () => vo
       setPhoto(result.imageData);
       const ready = await photoRecognitionReady();
       if (controller.signal.aborted) return;
-      if (!ready) { setStatus('unavailable'); return; }
+      if (!ready) { setStatus(supportsPhotoRecognition() ? 'unprepared' : 'unsupported'); return; }
       try {
         const suggestion = await recognizeProductPhoto(result.imageData, controller.signal);
         if (!controller.signal.aborted) { setName(suggestion); setStatus('found'); }
       } catch {
         if (!controller.signal.aborted) setStatus('failed');
       }
-    } catch {
-      if (!controller.signal.aborted) { setStatus('failed'); setError(''); }
+    } catch (cause) {
+      if (!controller.signal.aborted) { setStatus('failed'); setError(cause instanceof Error ? cause.message : 'Foto belum dapat diproses. Coba foto lain atau Isi Manual.'); }
     } finally { if (!controller.signal.aborted) setProcessing(false); }
+  };
+  const prepare = async () => {
+    attempt.current?.abort();
+    const controller = new AbortController(); attempt.current = controller;
+    setProcessing(true); setPreparation(0); setError('');
+    try {
+      await setupPhotoRecognition(setPreparation, controller.signal);
+      if (controller.signal.aborted) return;
+      setRecognitionReady(true); setStatus('idle');
+      if (photo) {
+        setStatus('reading');
+        try { const suggestion = await recognizeProductPhoto(photo, controller.signal); if (!controller.signal.aborted) { setName(suggestion); setStatus('found'); } }
+        catch { if (!controller.signal.aborted) setStatus('failed'); }
+      }
+    } catch (cause) {
+      if (!controller.signal.aborted) { setStatus('unprepared'); setError(cause instanceof Error && /^(Persiapan|Unduhan|Pengenalan foto)/.test(cause.message) ? cause.message : 'Persiapan belum berhasil. Periksa koneksi dan ruang penyimpanan, lalu coba lagi.'); }
+    } finally { if (!controller.signal.aborted) { setProcessing(false); setPreparation(null); } }
   };
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -59,7 +81,7 @@ export default function RetailAddProduct({ onClose, onAdd }: { onClose: () => vo
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Barang belum dapat ditambahkan.'); }
   };
   const field = 'w-full min-h-11 rounded-xl border border-line bg-card px-3 py-2.5 text-base text-fg outline-none focus:border-accent focus:ring-2 focus:ring-accent/20';
-  return <dialog ref={dialog} onCancel={onClose} aria-labelledby="retail-add-title" className="m-auto w-[calc(100%-1.5rem)] max-w-md max-lg:landscape:max-w-2xl max-h-[92dvh] overflow-y-auto rounded-2xl border border-line bg-surface p-0 text-fg shadow-xl backdrop:bg-slate-950/40">
+  return <dialog ref={dialog} onCancel={event => closeOwnDialog(event, onClose)} aria-labelledby="retail-add-title" className="m-auto w-[calc(100%-1.5rem)] max-w-md max-lg:landscape:max-w-2xl max-h-[92dvh] overflow-y-auto rounded-2xl border border-line bg-surface p-0 text-fg shadow-xl backdrop:bg-slate-950/40">
     {cameraOpen && <CameraCapture onClose={() => setCameraOpen(false)} onCapture={file => { setCameraOpen(false); void readPhoto(file); }} onChooseGallery={() => { setCameraOpen(false); galleryInput.current?.click(); }} />}
     <form onSubmit={submit} className="flex flex-col">
       <header className="flex items-center justify-between border-b border-line px-5 py-4 max-lg:landscape:py-2">
@@ -80,7 +102,10 @@ export default function RetailAddProduct({ onClose, onAdd }: { onClose: () => vo
           {status === 'reading' && <p className="text-muted">Mengenali produk…</p>}
           {status === 'found' && <p className="font-semibold text-emerald-700">Produk ditemukan</p>}
           {status === 'failed' && <p className="text-amber-800">Foto belum terbaca</p>}
-          {status === 'unavailable' && <p className="text-muted">Pengenalan foto belum tersedia di perangkat ini.</p>}
+          {!recognitionReady && status !== 'unsupported' && <p className="text-muted">Siapkan pengenalan foto sekali dengan internet (sekitar 10 MB). Setelah itu bisa offline.</p>}
+          {status === 'unsupported' && <p className="text-muted">Browser ini belum mendukung pengenalan foto atau penyimpanannya dibatasi. Foto tetap bisa dipakai; isi nama barang manual.</p>}
+          {!recognitionReady && status !== 'unsupported' && <button type="button" disabled={processing} onClick={() => void prepare()} className="mt-2 min-h-11 rounded-xl bg-accent px-3 py-2 font-semibold text-white disabled:opacity-50">{preparation !== null ? `Menyiapkan… ${preparation}%` : 'Siapkan Pengenalan Foto'}</button>}
+          {recognitionReady && status === 'idle' && <p className="text-muted">Pengenalan foto siap digunakan offline.</p>}
           {(status !== 'found') && <button type="button" onClick={manual} className="mt-1 min-h-11 font-semibold text-accent-text">Isi Manual</button>}
         </div>
         </div>
