@@ -342,6 +342,209 @@ export default function AdminDashboardPage() {
   }, [rawMenuItems]);
 
   // WhatsApp Report Generation
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+
+  const createReportCanvas = (): HTMLCanvasElement => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 800;
+    canvas.height = 960;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return canvas;
+
+    // Background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 800, 960);
+
+    // Decorative top header bar
+    ctx.fillStyle = "#2563eb";
+    ctx.fillRect(0, 0, 800, 16);
+
+    // Store Name & Title
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 32px sans-serif";
+    const store = storeSettings.storeName || "SakuNota";
+    ctx.fillText(store, 40, 70);
+
+    ctx.fillStyle = "#64748b";
+    ctx.font = "bold 16px sans-serif";
+    const dateFormatted = new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    ctx.fillText(`Laporan Ringkas Penjualan • ${dateFormatted}`, 40, 102);
+
+    // Separator
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(40, 125);
+    ctx.lineTo(760, 125);
+    ctx.stroke();
+
+    // Hero Omzet Box
+    ctx.fillStyle = "#eff6ff";
+    ctx.beginPath();
+    ctx.roundRect(40, 145, 720, 140, 20);
+    ctx.fill();
+    ctx.strokeStyle = "#bfdbfe";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = "#1e40af";
+    ctx.font = "bold 14px sans-serif";
+    ctx.fillText("PENJUALAN BERSIH", 65, 185);
+
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "900 48px sans-serif";
+    ctx.fillText(`Rp ${report.sales.netSales.toLocaleString("id-ID")}`, 65, 250);
+
+    // 3 Stat Cards
+    const statCards = [
+      { label: "TRANSAKSI SELESAI", val: `${report.sales.orderCount} Nota` },
+      { label: "PORSI TERJUAL", val: `${rawOrders.filter(o => o.status !== "void" && isWithinPeriod(o.createdAt, period.start, period.end)).reduce((sum, o) => sum + (o.items || []).reduce((n: number, i: any) => n + i.qty, 0), 0)} Porsi` },
+      { label: "RATA-RATA NOTA", val: `Rp ${currentAov.toLocaleString("id-ID")}` },
+    ];
+
+    statCards.forEach((c, i) => {
+      const x = 40 + i * 248;
+      ctx.fillStyle = "#f8fafc";
+      ctx.beginPath();
+      ctx.roundRect(x, 305, 224, 100, 16);
+      ctx.fill();
+      ctx.strokeStyle = "#e2e8f0";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = "#64748b";
+      ctx.font = "bold 11px sans-serif";
+      ctx.fillText(c.label, x + 18, 335);
+
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "bold 22px sans-serif";
+      ctx.fillText(c.val, x + 18, 375);
+    });
+
+    // Top Products Box
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 20px sans-serif";
+    ctx.fillText("Menu Paling Laris pada Periode Ini", 40, 450);
+
+    ctx.fillStyle = "#f8fafc";
+    ctx.beginPath();
+    ctx.roundRect(40, 470, 720, 370, 20);
+    ctx.fill();
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    if (topProducts.length === 0) {
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "italic 16px sans-serif";
+      ctx.fillText("Belum ada transaksi menu tercatat pada periode ini.", 65, 540);
+    } else {
+      topProducts.slice(0, 5).forEach((p, idx) => {
+        const rowY = 515 + idx * 64;
+
+        // Rank Circle
+        ctx.fillStyle = idx === 0 ? "#2563eb" : "#e2e8f0";
+        ctx.beginPath();
+        ctx.arc(75, rowY, 16, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = idx === 0 ? "#ffffff" : "#475569";
+        ctx.font = "bold 14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(String(idx + 1), 75, rowY + 5);
+        ctx.textAlign = "left";
+
+        // Product Name & Qty
+        ctx.fillStyle = "#0f172a";
+        ctx.font = "bold 17px sans-serif";
+        ctx.fillText(p.name, 110, rowY - 2);
+
+        ctx.fillStyle = "#64748b";
+        ctx.font = "13px sans-serif";
+        ctx.fillText(`${p.qty} porsi terjual`, 110, rowY + 18);
+
+        // Revenue
+        ctx.fillStyle = "#0f172a";
+        ctx.font = "bold 17px sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(`Rp ${p.revenue.toLocaleString("id-ID")}`, 735, rowY + 6);
+        ctx.textAlign = "left";
+
+        // Light row divider
+        if (idx < 4 && idx < topProducts.length - 1) {
+          ctx.strokeStyle = "#f1f5f9";
+          ctx.beginPath();
+          ctx.moveTo(60, rowY + 32);
+          ctx.lineTo(740, rowY + 32);
+          ctx.stroke();
+        }
+      });
+    }
+
+    // Footer
+    ctx.fillStyle = "#2563eb";
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("SakuNota • Kasir Jalan Tanpa Internet", 400, 895);
+
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "11px sans-serif";
+    ctx.fillText("Laporan ringkas otomatis 100% offline dari perangkat kasir", 400, 920);
+    ctx.textAlign = "left";
+
+    return canvas;
+  };
+
+  const handleShareReportImage = async () => {
+    setIsGeneratingImage(true);
+    try {
+      const canvas = createReportCanvas();
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          handleOpenWhatsAppUrl();
+          return;
+        }
+        const file = new File([blob], `Laporan_${storeSettings.storeName || "SakuNota"}.png`, { type: "image/png" });
+        if (typeof navigator !== "undefined" && (navigator as any).canShare && (navigator as any).canShare({ files: [file] })) {
+          try {
+            await (navigator as any).share({
+              files: [file],
+              title: `Laporan Penjualan - ${storeSettings.storeName || "SakuNota"}`,
+              text: generateWaReportMessage(),
+            });
+          } catch (_) {}
+        } else {
+          // Fallback on desktop: download image and open WhatsApp text
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `Laporan_${storeSettings.storeName || "SakuNota"}.png`;
+          a.click();
+          URL.revokeObjectURL(url);
+          handleOpenWhatsAppUrl();
+        }
+      }, "image/png");
+    } catch (_) {
+      handleOpenWhatsAppUrl();
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const handleDownloadReportImage = () => {
+    const canvas = createReportCanvas();
+    const url = canvas.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Laporan_SakuNota_${new Date().toISOString().slice(0, 10)}.png`;
+    a.click();
+  };
+
+
   const generateWaReportMessage = () => {
     const store = storeSettings.storeName || "SakuNota";
     const dateFormatted = new Date().toLocaleDateString("id-ID", {
@@ -1064,6 +1267,13 @@ export default function AdminDashboardPage() {
               >
                 ✕
               </button>
+            </div>
+
+            <div className="flex gap-2">
+              <button type="button" disabled={isGeneratingImage} onClick={handleShareReportImage} className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold">
+                {isGeneratingImage ? "Menyiapkan Gambar..." : "Bagikan Gambar"}
+              </button>
+              <button type="button" onClick={handleDownloadReportImage} className="flex-1 py-2.5 bg-card border border-line rounded-xl text-xs font-bold">Unduh Gambar</button>
             </div>
 
             <textarea

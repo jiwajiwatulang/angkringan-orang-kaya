@@ -10,6 +10,7 @@ import { requireMerchantAdmin } from "@/lib/merchantAccess";
 import { saveStoreSettingsAsync } from "@/lib/settings";
 import { generateRecoveryCode, hashRecoveryCode } from "@/lib/recovery";
 import { App } from "@capacitor/app";
+import { isDemoMode } from "@/lib/demoMode";
 
 export default function PengaturanKeamananPage() {
   const router = useRouter();
@@ -51,6 +52,14 @@ export default function PengaturanKeamananPage() {
   const handleUpdatePin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
+
+    if (isDemoMode()) {
+      setCurrentPin("");
+      setNewPin("");
+      setConfirmPin("");
+      showToast("Mode Demo: Perubahan PIN hanya simulasi dan tidak disimpan.", "info");
+      return;
+    }
 
     if (hasExistingPin) {
       if (currentPin !== storeSettings.adminPin) {
@@ -108,6 +117,14 @@ export default function PengaturanKeamananPage() {
     e.preventDefault();
     setRegenError("");
 
+    if (isDemoMode()) {
+      setIsRegenerating(false);
+      setRegenPinInput("");
+      setRegenError("");
+      showToast("Mode Demo: Kode Pemulihan hanya simulasi dan tidak disimpan.", "info");
+      return;
+    }
+
     if (!storeSettings.adminPin) {
       setRegenError("PIN Admin belum aktif.");
       return;
@@ -161,6 +178,13 @@ export default function PengaturanKeamananPage() {
           Lindungi pembatalan nota (Void), pengembalian uang (Refund), dan akses backoffice.
         </p>
       </div>
+
+      {isDemoMode() && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 font-medium">
+          <p className="font-bold mb-0.5">Mode Demo (Simulasi)</p>
+          <p>Fitur keamanan dan PIN pada mode demo hanya berfungsi sebagai simulasi tampilan. Pengaturan PIN tidak disimpan secara permanen.</p>
+        </div>
+      )}
 
       {/* Change PIN Form */}
       <div className=" bg-surface p-6 rounded-3xl border border-line shadow-sm space-y-4">

@@ -35,8 +35,8 @@ export default function MobileFloatingCartBar({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-white/20 px-3 py-1.5 rounded-xl text-xs font-black">
-            <span>Keranjang</span>
+          <div className="flex items-center gap-1.5 bg-white/25 px-3.5 py-2 rounded-xl text-xs font-black shadow-sm">
+            <span>Bayar Sekarang</span>
             <span>→</span>
           </div>
         </button>

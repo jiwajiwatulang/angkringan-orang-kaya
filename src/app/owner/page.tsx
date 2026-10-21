@@ -2,6 +2,8 @@
 import LineIcon from "@/components/LineIcon";
 
 import { formatServerDate } from "@/lib/dateFormat";
+import { PAYMENT_BANK_NAME, PAYMENT_ACCOUNT_NUMBER, PAYMENT_ACCOUNT_NAME, SUPPORT_WHATSAPP } from "@/lib/config";
+import { printOfficialInvoice } from "@/lib/invoicePrint";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
@@ -33,6 +35,11 @@ import {
   revokeBetaTrialServer,
   unbindBetaTrialServer,
   convertBetaTrialToPaidServer,
+  PromoCodeItem,
+  fetchOwnerPromosServer,
+  createOwnerPromoServer,
+  toggleOwnerPromoServer,
+  deleteOwnerPromoServer,
 } from "@/lib/ordersClient";
 
 export default function SakuNotaOwnerDashboardPage() {
@@ -46,9 +53,13 @@ export default function SakuNotaOwnerDashboardPage() {
 
   // Dashboard Tabs & Data State
   const [activeTab, setActiveTab] = useState<
-    "orders" | "beta" | "summary" | "customers" | "devices" | "tester" | "settings"
+    "orders" | "beta" | "summary" | "customers" | "devices" | "tester" | "promos" | "settings"
   >("orders");
   const [orderFilter, setOrderFilter] = useState<"semua" | "menunggu" | "berhasil" | "gagal" | "kedaluwarsa" | "dikembalikan" | "arsip">("semua");
+  const ORDERS_PER_PAGE = 20;
+  const [orderPage, setOrderPage] = useState(1);
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<CustomerOrder | null>(null);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [licenses, setLicenses] = useState<CommercialLicense[]>([]);
   const [testerLicenses, setTesterLicenses] = useState<TesterLicense[]>([]);
@@ -72,6 +83,17 @@ export default function SakuNotaOwnerDashboardPage() {
   const [loadError, setLoadError] = useState("");
   const [toastMsg, setToastMsg] = useState("");
 
+  // Promo Code State
+  const [promos, setPromos] = useState<PromoCodeItem[]>([]);
+  const [isLoadingPromos, setIsLoadingPromos] = useState(false);
+  const [newPromoCode, setNewPromoCode] = useState("");
+  const [newPromoType, setNewPromoType] = useState<"nominal" | "percent" | "fixed_price">("nominal");
+  const [newPromoValue, setNewPromoValue] = useState<number>(15000);
+  const [newPromoMaxUsage, setNewPromoMaxUsage] = useState<number>(0);
+  const [newPromoDesc, setNewPromoDesc] = useState("");
+  const [promoFormError, setPromoFormError] = useState("");
+  const [isCreatingPromo, setIsCreatingPromo] = useState(false);
+
   // Tester License Form State
   const [testerRecipient, setTesterRecipient] = useState("");
   const [testerWhatsapp, setTesterWhatsapp] = useState("");
@@ -89,6 +111,7 @@ export default function SakuNotaOwnerDashboardPage() {
   const [downloadedSecrets, setDownloadedSecrets] = useState<Record<string, boolean> | null>(null);
   const [isLoadingSecrets, setIsLoadingSecrets] = useState(false);
   const [secretsError, setSecretsError] = useState("");
+  const [activeProofModal, setActiveProofModal] = useState<{ title: string; image: string } | null>(null);
 
   // Load orders helper with silent polling support
   const loadOrders = async (token: string, silent = false) => {
@@ -164,6 +187,20 @@ export default function SakuNotaOwnerDashboardPage() {
     }
   };
 
+  // Load promo codes & vouchers
+  const loadPromos = async (token: string) => {
+    setIsLoadingPromos(true);
+    try {
+      const res = await fetchOwnerPromosServer(token);
+      if (res.success && res.promos) {
+        setPromos(res.promos);
+      }
+    } catch (_) {}
+    finally {
+      setIsLoadingPromos(false);
+    }
+  };
+
   // Comprehensive data synchronizer for all owner tabs
   const refreshAllData = async (token: string, silent = false) => {
     await Promise.allSettled([
@@ -171,7 +208,105 @@ export default function SakuNotaOwnerDashboardPage() {
       loadLicenses(token),
       loadTesterLicenses(token),
       loadBetaRegistrations(token, silent),
+      loadPromos(token),
     ]);
+  };
+
+  const handleCreatePromo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ownerToken) return;
+    setPromoFormError("");
+
+    const code = newPromoCode.trim().toUpperCase();
+    if (!code || code.length < 3) {
+      setPromoFormError("Kode promo minimal 3 karakter.");
+      return;
+    }
+
+    if (newPromoValue <= 0) {
+      setPromoFormError("Nilai diskon harus lebih besar dari 0.");
+      return;
+    }
+
+    setIsCreatingPromo(true);
+    try {
+      const res = await createOwnerPromoServer(ownerToken, {
+        code,
+        discountType: newPromoType,
+        discountValue: Number(newPromoValue),
+        description: newPromoDesc.trim() || undefined,
+        maxUsage: Number(newPromoMaxUsage) || 0,
+      });
+
+      if (res.success && res.promo) {
+        showToast(`Kode promo "${code}" berhasil dibuat!`);
+        setNewPromoCode("");
+        setNewPromoValue(15000);
+        setNewPromoDesc("");
+        setNewPromoMaxUsage(0);
+        await loadPromos(ownerToken);
+      } else {
+        setPromoFormError(res.error || "Gagal membuat kode promo.");
+      }
+    } catch (err: any) {
+      setPromoFormError("Gagal menghubungi server: " + (err.message || err));
+    } finally {
+      setIsCreatingPromo(false);
+    }
+  };
+
+  const handleTogglePromo = async (id: number, currentActive: number) => {
+    if (!ownerToken) return;
+    const newActive = currentActive ? 0 : 1;
+    try {
+      const res = await toggleOwnerPromoServer(ownerToken, id, newActive);
+      if (res.success) {
+        showToast(`Status promo berhasil di${newActive ? "aktifkan" : "nonaktifkan"}!`);
+        await loadPromos(ownerToken);
+      } else {
+        showToast(`Gagal: ${res.error || "Gagal mengubah status"}`);
+      }
+    } catch (err: any) {
+      showToast(`Error: ${err.message}`);
+    }
+  };
+
+  const handleDeletePromo = async (id: number, code: string) => {
+    if (!ownerToken) return;
+    if (!window.confirm(`Hapus kode promo "${code}" secara permanen?`)) return;
+    try {
+      const res = await deleteOwnerPromoServer(ownerToken, id);
+      if (res.success) {
+        showToast(`Kode promo "${code}" berhasil dihapus.`);
+        await loadPromos(ownerToken);
+      } else {
+        showToast(`Gagal: ${res.error || "Gagal menghapus promo"}`);
+      }
+    } catch (err: any) {
+      showToast(`Error: ${err.message}`);
+    }
+  };
+
+  const handleCopyPromoShare = (p: PromoCodeItem) => {
+    let discountLabel = "";
+    if (p.discountType === "nominal") {
+      discountLabel = `Rp ${p.discountValue.toLocaleString("id-ID")}`;
+    } else if (p.discountType === "percent") {
+      discountLabel = `${p.discountValue}%`;
+    } else {
+      discountLabel = `harga spesial Rp ${p.discountValue.toLocaleString("id-ID")}`;
+    }
+
+    const shareText = `Halo Kak! Ada promo spesial SakuNota Kasir Jalan Tanpa Internet.
+
+Gunakan kode voucher *${p.code}* saat checkout untuk mendapatkan potongan ${discountLabel}!
+(Harga resmi Rp50.000 sekali bayar tanpa langganan).
+
+Beli & klaim langsung di:
+https://angkringan-orang-kaya.ranutarde.workers.dev/?beli=true`;
+
+    navigator.clipboard.writeText(shareText);
+    showToast(`Pesan promosi untuk kode ${p.code} berhasil disalin! Siap dikirim ke WhatsApp.`);
   };
 
   // Check and validate stored session token on mount
@@ -209,6 +344,11 @@ export default function SakuNotaOwnerDashboardPage() {
     }, 8000);
     return () => clearInterval(interval);
   }, [ownerToken, isLoggedIn]);
+
+  // Reset order pagination to page 1 whenever filter changes
+  useEffect(() => {
+    setOrderPage(1);
+  }, [orderFilter]);
 
   const handleApproveBeta = async (regId: string) => {
     if (!ownerToken) return;
@@ -469,6 +609,220 @@ Langkah Pasang & Aktivasi di HP:
 Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+  };
+
+  const getInvoiceSummaryText = (o: CustomerOrder) => {
+    const isPaid = o.status === "lunas_lisensi_terbit";
+    const dateStr = o.createdAt
+      ? new Date(o.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+      : new Date().toLocaleDateString("id-ID");
+
+    let text = `*FAKTUR / INVOICE RESMI SAKUNOTA*
+Nomor Faktur: INV-${o.orderId}
+Tanggal: ${dateStr}
+Status: ${isPaid ? "LUNAS / PAID" : "MENUNGGU PEMBAYARAN / UNPAID"}
+Penerbit: PT Pemuda Gaya Bebas (NPWP: 125383232617000)
+
+Diterbitkan Untuk:
+• Usaha: ${o.businessName}
+• Pemilik: ${o.buyerName}
+• WhatsApp: ${o.whatsapp}`;
+
+    if (o.npwp) {
+      text += `\n• NPWP Pelanggan: ${o.npwp}`;
+    }
+
+    const dpp = Math.round((o.amount || 50000) / 1.11);
+    const ppn = (o.amount || 50000) - dpp;
+
+    text += `\n• Kode Akses Cek Status: ${o.accessCode}
+
+Rincian Tagihan:
+• 1x Lisensi SakuNota (Akses 1 perangkat, tanpa biaya langganan bulanan)`;
+
+    if (o.promoCode) {
+      text += `\n• Diskon Promo (${o.promoCode}): -Rp ${(o.discountAmount || 0).toLocaleString("id-ID")}`;
+    }
+
+    text += `\n• Dasar Pengenaan Pajak (DPP): Rp ${dpp.toLocaleString("id-ID")}`;
+    text += `\n• PPN 11% (Termasuk): Rp ${ppn.toLocaleString("id-ID")}`;
+    text += `\n*TOTAL TAGIHAN (Termasuk PPN 11%): Rp ${(o.amount || 50000).toLocaleString("id-ID")}*`;
+
+    if (!isPaid) {
+      text += `\n\n*Petunjuk Pembayaran Transfer Bank:*
+• Bank: ${PAYMENT_BANK_NAME}
+• No. Rekening: ${PAYMENT_ACCOUNT_NUMBER}
+• Atas Nama: ${PAYMENT_ACCOUNT_NAME}
+• Berita Transfer: ${o.orderId}
+(Wajib cantumkan nomor pesanan ${o.orderId} pada berita transfer)`;
+
+      if (o.paymentLink) {
+        text += `\n\nLink Pembayaran Digital (QRIS / Midtrans):\n${o.paymentLink}`;
+      }
+
+      text += `\n\nSetelah transfer, silakan kirim foto bukti transfer ke WhatsApp ini atau buka menu Cek Status di portal SakuNota untuk verifikasi otomatis.`;
+    } else if (o.licenseKey) {
+      text += `\n\n*Nomor Lisensi Resmi:* ${o.licenseKey}
+Lisensi aktif seumur hidup bebas biaya bulanan.`;
+    }
+
+    return text;
+  };
+
+  const handleCopyInvoiceText = (o: CustomerOrder) => {
+    const text = getInvoiceSummaryText(o);
+    navigator.clipboard.writeText(text);
+    showToast("Teks Faktur / Invoice berhasil disalin!");
+  };
+
+  const getWhatsAppInvoiceUrl = (o: CustomerOrder) => {
+    const cleanPhone = o.whatsapp.replace(/^0/, "62").replace(/[^0-9]/g, "");
+    const text = getInvoiceSummaryText(o);
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+  };
+
+  // Helper: Format relative time & online/offline status from lastConnectedAt
+  const getDevicePresenceInfo = (lastConnectedAt?: string | null) => {
+    if (!lastConnectedAt) {
+      return {
+        statusLabel: "Belum Ada Riwayat Koneksi",
+        isOnline: false,
+        isRecent: false,
+        formattedTime: "-",
+        relativeTime: "-",
+      };
+    }
+
+    const parsed = Date.parse(lastConnectedAt);
+    if (Number.isNaN(parsed)) {
+      return {
+        statusLabel: "Tercatat",
+        isOnline: false,
+        isRecent: false,
+        formattedTime: lastConnectedAt,
+        relativeTime: lastConnectedAt,
+      };
+    }
+
+    const diffMs = Date.now() - parsed;
+    const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    let relativeTime = "Baru saja";
+    if (diffMinutes >= 1 && diffMinutes < 60) {
+      relativeTime = `${diffMinutes} menit lalu`;
+    } else if (diffHours >= 1 && diffHours < 24) {
+      relativeTime = `${diffHours} jam lalu`;
+    } else if (diffDays >= 1) {
+      relativeTime = `${diffDays} hari lalu`;
+    }
+
+    const isOnline = diffMinutes <= 15;
+    const isRecent = !isOnline && diffHours < 24;
+    const statusLabel = isOnline
+      ? "Sedang Aktif / Online"
+      : isRecent
+      ? "Aktif Hari Ini (Mode Kasir Offline)"
+      : "Sedang Offline";
+
+    const formattedTime = new Date(parsed).toLocaleString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    return {
+      statusLabel,
+      isOnline,
+      isRecent,
+      formattedTime,
+      relativeTime,
+    };
+  };
+
+  const renderDeviceTelemetryMeta = (item: {
+    boundDeviceId?: string | null;
+    deviceModel?: string | null;
+    deviceLocation?: string | null;
+    deviceIp?: string | null;
+    lastConnectedAt?: string | null;
+    activatedAt?: string | null;
+  }) => {
+    if (!item.boundDeviceId && !item.lastConnectedAt && !item.deviceModel && !item.deviceLocation) {
+      return null;
+    }
+
+    const presence = getDevicePresenceInfo(item.lastConnectedAt || item.activatedAt);
+
+    return (
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] bg-surface/80 px-2.5 py-2 rounded-xl border border-line/60">
+        <span className="inline-flex items-center gap-1.5 font-bold">
+          <span
+            className={`w-2 h-2 rounded-full ${
+              presence.isOnline
+                ? "bg-emerald-500 animate-pulse"
+                : presence.isRecent
+                ? "bg-amber-500"
+                : "bg-slate-400"
+            }`}
+          />
+          <span
+            className={
+              presence.isOnline
+                ? "text-emerald-600 dark:text-emerald-400"
+                : presence.isRecent
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-muted"
+            }
+          >
+            {presence.statusLabel}
+          </span>
+        </span>
+
+        {item.deviceModel && (
+          <span className="text-muted">
+            Perangkat: <strong className="text-fg font-semibold">{item.deviceModel}</strong>
+          </span>
+        )}
+
+        {(item.deviceLocation || item.deviceIp) && (
+          <span className="text-muted">
+            Lokasi Buka:{" "}
+            <strong className="text-fg font-semibold">
+              {item.deviceLocation || "Indonesia"}
+              {item.deviceIp ? ` (${item.deviceIp})` : ""}
+            </strong>
+          </span>
+        )}
+
+        {(item.lastConnectedAt || item.activatedAt) && (
+          <span className="text-muted">
+            Terakhir Login / Buka Kasir:{" "}
+            <strong className="text-fg font-semibold">
+              {presence.relativeTime} ({presence.formattedTime})
+            </strong>
+          </span>
+        )}
+
+        {item.activatedAt && !Number.isNaN(Date.parse(item.activatedAt)) && (
+          <span className="text-muted">
+            Aktivasi Awal:{" "}
+            <strong className="text-fg font-semibold">
+              {new Date(item.activatedAt).toLocaleString("id-ID", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </strong>
+          </span>
+        )}
+      </div>
+    );
   };
 
   // Owner action: Cancel unpaid order
@@ -762,6 +1116,9 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
     return true;
   });
 
+  const totalOrderPages = Math.ceil(filteredOrders.length / ORDERS_PER_PAGE) || 1;
+  const paginatedOrders = filteredOrders.slice((orderPage - 1) * ORDERS_PER_PAGE, orderPage * ORDERS_PER_PAGE);
+
   // 2. DASHBOARD OWNER
   return (
     <div className="min-h-screen bg-app text-fg flex flex-col selection:bg-purple-600 selection:text-white">
@@ -935,6 +1292,20 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
           </button>
           <button
             type="button"
+            onClick={() => {
+              setActiveTab("promos");
+              if (ownerToken) loadPromos(ownerToken);
+            }}
+            className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
+              activeTab === "promos"
+                ? "bg-purple-600 text-white shadow-sm"
+                : "bg-surface text-muted hover:text-fg border border-line"
+            }`}
+          >
+            Promo &amp; Voucher ({promos.length})
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab("settings")}
             className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
               activeTab === "settings"
@@ -993,7 +1364,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
               </div>
             ) : (
               <div className="space-y-3.5">
-                {filteredOrders.map((o) => (
+                {paginatedOrders.map((o) => (
                   <div
                     key={o.orderId}
                     className="p-4 sm:p-5 rounded-2xl bg-card border border-line space-y-3 hover:border-purple-500/30 transition-all"
@@ -1034,14 +1405,21 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
                       <div className="text-right">
                         <span className="text-xs text-muted block">Total Tagihan:</span>
-                        <strong className="text-base font-black text-emerald-600 dark:text-emerald-700">
-                          Rp {(o.amount || 50000).toLocaleString("id-ID")}
-                        </strong>
+                        <div className="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-1.5">
+                          <strong className="text-base font-black text-emerald-600 dark:text-emerald-700">
+                            Rp {(o.amount || 50000).toLocaleString("id-ID")}
+                          </strong>
+                          {o.promoCode && (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-bold text-[10px] border border-emerald-500/30">
+                              Promo: {o.promoCode} (-Rp {(o.discountAmount || 0).toLocaleString("id-ID")})
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     {/* Customer & Business Details */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                       <div>
                         <span className="text-[10px] text-muted font-bold block uppercase">Nama Usaha:</span>
                         <strong className="text-fg">{o.businessName}</strong>
@@ -1060,7 +1438,96 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                         ><LineIcon name="info" />{o.whatsapp}
                         </a>
                       </div>
+                      <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                        <span className="text-[10px] text-purple-700 dark:text-purple-300 font-bold block uppercase">Kode Akses Pembeli:</span>
+                        <div className="flex items-center justify-between gap-1 mt-0.5">
+                          <strong className="font-mono text-fg font-black text-xs select-all">{o.accessCode}</strong>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(o.accessCode);
+                              showToast(`Kode akses ${o.accessCode} disalin!`);
+                            }}
+                            className="px-2 py-0.5 text-[10px] font-bold bg-card hover:bg-line border border-line rounded-lg text-fg transition-colors"
+                          >
+                            Salin
+                          </button>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Bukti Transfer Pembeli (Jika ada foto yang diunggah) */}
+                    {o.transferProofData ? (
+                      <div className="p-3 rounded-2xl bg-surface border border-line flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <img
+                            src={o.transferProofData}
+                            alt="Bukti Transfer"
+                            className="w-12 h-12 object-cover rounded-xl border border-line cursor-pointer hover:opacity-80 transition-opacity shrink-0"
+                            onClick={() => setActiveProofModal({ title: `Bukti Transfer - ${o.orderId} (${o.businessName})`, image: o.transferProofData! })}
+                          />
+                          <div className="min-w-0">
+                            <span className="text-[10px] text-muted font-bold block uppercase">Foto Bukti Transfer:</span>
+                            <span className="text-xs font-bold text-fg truncate block">{o.transferProofName || "bukti_transfer.jpg"}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveProofModal({ title: `Bukti Transfer - ${o.orderId} (${o.businessName})`, image: o.transferProofData! })}
+                          className="px-3 py-1.5 rounded-xl bg-card hover:bg-line border border-line text-xs font-bold text-fg shrink-0 transition-colors"
+                        >
+                          Lihat Foto Bukti
+                        </button>
+                      </div>
+                    ) : o.transferProofName ? (
+                      <div className="text-[11px] text-muted bg-surface/50 p-2.5 rounded-xl border border-line">
+                        <span className="font-bold">Info Bukti: </span>{o.transferProofName} (foto belum terlampir)
+                      </div>
+                    ) : null}
+
+                    {/* Link Pembayaran Midtrans (Jika tersedia untuk dikirim ke WA Pembeli) */}
+                    {o.paymentLink && (
+                      <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-blue-900 dark:text-blue-300 uppercase">Link Pembayaran Midtrans:</span>
+                            <span className="text-[9px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/60 px-1.5 py-0.5 rounded">QRIS &amp; Transfer</span>
+                          </div>
+                          <a
+                            href={o.paymentLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-xs text-blue-600 dark:text-blue-400 hover:underline block truncate max-w-md font-semibold"
+                            title={o.paymentLink}
+                          >
+                            {o.paymentLink}
+                          </a>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(o.paymentLink || "");
+                              showToast("Link Midtrans berhasil disalin!");
+                            }}
+                            className="px-2.5 py-1.5 rounded-xl bg-card hover:bg-line text-fg border border-line font-bold text-xs transition-colors"
+                          >
+                            Salin Link
+                          </button>
+                          <a
+                            href={`https://wa.me/62${o.whatsapp.replace(/^0/, "")}?text=${encodeURIComponent(
+                              `Halo Kak *${o.buyerName}*, ini link pembayaran resmi SakuNota via Midtrans (QRIS / Transfer) untuk pesanan *${o.orderId}* (${o.businessName}):\n\n${o.paymentLink}\n\nSilakan selesaikan pembayaran Rp 50.000 agar lisensi langsung aktif otomatis. Terima kasih!`
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1 active:scale-95"
+                          >
+                            <LineIcon name="info" className="w-3.5 h-3.5" />
+                            <span>Kirim Link ke WA</span>
+                          </a>
+                        </div>
+                      </div>
+                    )}
 
                     {/* License details & device binding status if paid */}
                     {o.licenseKey && (
@@ -1102,6 +1569,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                             </div>
                           )}
                         </div>
+                        {renderDeviceTelemetryMeta(o)}
                       </div>
                     )}
 
@@ -1141,6 +1609,17 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                               </button>
                             </div>
                           )}
+
+                          <a
+                            href={getWhatsAppInvoiceUrl(o)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 text-purple-700 dark:text-purple-300 text-xs font-bold border border-purple-300 dark:border-purple-800 transition-colors flex items-center gap-1.5"
+                            title="Kirim faktur / rincian tagihan via WhatsApp"
+                          >
+                            <LineIcon name="info" className="w-3.5 h-3.5" />
+                            <span>Kirim Faktur WA</span>
+                          </a>
                         </>
                       )}
 
@@ -1170,6 +1649,19 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
 
                       <button
                         type="button"
+                        onClick={() => {
+                          setSelectedInvoiceOrder(o);
+                          setIsInvoiceModalOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-card hover:bg-line text-fg text-xs font-bold border border-line transition-colors flex items-center gap-1.5"
+                        title={o.status === "menunggu_verifikasi" ? "Buka Faktur Tagihan" : "Buka Invoice Resmi"}
+                      >
+                        <LineIcon name="receipt" className="w-3.5 h-3.5" />
+                        <span>Invoice</span>
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => handleArchiveOrder(o.orderId)}
                         className="px-2.5 py-1 rounded-xl bg-card hover:bg-line text-[11px] font-bold text-muted border border-line"
                       >
@@ -1178,6 +1670,49 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                     </div>
                   </div>
                 ))}
+
+                {/* PAGINATION (MAX 20 PER HALAMAN) */}
+                {totalOrderPages > 1 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-line text-xs">
+                    <span className="text-muted text-[11px]">
+                      Menampilkan {(orderPage - 1) * ORDERS_PER_PAGE + 1} - {Math.min(orderPage * ORDERS_PER_PAGE, filteredOrders.length)} dari {filteredOrders.length} pesanan
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={orderPage === 1}
+                        onClick={() => setOrderPage((p) => Math.max(1, p - 1))}
+                        className="px-3 py-1.5 rounded-xl bg-card hover:bg-line border border-line text-fg font-bold disabled:opacity-40 transition-colors"
+                      >
+                        Sebelumnya
+                      </button>
+                      <div className="flex items-center gap-1 px-1">
+                        {Array.from({ length: totalOrderPages }, (_, i) => i + 1).map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => setOrderPage(p)}
+                            className={`w-7 h-7 rounded-xl font-black text-xs transition-colors ${
+                              orderPage === p
+                                ? "bg-purple-600 text-white shadow-sm"
+                                : "bg-card hover:bg-line border border-line text-fg"
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={orderPage >= totalOrderPages}
+                        onClick={() => setOrderPage((p) => Math.min(totalOrderPages, p + 1))}
+                        className="px-3 py-1.5 rounded-xl bg-card hover:bg-line border border-line text-fg font-bold disabled:opacity-40 transition-colors"
+                      >
+                        Berikutnya
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1381,6 +1916,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                               Pertama Aktif: {new Date(b.activatedAt).toLocaleDateString("id-ID")}
                             </div>
                           )}
+                          <div className="w-full">{renderDeviceTelemetryMeta(b)}</div>
                         </div>
 
                         {/* Audit Log / Notes */}
@@ -1691,6 +2227,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                           ) : (
                             <span className="text-muted">Siap diaktifkan di HP baru</span>
                           )}
+                          {renderDeviceTelemetryMeta(l)}
                         </div>
                       </div>
 
@@ -1870,6 +2407,7 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                             ) : (
                               <span className="text-muted font-medium">Belum digunakan pada perangkat</span>
                             )}
+                            {renderDeviceTelemetryMeta(t)}
                           </div>
                         </div>
 
@@ -1902,6 +2440,250 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
                               className="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-700 text-xs font-bold border border-rose-500/30 transition-colors"
                             >
                               Cabut
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: PROMO & VOUCHER DISKON */}
+        {activeTab === "promos" && (
+          <div className="bg-surface rounded-3xl border border-line shadow-sm p-5 sm:p-6 space-y-6">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-base text-fg">Pengelolaan Kode Promo &amp; Voucher Diskon</h3>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-[10px] font-black border border-emerald-500/30">
+                  Marketing &amp; Diskon
+                </span>
+              </div>
+              <p className="text-xs text-muted mt-0.5">
+                Buat kode voucher untuk promosi di WhatsApp, media sosial, atau mitra UMKM. Nilai tagihan checkout akan berkurang otomatis saat pembeli memasukkan kode promo yang valid.
+              </p>
+            </div>
+
+            {/* Form Buat Kode Promo Baru */}
+            <form onSubmit={handleCreatePromo} className="p-4 sm:p-5 rounded-2xl bg-card border border-line space-y-4">
+              <h4 className="font-black text-xs text-fg uppercase tracking-wider">
+                Buat Kode Promo Baru
+              </h4>
+
+              {promoFormError && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold">
+                  {promoFormError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-fg mb-1">Kode Promo *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Misal: DISKON15"
+                    value={newPromoCode}
+                    onChange={(e) => setNewPromoCode(e.target.value.toUpperCase())}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs font-mono font-bold uppercase text-fg focus:border-purple-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-fg mb-1">Tipe Diskon *</label>
+                  <select
+                    value={newPromoType}
+                    onChange={(e) => {
+                      const type = e.target.value as "nominal" | "percent" | "fixed_price";
+                      setNewPromoType(type);
+                      if (type === "percent") setNewPromoValue(20);
+                      else if (type === "nominal") setNewPromoValue(15000);
+                      else setNewPromoValue(35000);
+                    }}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs text-fg focus:border-purple-500 outline-none font-semibold"
+                  >
+                    <option value="nominal">Potongan Nominal (Rp)</option>
+                    <option value="percent">Persentase Diskon (%)</option>
+                    <option value="fixed_price">Harga Akhir Tetap (Rp)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-fg mb-1">
+                    {newPromoType === "percent" ? "Persentase Diskon (%) *" : newPromoType === "fixed_price" ? "Harga Akhir (Rp) *" : "Potongan Nominal (Rp) *"}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={newPromoValue}
+                    onChange={(e) => setNewPromoValue(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs font-mono font-bold text-fg focus:border-purple-500 outline-none"
+                  />
+                  <span className="text-[10px] text-muted block mt-0.5">
+                    {newPromoType === "percent"
+                      ? `Diskon ${newPromoValue}% dari Rp 50.000 = bayar Rp ${(50000 - Math.round((50000 * newPromoValue) / 100)).toLocaleString("id-ID")}`
+                      : newPromoType === "fixed_price"
+                      ? `Pembeli bayar Rp ${newPromoValue.toLocaleString("id-ID")} (hemat Rp ${(50000 - newPromoValue).toLocaleString("id-ID")})`
+                      : `Potongan Rp ${newPromoValue.toLocaleString("id-ID")} = bayar Rp ${(50000 - newPromoValue).toLocaleString("id-ID")}`}
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-fg mb-1">Batas Kuota Pemakaian</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="0 = Tanpa batas"
+                    value={newPromoMaxUsage}
+                    onChange={(e) => setNewPromoMaxUsage(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs font-mono font-bold text-fg focus:border-purple-500 outline-none"
+                  />
+                  <span className="text-[10px] text-muted block mt-0.5">
+                    {newPromoMaxUsage > 0 ? `Maksimal ${newPromoMaxUsage} kali pakai` : "Tanpa batas pemakaian"}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-fg mb-1">Deskripsi / Catatan Promo (Opsional)</label>
+                <input
+                  type="text"
+                  placeholder="Misal: Promo Launching Komunitas Kuliner WhatsApp"
+                  value={newPromoDesc}
+                  onChange={(e) => setNewPromoDesc(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-surface border border-line text-xs text-fg focus:border-purple-500 outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="submit"
+                  disabled={isCreatingPromo}
+                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs shadow-md transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {isCreatingPromo ? "Menyimpan Kode Promo..." : "+ Simpan & Terbitkan Kode Promo"}
+                </button>
+              </div>
+            </form>
+
+            {/* List Kode Promo */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-black text-xs text-fg uppercase tracking-wider">
+                  Daftar Kode Promo ({promos.length})
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => ownerToken && loadPromos(ownerToken)}
+                  disabled={isLoadingPromos}
+                  className="text-xs font-bold text-purple-600 hover:underline disabled:opacity-50"
+                >
+                  {isLoadingPromos ? "Menyegarkan..." : "Segarkan"}
+                </button>
+              </div>
+
+              {promos.length === 0 ? (
+                <div className="p-8 text-center bg-card rounded-2xl border border-line space-y-1">
+                  <p className="text-xs font-bold text-fg">Belum Ada Kode Promo</p>
+                  <p className="text-[11px] text-muted">
+                    Gunakan formulir di atas untuk membuat kode promo pertama yang bisa dibagikan ke pembeli.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3">
+                  {promos.map((p) => {
+                    const isExhausted = p.maxUsage && p.maxUsage > 0 && p.usageCount >= p.maxUsage;
+                    const isActive = p.active === 1 && !isExhausted;
+
+                    return (
+                      <div
+                        key={p.id || p.code}
+                        className="p-4 rounded-2xl bg-card border border-line flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all"
+                      >
+                        <div className="space-y-1.5 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono font-black text-base text-fg tracking-wider select-all">
+                              {p.code}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                                isActive
+                                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+                                  : isExhausted
+                                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                                  : "bg-slate-500/15 text-slate-500 border-slate-500/30"
+                              }`}
+                            >
+                              {isActive ? "Aktif" : isExhausted ? "Kuota Habis" : "Nonaktif"}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-700 dark:text-purple-300 text-[10px] font-bold border border-purple-500/30">
+                              {p.discountType === "nominal"
+                                ? `Potongan Rp ${p.discountValue.toLocaleString("id-ID")}`
+                                : p.discountType === "percent"
+                                ? `Diskon ${p.discountValue}%`
+                                : `Harga Akhir Rp ${p.discountValue.toLocaleString("id-ID")}`}
+                            </span>
+                          </div>
+
+                          {p.description && (
+                            <p className="text-xs text-fg font-medium">{p.description}</p>
+                          )}
+
+                          <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted">
+                            <span>
+                              Terpakai: <strong className="text-fg">{p.usageCount}</strong> {p.maxUsage && p.maxUsage > 0 ? `/ ${p.maxUsage} kali` : "kali (tanpa batas)"}
+                            </span>
+                            <span>•</span>
+                            <span>Dibuat: {formatServerDate(p.createdAt)}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPromoShare(p)}
+                            className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-xs"
+                            title="Salin Pesan Promosi WhatsApp"
+                          >
+                            Bagikan ke WA
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(p.code);
+                              showToast(`Kode promo ${p.code} berhasil disalin!`);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-card hover:bg-line text-xs font-bold text-fg border border-line transition-colors"
+                          >
+                            Salin Kode
+                          </button>
+
+                          {p.id !== undefined && (
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePromo(p.id!, p.active)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                                p.active
+                                  ? "bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                                  : "bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                              }`}
+                            >
+                              {p.active ? "Nonaktifkan" : "Aktifkan"}
+                            </button>
+                          )}
+
+                          {p.id !== undefined && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePromo(p.id!, p.code)}
+                              className="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-700 text-xs font-bold border border-rose-500/30 transition-colors"
+                            >
+                              Hapus
                             </button>
                           )}
                         </div>
@@ -2092,6 +2874,311 @@ Kasir Anda langsung aktif dan siap jalan tanpa internet.`;
           </div>
         )}
       </main>
+
+      {/* Lightbox Modal Bukti Transfer */}
+      {activeProofModal && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setActiveProofModal(null)}
+        >
+          <div
+            className="bg-card border border-line rounded-3xl max-w-2xl w-full p-4 md:p-6 shadow-2xl relative space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-line">
+              <h4 className="font-black text-sm md:text-base text-fg">{activeProofModal.title}</h4>
+              <button
+                type="button"
+                onClick={() => setActiveProofModal(null)}
+                className="w-8 h-8 rounded-full bg-surface hover:bg-line text-fg flex items-center justify-center font-bold"
+              >
+                ×
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-auto flex items-center justify-center rounded-2xl bg-black/20 p-2">
+              <img
+                src={activeProofModal.image}
+                alt="Foto Bukti Transfer"
+                className="max-h-[65vh] object-contain rounded-xl shadow-lg"
+              />
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setActiveProofModal(null)}
+                className="px-4 py-2 rounded-xl bg-accent text-white font-bold text-xs"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL INVOICE RESMI (OWNER PORTAL) */}
+      {isInvoiceModalOpen && selectedInvoiceOrder && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
+          onClick={() => setIsInvoiceModalOpen(false)}
+        >
+          <div
+            className="bg-white text-slate-900 rounded-3xl max-w-xl w-full p-5 sm:p-7 space-y-4 shadow-2xl relative border border-slate-200 my-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header Actions */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold shrink-0">
+                  <LineIcon name="receipt" className="w-4 h-4" />
+                </span>
+                <span className="text-xs font-black uppercase text-slate-800 tracking-wider truncate">
+                  {selectedInvoiceOrder.status === "lunas_lisensi_terbit" ? "Faktur & Invoice Resmi Pembeli" : "Faktur Tagihan Pembeli"}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleCopyInvoiceText(selectedInvoiceOrder)}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1"
+                  title="Salin Teks Faktur / Invoice untuk WhatsApp"
+                >
+                  <LineIcon name="receipt" className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Salin Teks</span>
+                </button>
+                <a
+                  href={getWhatsAppInvoiceUrl(selectedInvoiceOrder)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1"
+                  title="Kirim Faktur Langsung via WhatsApp"
+                >
+                  <LineIcon name="info" className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Kirim WA</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => printOfficialInvoice(selectedInvoiceOrder)}
+                  className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1"
+                >
+                  <LineIcon name="printer" className="w-3.5 h-3.5" />
+                  <span>Cetak / PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsInvoiceModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-bold"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Invoice Body */}
+            <div className="space-y-4 text-xs text-slate-700">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 pb-3 border-b-2 border-slate-900">
+                <div>
+                  <div className="text-lg font-black tracking-tight text-slate-900">SakuNota</div>
+                  <div className="text-[11px] font-bold text-purple-700">Kasir Jalan Tanpa Internet</div>
+                  <div className="text-[11px] text-slate-600 font-medium mt-0.5">PT Pemuda Gaya Bebas</div>
+                  <div className="text-[10px] text-slate-500">NPWP: 125383232617000 • sakunota.my.id</div>
+                </div>
+                <div className="sm:text-right">
+                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                    selectedInvoiceOrder.status === "lunas_lisensi_terbit"
+                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                      : selectedInvoiceOrder.status === "batal"
+                      ? "bg-rose-100 text-rose-800 border border-rose-300"
+                      : "bg-amber-100 text-amber-800 border border-amber-300"
+                  }`}>
+                    {selectedInvoiceOrder.status === "lunas_lisensi_terbit"
+                      ? "LUNAS / PAID"
+                      : selectedInvoiceOrder.status === "batal"
+                      ? "DIBATALKAN"
+                      : "MENUNGGU PEMBAYARAN"}
+                  </span>
+                  <div className="font-mono text-sm font-black text-slate-900 mt-1">INV-{selectedInvoiceOrder.orderId}</div>
+                  <div className="text-[10px] text-slate-500">
+                    Tanggal: {selectedInvoiceOrder.createdAt ? new Date(selectedInvoiceOrder.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" }) : new Date().toLocaleDateString("id-ID")}
+                  </div>
+                </div>
+              </div>
+
+              {/* Data Pelanggan & Pesanan */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                  <span className="text-[9px] uppercase font-extrabold text-slate-500 block border-b border-slate-200 pb-1 mb-1">Diterbitkan Untuk (Pelanggan)</span>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">Nama Usaha:</span>
+                    <strong className="text-slate-900 text-right">{selectedInvoiceOrder.businessName}</strong>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">Pemilik:</span>
+                    <strong className="text-slate-900 text-right">{selectedInvoiceOrder.buyerName}</strong>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">WhatsApp:</span>
+                    <span className="font-mono font-semibold text-slate-800">{selectedInvoiceOrder.whatsapp}</span>
+                  </div>
+                  {selectedInvoiceOrder.npwp && (
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">NPWP Pelanggan:</span>
+                      <span className="font-mono font-semibold text-slate-800">{selectedInvoiceOrder.npwp}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                  <span className="text-[9px] uppercase font-extrabold text-slate-500 block border-b border-slate-200 pb-1 mb-1">Rincian Pesanan &amp; Akses</span>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">No. Pesanan:</span>
+                    <strong className="font-mono text-slate-900">{selectedInvoiceOrder.orderId}</strong>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">Kode Akses:</span>
+                    <strong className="font-mono text-purple-700">{selectedInvoiceOrder.accessCode}</strong>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-500">Metode Bayar:</span>
+                    <strong className="text-slate-900 text-right">{selectedInvoiceOrder.paymentMethod || "Transfer BCA / QRIS"}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rincian Produk */}
+              <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-slate-100 text-[10px] font-black uppercase text-slate-600 border-b border-slate-200">
+                    <tr>
+                      <th className="py-2.5 px-3">Deskripsi Layanan</th>
+                      <th className="py-2.5 px-2 text-center whitespace-nowrap">Qty</th>
+                      <th className="py-2.5 px-3 text-right whitespace-nowrap">Harga</th>
+                      <th className="py-2.5 px-3 text-right whitespace-nowrap">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 text-xs">
+                    <tr>
+                      <td className="py-3 px-3">
+                        <strong className="text-slate-900 block font-bold">Lisensi SakuNota</strong>
+                        <span className="text-[10px] text-slate-500 leading-relaxed block mt-0.5">
+                          Akses 1 perangkat, tanpa biaya langganan bulanan
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-center font-bold whitespace-nowrap">1</td>
+                      <td className="py-3 px-3 text-right whitespace-nowrap">Rp {Math.round((selectedInvoiceOrder.originalAmount || 50000) / 1.11).toLocaleString("id-ID")}</td>
+                      <td className="py-3 px-3 text-right font-black text-slate-900 whitespace-nowrap">Rp {Math.round((selectedInvoiceOrder.originalAmount || 50000) / 1.11).toLocaleString("id-ID")}</td>
+                    </tr>
+                    <tr className="bg-slate-50/60 text-slate-600">
+                      <td colSpan={3} className="py-2 px-3 text-right font-semibold text-[11px]">
+                        Dasar Pengenaan Pajak (DPP):
+                      </td>
+                      <td className="py-2 px-3 text-right font-semibold text-xs whitespace-nowrap">
+                        Rp {Math.round((selectedInvoiceOrder.amount || 50000) / 1.11).toLocaleString("id-ID")}
+                      </td>
+                    </tr>
+                    {selectedInvoiceOrder.promoCode && (
+                      <tr className="bg-emerald-50/70 text-emerald-800">
+                        <td colSpan={3} className="py-2 px-3 text-right font-bold text-[11px]">
+                          Potongan Diskon Promo ({selectedInvoiceOrder.promoCode}):
+                        </td>
+                        <td className="py-2 px-3 text-right font-black text-xs text-emerald-700 whitespace-nowrap">
+                          -Rp {(selectedInvoiceOrder.discountAmount || 0).toLocaleString("id-ID")}
+                        </td>
+                      </tr>
+                    )}
+                    <tr className="bg-slate-50/60 text-slate-600">
+                      <td colSpan={3} className="py-2 px-3 text-right font-semibold text-[11px]">
+                        PPN 11% (Termasuk / Included):
+                      </td>
+                      <td className="py-2 px-3 text-right font-semibold text-xs text-slate-800 whitespace-nowrap">
+                        Rp {((selectedInvoiceOrder.amount || 50000) - Math.round((selectedInvoiceOrder.amount || 50000) / 1.11)).toLocaleString("id-ID")}
+                      </td>
+                    </tr>
+                  </tbody>
+                  <tfoot className="bg-slate-50 text-xs font-black border-t-2 border-slate-200">
+                    <tr>
+                      <td colSpan={3} className="py-3 px-3 text-right uppercase text-[11px] text-slate-700">Total Tagihan (Termasuk PPN 11%):</td>
+                      <td className="py-3 px-3 text-right text-emerald-700 text-sm whitespace-nowrap">Rp {(selectedInvoiceOrder.amount || 50000).toLocaleString("id-ID")}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Petunjuk Pembayaran jika status belum lunas */}
+              {selectedInvoiceOrder.status !== "lunas_lisensi_terbit" && selectedInvoiceOrder.status !== "batal" && (
+                <div className="p-3.5 bg-amber-50/90 border border-amber-300 rounded-2xl space-y-2 text-[11px]">
+                  <div className="flex items-center justify-between border-b border-amber-200 pb-1.5">
+                    <span className="text-[10px] font-black uppercase text-amber-950">Instruksi Pembayaran Transfer Bank</span>
+                    <span className="text-[9px] font-bold text-amber-900 bg-amber-200/70 px-2 py-0.5 rounded-full">Tagihan Aktif</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-slate-800">
+                    <div className="flex justify-between sm:block">
+                      <span className="text-slate-500">Bank Tujuan: </span>
+                      <strong>{PAYMENT_BANK_NAME}</strong>
+                    </div>
+                    <div className="flex justify-between sm:block">
+                      <span className="text-slate-500">Nomor Rekening: </span>
+                      <strong className="font-mono text-xs">{PAYMENT_ACCOUNT_NUMBER}</strong>
+                    </div>
+                    <div className="flex justify-between sm:block">
+                      <span className="text-slate-500">Atas Nama: </span>
+                      <strong>{PAYMENT_ACCOUNT_NAME}</strong>
+                    </div>
+                    <div className="flex justify-between sm:block">
+                      <span className="text-slate-500">Nominal Transfer: </span>
+                      <strong className="text-emerald-700 font-bold">Rp {(selectedInvoiceOrder.amount || 50000).toLocaleString("id-ID")}</strong>
+                    </div>
+                    <div className="sm:col-span-2 pt-0.5">
+                      <span className="text-slate-500">Berita / Keterangan Transfer: </span>
+                      <strong className="font-mono font-bold text-slate-900">{selectedInvoiceOrder.orderId}</strong>
+                    </div>
+                  </div>
+                  {selectedInvoiceOrder.paymentLink && (
+                    <div className="pt-1.5 border-t border-amber-200/60 text-[10px]">
+                      <span className="font-bold text-blue-900 block">Link Pembayaran Digital (QRIS / Midtrans):</span>
+                      <a href={selectedInvoiceOrder.paymentLink} target="_blank" rel="noopener noreferrer" className="font-mono text-blue-700 break-all underline">
+                        {selectedInvoiceOrder.paymentLink}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Info Lisensi */}
+              {selectedInvoiceOrder.licenseKey && (
+                <div className="p-3.5 bg-purple-50 border border-purple-200 rounded-2xl text-center space-y-1">
+                  <span className="text-[10px] font-black uppercase text-purple-900 block">Nomor Lisensi Resmi SakuNota:</span>
+                  <div className="font-mono font-black text-purple-700 text-sm tracking-wider select-all bg-white py-1.5 px-3 rounded-xl border border-purple-200 inline-block">
+                    {selectedInvoiceOrder.licenseKey}
+                  </div>
+                </div>
+              )}
+
+              {/* Catatan Legal */}
+              <div className="text-[10px] text-slate-500 text-center leading-relaxed pt-1 border-t border-slate-200">
+                Faktur / Invoice ini diterbitkan secara elektronik oleh sistem SakuNota (PT Pemuda Gaya Bebas) dan sah tanpa tanda tangan basah.
+              </div>
+            </div>
+
+            <div className="pt-1 flex gap-2">
+              <button
+                type="button"
+                onClick={() => printOfficialInvoice(selectedInvoiceOrder)}
+                className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <LineIcon name="printer" className="w-3.5 h-3.5" />
+                <span>Cetak / Simpan PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsInvoiceModalOpen(false)}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

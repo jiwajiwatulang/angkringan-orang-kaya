@@ -230,6 +230,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   // Simpan PIN Baru & Generate Recovery Code Baru
   const handleSaveNewPin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isDemo) {
+      setNewAdminPin("");
+      setConfirmAdminPin("");
+      setPinError("");
+      setIsAuthenticated(true);
+      showToast("Mode Demo: Pengaturan PIN hanya simulasi dan tidak disimpan.", "info");
+      return;
+    }
     if (newAdminPin.length < 4) {
       setPinError("PIN baru minimal harus 4 digit angka.");
       return;

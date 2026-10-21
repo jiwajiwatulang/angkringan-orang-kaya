@@ -451,18 +451,12 @@ export function generateZReportReceipt(stats: any, settings?: StoreSettings): st
 // 2. GENERATOR DOKUMEN HTML THERMAL (UNTUK WEB / SISTEM CETAK ISOLASI)
 // ============================================================================
 
-export function generateReceiptHtml(
+function renderReceiptInnerHtml(
   receipt: any,
-  mode: 'all' | 'food' | 'drink' = 'all',
-  settings?: StoreSettings
+  mode: 'all' | 'food' | 'drink',
+  cfg: any,
+  is80: boolean
 ): string {
-  receipt = safePrintData(receipt);
-  const cfg = safePrintData(settings || getStoreSettings());
-  cfg.storeLogo = safePrintLogo(cfg.storeLogo);
-  const is80 = cfg.paperWidth === '80mm';
-  const paperWidthMm = is80 ? '80mm' : '58mm';
-  const printableWidth = is80 ? '72mm' : '52mm';
-
   const dateStr = receipt.date || (receipt.createdAt ? new Date(receipt.createdAt).toLocaleString('id-ID') : new Date().toLocaleString('id-ID'));
   const orderIdLabel = receipt.orderId ? `A-${receipt.orderId}` : receipt.id ? `A-${receipt.id}` : "-";
   const tableOrType = receipt.tableName ? receipt.tableName : `[${receipt.orderType || 'Dine-in'}]`;
@@ -537,6 +531,118 @@ export function generateReceiptHtml(
   `;
 
   return `
+    ${cfg.storeLogo && cfg.receiptShowLogo !== false && mode === 'all' ? `
+      <div class="logo-box">
+        <img src="${cfg.storeLogo}" alt="Logo Toko" />
+      </div>
+    ` : ''}
+
+    <div class="center">
+      <div class="store-title">${titleHeader}</div>
+      ${mode === 'all' ? `
+        ${cfg.storeAddress ? `<div class="store-sub">${cfg.storeAddress}</div>` : ''}
+        ${cfg.storePhone ? `<div class="store-sub">Telp: ${cfg.storePhone}</div>` : ''}
+        ${cfg.receiptHeader ? `<div class="store-sub bold" style="margin-top: 2px;">${cfg.receiptHeader}</div>` : ''}
+      ` : ''}
+    </div>
+
+    <div class="double-divider"></div>
+
+    <div class="order-banner">
+      <div class="order-num">No: ${orderIdLabel}</div>
+      ${cfg.receiptShowCustomer !== false ? `<div class="bold">${receipt.customerName ? `An. ${receipt.customerName}` : 'Tamu'}</div>` : ''}
+      ${cfg.receiptShowTable !== false && (receipt.tableName || (receipt.orderType && receipt.orderType !== 'Dine-in' && receipt.orderType !== 'Direct')) ? `
+        <div style="margin-top: 3px;">
+          <span class="badge">${tableOrType}</span>
+        </div>
+      ` : ''}
+      ${receipt.notes && cfg.receiptShowNotes !== false ? `<div style="text-align: left; border: 1px solid #000; padding: 3px; margin-top: 4px; font-size: 10px; font-weight: bold;">Catatan: ${receipt.notes}</div>` : ''}
+    </div>
+
+    <div class="divider"></div>
+    <div class="row" style="font-size: 10px;">
+      <span>Tgl: ${dateStr}</span>
+      <span>${(receipt.operatorName || receipt.kasirName) && cfg.receiptShowCashier !== false ? `Kasir: ${receipt.operatorName || receipt.kasirName}` : ''}</span>
+    </div>
+    <div class="divider"></div>
+
+    <table>
+      <tbody>
+        ${itemRowsHtml}
+      </tbody>
+    </table>
+
+    ${mode === 'all' ? `
+      <div class="divider"></div>
+
+      ${((receipt.discount && receipt.discount > 0) || (receipt.serviceCharge && receipt.serviceCharge > 0) || (receipt.tax && receipt.tax > 0)) ? `
+        <div class="row">
+          <span>Subtotal:</span>
+          <span>${formatCurrency(subtotal)}</span>
+        </div>
+        ${receipt.discount && receipt.discount > 0 ? `
+          <div class="row">
+            <span>Diskon:</span>
+            <span>-${formatCurrency(receipt.discount)}</span>
+          </div>
+        ` : ''}
+        ${receipt.serviceCharge && receipt.serviceCharge > 0 ? `
+          <div class="row">
+            <span>Layanan:</span>
+            <span>${formatCurrency(receipt.serviceCharge)}</span>
+          </div>
+        ` : ''}
+        ${receipt.tax && receipt.tax > 0 ? `
+          <div class="row">
+            <span>Pajak PBJT:</span>
+            <span>${formatCurrency(receipt.tax)}</span>
+          </div>
+        ` : ''}
+        <div class="divider"></div>
+      ` : ''}
+
+      <div class="row total-row">
+        <span>TOTAL:</span>
+        <span>${formatCurrency(total)}</span>
+      </div>
+
+      ${paymentsHtml}
+
+      <div class="status-box">
+        ${receipt.isDraft ? 'TAGIHAN SEMENTARA (OPEN BILL)' : 'LUNAS'}
+      </div>
+
+      ${receipt.isDemo || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sakunota_demo_mode') === 'true') ? `
+        <div class="status-box" style="border: 1px dashed #b45309; background: #fffbeb; color: #92400e; font-size: 10px; margin: 4px 0;">
+          *** STRUK SIMULASI DEMO KASIR ***<br />
+          <span style="font-size: 9px; font-weight: normal;">BUKAN BUKTI TRANSAKSI RIIL</span>
+        </div>
+      ` : ''}
+
+      ${cfg.receiptFooter ? `<div class="footer-text">${cfg.receiptFooter}</div>` : ''}
+      ${cfg.receiptCustomNote ? `<div class="footer-text" style="font-style: italic; margin-top: 4px;">${cfg.receiptCustomNote}</div>` : ''}
+      ${cfg.enableWatermark ? `<div class="watermark">[ SakuNota - Solusi Kasir UMKM ]</div>` : ''}
+    ` : `
+      <div class="divider"></div>
+      <div class="center bold" style="font-size: 11px; margin-top: 4px;">*** SELESAI TIKET ***</div>
+    `}
+  `;
+}
+
+export function generateReceiptHtml(
+  receipt: any,
+  mode: 'all' | 'food' | 'drink' = 'all',
+  settings?: StoreSettings
+): string {
+  receipt = safePrintData(receipt);
+  const cfg = safePrintData(settings || getStoreSettings());
+  cfg.storeLogo = safePrintLogo(cfg.storeLogo);
+  const is80 = cfg.paperWidth === '80mm';
+  const paperWidthMm = is80 ? '80mm' : '58mm';
+  const printableWidth = is80 ? '72mm' : '52mm';
+  const orderIdLabel = receipt.orderId ? `A-${receipt.orderId}` : receipt.id ? `A-${receipt.id}` : "-";
+
+  return `
     <!DOCTYPE html>
     <html lang="id">
     <head>
@@ -592,101 +698,110 @@ export function generateReceiptHtml(
       </style>
     </head>
     <body>
-      ${cfg.storeLogo && cfg.receiptShowLogo !== false && mode === 'all' ? `
-        <div class="logo-box">
-          <img src="${cfg.storeLogo}" alt="Logo Toko" />
-        </div>
-      ` : ''}
+      ${renderReceiptInnerHtml(receipt, mode, cfg, is80)}
+    </body>
+    </html>
+  `;
+}
 
-      <div class="center">
-        <div class="store-title">${titleHeader}</div>
-        ${mode === 'all' ? `
-          ${cfg.storeAddress ? `<div class="store-sub">${cfg.storeAddress}</div>` : ''}
-          ${cfg.storePhone ? `<div class="store-sub">Telp: ${cfg.storePhone}</div>` : ''}
-          ${cfg.receiptHeader ? `<div class="store-sub bold" style="margin-top: 2px;">${cfg.receiptHeader}</div>` : ''}
-        ` : ''}
+export function generateBulkReceiptHtml(
+  receipts: any[],
+  mode: 'all' | 'food' | 'drink' = 'all',
+  settings?: StoreSettings
+): string {
+  const cfg = safePrintData(settings || getStoreSettings());
+  cfg.storeLogo = safePrintLogo(cfg.storeLogo);
+  const is80 = cfg.paperWidth === '80mm';
+  const paperWidthMm = is80 ? '80mm' : '58mm';
+  const printableWidth = is80 ? '72mm' : '52mm';
+
+  const pagesHtml = receipts.map((r) => {
+    const safeR = safePrintData(r);
+    return `
+      <div class="bulk-receipt-page">
+        ${renderReceiptInnerHtml(safeR, mode, cfg, is80)}
       </div>
+    `;
+  }).join('');
 
-      <div class="double-divider"></div>
+  return `
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+      <meta charset="utf-8">
+      <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+      <title>Cetak_Masal_${receipts.length}_Nota</title>
+      <style>
+        @page {
+          margin: 0;
+          size: ${paperWidthMm} auto;
+        }
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        body {
+          font-family: 'Courier New', Courier, monospace, system-ui;
+          font-size: ${is80 ? '13px' : '11px'};
+          line-height: 1.25;
+          color: #000000 !important;
+          background: #ffffff !important;
+          width: ${printableWidth};
+          margin: 0 auto;
+          padding: 0;
+        }
+        .center { text-align: center; }
+        .right { text-align: right; }
+        .bold { font-weight: bold; }
+        .divider { border-top: 1px dashed #000000; margin: 5px 0; }
+        .double-divider { border-top: 2px dashed #000000; margin: 6px 0; }
+        .logo-box { text-align: center; margin-bottom: 6px; }
+        .logo-box img { max-height: 48px; max-width: 120px; object-fit: contain; filter: grayscale(100%) contrast(200%); }
+        .store-title { font-size: ${is80 ? '16px' : '14px'}; font-weight: 900; text-transform: uppercase; }
+        .store-sub { font-size: ${is80 ? '11px' : '10px'}; }
+        .order-banner { text-align: center; padding: 4px 0; }
+        .order-num { font-size: ${is80 ? '24px' : '20px'}; font-weight: 900; }
+        .badge { display: inline-block; padding: 1px 4px; border: 1px solid #000; font-size: 10px; font-weight: bold; }
+        .row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px; }
+        table { width: 100%; border-collapse: collapse; }
+        td { vertical-align: top; padding: 2px 0; }
+        .col-item { text-align: left; word-break: break-word; }
+        .col-price { text-align: right; white-space: nowrap; padding-left: 6px; }
+        .item-name { font-weight: bold; }
+        .item-mod { font-size: 0.9em; padding-left: 8px; color: #222; }
+        .item-note { font-size: 0.85em; padding-left: 8px; font-style: italic; }
+        .total-row { font-size: ${is80 ? '15px' : '13px'}; font-weight: 900; margin-top: 3px; }
+        .status-box { text-align: center; font-weight: 900; padding: 4px; border: 1px dashed #000; margin: 6px 0; }
+        .footer-text { font-size: 10px; text-align: center; margin-top: 8px; white-space: pre-line; }
+        .watermark { font-size: 9px; text-align: center; margin-top: 8px; color: #333; }
 
-      <div class="order-banner">
-        <div class="order-num">No: ${orderIdLabel}</div>
-        ${cfg.receiptShowCustomer !== false ? `<div class="bold">${receipt.customerName ? `An. ${receipt.customerName}` : 'Tamu'}</div>` : ''}
-        ${cfg.receiptShowTable !== false && (receipt.tableName || (receipt.orderType && receipt.orderType !== 'Dine-in' && receipt.orderType !== 'Direct')) ? `
-          <div style="margin-top: 3px;">
-            <span class="badge">${tableOrType}</span>
-          </div>
-        ` : ''}
-        ${receipt.notes && cfg.receiptShowNotes !== false ? `<div style="text-align: left; border: 1px solid #000; padding: 3px; margin-top: 4px; font-size: 10px; font-weight: bold;">Catatan: ${receipt.notes}</div>` : ''}
-      </div>
-
-      <div class="divider"></div>
-      <div class="row" style="font-size: 10px;">
-        <span>Tgl: ${dateStr}</span>
-        <span>${(receipt.operatorName || receipt.kasirName) && cfg.receiptShowCashier !== false ? `Kasir: ${receipt.operatorName || receipt.kasirName}` : ''}</span>
-      </div>
-      <div class="divider"></div>
-
-      <table>
-        <tbody>
-          ${itemRowsHtml}
-        </tbody>
-      </table>
-
-      ${mode === 'all' ? `
-        <div class="divider"></div>
-
-        ${((receipt.discount && receipt.discount > 0) || (receipt.serviceCharge && receipt.serviceCharge > 0) || (receipt.tax && receipt.tax > 0)) ? `
-          <div class="row">
-            <span>Subtotal:</span>
-            <span>${formatCurrency(subtotal)}</span>
-          </div>
-          ${receipt.discount && receipt.discount > 0 ? `
-            <div class="row">
-              <span>Diskon:</span>
-              <span>-${formatCurrency(receipt.discount)}</span>
-            </div>
-          ` : ''}
-          ${receipt.serviceCharge && receipt.serviceCharge > 0 ? `
-            <div class="row">
-              <span>Layanan:</span>
-              <span>${formatCurrency(receipt.serviceCharge)}</span>
-            </div>
-          ` : ''}
-          ${receipt.tax && receipt.tax > 0 ? `
-            <div class="row">
-              <span>Pajak PBJT:</span>
-              <span>${formatCurrency(receipt.tax)}</span>
-            </div>
-          ` : ''}
-          <div class="divider"></div>
-        ` : ''}
-
-        <div class="row total-row">
-          <span>TOTAL:</span>
-          <span>${formatCurrency(total)}</span>
-        </div>
-
-        ${paymentsHtml}
-
-        <div class="status-box">
-          ${receipt.isDraft ? 'TAGIHAN SEMENTARA (OPEN BILL)' : 'LUNAS'}
-        </div>
-
-        ${receipt.isDemo || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sakunota_demo_mode') === 'true') ? `
-          <div class="status-box" style="border: 1px dashed #b45309; background: #fffbeb; color: #92400e; font-size: 10px; margin: 4px 0;">
-            *** STRUK SIMULASI DEMO KASIR ***<br />
-            <span style="font-size: 9px; font-weight: normal;">BUKAN BUKTI TRANSAKSI RIIL</span>
-          </div>
-        ` : ''}
-
-        ${cfg.receiptFooter ? `<div class="footer-text">${cfg.receiptFooter}</div>` : ''}
-        ${cfg.receiptCustomNote ? `<div class="footer-text" style="font-style: italic; margin-top: 4px;">${cfg.receiptCustomNote}</div>` : ''}
-        ${cfg.enableWatermark ? `<div class="watermark">[ SakuNota - Solusi Kasir UMKM ]</div>` : ''}
-      ` : `
-        <div class="divider"></div>
-        <div class="center bold" style="font-size: 11px; margin-top: 4px;">*** SELESAI TIKET ***</div>
-      `}
+        .bulk-receipt-page {
+          width: 100%;
+          padding: 8px 4px 20px 4px;
+          page-break-after: always;
+          break-after: page;
+        }
+        .bulk-receipt-page:last-child {
+          page-break-after: auto;
+          break-after: auto;
+        }
+        @media print {
+          .bulk-receipt-page {
+            page-break-after: always;
+            break-after: page;
+          }
+          .bulk-receipt-page:last-child {
+            page-break-after: auto;
+            break-after: auto;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      ${pagesHtml}
     </body>
     </html>
   `;

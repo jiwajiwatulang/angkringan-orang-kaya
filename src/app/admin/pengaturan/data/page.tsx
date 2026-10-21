@@ -443,15 +443,21 @@ export default function PengaturanDataPage() {
               onChange={handleFileSelected}
               className="hidden"
               id="backup-file-input"
-              disabled={db.name === 'SakuNotaDemoDB'}
             />
-            <label
-              htmlFor="backup-file-input"
+            <button
+              type="button"
+              onClick={() => {
+                if (db.name === 'SakuNotaDemoDB') {
+                  showToast("Mode Demo: Fitur kembalikan data hanya aktif pada perangkat dengan lisensi atau trial resmi.", "info");
+                  return;
+                }
+                fileInputRef.current?.click();
+              }}
               className="w-full py-3 bg-card hover:bg-line text-fg text-xs font-black rounded-2xl border border-line transition-all flex items-center justify-center gap-2 cursor-pointer text-center select-none active:scale-95 shadow-sm"
             >
               <span><LineIcon name="info" /></span>
               <span>Pilih File Cadangan</span>
-            </label>
+            </button>
             <p className="text-[10px] text-muted text-center leading-tight">
               Anda akan melihat rincian isi file sebelum data diganti.
             </p>
@@ -575,19 +581,20 @@ export default function PengaturanDataPage() {
       </div>
 
       {/* Pembersihan Riwayat Transaksi (Selesai Percobaan / Mulai Resmi) */}
-      <div className="p-5 rounded-3xl bg-red-950/20 border border-red-900/40 space-y-3">
+      <div className="p-5 rounded-3xl bg-rose-50/80 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-3">
         <div className="flex items-center gap-3">
-          <span className="w-10 h-10 rounded-2xl bg-red-900/40 text-red-400 flex items-center justify-center text-xl"><LineIcon name="info" /></span>
+          <span className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xl"><LineIcon name="info" /></span>
           <div>
-            <h3 className="font-black text-sm text-red-300">Hapus Seluruh Riwayat Penjualan & Shift</h3>
-            <p className="text-xs text-red-400/80 mt-0.5">
+            <h3 className="font-black text-sm text-rose-950 dark:text-rose-200">Hapus Seluruh Riwayat Penjualan & Shift</h3>
+            <p className="text-xs text-rose-800/90 dark:text-rose-300/80 mt-0.5 leading-relaxed">
               Hapus seluruh nota transaksi, pembayaran, dan riwayat shift kasir (biasanya dilakukan setelah selesai masa uji coba/latihan sebelum mulai operasional resmi). Menu makanan/minuman dan denah meja TIDAK akan dihapus.
             </p>
           </div>
         </div>
 
-        <div className="pt-3 border-t border-red-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <p className="text-[11px] text-amber-300/90 font-medium"> PERINGATAN: Tindakan ini permanen. Pastikan Anda sudah membuat cadangan data sebelum menghapus transaksi.
+        <div className="pt-3 border-t border-rose-200/80 dark:border-rose-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-[11px] text-amber-900 dark:text-amber-300 font-bold">
+            PERINGATAN: Tindakan ini permanen. Pastikan Anda sudah membuat cadangan data sebelum menghapus transaksi.
           </p>
 
           <button
@@ -598,7 +605,7 @@ export default function PengaturanDataPage() {
               setResetPinError("");
               setIsResetModalOpen(true);
             }}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95 shrink-0 shadow-sm"
+            className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-black rounded-xl transition-all active:scale-95 shrink-0 shadow-sm"
           >
             Hapus Riwayat Penjualan & Shift
           </button>
@@ -835,8 +842,8 @@ export default function PengaturanDataPage() {
           >
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <div className="flex items-center gap-2">
-                <span className="text-xl"><LineIcon name="info" /></span>
-                <h3 className="font-black text-base text-red-400">Hapus Seluruh Riwayat Penjualan & Shift?</h3>
+                <span className="text-xl text-rose-600 dark:text-rose-400"><LineIcon name="info" /></span>
+                <h3 className="font-black text-base text-rose-950 dark:text-rose-200">Hapus Seluruh Riwayat Penjualan & Shift?</h3>
               </div>
               <button
                 type="button"
@@ -847,11 +854,11 @@ export default function PengaturanDataPage() {
               </button>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-red-950/40 border border-red-800/60 text-xs text-red-200 space-y-2 leading-relaxed">
-              <p className="font-bold text-red-300">
+            <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-xs text-rose-900 dark:text-rose-200 space-y-2 leading-relaxed">
+              <p className="font-black text-rose-950 dark:text-rose-300">
                 PERINGATAN: Tindakan ini permanen dan tidak dapat dibatalkan!
               </p>
-              <ul className="list-disc list-inside space-y-1 text-[11px] text-red-200/90">
+              <ul className="list-disc list-inside space-y-1 text-[11px] text-rose-800 dark:text-rose-200/90">
                 <li>
                   Akan menghapus: <strong>{businessCounts.transaksi} nota transaksi</strong>, pembayaran, bukti bayar, dan <strong>{businessCounts.shift} riwayat shift</strong>.
                 </li>
@@ -859,7 +866,7 @@ export default function PengaturanDataPage() {
                   Tetap tersimpan: <strong>{businessCounts.menu} menu</strong> dan <strong>{businessCounts.meja} denah meja</strong>.
                 </li>
               </ul>
-              <p className="text-[11px] text-amber-200 font-semibold">
+              <p className="text-[11px] text-amber-900 dark:text-amber-300 font-bold">
                 Jangan gunakan fitur ini jika Anda sudah mulai berjualan nyata kecuali telah mencadangkan file data Anda sebelumnya.
               </p>
             </div>

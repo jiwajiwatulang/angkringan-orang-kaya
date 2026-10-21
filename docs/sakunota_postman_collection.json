@@ -1,0 +1,527 @@
+{
+  "info": {
+    "_postman_id": "a988d8b1-3184-486a-8b89-sakunota-api",
+    "name": "SakuNota End-to-End API Collection",
+    "description": "Backup lengkap seluruh endpoint API SakuNota Cloudflare Workers D1 (Public, Payment Gateway Midtrans, Cryptographic License, Beta Program, Promos, dan Owner Admin).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://sakunota.my.id",
+      "type": "string"
+    },
+    {
+      "key": "ownerToken",
+      "value": "SN-OWNER-SUPER-SECRET-TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "sampleOrderId",
+      "value": "ORD-20261021-0001",
+      "type": "string"
+    },
+    {
+      "key": "sampleLicenseKey",
+      "value": "SN-OFFL-ABCD-EFGH-1234",
+      "type": "string"
+    },
+    {
+      "key": "sampleDeviceId",
+      "value": "SN-DEV-96810D8D-5D59-418B-9547-E46F6BBBB028",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Public & Order Tracking",
+      "item": [
+        {
+          "name": "GET Public Stats (/api/stats)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stats"]
+            }
+          }
+        },
+        {
+          "name": "GET Public App Version (/api/version)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/version",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "version"]
+            }
+          }
+        },
+        {
+          "name": "GET Check Order Status (/api/check-order)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/check-order?orderId={{sampleOrderId}}&accessCode=837261",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "check-order"],
+              "query": [
+                { "key": "orderId", "value": "{{sampleOrderId}}" },
+                { "key": "accessCode", "value": "837261" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET Public Order Invoice (/api/invoice)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/invoice?orderId={{sampleOrderId}}&accessCode=837261",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invoice"],
+              "query": [
+                { "key": "orderId", "value": "{{sampleOrderId}}" },
+                { "key": "accessCode", "value": "837261" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST Submit Customer Feedback (/api/feedback)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Aplikasi sangat membantu usaha warkop saya, cetak struk via bluetooth lancar jaya.\",\n  \"customerName\": \"Budi Santoso\",\n  \"businessName\": \"Warkop Guyub\",\n  \"businessType\": \"F&B\",\n  \"deviceInfo\": \"Chrome 128 / Android 14\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/feedback",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "feedback"]
+            }
+          }
+        },
+        {
+          "name": "POST Track App Analytics Event (/api/analytics/track)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": \"checkout_success\",\n  \"source\": \"mobile_app\",\n  \"metadata\": {\n    \"paymentMethod\": \"cash\",\n    \"totalAmount\": 45000,\n    \"itemCount\": 3\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/track",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "analytics", "track"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Payment Gateway (Midtrans Snap & Webhook)",
+      "item": [
+        {
+          "name": "POST Create Snap Transaction (/api/payment/create)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Budi Santoso\",\n  \"customerPhone\": \"081234567890\",\n  \"customerEmail\": \"budi@example.com\",\n  \"customerNpwp\": \"012345678901234\",\n  \"customerNik\": \"3171012345670001\",\n  \"taxDpp\": 45045,\n  \"taxPpn\": 4955,\n  \"taxTarif\": \"11%\",\n  \"referralSource\": \"Instagram Ads\",\n  \"promoCode\": \"KASIRHEMAT\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payment", "create"]
+            }
+          }
+        },
+        {
+          "name": "POST Midtrans Webhook Notification (/api/payment/webhook)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transaction_time\": \"2026-10-21 09:30:00\",\n  \"transaction_status\": \"settlement\",\n  \"transaction_id\": \"trx-mdt-987654\",\n  \"status_message\": \"midtrans payment response\",\n  \"status_code\": \"200\",\n  \"signature_key\": \"abcdef0123456789...\",\n  \"payment_type\": \"qris\",\n  \"order_id\": \"ORD-20261021-0001\",\n  \"gross_amount\": \"50000.00\",\n  \"fraud_status\": \"accept\",\n  \"currency\": \"IDR\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/webhook",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payment", "webhook"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. License & Cryptographic Device Verification",
+      "item": [
+        {
+          "name": "POST Activate / Verify License (/api/license/activate)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licenseKey\": \"{{sampleLicenseKey}}\",\n  \"deviceId\": \"{{sampleDeviceId}}\",\n  \"deviceName\": \"Kasir Utama Warkop\",\n  \"devicePlatform\": \"Windows NT 10.0; Win64; x64\",\n  \"appVersion\": \"2.4.0\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/license/activate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "license", "activate"]
+            }
+          }
+        },
+        {
+          "name": "POST Heartbeat & Device Telemetry (/api/license/heartbeat)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licenseKey\": \"{{sampleLicenseKey}}\",\n  \"deviceId\": \"{{sampleDeviceId}}\",\n  \"deviceName\": \"Kasir Utama Warkop\",\n  \"devicePlatform\": \"Windows NT 10.0; Win64; x64\",\n  \"appVersion\": \"2.4.0\",\n  \"clientTimestamp\": \"2026-10-21T09:30:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/license/heartbeat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "license", "heartbeat"]
+            }
+          }
+        },
+        {
+          "name": "POST Unbind Device (/api/license/unbind)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licenseKey\": \"{{sampleLicenseKey}}\",\n  \"deviceId\": \"{{sampleDeviceId}}\",\n  \"accessCode\": \"837261\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/license/unbind",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "license", "unbind"]
+            }
+          }
+        },
+        {
+          "name": "GET Public ECDSA Verification Key (/api/license/public-key)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/license/public-key",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "license", "public-key"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Promos & Beta Program",
+      "item": [
+        {
+          "name": "GET Validate Promo Code (/api/promo/validate)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/promo/validate?code=KASIRHEMAT",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "promo", "validate"],
+              "query": [
+                { "key": "code", "value": "KASIRHEMAT" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST Join Beta Testing Program (/api/beta/join)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ahmad Fauzi\",\n  \"phone\": \"085211223344\",\n  \"businessName\": \"Toko Berkah\",\n  \"businessType\": \"Retail Kelontong\",\n  \"city\": \"Surabaya\",\n  \"deviceCount\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/beta/join",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "beta", "join"]
+            }
+          }
+        },
+        {
+          "name": "GET Check Beta Status (/api/beta/status)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/beta/status?phone=085211223344",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "beta", "status"],
+              "query": [
+                { "key": "phone", "value": "085211223344" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Owner Admin Management",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{ownerToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "POST Owner Login (/api/owner/login)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"SuperSecretAdminPassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "owner", "login"]
+            }
+          }
+        },
+        {
+          "name": "GET Owner Stats Dashboard (/api/owner/stats)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "owner", "stats"]
+            }
+          }
+        },
+        {
+          "name": "GET List Orders (/api/owner/orders)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/orders?status=all&limit=50&page=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "owner", "orders"],
+              "query": [
+                { "key": "status", "value": "all" },
+                { "key": "limit", "value": "50" },
+                { "key": "page", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST Update Order Status (/api/owner/orders/status)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{sampleOrderId}}\",\n  \"status\": \"PAID\",\n  \"paymentMethod\": \"MANUAL_TRANSFER\",\n  \"adminNote\": \"Konfirmasi transfer bukti mutasi BCA\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/orders/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "owner", "orders", "status"]
+            }
+          }
+        },
+        {
+          "name": "GET List Licenses (/api/owner/licenses)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/licenses?limit=50&page=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "owner", "licenses"],
+              "query": [
+                { "key": "limit", "value": "50" },
+                { "key": "page", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST Generate Manual License (/api/owner/licenses/create)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Siti Rahma\",\n  \"customerPhone\": \"081987654321\",\n  \"customerEmail\": \"siti@example.com\",\n  \"note\": \"Lisensi tester cabang 2\",\n  \"maxDevices\": 1,\n  \"validUntil\": \"2026-11-20T23:59:59.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/licenses/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "owner", "licenses", "create"]
+            }
+          }
+        },
+        {
+          "name": "POST Revoke License (/api/owner/licenses/revoke)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licenseKey\": \"{{sampleLicenseKey}}\",\n  \"reason\": \"Refund permintaan pembeli\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/licenses/revoke",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "owner", "licenses", "revoke"]
+            }
+          }
+        },
+        {
+          "name": "POST Force Unbind Device (/api/owner/licenses/unbind)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licenseKey\": \"{{sampleLicenseKey}}\",\n  \"deviceId\": \"{{sampleDeviceId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/licenses/unbind",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "owner", "licenses", "unbind"]
+            }
+          }
+        },
+        {
+          "name": "GET List Promos (/api/owner/promos)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/promos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "owner", "promos"]
+            }
+          }
+        },
+        {
+          "name": "POST Create Promo Code (/api/owner/promos/create)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"FLASHDEAL\",\n  \"discountAmount\": 15000,\n  \"discountType\": \"FIXED\",\n  \"maxUses\": 100,\n  \"validUntil\": \"2026-12-31T23:59:59.000Z\",\n  \"isActive\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/promos/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "owner", "promos", "create"]
+            }
+          }
+        },
+        {
+          "name": "POST Toggle / Delete Promo (/api/owner/promos/update)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"isActive\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/promos/update",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "owner", "promos", "update"]
+            }
+          }
+        },
+        {
+          "name": "GET List Feedbacks (/api/owner/feedbacks)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/feedbacks?limit=50&page=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "owner", "feedbacks"],
+              "query": [
+                { "key": "limit", "value": "50" },
+                { "key": "page", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET List Beta Applicants (/api/owner/beta/list)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/beta/list",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "owner", "beta", "list"]
+            }
+          }
+        },
+        {
+          "name": "POST Approve Beta Applicant (/api/owner/beta/approve)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"licenseDays\": 30\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/beta/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "owner", "beta", "approve"]
+            }
+          }
+        },
+        {
+          "name": "GET Export System Audit Log (/api/owner/audit-logs)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/audit-logs?limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "owner", "audit-logs"],
+              "query": [
+                { "key": "limit", "value": "100" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

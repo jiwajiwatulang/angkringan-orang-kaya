@@ -312,9 +312,9 @@ export default function POSPage() {
   };
 
   const getMobileSheetHeight = () => {
-    if (mobileSheetSnap === 'compact') return '60vh';
-    if (mobileSheetSnap === 'full') return '96vh';
-    return '82vh';
+    if (mobileSheetSnap === 'compact') return 'min(65dvh, 65vh)';
+    if (mobileSheetSnap === 'full') return 'min(96dvh, 96vh)';
+    return 'min(84dvh, 84vh)';
   };
 
   const handleSetCatalogDensity = (density: 'S' | 'M' | 'L') => {
@@ -2362,7 +2362,7 @@ export default function POSPage() {
         </div>
 
         {/* RIGHT PANE in landscape / BOTTOM in portrait: Payment & Actions */}
-        <div className="bg-surface border-t landscape:border-t-0 landscape:border-l border-line p-3.5 sm:p-5 landscape:p-3.5 landscape:w-72 sm:landscape:w-80 landscape:shrink-0 flex flex-col justify-between shrink-0 overflow-y-auto shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+        <div className="bg-surface border-t landscape:border-t-0 landscape:border-l border-line p-3.5 sm:p-5 pb-6 sm:pb-5 landscape:p-3.5 landscape:w-72 sm:landscape:w-80 landscape:shrink-0 flex flex-col justify-between shrink-0 overflow-y-auto shadow-[0_-4px_10px_rgba(0,0,0,0.04)]">
           <div>
             {/* Rincian Diskon & Biaya */}
             {cart.length > 0 && (
@@ -3866,7 +3866,23 @@ export default function POSPage() {
 
         {/* Mobile Active Screen Views */}
         <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-          {mobileTab === 'home' && <><div className="p-3 border-b border-line flex gap-3 items-center justify-between"><h1 className="font-bold">Kasir</h1><button type="button" onClick={() => navigateMobile('menu')} className="px-3 py-2 text-xs font-bold bg-accent text-white rounded-xl">Pilih Produk / Scan</button></div>{renderCartInner(true)}</>}
+          {mobileTab === 'home' && (
+            <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden pb-16">
+              <div className="p-3 border-b border-line flex gap-3 items-center justify-between shrink-0 bg-surface">
+                <h1 className="font-bold text-fg">Kasir</h1>
+                <button
+                  type="button"
+                  onClick={() => navigateMobile('menu')}
+                  className="px-3 py-2 text-xs font-bold bg-accent hover:bg-accent-hover text-white rounded-xl shadow-xs transition-all active:scale-95"
+                >
+                  Pilih Produk / Scan
+                </button>
+              </div>
+              <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+                {renderCartInner(true)}
+              </div>
+            </div>
+          )}
 
           {mobileTab === 'menu' && (
             <MobileCatalogScreen

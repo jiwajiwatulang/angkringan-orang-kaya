@@ -7,6 +7,8 @@ import {
   getAllOrdersD1,
   getOrderByIdD1,
   updateOrderStatusAndLicenseD1,
+  updateOrderProofD1,
+  updateOrderPaymentLinkD1,
   insertLicenseD1,
   getLicenseD1,
   bindLicenseToDeviceD1,
@@ -47,14 +49,23 @@ import {
   bindBetaRegistrationToDeviceD1,
   extendBetaRegistrationTrialD1,
   convertBetaTrialToPaidD1,
+  DbPromoCode,
+  calculatePromoDiscount,
+  getPromoCodeByCodeD1,
+  getAllPromoCodesD1,
+  insertPromoCodeD1,
+  togglePromoCodeD1,
+  deletePromoCodeD1,
+  incrementPromoUsageD1,
 } from "./d1";
 
 export type ServerCustomerOrder = DbCustomerOrder;
 export type LicenseRecord = DbLicense;
 export type ServerTesterLicense = DbTesterLicense;
 export type ServerBetaRegistration = DbBetaRegistration;
+export type ServerPromoCode = DbPromoCode;
 
-export { getD1, initD1Tables, resetDatabaseCleanD1 };
+export { getD1, initD1Tables, resetDatabaseCleanD1, updateOrderProofD1, updateOrderPaymentLinkD1 };
 
 // Server Secrets (Strict: fail-closed with NO fallback defaults)
 export function getServerSecret(): string {
@@ -327,9 +338,27 @@ export async function authenticateOwner(
 }
 
 export async function createCustomerOrder(
-  dbOrData: D1Database | { buyerName: string; businessName: string; whatsapp: string; email?: string },
-  maybeData?: { buyerName: string; businessName: string; whatsapp: string; email?: string }
-): Promise<{ success: boolean; order: ServerCustomerOrder }> {
+  dbOrData: D1Database | {
+    buyerName: string;
+    businessName: string;
+    whatsapp: string;
+    email?: string;
+    npwp?: string;
+    transferProofName?: string;
+    transferProofData?: string;
+    promoCode?: string;
+  },
+  maybeData?: {
+    buyerName: string;
+    businessName: string;
+    whatsapp: string;
+    email?: string;
+    npwp?: string;
+    transferProofName?: string;
+    transferProofData?: string;
+    promoCode?: string;
+  }
+): Promise<{ success: boolean; order: ServerCustomerOrder; error?: string }> {
   const db = isD1(dbOrData) ? dbOrData : getD1();
   const data = (isD1(dbOrData) ? maybeData : (dbOrData as any)) || {};
 
@@ -352,6 +381,29 @@ export async function createCustomerOrder(
   const randomCode = crypto.randomBytes(3).toString("hex").toUpperCase();
   const accessCode = `KOD-${randomCode}`;
 
+  let finalAmount = 50000;
+  let discountAmount = 0;
+  let appliedPromoCode: string | undefined = undefined;
+
+  if (data.promoCode && typeof data.promoCode === "string") {
+    const cleanCode = data.promoCode.trim().toUpperCase();
+    if (cleanCode) {
+      const promo = await getPromoCodeByCodeD1(db, cleanCode);
+      if (promo && promo.active === 1) {
+        const quotaExceeded = promo.maxUsage && promo.maxUsage > 0 && promo.usageCount >= promo.maxUsage;
+        if (!quotaExceeded) {
+          const calc = calculatePromoDiscount(50000, promo.discountType, promo.discountValue);
+          finalAmount = calc.finalAmount;
+          discountAmount = calc.discountAmount;
+          appliedPromoCode = promo.code;
+          try {
+            await incrementPromoUsageD1(db, promo.code);
+          } catch (_) {}
+        }
+      }
+    }
+  }
+
   const newOrder: ServerCustomerOrder = {
     orderId,
     accessCode,
@@ -359,10 +411,15 @@ export async function createCustomerOrder(
     businessName: (data.businessName || "").trim(),
     whatsapp: (data.whatsapp || "").trim(),
     email: data.email?.trim() || undefined,
-    amount: 50000,
+    npwp: data.npwp?.trim() || undefined,
+    amount: finalAmount,
+    originalAmount: 50000,
+    discountAmount: discountAmount,
+    promoCode: appliedPromoCode,
     paymentMethod: "Transfer Bank BCA",
-    bankAccount: "8030 554 912 a.n. SakuNota Official",
-    transferProofName: "bukti_transfer_pembeli.jpg",
+    bankAccount: "2582118451 a.n. REZA RESTU RENGGA HARDIANTO",
+    transferProofName: data.transferProofName || undefined,
+    transferProofData: data.transferProofData || undefined,
     status: "menunggu_verifikasi",
     createdAt: new Date().toISOString(),
   };
@@ -470,11 +527,17 @@ export async function checkCustomerOrderStatus(
     return { success: false, error: "Pesanan dengan nomor tersebut tidak ditemukan." };
   }
 
-  // Security check: Access code must match
-  if (order.accessCode.trim().toUpperCase() !== accessCode.trim().toUpperCase()) {
+  // Security check: Access code must match, or registered WhatsApp phone must match
+  const cleanInput = accessCode.trim().toUpperCase();
+  const cleanOrderAccess = (order.accessCode || "").trim().toUpperCase();
+  const inputDigits = accessCode.replace(/\D/g, "");
+  const orderDigits = (order.whatsapp || "").replace(/\D/g, "");
+  const phoneMatches = inputDigits.length >= 8 && (orderDigits.endsWith(inputDigits) || inputDigits.endsWith(orderDigits));
+
+  if (cleanOrderAccess !== cleanInput && !phoneMatches) {
     return {
       success: false,
-      error: "Kode akses rahasia tidak cocok dengan pesanan ini. Periksa kembali tautan atau kode bukti pembelian Anda.",
+      error: "Kode akses tidak cocok dengan pesanan ini. Masukkan Kode Akses Rahasia (KOD-XXXX) atau nomor WhatsApp yang Anda gunakan saat memesan.",
     };
   }
 
@@ -1398,5 +1461,172 @@ export async function verifyDeviceLicense(
   }
 
   return { valid: false, status: "unregistered", error: "Nomor lisensi tidak terdaftar di sistem SakuNota." };
+}
+
+// Promo Codes Public Validation
+export async function validatePromoCode(
+  dbOrCode: D1Database | string,
+  maybeCode?: string
+): Promise<{
+  valid: boolean;
+  code?: string;
+  discountType?: "nominal" | "percent" | "fixed_price";
+  discountValue?: number;
+  discountAmount?: number;
+  finalAmount?: number;
+  description?: string;
+  error?: string;
+}> {
+  const db = isD1(dbOrCode) ? dbOrCode : getD1();
+  const code = (isD1(dbOrCode) ? maybeCode : (dbOrCode as string)) || "";
+  const cleanCode = code.trim().toUpperCase();
+
+  if (!cleanCode) {
+    return { valid: false, error: "Kode promo tidak boleh kosong." };
+  }
+
+  const promo = await getPromoCodeByCodeD1(db, cleanCode);
+  if (!promo || promo.active !== 1) {
+    return { valid: false, error: "Kode promo tidak ditemukan atau sudah tidak aktif." };
+  }
+
+  if (promo.maxUsage && promo.maxUsage > 0 && promo.usageCount >= promo.maxUsage) {
+    return { valid: false, error: "Kuota penggunaan kode promo ini sudah habis." };
+  }
+
+  const calc = calculatePromoDiscount(50000, promo.discountType, promo.discountValue);
+  return {
+    valid: true,
+    code: promo.code,
+    discountType: promo.discountType,
+    discountValue: promo.discountValue,
+    discountAmount: calc.discountAmount,
+    finalAmount: calc.finalAmount,
+    description: promo.description || undefined,
+  };
+}
+
+// Owner Promo Management
+export async function listOwnerPromos(
+  dbOrToken?: D1Database | string | null,
+  maybeToken?: string | null
+): Promise<{
+  success: boolean;
+  promos?: ServerPromoCode[];
+  error?: string;
+}> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? maybeToken : (dbOrToken as string);
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) {
+    return { success: false, error: auth.error || "Akses ditolak. Sesi Owner tidak sah." };
+  }
+
+  const list = await getAllPromoCodesD1(db);
+  return { success: true, promos: list };
+}
+
+export async function createOwnerPromo(
+  dbOrToken: D1Database | string | null,
+  tokenOrData: string | null | {
+    code: string;
+    discountType: "nominal" | "percent" | "fixed_price";
+    discountValue: number;
+    description?: string;
+    maxUsage?: number;
+  },
+  maybeData?: {
+    code: string;
+    discountType: "nominal" | "percent" | "fixed_price";
+    discountValue: number;
+    description?: string;
+    maxUsage?: number;
+  }
+): Promise<{ success: boolean; promo?: ServerPromoCode; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrData as string) : (dbOrToken as string);
+  const data = (isD1(dbOrToken) ? maybeData : (tokenOrData as any)) || {};
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) {
+    return { success: false, error: auth.error || "Akses ditolak. Sesi Owner tidak sah." };
+  }
+
+  const cleanCode = (data.code || "").trim().toUpperCase();
+  if (!cleanCode || cleanCode.length < 3) {
+    return { success: false, error: "Kode promo minimal 3 karakter." };
+  }
+
+  const existing = await getPromoCodeByCodeD1(db, cleanCode);
+  if (existing) {
+    return { success: false, error: `Kode promo "${cleanCode}" sudah ada di sistem.` };
+  }
+
+  const discountType = data.discountType || "nominal";
+  const discountValue = Number(data.discountValue) || 0;
+  if (discountValue <= 0) {
+    return { success: false, error: "Nilai diskon harus lebih besar dari 0." };
+  }
+
+  if (discountType === "percent" && (discountValue < 1 || discountValue > 99)) {
+    return { success: false, error: "Persentase diskon harus antara 1% sampai 99%." };
+  }
+
+  if (discountType === "fixed_price" && (discountValue < 1000 || discountValue >= 50000)) {
+    return { success: false, error: "Harga tetap harus antara Rp 1.000 sampai Rp 49.999." };
+  }
+
+  if (discountType === "nominal" && (discountValue < 1000 || discountValue >= 50000)) {
+    return { success: false, error: "Potongan nominal harus antara Rp 1.000 sampai Rp 49.000." };
+  }
+
+  const created = await insertPromoCodeD1(db, {
+    code: cleanCode,
+    discountType,
+    discountValue,
+    description: data.description,
+    maxUsage: Number(data.maxUsage) || 0,
+  });
+
+  return { success: true, promo: created };
+}
+
+export async function toggleOwnerPromo(
+  dbOrToken: D1Database | string | null,
+  tokenOrId: string | null | number,
+  idOrActive?: number,
+  maybeActive?: number
+): Promise<{ success: boolean; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrId as string) : (dbOrToken as string);
+  const id = isD1(dbOrToken) ? (idOrActive as number) : (typeof tokenOrId === "number" ? tokenOrId : Number(tokenOrId));
+  const active = isD1(dbOrToken) ? (maybeActive as number) : idOrActive;
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) {
+    return { success: false, error: auth.error || "Akses ditolak. Sesi Owner tidak sah." };
+  }
+
+  await togglePromoCodeD1(db, Number(id), Number(active) ? 1 : 0);
+  return { success: true };
+}
+
+export async function deleteOwnerPromo(
+  dbOrToken: D1Database | string | null,
+  tokenOrId: string | null | number,
+  maybeId?: number
+): Promise<{ success: boolean; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrId as string) : (dbOrToken as string);
+  const id = (isD1(dbOrToken) ? maybeId : (tokenOrId as any)) || 0;
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) {
+    return { success: false, error: auth.error || "Akses ditolak. Sesi Owner tidak sah." };
+  }
+
+  await deletePromoCodeD1(db, Number(id));
+  return { success: true };
 }
 

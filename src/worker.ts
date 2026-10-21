@@ -3,6 +3,7 @@ import * as licenseActivate from "../functions/api/license/activate";
 import * as licenseVerify from "../functions/api/license/verify";
 import * as ordersCheck from "../functions/api/orders/check";
 import * as ordersCreate from "../functions/api/orders/create";
+import * as ordersUploadProof from "../functions/api/orders/upload-proof";
 import * as ownerLicenses from "../functions/api/owner/licenses";
 import * as ownerLogin from "../functions/api/owner/login";
 import * as ownerLogout from "../functions/api/owner/logout";
@@ -17,6 +18,8 @@ import * as betaStatus from "../functions/api/beta/status";
 import * as paymentConfig from "../functions/api/payment/config";
 import * as paymentMidtrans from "../functions/api/payment/midtrans";
 import * as paymentSnap from "../functions/api/payment/snap";
+import * as promoCheck from "../functions/api/promo/check";
+import * as ownerPromos from "../functions/api/owner/promos";
 import { verifyOwnerSession, getD1 } from './lib/server/sakunotaServer';
 
 export interface Env {
@@ -87,7 +90,7 @@ export default {
 
     // 2. Handle /api/ routes
     if (pathname.startsWith("/api/")) {
-      const publicAction = /^\/api\/(license|orders|beta)\//.test(pathname) || pathname === '/api/owner/login' || pathname === '/api/payment/snap';
+      const publicAction = /^\/api\/(license|orders|beta|promo)\//.test(pathname) || pathname === '/api/owner/login' || pathname === '/api/payment/snap';
       if (publicAction && env.PUBLIC_RATE_LIMITER) {
         try {
           const result = await env.PUBLIC_RATE_LIMITER.limit({key:`${pathname}:${request.headers.get('CF-Connecting-IP') || 'local'}`});
@@ -155,6 +158,12 @@ export default {
         // Route: /api/orders/check
         else if (pathname === "/api/orders/check") {
           if (method === "POST") response = await ordersCheck.onRequestPost(context);
+          else response = new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), { status: 405 });
+        }
+
+        // Route: /api/orders/upload-proof
+        else if (pathname === "/api/orders/upload-proof") {
+          if (method === "POST") response = await ordersUploadProof.onRequestPost(context);
           else response = new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), { status: 405 });
         }
 
@@ -240,6 +249,19 @@ export default {
         // Route: /api/license/verify
         else if (pathname === "/api/license/verify") {
           if (method === "POST") response = await licenseVerify.onRequestPost(context);
+          else response = new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), { status: 405 });
+        }
+
+        // Route: /api/promo/check
+        else if (pathname === "/api/promo/check") {
+          if (method === "POST") response = await promoCheck.onRequestPost(context);
+          else response = new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), { status: 405 });
+        }
+
+        // Route: /api/owner/promos
+        else if (pathname === "/api/owner/promos") {
+          if (method === "GET") response = await ownerPromos.onRequestGet(context);
+          else if (method === "POST") response = await ownerPromos.onRequestPost(context);
           else response = new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), { status: 405 });
         }
 

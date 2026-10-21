@@ -7,16 +7,25 @@ export interface CustomerOrder {
   businessName: string;
   whatsapp: string;
   email?: string;
+  npwp?: string | null;
   amount: number;
+  promoCode?: string;
+  discountAmount?: number;
+  originalAmount?: number;
   paymentMethod: string;
   bankAccount: string;
   transferProofName?: string;
+  transferProofData?: string;
+  paymentLink?: string;
   status: "menunggu_verifikasi" | "lunas_lisensi_terbit" | "batal";
   licenseKey?: string;
   createdAt: string;
   verifiedAt?: string;
   boundDeviceId?: string | null;
   deviceName?: string | null;
+  deviceModel?: string | null;
+  deviceLocation?: string | null;
+  deviceIp?: string | null;
   activatedAt?: string | null;
   lastConnectedAt?: string | null;
   lastSeenAt?: string | null;
@@ -32,11 +41,56 @@ export function getLocalDeviceId(): string {
   return id;
 }
 
+export function getClientDeviceTelemetryModel(): string {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return "";
+  try {
+    const ua = navigator.userAgent || "";
+    if (!ua) return "";
+    let os = "Perangkat";
+    if (/Android/i.test(ua)) {
+      const verMatch = ua.match(/Android\s+([0-9.]+)/i);
+      const modelMatch = ua.match(/Android\s+[0-9.]+;\s*([^;)]+?)(?:\s+Build\/|\))/i);
+      const ver = verMatch ? `Android ${verMatch[1]}` : "Android";
+      const rawModel = modelMatch?.[1]?.trim();
+      const model = rawModel && rawModel !== "K" ? rawModel : "HP Android";
+      os = `${model} (${ver})`;
+    } else if (/iPhone|iPad|iPod/i.test(ua)) {
+      const isIpad = /iPad/i.test(ua);
+      const verMatch = ua.match(/OS\s+([0-9_]+)/i);
+      const ver = verMatch ? `iOS ${verMatch[1].replace(/_/g, ".")}` : "iOS";
+      os = `${isIpad ? "iPad" : "iPhone"} (${ver})`;
+    } else if (/Windows NT/i.test(ua)) {
+      os = "PC / Laptop Windows";
+    } else if (/Macintosh|Mac OS X/i.test(ua)) {
+      os = "Mac / macOS";
+    } else if (/Linux/i.test(ua)) {
+      os = "Perangkat Linux";
+    }
+
+    let browser = "Browser";
+    if (/Edg\//i.test(ua)) browser = "Edge";
+    else if (/OPR\/|Opera/i.test(ua)) browser = "Opera";
+    else if (/SamsungBrowser/i.test(ua)) browser = "Samsung Internet";
+    else if (/Chrome\//i.test(ua) && !/Chromium/i.test(ua)) browser = "Chrome";
+    else if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
+    else if (/Firefox\//i.test(ua)) browser = "Firefox";
+
+    const screenInfo = window.screen?.width && window.screen?.height
+      ? ` [${window.screen.width}x${window.screen.height}]`
+      : "";
+    return `${os} • ${browser}${screenInfo}`;
+  } catch {
+    return "";
+  }
+}
+
 export async function submitBuyerOrder(data: {
   buyerName: string;
   businessName: string;
   whatsapp: string;
   email?: string;
+  npwp?: string;
+  promoCode?: string;
 }): Promise<{ success: boolean; order?: CustomerOrder; error?: string }> {
   try {
     const res = await fetch("/api/orders/create", {
@@ -97,8 +151,14 @@ export async function checkOrderStatusServer(
           const list: CustomerOrder[] = JSON.parse(raw);
           const found = list.find((o) => o.orderId.toUpperCase() === orderId.trim().toUpperCase());
           if (found) {
-            if (found.accessCode && found.accessCode.toUpperCase() !== accessCode.trim().toUpperCase()) {
-              return { success: false, error: "Kode akses rahasia tidak cocok dengan pesanan ini." };
+            const cleanInput = accessCode.trim().toUpperCase();
+            const cleanFoundAccess = (found.accessCode || "").toUpperCase();
+            const inputDigits = accessCode.replace(/\D/g, "");
+            const orderDigits = (found.whatsapp || "").replace(/\D/g, "");
+            const phoneMatches = inputDigits.length >= 8 && (orderDigits.endsWith(inputDigits) || inputDigits.endsWith(orderDigits));
+
+            if (cleanFoundAccess && cleanFoundAccess !== cleanInput && !phoneMatches) {
+              return { success: false, error: "Kode akses tidak cocok dengan pesanan ini. Masukkan Kode Akses (KOD-XXXX) atau nomor WhatsApp yang Anda gunakan saat memesan." };
             }
             return { success: true, order: found };
           }
@@ -106,6 +166,35 @@ export async function checkOrderStatusServer(
       } catch {}
     }
     return { success: false, error: "Pesanan tidak ditemukan atau server tidak dapat dihubungi." };
+  }
+}
+
+export async function uploadOrderProofServer(
+  orderId: string,
+  accessCode: string,
+  proofName: string,
+  proofData: string
+): Promise<{ success: boolean; order?: CustomerOrder; error?: string }> {
+  try {
+    const res = await fetch("/api/orders/upload-proof", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        orderId: orderId.trim(),
+        accessCode: accessCode.trim(),
+        transferProofName: proofName,
+        transferProofData: proofData,
+      }),
+    });
+
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && json.success && json.order) {
+      cacheOrderLocally(json.order);
+      return { success: true, order: json.order };
+    }
+    return { success: false, error: json.error || "Gagal mengunggah foto bukti transfer." };
+  } catch (_) {
+    return { success: false, error: "Gagal menghubungi server saat mengunggah bukti transfer." };
   }
 }
 
@@ -236,10 +325,11 @@ export async function activateLicenseServer(
   try {
     const token = localStorage.getItem('sakunota_activation_token') || '';
     const deviceProof = await createDeviceProof('activate', licenseKey, deviceId, token);
+    const deviceModel = getClientDeviceTelemetryModel();
     const res = await fetch("/api/license/activate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ licenseKey, deviceId, deviceName, token, deviceProof }),
+      body: JSON.stringify({ licenseKey, deviceId, deviceName, deviceModel, token, deviceProof }),
     });
 
     const json = await res.json();
@@ -284,8 +374,12 @@ export interface TesterLicense {
   notes: string | null;
   boundDeviceId: string | null;
   deviceName: string | null;
+  deviceModel?: string | null;
+  deviceLocation?: string | null;
+  deviceIp?: string | null;
   createdAt: string;
   activatedAt: string | null;
+  lastConnectedAt?: string | null;
   revoked: number;
 }
 
@@ -391,6 +485,9 @@ export interface CommercialLicense {
   businessName: string;
   boundDeviceId?: string | null;
   deviceName?: string | null;
+  deviceModel?: string | null;
+  deviceLocation?: string | null;
+  deviceIp?: string | null;
   issuedAt: string;
   activatedAt?: string | null;
   lastConnectedAt?: string | null;
@@ -563,6 +660,9 @@ export interface BetaRegistration {
   notes?: string;
   boundDeviceId?: string | null;
   deviceName?: string | null;
+  deviceModel?: string | null;
+  deviceLocation?: string | null;
+  deviceIp?: string | null;
   registeredAt: string;
   createdAt?: string;
   approvedAt?: string | null;
@@ -741,17 +841,127 @@ export async function verifyLicenseServer(licenseKey: string, deviceId: string, 
   error?: string;
   activationToken?: string;
 }> {
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), 4000) : null;
   try {
     const deviceProof = await createDeviceProof('verify', licenseKey, deviceId, token || '');
+    const deviceModel = getClientDeviceTelemetryModel();
     const res = await fetch("/api/license/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ licenseKey, deviceId, token, deviceProof }),
+      body: JSON.stringify({ licenseKey, deviceId, deviceModel, token, deviceProof }),
+      signal: controller?.signal,
     });
     if (res.status >= 500 || res.status === 429) throw new Error('Server lisensi sementara tidak tersedia.');
     return await res.json();
   } catch (e: any) {
     throw new Error(e.message || "Gagal memverifikasi lisensi.");
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+export interface PromoCodeItem {
+  id?: number;
+  code: string;
+  discountType: "nominal" | "percent" | "fixed_price";
+  discountValue: number;
+  description?: string;
+  maxUsage?: number;
+  usageCount: number;
+  active: number;
+  createdAt: string;
+}
+
+export async function checkPromoCodeServer(code: string): Promise<{
+  valid: boolean;
+  code?: string;
+  discountType?: "nominal" | "percent" | "fixed_price";
+  discountValue?: number;
+  discountAmount?: number;
+  finalAmount?: number;
+  description?: string;
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/promo/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { valid: false, error: e.message || "Gagal memeriksa kode promo." };
+  }
+}
+
+export async function fetchOwnerPromosServer(token: string): Promise<{
+  success: boolean;
+  promos?: PromoCodeItem[];
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/owner/promos", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal memuat daftar kode promo." };
+  }
+}
+
+export async function createOwnerPromoServer(
+  token: string,
+  promo: {
+    code: string;
+    discountType: "nominal" | "percent" | "fixed_price";
+    discountValue: number;
+    description?: string;
+    maxUsage?: number;
+  }
+): Promise<{ success: boolean; promo?: PromoCodeItem; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/promos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: "create", ...promo }),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal membuat kode promo." };
+  }
+}
+
+export async function toggleOwnerPromoServer(
+  token: string,
+  id: number,
+  active: number
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/promos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: "toggle", id, active }),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal mengubah status kode promo." };
+  }
+}
+
+export async function deleteOwnerPromoServer(
+  token: string,
+  id: number
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/promos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: "delete", id }),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message || "Gagal menghapus kode promo." };
   }
 }
 
