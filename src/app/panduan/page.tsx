@@ -2,28 +2,17 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { GUIDE_TOPICS } from "@/lib/guideTopics";
+import {
+  GUIDE_TOPICS,
+  STAGE_CONFIG,
+  BUSINESS_TYPE_FILTERS,
+  GuideTopic,
+  GuideStage,
+  GuideBusinessType
+} from "@/lib/guideTopics";
 import { SUPPORT_WHATSAPP } from "@/lib/config";
 
-// --- Types & Data Interfaces ---
-interface GuideArticle {
-  title: string;
-  summary: string;
-  steps: string[];
-  tips?: string;
-  targetHref?: string;
-  targetLabel?: string;
-}
-
-interface GuideTopic {
-  id: string;
-  title: string;
-  shortDesc: string;
-  iconType: string;
-  articles: GuideArticle[];
-}
-
-// --- Topic Catalog matching SakuNota Features & Sentrik POS Reference Layout ---
+// --- Topic Catalog matching SakuNota Features ---
 const TOPICS: GuideTopic[] = GUIDE_TOPICS;
 
 // --- Custom Crisp Stroke Icon Component ---
@@ -120,15 +109,6 @@ function TopicIcon({ type }: { type: string }) {
           <line x1="2" x2="22" y1="10" y2="10" />
         </svg>
       );
-    case "plug":
-      return (
-        <svg {...commonProps}>
-          <path d="M12 22v-5" />
-          <path d="M9 8V2" />
-          <path d="M15 2v6" />
-          <path d="M18 8v5a6 6 0 0 1-12 0V8c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2Z" />
-        </svg>
-      );
     case "printer":
       return (
         <svg {...commonProps}>
@@ -154,16 +134,11 @@ function TopicIcon({ type }: { type: string }) {
           <path d="m9 12 2 2 4-4" />
         </svg>
       );
-    case "wifi-off":
+    case "lock":
       return (
         <svg {...commonProps}>
-          <line x1="2" x2="22" y1="2" y2="22" />
-          <path d="M8.5 16.5a5 5 0 0 1 7 0" />
-          <path d="M2 8.82a15 15 0 0 1 4.17-2.65" />
-          <path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76" />
-          <path d="M16.85 11.25a10 10 0 0 1 2.22 1.68" />
-          <path d="M5 13a10 10 0 0 1 5.24-2.76" />
-          <line x1="12" x2="12.01" y1="20" y2="20" />
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
       );
     case "banknote":
@@ -172,29 +147,6 @@ function TopicIcon({ type }: { type: string }) {
           <rect width="20" height="12" x="2" y="6" rx="2" />
           <circle cx="12" cy="12" r="2" />
           <path d="M6 12h.01M18 12h.01" />
-        </svg>
-      );
-    case "percent":
-      return (
-        <svg {...commonProps}>
-          <line x1="19" x2="5" y1="5" y2="19" />
-          <circle cx="6.5" cy="6.5" r="2.5" />
-          <circle cx="17.5" cy="17.5" r="2.5" />
-        </svg>
-      );
-    case "help-circle":
-      return (
-        <svg {...commonProps}>
-          <circle cx="12" cy="12" r="10" />
-          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-          <path d="M12 17h.01" />
-        </svg>
-      );
-    case "lock":
-      return (
-        <svg {...commonProps}>
-          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
       );
     default:
@@ -210,31 +162,68 @@ function TopicIcon({ type }: { type: string }) {
 
 export default function PanduanPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedBusinessType, setSelectedBusinessType] = useState<GuideBusinessType>("all");
   const [selectedTopic, setSelectedTopic] = useState<GuideTopic | null>(null);
 
-  // Filter topics based on search input
+  // Filter topics based on active business type filter and search query
   const filteredTopics = useMemo(() => {
-    if (!searchQuery.trim()) return TOPICS;
-    const q = searchQuery.toLowerCase();
-    return TOPICS.filter(
-      (topic) =>
-        topic.title.toLowerCase().includes(q) ||
-        topic.shortDesc.toLowerCase().includes(q) ||
-        topic.articles.some(
-          (a) =>
-            a.title.toLowerCase().includes(q) ||
-            a.summary.toLowerCase().includes(q) ||
-            a.steps.some((s) => s.toLowerCase().includes(q))
-        )
-    );
-  }, [searchQuery]);
+    let result = TOPICS;
+
+    // 1. Business type filter
+    if (selectedBusinessType !== "all") {
+      result = result.filter(
+        (t) =>
+          t.businessTypes.includes(selectedBusinessType) ||
+          (selectedBusinessType === "warung" && t.businessTypes.includes("all")) ||
+          (selectedBusinessType === "restaurant" && t.businessTypes.includes("all")) ||
+          (selectedBusinessType === "retail" && t.businessTypes.includes("all")) ||
+          (selectedBusinessType === "setup" && t.businessTypes.includes("setup"))
+      );
+    }
+
+    // 2. Search query filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (topic) =>
+          topic.title.toLowerCase().includes(q) ||
+          topic.shortDesc.toLowerCase().includes(q) ||
+          topic.badge.toLowerCase().includes(q) ||
+          topic.articles.some(
+            (a) =>
+              a.title.toLowerCase().includes(q) ||
+              a.summary.toLowerCase().includes(q) ||
+              a.steps.some((s) => s.toLowerCase().includes(q))
+          )
+      );
+    }
+
+    return result;
+  }, [searchQuery, selectedBusinessType]);
+
+  // Group topics by 4 chronological stages
+  const groupedByStage = useMemo(() => {
+    const stages: Record<GuideStage, GuideTopic[]> = {
+      1: [],
+      2: [],
+      3: [],
+      4: []
+    };
+
+    filteredTopics.forEach((topic) => {
+      if (stages[topic.stage]) {
+        stages[topic.stage].push(topic);
+      }
+    });
+
+    return stages;
+  }, [filteredTopics]);
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white antialiased">
-      {/* 1. Header / Navbar (Clean White + Subtle Border) */}
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white antialiased">
+      {/* 1. Header / Navbar */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5">
-        <div className="max-w-6xl mx-auto flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
-          {/* Brand Logo & Name */}
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2.5 group" title="SakuNota - Beranda">
             <img
               src="/logo-sakunota.png"
@@ -243,24 +232,50 @@ export default function PanduanPage() {
             />
           </Link>
 
-          <nav aria-label="Navigasi utama" className="grid grid-cols-2 gap-2 text-xs font-semibold sm:flex sm:flex-wrap sm:items-center">
-            <Link href="/?beli=true" className="flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-3 py-2 text-white hover:bg-blue-700">Beli Rp50.000</Link>
-            <Link href="/?beta=register" className="flex min-h-11 items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-slate-700 hover:bg-blue-50">Trial 7 Hari</Link>
-            <Link href="/panduan" aria-current="page" className="flex min-h-11 items-center justify-center rounded-xl px-3 py-2 text-blue-600">Buku Panduan</Link>
-            <Link href="/tentang" className="flex min-h-11 items-center justify-center rounded-xl px-3 py-2 text-slate-700 hover:text-blue-600">Tentang Kami</Link>
+          <nav className="hidden md:flex items-center gap-7 text-xs font-semibold text-slate-600">
+            <Link href="/" className="hover:text-blue-600 transition-colors">
+              Fitur
+            </Link>
+            <Link href="/tentang" className="hover:text-blue-600 transition-colors">
+              Tentang
+            </Link>
+            <Link href="/?beli=true" className="hover:text-blue-600 transition-colors">
+              Harga
+            </Link>
+            <Link href="/panduan" className="text-blue-600 font-bold transition-colors">
+              Panduan
+            </Link>
           </nav>
+
+          <div className="flex items-center gap-2">
+            <a
+              href="/pos?demo=true"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 border border-slate-200 transition-all"
+            >
+              Coba Demo Kasir
+            </a>
+            <Link
+              href="/?beli=true"
+              className="px-4 py-2 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 transition-all"
+            >
+              Beli Rp50.000
+            </Link>
+          </div>
         </div>
       </header>
 
-      {/* 2. Main Hero Title & Search */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-8 pt-10 sm:pt-14 pb-16 sm:pb-24">
-        {/* Title Section matching Sentrik POS layout */}
-        <div className="max-w-3xl mb-10 sm:mb-12">
+      {/* 2. Main Hero Title, Search & Business Type Filter */}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-8 pt-10 sm:pt-12 pb-16 sm:pb-24">
+        {/* Title Section */}
+        <div className="max-w-3xl mb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100/80 text-blue-700 text-xs font-bold mb-3">
+            <span>Pusat Bantuan Resmi SakuNota</span>
+          </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-            Panduan
+            Panduan Lengkap SakuNota
           </h1>
           <p className="mt-2 text-sm sm:text-base text-slate-600 leading-relaxed">
-            Jelajahi panduan penggunaan fitur SakuNota dan temukan solusi operasional kasir Anda.
+            Ikuti 4 tahapan berurutan di bawah ini dari setup awal toko, persiapan katalog, operasional harian kasir, hingga penutupan buku.
           </p>
 
           {/* Search Box */}
@@ -280,8 +295,8 @@ export default function PanduanPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari topik atau panduan (contoh: printer, meja, shift, lisensi)..."
-                className="w-full bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-blue-600 rounded-2xl pl-11 pr-10 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none shadow-2xs transition-all"
+                placeholder="Cari panduan (contoh: timbang, barcode, printer, shift, kasbon)..."
+                className="w-full bg-white hover:border-slate-300 focus:border-blue-600 border border-slate-200 rounded-2xl pl-11 pr-10 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none shadow-xs transition-all"
               />
               {searchQuery && (
                 <button
@@ -301,91 +316,114 @@ export default function PanduanPage() {
           </div>
         </div>
 
-        {!searchQuery && <section aria-labelledby="retail-quick-guide" className="mb-6 rounded-2xl border border-blue-200 bg-white p-5">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h2 id="retail-quick-guide" className="text-lg font-bold text-slate-900">Panduan Singkat Retail</h2>
-            <button type="button" onClick={() => setSelectedTopic(TOPICS.find(topic => topic.id === 'retail-add-product')!)} className="min-h-11 rounded-xl bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">Lihat Panduan Retail</button>
+        {/* 3. Filter Jenis Usaha (Tab Navigasi Interaktif) */}
+        <section aria-label="Filter Jenis Usaha" className="mb-10">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {BUSINESS_TYPE_FILTERS.map((f) => {
+              const active = selectedBusinessType === f.id;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setSelectedBusinessType(f.id)}
+                  className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 border ${
+                    active
+                      ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20"
+                      : "bg-white text-slate-700 hover:text-blue-600 hover:bg-blue-50/50 border-slate-200"
+                  }`}
+                >
+                  <span>{f.label}</span>
+                </button>
+              );
+            })}
           </div>
-          <ol className="grid list-inside list-decimal gap-3 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
-            <li>Di HP, buka <strong>Kasir → Menu</strong> pada usaha Retail. Tekan <strong>Tambah Barang</strong> di bawah pencarian.</li>
-            <li>Foto produk atau pilih <strong>Isi Manual</strong>.</li>
-            <li>Periksa nama, isi harga dan jumlah, lalu tambah ke keranjang.</li>
-            <li>Selesaikan pembayaran agar barang tersimpan ke katalog.</li>
-          </ol>
-          <p className="mt-3 text-sm text-slate-500">Kasbon masuk katalog setelah lunas. Persiapan pengenalan foto tersedia di Pengaturan, khusus Retail.</p>
-        </section>}
+          <p className="text-xs text-slate-500 mt-2">
+            {BUSINESS_TYPE_FILTERS.find((f) => f.id === selectedBusinessType)?.desc}
+          </p>
+        </section>
 
-        {/* 3. Cards Grid: 3 Columns Desktop, 2 Tablet, 1 Mobile (Exact Sentrik POS Reference Pattern) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-          {filteredTopics.map((topic) => (
-            <div
-              key={topic.id}
-              onClick={() => setSelectedTopic(topic)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  setSelectedTopic(topic);
-                }
-              }}
-              className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 hover:border-blue-500 hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col justify-between group"
-            >
-              <div>
-                {/* Top Row: Icon Badge & Arrow */}
-                <div className="flex items-center justify-between mb-5">
-                  <div className="w-10 h-10 rounded-xl bg-lime-50 text-lime-700 border border-lime-200/60 flex items-center justify-center group-hover:scale-105 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-200 transition-all">
-                    <TopicIcon type={topic.iconType} />
-                  </div>
-                  <span className="text-slate-400 dark:text-slate-500 text-sm font-semibold group-hover:text-blue-600 group-hover:translate-x-1 transition-all">
-                    →
-                  </span>
-                </div>
-
-                {/* Title */}
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
-                  {topic.title}
-                </h2>
-
-                {/* Short Description */}
-                <p className="mt-1.5 text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                  {topic.shortDesc}
-                </p>
-              </div>
-
-              {/* Bottom: Article Count */}
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  {topic.articles.length} PANDUAN
-                </span>
-                <span className="text-xs font-bold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                  Buka Pelajari →
-                </span>
-              </div>
+        {/* 4. Tampilan Panduan: Mode Pencarian vs Mode Kronologis 4 Tahap */}
+        {searchQuery ? (
+          /* Mode Hasil Pencarian */
+          <div className="space-y-4">
+            <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+              Hasil Pencarian Topik ({filteredTopics.length})
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredTopics.map((topic) => (
+                <TopicCard key={topic.id} topic={topic} onSelect={() => setSelectedTopic(topic)} />
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          /* Mode Kronologis 4 Tahap Berurutan */
+          <div className="space-y-12">
+            {([1, 2, 3, 4] as GuideStage[]).map((stageNum) => {
+              const stageTopics = groupedByStage[stageNum];
+              if (!stageTopics || stageTopics.length === 0) return null;
+              const config = STAGE_CONFIG[stageNum];
+
+              return (
+                <section key={stageNum} aria-labelledby={`stage-heading-${stageNum}`} className="space-y-5">
+                  {/* Stage Header Banner */}
+                  <div className="border-b border-slate-200 pb-3">
+                    <div className="flex items-center gap-3">
+                      <span className="w-7 h-7 rounded-lg bg-blue-600 text-white text-xs font-black flex items-center justify-center shrink-0 shadow-xs">
+                        {config.stepNumber}
+                      </span>
+                      <div>
+                        <h2 id={`stage-heading-${stageNum}`} className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+                          {config.title}
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {config.subtitle}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cards Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {stageTopics.map((topic) => (
+                      <TopicCard key={topic.id} topic={topic} onSelect={() => setSelectedTopic(topic)} />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        )}
 
         {/* Empty State when search has no match */}
         {filteredTopics.length === 0 && (
-          <div className="text-center py-16 bg-slate-50 rounded-3xl border border-slate-200 p-8 space-y-3">
+          <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 space-y-3">
             <h3 className="text-base font-bold text-slate-900">
               Tidak ada topik yang sesuai dengan &quot;{searchQuery}&quot;
             </h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Coba gunakan kata kunci lain seperti &quot;printer&quot;, &quot;meja&quot;, &quot;lisensi&quot;, atau &quot;stok&quot;.
+              Coba gunakan kata kunci lain seperti &quot;printer&quot;, &quot;timbang&quot;, &quot;barcode&quot;, atau pilih filter &quot;Semua Panduan&quot;.
             </p>
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="mt-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
-            >
-              Tampilkan Semua Topik
-            </button>
+            <div className="pt-2 flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
+              >
+                Reset Pencarian
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedBusinessType("all")}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold"
+              >
+                Tampilkan Semua Usaha
+              </button>
+            </div>
           </div>
         )}
       </main>
 
-      {/* 4. Interactive Article Modal / Drawer */}
+      {/* 5. Interactive Article Modal / Drawer */}
       {selectedTopic && (
         <div
           className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
@@ -396,24 +434,29 @@ export default function PanduanPage() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-lime-50 text-lime-700 border border-lime-200/60 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200/60 flex items-center justify-center shrink-0">
                   <TopicIcon type={selectedTopic.iconType} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider bg-blue-100/70 px-2 py-0.5 rounded-md">
+                      {selectedTopic.badge}
+                    </span>
+                    <span className="text-[10px] font-semibold text-slate-500">
+                      {selectedTopic.stageLabel}
+                    </span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
                     {selectedTopic.title}
                   </h3>
-                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    {selectedTopic.articles.length} PANDUAN LANGKAH DEMI LANGKAH
-                  </span>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedTopic(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold transition-colors"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-bold transition-colors"
                 title="Tutup"
               >
                 ×
@@ -424,11 +467,9 @@ export default function PanduanPage() {
             <div className="p-6 overflow-y-auto space-y-6 divide-y divide-slate-100">
               {selectedTopic.articles.map((article, idx) => (
                 <div key={idx} className={idx > 0 ? "pt-6" : ""}>
-                  <div className="flex items-start justify-between gap-3">
-                    <h4 className="text-base font-bold text-slate-900">
-                      {idx + 1}. {article.title}
-                    </h4>
-                  </div>
+                  <h4 className="text-base font-bold text-slate-900">
+                    {idx + 1}. {article.title}
+                  </h4>
                   <p className="mt-1 text-xs text-slate-600 leading-relaxed">
                     {article.summary}
                   </p>
@@ -440,7 +481,7 @@ export default function PanduanPage() {
                     </span>
                     <ol className="space-y-1.5 text-xs text-slate-700">
                       {article.steps.map((st, sIdx) => (
-                        <li key={sIdx} className="flex items-start gap-2">
+                        <li key={sIdx} className="flex items-start gap-2.5">
                           <span className="w-4 h-4 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
                             {sIdx + 1}
                           </span>
@@ -451,7 +492,7 @@ export default function PanduanPage() {
 
                     {article.tips && (
                       <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-start gap-2 text-[11px] text-emerald-800">
-                        <span className="font-bold"> Tips:</span>
+                        <span className="font-bold shrink-0">Tips:</span>
                         <span>{article.tips}</span>
                       </div>
                     )}
@@ -462,7 +503,12 @@ export default function PanduanPage() {
                     <div className="mt-3 flex items-center justify-end">
                       <Link
                         href={article.targetHref}
-                        onClick={event => { if (article.targetHref?.includes('demo=true')) { event.preventDefault(); window.location.assign(article.targetHref); } }}
+                        onClick={(event) => {
+                          if (article.targetHref?.includes("demo=true")) {
+                            event.preventDefault();
+                            window.location.assign(article.targetHref);
+                          }
+                        }}
                         className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all"
                       >
                         <span>{article.targetLabel || "Buka Halaman Terkait"}</span>
@@ -477,7 +523,7 @@ export default function PanduanPage() {
             {/* Modal Footer */}
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
               <span className="text-xs text-slate-500">
-                Butuh panduan langsung?
+                Butuh bantuan langsung dari tim kami?
               </span>
               <div className="flex items-center gap-2">
                 <a
@@ -501,11 +547,10 @@ export default function PanduanPage() {
         </div>
       )}
 
-      {/* 5. Modern Dark Footer (Matching Reference Screenshot) */}
+      {/* 6. Modern Dark Footer */}
       <footer className="mt-auto bg-black text-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-14 pb-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
-            {/* Col 1: Brand Info (Spans 2 columns on lg) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-10">
             <div className="lg:col-span-2 space-y-4">
               <Link href="/" className="flex items-center gap-2 group">
                 <img
@@ -533,7 +578,6 @@ export default function PanduanPage() {
               </div>
             </div>
 
-            {/* Col 2: Product */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">
                 Produk
@@ -567,7 +611,6 @@ export default function PanduanPage() {
               </ul>
             </div>
 
-            {/* Col 4: Support */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">
                 Bantuan
@@ -594,13 +637,14 @@ export default function PanduanPage() {
                   </a>
                 </li>
                 <li>
-                  <Link href="/tentang" className="hover:text-white transition-colors">Tentang Kami</Link>
+                  <Link href="/tentang" className="hover:text-white transition-colors">
+                    Tentang Kami
+                  </Link>
                 </li>
               </ul>
             </div>
           </div>
 
-          {/* Bottom Copyright & Legal Links */}
           <div className="mt-12 pt-6 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-400">
             <div>
               © 2026 SakuNota, PT Pemuda Gaya Bebas
@@ -616,7 +660,78 @@ export default function PanduanPage() {
           </div>
         </div>
       </footer>
+    </div>
+  );
+}
 
+// --- Topic Card Component ---
+function TopicCard({ topic, onSelect }: { topic: GuideTopic; onSelect: () => void }) {
+  // Badge styling based on badge content
+  const badgeStyle = useMemo(() => {
+    switch (topic.badge) {
+      case "Wajib di Awal":
+        return "bg-amber-100 text-amber-800 border-amber-200/80";
+      case "Khusus Retail & Toko":
+        return "bg-purple-100 text-purple-800 border-purple-200/80";
+      case "Khusus Resto & Kafe":
+        return "bg-rose-100 text-rose-800 border-rose-200/80";
+      case "Operasional Harian":
+        return "bg-blue-100 text-blue-800 border-blue-200/80";
+      case "Penutupan Kasir":
+        return "bg-emerald-100 text-emerald-800 border-emerald-200/80";
+      default:
+        return "bg-slate-100 text-slate-700 border-slate-200";
+    }
+  }, [topic.badge]);
+
+  return (
+    <div
+      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          onSelect();
+        }
+      }}
+      className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 hover:border-blue-500 hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col justify-between group"
+    >
+      <div>
+        {/* Top Row: Icon Badge, Category Badge & Arrow */}
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200/60 flex items-center justify-center group-hover:scale-105 group-hover:bg-blue-600 group-hover:text-white transition-all">
+            <TopicIcon type={topic.iconType} />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeStyle}`}>
+              {topic.badge}
+            </span>
+            <span className="text-slate-400 text-xs font-semibold group-hover:text-blue-600 group-hover:translate-x-1 transition-all">
+              →
+            </span>
+          </div>
+        </div>
+
+        {/* Title */}
+        <h3 className="text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
+          {topic.title}
+        </h3>
+
+        {/* Short Description */}
+        <p className="mt-2 text-xs text-slate-600 line-clamp-2 leading-relaxed">
+          {topic.shortDesc}
+        </p>
+      </div>
+
+      {/* Bottom: Article Count & Action CTA */}
+      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          {topic.articles.length} PANDUAN
+        </span>
+        <span className="text-xs font-bold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+          Buka Pelajari →
+        </span>
+      </div>
     </div>
   );
 }
