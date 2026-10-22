@@ -15,7 +15,7 @@
     "test:offline": "tsx test_offline_readiness.ts",
     "typecheck": "tsc --noEmit",
     "preview:local": "tsx scripts/preview-local.ts",
-    "test:weight": "tsx --test tests/weight-sales.test.ts tests/weight-entry.test.tsx"
+    "test:weight": "tsx --test tests/weight-sales.test.ts tests/weight-entry.test.tsx tests/demo-weight.test.ts"
   },
   "dependencies": {
     "@ascentio-it/capacitor-bluetooth-serial": "^8.0.1",

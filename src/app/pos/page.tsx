@@ -2769,6 +2769,7 @@ export default function POSPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 font-bold ml-auto sm:ml-0">
+            {weightEnabled(storeSettings.businessType) && <button type="button" onClick={() => { setSearchQuery(''); setActiveCategory('Barang Timbang'); navigateWorkspace('menu'); }} className="min-h-11 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">Coba Barang Timbang</button>}
             <button
               type="button"
               onClick={handleExitDemo}

@@ -1,3 +1,4 @@
+import { ensureDemoWeightProducts } from './demoWeight';
 import { measuredSplitAmount } from './weightRefund';
 import { lineTotal, validateMeasure, weightEnabled, type SaleMeasure } from './weight';
 import Dexie from 'dexie';
@@ -129,6 +130,7 @@ export async function getMenus() {
     }
   }
 
+  await ensureDemoWeightProducts(getStoreSettings().businessType);
   let menus = await db.table('menuItems').orderBy('urutan').toArray();
 
   return menus;
