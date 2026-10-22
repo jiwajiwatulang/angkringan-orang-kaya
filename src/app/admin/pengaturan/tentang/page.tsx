@@ -230,6 +230,12 @@ export default function PengaturanTentangPage() {
         </Link>
       </div>
 
+      <div className="text-xs text-muted">
+        Data produk dari <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer" className="underline">Open Food Facts</a>.
+        {' '}<a href="/product-reference/NOTICE.txt" className="underline">Lisensi data</a>
+        {' · '}<a href="/product-reference/indonesia-v1.json" download className="underline">Unduh data referensi</a>
+      </div>
+
       {/* Policy link */}
       <div className="p-4 rounded-2xl bg-surface border border-line flex items-center justify-between text-xs">
         <div>
