@@ -3998,8 +3998,6 @@ export default function POSPage() {
                 }
               }}
               onAddRetailProduct={storeSettings.businessType === 'retail' ? () => setIsRetailAddOpen(true) : undefined}
-              weightOnly={weightOnly}
-              onToggleWeight={weightEnabled(storeSettings.businessType) && menuData.some(m => m.saleUnit === 'weight') ? toggleWeightFilter : undefined}
               onOpenBarcodeScan={() => setIsBarcodeScanOpen(true)}
             />
           )}
