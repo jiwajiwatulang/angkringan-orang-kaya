@@ -12,6 +12,7 @@ import { deviceKeyIdentity } from '../src/lib/deviceIdentity';
 import { LICENSE_PUBLIC_KEY } from '../src/lib/licenseProtocol';
 import { signOfflineLicense } from '../src/lib/server/licenseSigning';
 import { testSigningJwk, testPublicJwk } from './securityFixtures';
+import { exportAllData, importAllData } from '../src/lib/api';
 
 after(() => db.close());
 function browser() {
@@ -78,6 +79,19 @@ test('recovery credential rotation also invalidates the old session token', asyn
     await saveStoreSettingsAsync({ ...getStoreSettings(), recoveryCodeHash: 'new-recovery-test' }, { renewAdminSession: true }); const latest = ctx.session.get('sakunota_admin_session_token')!;
     assert.equal(await verifyAdminSession(), true); ctx.session.set('sakunota_admin_session_token', old); assert.equal(await verifyAdminSession(), false);
     ctx.session.set('sakunota_admin_session_token', latest); assert.equal(await verifyAdminSession(), true);
+  } finally { ctx.restore(); }
+});
+
+test('backup restore cannot replace the local credential revision or revive a stale PIN form', async () => {
+  await db.delete(); await db.open(); const ctx = browser();
+  try {
+    await saveStoreSettingsAsync({ ...DEFAULT_SETTINGS, adminPin: '1234' }); const stale = { ...getStoreSettings() };
+    await saveStoreSettingsAsync({ ...getStoreSettings(), adminPin: '9876' }, { renewAdminSession: true });
+    const revision = getStoreSettings().credentialRevision; const backup = await exportAllData(); assert.equal(backup.settings.credentialRevision, undefined);
+    backup.settings.credentialRevision = stale.credentialRevision ?? 'from-another-device'; backup.settings.adminPin = '0000';
+    await importAllData(backup, { skipPreBackup: true });
+    const restored = (await db.table('settings').get('pos_store_settings')).value; assert.equal(restored.adminPin, '9876'); assert.equal(restored.credentialRevision, revision);
+    await assert.rejects(saveStoreSettingsAsync({ ...stale, storeName: 'Old form after restore' }), /keamanan sudah berubah/);
   } finally { ctx.restore(); }
 });
 

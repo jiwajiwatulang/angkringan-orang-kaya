@@ -27,6 +27,7 @@ import {
   getAllTesterLicensesD1,
   getTesterLicenseD1,
   revokeTesterLicenseD1,
+  extendTesterLicenseD1,
   unbindTesterLicenseDeviceD1,
   bindTesterLicenseToDeviceD1,
   cancelOrderD1,
@@ -907,6 +908,40 @@ export async function unbindTesterLicense(
 
   await unbindTesterLicenseDeviceD1(db, licenseKey);
   return { success: true };
+}
+
+export async function extendTesterLicense(
+  dbOrToken: D1Database | string | null,
+  tokenOrKey: string | null,
+  maybeKeyOrDays?: string | number,
+  maybeDaysOrReason?: number | string,
+  maybeReason?: string
+): Promise<{ success: boolean; newExpiresAt?: string; durationDays?: number; error?: string }> {
+  const db = isD1(dbOrToken) ? dbOrToken : getD1();
+  const ownerToken = isD1(dbOrToken) ? (tokenOrKey as string) : (dbOrToken as string);
+  const licenseKey = (isD1(dbOrToken) ? (maybeKeyOrDays as string) : tokenOrKey) || "";
+  const extraDays = Number(isD1(dbOrToken) ? maybeDaysOrReason : maybeKeyOrDays) || 7;
+  const reason = (isD1(dbOrToken) ? maybeReason : (maybeDaysOrReason as string)) || "Perpanjangan lisensi tester";
+
+  const auth = await verifyOwnerSession(db, ownerToken);
+  if (!auth.valid) {
+    return { success: false, error: auth.error || "Akses ditolak. Sesi Owner tidak sah." };
+  }
+
+  const tester = await getTesterLicenseD1(db, licenseKey);
+  if (!tester) {
+    return { success: false, error: "Lisensi tester tidak ditemukan." };
+  }
+
+  const currentBase = tester.expiresAt ? new Date(tester.expiresAt).getTime() : Date.now();
+  const baseTime = currentBase > Date.now() ? currentBase : Date.now();
+  const newExpiresAt = new Date(baseTime + extraDays * 24 * 60 * 60 * 1000).toISOString();
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const updatedNotes = `${tester.notes ? tester.notes + " | " : ""}[${dateStr}] +${extraDays} hari: ${reason}`;
+  const newDuration = (tester.durationDays || 0) + extraDays;
+
+  await extendTesterLicenseD1(db, licenseKey, extraDays, newExpiresAt, updatedNotes);
+  return { success: true, newExpiresAt, durationDays: newDuration };
 }
 
 export async function getOwnerMetrics(

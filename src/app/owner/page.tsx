@@ -19,6 +19,7 @@ import {
   createTesterLicenseServer,
   unbindTesterLicenseServer,
   revokeTesterLicenseServer,
+  extendTesterLicenseServer,
   CommercialLicense,
   fetchOwnerLicensesServer,
   unbindOwnerLicenseServer,
@@ -71,6 +72,10 @@ export default function SakuNotaOwnerDashboardPage() {
   const [extendDays, setExtendDays] = useState<number>(7);
   const [extendReason, setExtendReason] = useState<string>("Permintaan perpanjangan evaluasi fitur");
   const [isExtending, setIsExtending] = useState(false);
+  const [extendTesterTarget, setExtendTesterTarget] = useState<TesterLicense | null>(null);
+  const [extendTesterDays, setExtendTesterDays] = useState<number>(30);
+  const [extendTesterReason, setExtendTesterReason] = useState<string>("Perpanjangan masa aktif lisensi tester");
+  const [isExtendingTester, setIsExtendingTester] = useState(false);
   const [metrics, setMetrics] = useState<OwnerMetrics>({
     totalPembeli: 0,
     pembayaranBerhasil: 0,
@@ -946,6 +951,32 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
       await loadTesterLicenses(ownerToken);
     } else {
       showToast(` ${res.error || "Gagal mencabut lisensi."}`);
+    }
+  };
+
+  // Owner action: Extend tester license validity
+  const handleConfirmExtendTester = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ownerToken || !extendTesterTarget) return;
+    setIsExtendingTester(true);
+    try {
+      const res = await extendTesterLicenseServer(
+        ownerToken,
+        extendTesterTarget.licenseKey,
+        extendTesterDays,
+        extendTesterReason
+      );
+      if (res.success) {
+        showToast(`Lisensi tester ${extendTesterTarget.licenseKey} berhasil diperpanjang +${extendTesterDays} hari.`);
+        setExtendTesterTarget(null);
+        await loadTesterLicenses(ownerToken);
+      } else {
+        showToast(res.error || "Gagal memperpanjang lisensi tester.");
+      }
+    } catch (e: any) {
+      showToast("Error: " + (e.message || "Gagal menghubungi server."));
+    } finally {
+      setIsExtendingTester(false);
     }
   };
 
@@ -2423,6 +2454,20 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
                             Salin Lisensi
                           </button>
 
+                          {!isRevoked && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExtendTesterTarget(t);
+                                setExtendTesterDays(30);
+                                setExtendTesterReason("Perpanjangan lisensi tester");
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-700 dark:text-purple-300 text-xs font-bold border border-purple-500/30 transition-colors"
+                            >
+                              Perpanjang
+                            </button>
+                          )}
+
                           {t.boundDeviceId && !isRevoked && (
                             <button
                               type="button"
@@ -2449,6 +2494,92 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
                 </div>
               )}
             </div>
+
+            {/* Modal Perpanjang Masa Aktif Tester */}
+            {extendTesterTarget && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+                <div className="bg-surface border border-line rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-black text-sm text-fg">Perpanjang Masa Aktif Lisensi Tester</h4>
+                    <button
+                      type="button"
+                      onClick={() => setExtendTesterTarget(null)}
+                      className="text-muted hover:text-fg text-xs font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted leading-relaxed">
+                    Perpanjang masa aktif lisensi untuk <strong>{extendTesterTarget.recipientName}</strong> (
+                    <span className="font-mono text-purple-600 dark:text-purple-400">{extendTesterTarget.licenseKey}</span>).
+                  </p>
+                  {extendTesterTarget.expiresAt && (
+                    <div className="text-xs bg-card/60 p-2.5 rounded-xl border border-line flex items-center justify-between">
+                      <span className="text-muted">Kedaluwarsa Saat Ini:</span>
+                      <span className="font-bold text-fg">
+                        {new Date(extendTesterTarget.expiresAt).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  <form onSubmit={handleConfirmExtendTester} className="space-y-3">
+                    <div>
+                      <label className="text-[11px] font-bold text-muted block mb-1">
+                        Tambah Hari Masa Aktif
+                      </label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[7, 14, 30, 60].map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => setExtendTesterDays(d)}
+                            className={`py-2 rounded-xl text-xs font-bold border transition-colors ${
+                              extendTesterDays === d
+                                ? "bg-purple-600 text-white border-purple-600"
+                                : "bg-card text-muted border-line hover:text-fg"
+                            }`}
+                          >
+                            +{d} Hari
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-muted block mb-1">
+                        Alasan / Catatan Audit
+                      </label>
+                      <input
+                        type="text"
+                        value={extendTesterReason}
+                        onChange={(e) => setExtendTesterReason(e.target.value)}
+                        placeholder="Contoh: Tambahan waktu pengujian fitur kasir"
+                        className="w-full bg-card border border-line rounded-xl px-3 py-2 text-xs text-fg outline-none focus:border-purple-500"
+                        required
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setExtendTesterTarget(null)}
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-muted hover:text-fg"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isExtendingTester}
+                        className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white transition-colors"
+                      >
+                        {isExtendingTester ? "Memproses..." : "Simpan Perpanjangan"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

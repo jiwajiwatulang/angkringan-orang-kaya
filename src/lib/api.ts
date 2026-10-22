@@ -2110,6 +2110,7 @@ export async function exportAllData() {
   // Sanitasi keamanan: Jangan pernah sertakan PIN Otorisasi Admin maupun Recovery Code dalam file cadangan publik
   if (settings) {
     const safeSettings = { ...settings };
+    delete safeSettings.credentialRevision;
     delete safeSettings.adminPin;
     delete safeSettings.recoveryCodeHash;
     delete safeSettings.failedRecoveryAttempts;
@@ -2310,6 +2311,7 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
       if (payload.settings) {
         // Ambil kredensial lokal perangkat ini dari database lokal sebelum ditimpa
         const currentEntry = await db.table('settings').get('pos_store_settings');
+        const localCredentialRevision = currentEntry?.value?.credentialRevision;
         const localPin = currentEntry?.value?.adminPin;
         const localRecoveryHash = currentEntry?.value?.recoveryCodeHash;
 
@@ -2319,6 +2321,7 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
         // - Jika belum ada: biarkan kosong "" sehingga sistem meminta pembuatan PIN/Recovery mandiri.
         const settingsToSave = {
           ...payload.settings,
+          credentialRevision: localCredentialRevision,
           adminPin: localPin || "",
           recoveryCodeHash: localRecoveryHash || "",
           failedRecoveryAttempts: 0,
