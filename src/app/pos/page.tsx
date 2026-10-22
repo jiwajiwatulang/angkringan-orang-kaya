@@ -3638,27 +3638,55 @@ export default function POSPage() {
               <div className="flex-1 flex flex-col h-full overflow-hidden">
                 <div className="p-4 md:p-6 pb-2 max-lg:landscape:px-3 max-lg:landscape:pt-2 max-lg:landscape:pb-1.5 shrink-0">
                   <div className="flex flex-col space-y-3 max-lg:landscape:space-y-1.5 mb-2 max-lg:landscape:mb-1">
-                    <CategoryScroller categories={categories} value={activeCategory} onChange={setActiveCategory} />
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <CategoryScroller categories={categories} value={activeCategory} onChange={setActiveCategory} />
+                      </div>
+                      {storeSettings.businessType === 'retail' && (
+                        <button
+                          type="button"
+                          onClick={() => setIsRetailAddOpen(true)}
+                          className="min-h-10 shrink-0 rounded-full sm:rounded-xl bg-accent hover:bg-accent-hover px-3.5 py-2 text-xs font-bold text-white shadow-xs flex items-center gap-1.5 transition-all active:scale-95"
+                          title="Tambah Barang Retail Baru Langsung dari Kasir"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                            <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+                          </svg>
+                          <span>Tambah Barang</span>
+                        </button>
+                      )}
+                    </div>
                     <div className="flex gap-2 items-center">
-                      <input 
-                        type="text" 
-                        placeholder="Cari menu makanan, minuman, atau kode barcode..." 
-                        value={searchQuery} 
-                        onChange={e => setSearchQuery(e.target.value)} 
-                        className="flex-1 min-w-0 bg-card border border-line rounded-xl p-3 max-lg:landscape:p-2 text-sm max-lg:landscape:text-xs text-fg focus:border-accent outline-none transition-colors shadow-sm" 
-                      />
+                      <div className="relative flex-1 min-w-0">
+                        <input 
+                          type="text" 
+                          placeholder="Cari menu makanan, minuman, atau kode barcode..." 
+                          value={searchQuery} 
+                          onChange={e => setSearchQuery(e.target.value)} 
+                          className="w-full bg-card border border-line rounded-xl pl-3.5 pr-9 py-3 max-lg:landscape:py-2 text-sm max-lg:landscape:text-xs text-fg focus:border-accent outline-none transition-colors shadow-sm" 
+                        />
+                        {searchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-fg text-xs font-bold p-1 rounded-md"
+                            title="Hapus kata kunci pencarian"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
                       <button
                         type="button"
                         onClick={() => setIsBarcodeScanOpen(true)}
                         className="px-3.5 py-3 max-lg:landscape:px-2.5 max-lg:landscape:py-2 rounded-xl bg-card border border-line hover:border-accent text-fg hover:text-accent-text font-bold text-xs sm:text-sm max-lg:landscape:text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0"
                         title="Pindai Barcode Produk (Kamera / Barcode Gun)"
                       >
-                        Pindai Barcode
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-4 h-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM14.625 3.75c-.621 0-1.125.504-1.125 1.125v4.5c0 .621.504 1.125 1.125 1.125h4.5c.621 0 1.125-.504 1.125-1.125v-4.5c0-.621-.504-1.125-1.125-1.125h-4.5zM14.625 14.625c-.621 0-1.125.504-1.125 1.125v4.5c0 .621.504 1.125 1.125 1.125h4.5c.621 0 1.125-.504 1.125-1.125v-4.5c0-.621-.504-1.125-1.125-1.125h-4.5z" />
+                        </svg>
+                        <span>Pindai Barcode</span>
                       </button>
-
-                      {weightEnabled(storeSettings.businessType) && menuData.some(m => m.saleUnit === 'weight') && <button type="button" onClick={toggleWeightFilter} aria-pressed={weightOnly} className="px-3.5 py-3 max-lg:landscape:px-2.5 max-lg:landscape:py-2 rounded-xl bg-card border border-line hover:border-accent text-fg hover:text-accent-text font-bold text-xs sm:text-sm max-lg:landscape:text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0">{weightOnly ? 'Semua Barang' : 'Barang Timbang'}</button>}
-
-                      {storeSettings.businessType === 'retail' && <button type="button" onClick={() => setIsRetailAddOpen(true)} className="min-h-11 shrink-0 rounded-xl bg-accent px-3 py-2 text-xs font-bold text-white hover:bg-accent-hover">Tambah Barang</button>}
 
                       {/* Density Controls (S / M / L) */}
                       <div className="hidden sm:flex items-center gap-1 bg-card border border-line rounded-xl p-1 max-lg:landscape:p-0.5 shrink-0 shadow-xs" title="Ukuran Tombol Menu Kasir">
