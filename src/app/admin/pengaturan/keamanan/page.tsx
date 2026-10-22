@@ -6,7 +6,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "../../AdminContext";
-import { requireMerchantAdmin } from "@/lib/merchantAccess";
+import { requireMerchantAdmin, verifyMerchantPin } from "@/lib/merchantAccess";
 import { saveStoreSettingsAsync } from "@/lib/settings";
 import { generateRecoveryCode, hashRecoveryCode } from "@/lib/recovery";
 import { App } from "@capacitor/app";
@@ -62,14 +62,14 @@ export default function PengaturanKeamananPage() {
     }
 
     if (hasExistingPin) {
-      if (currentPin !== storeSettings.adminPin) {
+      if (!(await verifyMerchantPin(currentPin).catch(() => false))) {
         setErrorMessage("PIN lama yang Anda masukkan tidak sesuai.");
         return;
       }
     }
 
-    if (newPin.length < 4) {
-      setErrorMessage("PIN baru minimal harus 4 digit angka.");
+    if (!/^\d{4,12}$/.test(newPin)) {
+      setErrorMessage("PIN baru harus 4–12 digit angka.");
       return;
     }
 
@@ -96,7 +96,7 @@ export default function PengaturanKeamananPage() {
         recoveryLockedUntil: ""
       };
       await requireMerchantAdmin();
-      await saveStoreSettingsAsync(updated);
+      await saveStoreSettingsAsync(updated, { renewAdminSession: true });
       await refreshSettings();
       setCurrentPin("");
       setNewPin("");
@@ -130,7 +130,7 @@ export default function PengaturanKeamananPage() {
       return;
     }
 
-    if (regenPinInput !== storeSettings.adminPin) {
+    if (!(await verifyMerchantPin(regenPinInput).catch(() => false))) {
       setRegenError("PIN Admin salah!");
       return;
     }
@@ -146,7 +146,7 @@ export default function PengaturanKeamananPage() {
         recoveryLockedUntil: ""
       };
       await requireMerchantAdmin();
-      await saveStoreSettingsAsync(updated);
+      await saveStoreSettingsAsync(updated, { renewAdminSession: true });
       await refreshSettings();
 
       setIsRegenerating(false);

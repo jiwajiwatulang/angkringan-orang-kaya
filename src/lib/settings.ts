@@ -1,6 +1,8 @@
 import { db } from './dexie';
+import { createAdminSession } from './session';
 
 export interface StoreSettings {
+  credentialRevision?: string;
   storeName: string;
   storeAddress: string;
   storePhone: string;
@@ -167,29 +169,25 @@ export async function loadStoreSettingsAsync(): Promise<StoreSettings> {
  * Asynchronous, guaranteed-persistence save.
  * Guarantees that Dexie IndexedDB write has completed before resolving.
  */
-export async function saveStoreSettingsAsync(settings: StoreSettings): Promise<void> {
+export async function saveStoreSettingsAsync(settings: StoreSettings, options?: { renewAdminSession?: boolean }): Promise<void> {
   const merged: StoreSettings = { ...DEFAULT_SETTINGS, ...settings };
-  memoryCache = merged;
-
-  // 1. Synchronous localStorage write
-  if (typeof window !== "undefined") {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-    } catch (e) {
-      console.warn("localStorage setItem failed", e);
+  let credentialChanged = false;
+  // Persist the new credentials and revoke old sessions together, before updating browser caches.
+  await db.transaction('rw', 'settings', async () => {
+    const previous = (await db.table('settings').get('pos_store_settings'))?.value;
+    credentialChanged = Boolean(previous && (previous.adminPin !== merged.adminPin || previous.recoveryCodeHash !== merged.recoveryCodeHash));
+    if (credentialChanged && previous.credentialRevision !== merged.credentialRevision) throw new Error('Pengaturan keamanan sudah berubah. Muat ulang sebelum menyimpan.');
+    if (credentialChanged) merged.credentialRevision = crypto.randomUUID();
+    await db.table('settings').put({ key: 'pos_store_settings', value: merged, updatedAt: new Date().toISOString() });
+    if (credentialChanged) {
+      await db.table('settings').delete('admin_active_session');
+      await db.table('settings').delete('admin_pin_attempts');
     }
-  }
-
-  // 2. Asynchronous IndexedDB write (await guaranteed)
-  try {
-    await db.table('settings').put({
-      key: 'pos_store_settings',
-      value: merged,
-      updatedAt: new Date().toISOString()
-    });
-  } catch (err) {
-    console.error("Dexie settings write error:", err);
-    throw new Error("Gagal menyimpan ke basis data lokal (IndexedDB): " + (err as any)?.message);
+  });
+  if (credentialChanged && options?.renewAdminSession) await createAdminSession();
+  memoryCache = merged;
+  if (typeof window !== 'undefined') {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch { /* Persisted settings remain authoritative. */ }
   }
 
   // 3. Real-time broadcast to all active components & tabs

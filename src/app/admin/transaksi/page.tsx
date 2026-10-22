@@ -1,4 +1,5 @@
 "use client";
+import { verifyMerchantPin } from '@/lib/merchantAccess';
 import WeightReturn from '@/components/WeightReturn';
 import { lineTotal, quantityLabel } from '@/lib/weight';
 import LineIcon from "@/components/LineIcon";
@@ -306,7 +307,7 @@ export default function AdminTransaksiPage() {
         setVoidPinError("PIN Admin belum dikonfigurasi. Harap konfigurasi PIN di Pengaturan Keamanan.");
         return;
       }
-      if (voidPinInput !== storeSettings.adminPin) {
+      if (!(await verifyMerchantPin(voidPinInput).catch(() => false))) {
         setVoidPinError("PIN Admin salah! Harap periksa kembali.");
         return;
       }

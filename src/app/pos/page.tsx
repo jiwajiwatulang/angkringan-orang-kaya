@@ -41,7 +41,7 @@ import { activateLicenseServer } from '@/lib/ordersClient';
 import { setupHardwareBarcodeScanner, playScannerBeep } from '@/lib/barcodeScanner';
 import BarcodeCameraModal from '@/components/BarcodeCameraModal';
 import { db } from '@/lib/dexie';
-import { destroyAdminSession } from '@/lib/session';
+import { workspaceHref } from '@/lib/demoMode';
 import CashierShiftPanel from '@/components/CashierShiftPanel';
 import CashierPrinter from '@/components/CashierPrinter';
 
@@ -54,8 +54,7 @@ export default function POSPage() {
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [view, setView] = useState<'kasir' | 'meja' | 'menu' | 'pesanan' | 'shift'>('menu');
-  useEffect(() => { void destroyAdminSession(); }, []);
-  const enterAdmin = async () => { await destroyAdminSession(); window.location.assign('/admin' + (accessStatus.isDemo ? '?demo=true' : '')); };
+  const enterAdmin = () => { window.location.assign(workspaceHref('/admin', accessStatus.isDemo)); };
 
   const [mobileTab, setMobileTab] = useState<MobileTab>('menu');
   const navigateWorkspace = (next: typeof view) => { setView(next); setMobileTab(({ kasir: "home", menu: "menu", meja: "meja", pesanan: "nota", shift: "lainnya" } as const)[next]); };
@@ -419,6 +418,8 @@ export default function POSPage() {
   const [weightProduct, setWeightProduct] = useState<{ product: MenuItem; editing?: boolean } | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [oldCart, setOldCart] = useState<CartItem[]>([]);
+  const [weightOnly, setWeightOnly] = useState(false);
+  const toggleWeightFilter = () => { setWeightOnly(value => !value); setSearchQuery(''); setActiveCategory('Semua'); };
   const [activeCategory, setActiveCategory] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
   const [menuPage, setMenuPage] = useState<number>(1);
@@ -426,7 +427,7 @@ export default function POSPage() {
 
   useEffect(() => {
     setMenuPage(1);
-  }, [searchQuery, activeCategory]);
+  }, [searchQuery, activeCategory, weightOnly]);
 
   const getCategoryIcon = (category: string, name?: string) => {
     const c = (category || '').toLowerCase();
@@ -969,7 +970,7 @@ export default function POSPage() {
   };
 
   useEffect(() => {
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "true") {
+    if (isDemoMode()) {
       try {
         sessionStorage.setItem("sakunota_demo_mode", "true");
       } catch (_) {}
@@ -1000,8 +1001,15 @@ export default function POSPage() {
     initAccess();
 
     const interval = setInterval(loadData, 5000);
-    const licenseTimer = setInterval(() => { checkCashierAccess().then(setAccessStatus).catch(() => {}); }, 60000);
-    const recheckAccess = () => { checkCashierAccess(true).then(setAccessStatus).catch(() => {}); };
+    const refreshAccess = (online = false) => {
+      preserveDemoUrl();
+      if (isDemoMode() !== (db.name === 'SakuNotaDemoDB')) { window.location.reload(); return; }
+      checkCashierAccess(online).then(setAccessStatus).catch(() => {});
+    };
+    const licenseTimer = setInterval(() => refreshAccess(), 60000);
+    const recheckAccess = () => refreshAccess(true);
+    const storageChanged = (event: StorageEvent) => { if (['sakunota_license_key', 'sakunota_activation_token'].includes(event.key ?? '')) refreshAccess(); };
+    window.addEventListener('storage', storageChanged);
     window.addEventListener('focus', recheckAccess);
     window.addEventListener('online', recheckAccess);
 
@@ -1013,6 +1021,7 @@ export default function POSPage() {
     return () => {
       clearInterval(interval);
       clearInterval(licenseTimer);
+      window.removeEventListener('storage', storageChanged);
       window.removeEventListener('focus', recheckAccess);
       window.removeEventListener('online', recheckAccess);
       window.removeEventListener("popstate", handlePop);
@@ -1023,7 +1032,7 @@ export default function POSPage() {
 
   const filteredMenu = menuData.filter(m => 
     m &&
-    (activeCategory === "Semua" || m.kategori === activeCategory) &&
+    (activeCategory === "Semua" || m.kategori === activeCategory) && (!weightOnly || m.saleUnit === 'weight') &&
     ((m.nama || '').toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
@@ -3373,7 +3382,7 @@ export default function POSPage() {
         {/* Top Application Header (Full Width) */}
         <header className="h-14 sm:h-16 max-lg:landscape:h-11 bg-card border-b border-line px-4 sm:px-6 max-lg:landscape:px-3 flex items-center justify-between shrink-0 z-30 transition-colors shadow-xs">
         {/* Left: Brand & Store Name */}
-        <Link href="/" className="flex items-center space-x-2 md:space-x-3 hover:opacity-85 transition-opacity" title="Kembali ke Beranda SakuNota">
+        <Link href={workspaceHref('/pos', accessStatus.isDemo)} className="flex items-center space-x-2 md:space-x-3 hover:opacity-85 transition-opacity" title="Kembali ke Kasir">
           {storeSettings.storeLogo ? (
             <img
               src={storeSettings.storeLogo}
@@ -3646,6 +3655,8 @@ export default function POSPage() {
                       >
                         Pindai Barcode
                       </button>
+
+                      {weightEnabled(storeSettings.businessType) && menuData.some(m => m.saleUnit === 'weight') && <button type="button" onClick={toggleWeightFilter} aria-pressed={weightOnly} className="px-3.5 py-3 max-lg:landscape:px-2.5 max-lg:landscape:py-2 rounded-xl bg-card border border-line hover:border-accent text-fg hover:text-accent-text font-bold text-xs sm:text-sm max-lg:landscape:text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0">{weightOnly ? 'Semua Barang' : 'Barang Timbang'}</button>}
 
                       {storeSettings.businessType === 'retail' && <button type="button" onClick={() => setIsRetailAddOpen(true)} className="min-h-11 shrink-0 rounded-xl bg-accent px-3 py-2 text-xs font-bold text-white hover:bg-accent-hover">Tambah Barang</button>}
 
@@ -3959,6 +3970,8 @@ export default function POSPage() {
                 }
               }}
               onAddRetailProduct={storeSettings.businessType === 'retail' ? () => setIsRetailAddOpen(true) : undefined}
+              weightOnly={weightOnly}
+              onToggleWeight={weightEnabled(storeSettings.businessType) && menuData.some(m => m.saleUnit === 'weight') ? toggleWeightFilter : undefined}
               onOpenBarcodeScan={() => setIsBarcodeScanOpen(true)}
             />
           )}

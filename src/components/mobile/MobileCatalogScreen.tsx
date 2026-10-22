@@ -27,6 +27,8 @@ interface MobileCatalogScreenProps {
   onAddToCart: (item: MenuItem) => void;
   onAddRetailProduct?: () => void;
   onOpenBarcodeScan?: () => void;
+  onToggleWeight?: () => void;
+  weightOnly?: boolean;
 }
 
 export default function MobileCatalogScreen({
@@ -39,6 +41,8 @@ export default function MobileCatalogScreen({
   onAddToCart,
   onOpenBarcodeScan,
   onAddRetailProduct,
+  onToggleWeight,
+  weightOnly = false,
 }: MobileCatalogScreenProps) {
   const [gridCols, setGridCols] = useState<2 | 4>(2);
 
@@ -86,7 +90,7 @@ export default function MobileCatalogScreen({
       searchQuery === "" ||
       item.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.kategori.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return matchesCategory && matchesSearch && (!weightOnly || item.saleUnit === 'weight');
   });
 
   return (
@@ -124,7 +128,7 @@ export default function MobileCatalogScreen({
 
         {/* 2. Search Input & Barcode Button */}
         <div className="flex gap-1.5 mb-2.5">
-          <div className="relative flex-1">
+          <div className="relative min-w-0 flex-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-mono font-bold">
               /
             </span>
@@ -145,11 +149,12 @@ export default function MobileCatalogScreen({
               </button>
             )}
           </div>
+          {onToggleWeight && <button type="button" onClick={onToggleWeight} aria-pressed={weightOnly} className="min-h-11 px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 rounded-xl text-xs font-black transition-colors shrink-0 flex items-center justify-center shadow-2xs">{weightOnly ? 'Semua' : 'Barang Timbang'}</button>}
           {onOpenBarcodeScan && (
             <button
               type="button"
               onClick={onOpenBarcodeScan}
-              className="px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 rounded-xl text-xs font-black transition-colors shrink-0 flex items-center justify-center shadow-2xs"
+              className="min-h-11 px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 rounded-xl text-xs font-black transition-colors shrink-0 flex items-center justify-center shadow-2xs"
               title="Pindai Barcode Produk"
             >
               Scan

@@ -19,5 +19,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run test:stability
+      - run: npm run test:weight
+      - run: npm run test:access
       - run: npm run build
       - run: npm run test:offline

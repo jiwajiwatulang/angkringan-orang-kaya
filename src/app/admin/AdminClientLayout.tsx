@@ -1,7 +1,7 @@
 "use client";
 import LockIcon from "@/components/LockIcon";
 
-import { isDemoMode, preserveDemoUrl, demoSessionValid } from "@/lib/demoMode";
+import { isDemoMode, preserveDemoUrl, demoSessionValid, workspaceHref } from "@/lib/demoMode";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -30,7 +30,7 @@ const navItems = [
 function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { storeSettings, isAuthenticated, setIsAuthenticated, logout, showToast } = useAdmin();
+  const { storeSettings, settingsReady, isAuthenticated, setIsAuthenticated, logout, showToast } = useAdmin();
 
   const [passwordInput, setPasswordInput] = useState("");
   const [pinError, setPinError] = useState("");
@@ -41,7 +41,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const [licenseStatus, setLicenseStatus] = useState<CashierAccessStatus | null>(null);
 
   useEffect(() => {
-    checkCashierAccess().then(setLicenseStatus).catch(() => {});
+    checkCashierAccess().then(setLicenseStatus).catch(() => setLicenseStatus({ isValid: false, isDemo: false, status: 'unregistered', error: 'Akses perangkat belum dapat diperiksa. Buka kasir untuk mencoba kembali.' }));
   }, []);
 
   useEffect(() => {
@@ -67,13 +67,18 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const recheck = async () => {
+      preserveDemoUrl();
+      if (isDemoMode() !== (db.name === 'SakuNotaDemoDB')) { window.location.reload(); return; }
+      try { setLicenseStatus(await checkCashierAccess()); } catch { setIsAuthenticated(false); return; }
       if (db.name === 'SakuNotaDemoDB') { if (!demoSessionValid()) setIsAuthenticated(false); return; }
       if (!(await verifyAdminSession())) setIsAuthenticated(false);
     };
+    const storageChanged = (event: StorageEvent) => { if (['sakunota_license_key', 'sakunota_activation_token'].includes(event.key ?? '')) void recheck(); };
+    window.addEventListener('storage', storageChanged);
     window.addEventListener('focus', recheck);
     document.addEventListener('visibilitychange', recheck);
     const timer = window.setInterval(recheck, 30000);
-    return () => { window.removeEventListener('focus', recheck); document.removeEventListener('visibilitychange', recheck); clearInterval(timer); };
+    return () => { window.removeEventListener('storage', storageChanged); window.removeEventListener('focus', recheck); document.removeEventListener('visibilitychange', recheck); clearInterval(timer); };
   }, [setIsAuthenticated]);
 
   useEffect(() => {
@@ -101,6 +106,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     }).catch(() => setIsAuthenticated(false)).finally(() => setIsAuthReady(true));
   }, [setIsAuthenticated]);
 
+  useEffect(() => {
+    if (!isAuthReady || isDemo) return;
+    verifyAdminSession().then(valid => { if (!valid) setIsAuthenticated(false); });
+  }, [storeSettings.credentialRevision, isAuthReady, isDemo, setIsAuthenticated]);
+
   // Android Back button handler
   useEffect(() => {
     let removeListener: any;
@@ -109,11 +119,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         if (isLainnyaOpen) {
           setIsLainnyaOpen(false);
         } else if (pathname !== '/admin') {
-          router.push('/admin');
+          router.push(workspaceHref('/admin', isDemo));
         } else if (canGoBack) {
           window.history.back();
         } else {
-          router.push('/');
+          router.push(workspaceHref('/pos', isDemo));
         }
       }).then(handle => {
         removeListener = handle;
@@ -238,8 +248,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       showToast("Mode Demo: Pengaturan PIN hanya simulasi dan tidak disimpan.", "info");
       return;
     }
-    if (newAdminPin.length < 4) {
-      setPinError("PIN baru minimal harus 4 digit angka.");
+    if (!/^\d{4,12}$/.test(newAdminPin)) {
+      setPinError("PIN baru harus 4–12 digit angka.");
       return;
     }
     if (newAdminPin !== confirmAdminPin) {
@@ -285,7 +295,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   };
 
   // Unauthenticated: PIN Login / Pemulihan Pemilik / Konfigurasi Awal
-  if (!isAuthReady) return <div className="min-h-screen flex items-center justify-center bg-app text-muted" role="status">Menyiapkan Admin SakuNota…</div>;
+  if (!isAuthReady || !settingsReady || !licenseStatus) return <div className="min-h-screen flex items-center justify-center bg-app text-muted" role="status">Menyiapkan Admin SakuNota…</div>;
   if (isDemo && !demoSessionValid()) {
     return (
       <div className="min-h-screen bg-app flex flex-col items-center justify-center p-4">
@@ -343,7 +353,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
           <div className="pt-2 space-y-2">
             <Link
-              href="/pos"
+              href={workspaceHref('/pos', isDemo)}
               className="w-full py-3.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span>Aktivasi Kode Lisensi di Kasir</span>
@@ -611,7 +621,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
           <div className="mt-6 pt-4 border-t border-line">
             <Link
-              href="/pos"
+              href={workspaceHref('/pos', isDemo)}
               className="text-xs font-bold text-muted hover:text-accent-text inline-flex items-center gap-1.5 transition-colors"
             >
               <span>← Kembali ke Kasir</span>
@@ -644,7 +654,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           }`}
         >
           <Link
-            href="/admin"
+            href={workspaceHref('/admin', isDemo)}
             className="flex items-center gap-2.5 overflow-hidden"
             title="SakuNota - Admin Backoffice"
           >
@@ -832,7 +842,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </span>
             </div>
             <Link
-              href="/admin/pengaturan/keamanan"
+              href={workspaceHref('/admin/pengaturan/keamanan', isDemo)}
               className="px-2.5 py-1 bg-accent hover:bg-accent-hover text-white font-bold rounded-lg shrink-0 transition-colors"
             >
               Ganti PIN
@@ -849,7 +859,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       {/* --- MOBILE BOTTOM NAVIGATION (HP < 768px) --- */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-md border-t border-line z-40 px-1 py-1.5 grid grid-cols-4 items-center">
         <Link
-          href="/admin"
+          href={workspaceHref('/admin', isDemo)}
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
             pathname === "/admin"
               ? " text-accent-text font-black"
@@ -861,7 +871,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         </Link>
 
         <Link
-          href="/admin/menu"
+          href={workspaceHref('/admin/menu', isDemo)}
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
             pathname.startsWith("/admin/menu")
               ? " text-accent-text font-black"
@@ -873,7 +883,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         </Link>
 
         <Link
-          href="/admin/transaksi"
+          href={workspaceHref('/admin/transaksi', isDemo)}
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
             pathname.startsWith("/admin/transaksi")
               ? " text-accent-text font-black"
@@ -912,12 +922,12 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <h3 className="text-base font-black text-fg mb-3">Menu Lainnya</h3>
 
             <div className="grid grid-cols-1 gap-2 mb-4">
-              <Link href="/admin/menu?tab=stock" onClick={() => setIsLainnyaOpen(false)} className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-line text-fg">
+              <Link href={workspaceHref('/admin/menu?tab=stock', isDemo)} onClick={() => setIsLainnyaOpen(false)} className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-line text-fg">
                 <span className="text-xl"><LineIcon name="catalog" /></span><div><div className="font-bold text-sm">Katalog &amp; Stok</div><div className="text-xs text-muted">Produk, persediaan, dan opname</div></div>
               </Link>
               {isTableManagementEnabled(storeSettings) && (
                 <Link
-                  href="/admin/meja"
+                  href={workspaceHref('/admin/meja', isDemo)}
                   onClick={() => setIsLainnyaOpen(false)}
                   className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
                 >
@@ -931,7 +941,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               )}
 
               <Link
-                href="/admin/shift"
+                href={workspaceHref('/admin/shift', isDemo)}
                 onClick={() => setIsLainnyaOpen(false)}
                 className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
@@ -944,7 +954,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </Link>
 
               <Link
-                href="/admin/pengaturan"
+                href={workspaceHref('/admin/pengaturan', isDemo)}
                 onClick={() => setIsLainnyaOpen(false)}
                 className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
