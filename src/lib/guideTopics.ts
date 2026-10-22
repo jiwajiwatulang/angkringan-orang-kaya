@@ -28,32 +28,32 @@ export interface GuideTopic {
 export const STAGE_CONFIG: Record<GuideStage, { title: string; subtitle: string; stepNumber: string }> = {
   1: {
     stepNumber: '1',
-    title: 'Tahap 1: Setup Awal & Persiapan Usaha',
-    subtitle: 'Wajib disiapkan di awal sebelum toko atau kasir mulai beroperasi melayani pelanggan.'
+    title: 'Persiapan Awal',
+    subtitle: 'Aktivasi lisensi, profil toko, printer struk, dan keamanan PIN.'
   },
   2: {
     stepNumber: '2',
-    title: 'Tahap 2: Menyiapkan Katalog & Ruangan',
-    subtitle: 'Memasukkan produk jualan, foto, barcode, komoditas timbang, serta tata letak meja makan.'
+    title: 'Katalog & Meja',
+    subtitle: 'Pengaturan produk, harga, varian, barcode, dan denah ruangan.'
   },
   3: {
     stepNumber: '3',
-    title: 'Tahap 3: Operasional Kasir Harian',
-    subtitle: 'Alur kerja kasir sehari-hari dari buka shift, melayani pesanan, hingga kasbon pelanggan.'
+    title: 'Kasir & Transaksi',
+    subtitle: 'Pencatatan pesanan, pembayaran tunai/QRIS, kasbon, dan kas masuk/keluar.'
   },
   4: {
     stepNumber: '4',
-    title: 'Tahap 4: Penutupan Shift & Fitur Lanjutan',
-    subtitle: 'Tutup kasir harian Z-Report, cek grafik laba bersih, opname stok supplier, dan backup offline.'
+    title: 'Laporan & Tutup Shift',
+    subtitle: 'Rekap shift kasir, laporan laba rugi, stok opname, dan cadangan data.'
   }
 };
 
 export const BUSINESS_TYPE_FILTERS: Array<{ id: GuideBusinessType; label: string; desc: string }> = [
-  { id: 'all', label: 'Semua Panduan', desc: 'Peta alur komprehensif seluruh fitur SakuNota' },
-  { id: 'warung', label: 'Warung & UMKM', desc: 'Kasir langsung cepat, tanpa meja, kas laci harian' },
-  { id: 'restaurant', label: 'Restoran & Kafe', desc: 'Denah meja 2D, open bill, pelayan Waiter Floor' },
-  { id: 'retail', label: 'Toko & Retail', desc: 'Scan barcode, barang timbang, stok supplier, tambah cepat' },
-  { id: 'setup', label: 'Setup & Perangkat', desc: 'Aktivasi lisensi, printer Bluetooth, PIN, backup data' }
+  { id: 'all', label: 'Semua', desc: 'Seluruh topik panduan SakuNota' },
+  { id: 'warung', label: 'Warung & UMKM', desc: 'Kasir cepat dan arus kas harian' },
+  { id: 'restaurant', label: 'Restoran & Kafe', desc: 'Denah meja, pesanan meja, dan mode pelayan' },
+  { id: 'retail', label: 'Toko & Retail', desc: 'Scan barcode, barang timbang, dan stok barang' },
+  { id: 'setup', label: 'Perangkat & Sistem', desc: 'Lisensi, printer, PIN kasir, dan backup' }
 ];
 
 export const GUIDE_TOPICS: GuideTopic[] = [
@@ -66,8 +66,8 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Aktivasi lisensi resmi satu perangkat, aturan trial, dan mode latihan.',
     iconType: 'shield',
     stage: 1,
-    stageLabel: 'Tahap 1: Setup Awal & Persiapan Usaha',
-    badge: 'Wajib di Awal',
+    stageLabel: 'Tahap 1: Persiapan Awal',
+    badge: 'Persiapan Awal',
     businessTypes: ['all', 'setup'],
     articles: [
       {
@@ -113,8 +113,8 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Pilihan alur Warung, Restoran, Kafe, atau Retail, serta nama identitas toko.',
     iconType: 'rocket',
     stage: 1,
-    stageLabel: 'Tahap 1: Setup Awal & Persiapan Usaha',
-    badge: 'Wajib di Awal',
+    stageLabel: 'Tahap 1: Persiapan Awal',
+    badge: 'Persiapan Awal',
     businessTypes: ['all', 'warung', 'restaurant', 'retail', 'setup'],
     articles: [
       {
@@ -151,8 +151,8 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Koneksi thermal 58/80 mm, kustomisasi logo, slogan, dan catatan kaki.',
     iconType: 'printer',
     stage: 1,
-    stageLabel: 'Tahap 1: Setup Awal & Persiapan Usaha',
-    badge: 'Wajib di Awal',
+    stageLabel: 'Tahap 1: Persiapan Awal',
+    badge: 'Persiapan Awal',
     businessTypes: ['all', 'setup'],
     articles: [
       {
@@ -192,8 +192,8 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Gembok halaman manajemen dengan PIN dan simpan recovery code pemulihan.',
     iconType: 'lock',
     stage: 1,
-    stageLabel: 'Tahap 1: Setup Awal & Persiapan Usaha',
-    badge: 'Wajib di Awal',
+    stageLabel: 'Tahap 1: Persiapan Awal',
+    badge: 'Persiapan Awal',
     businessTypes: ['all', 'setup'],
     articles: [
       {
@@ -232,7 +232,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Kelola daftar barang, harga jual, kelompok kategori, dan varian porsi.',
     iconType: 'package',
     stage: 2,
-    stageLabel: 'Tahap 2: Menyiapkan Katalog & Ruangan',
+    stageLabel: 'Tahap 2: Katalog & Meja',
     badge: 'Katalog & Menu',
     businessTypes: ['all', 'warung', 'restaurant', 'retail'],
     articles: [
@@ -271,7 +271,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Pindai barcode produk memakai scanner USB HID, Bluetooth, atau kamera HP.',
     iconType: 'package',
     stage: 2,
-    stageLabel: 'Tahap 2: Menyiapkan Katalog & Ruangan',
+    stageLabel: 'Tahap 2: Katalog & Meja',
     badge: 'Khusus Retail & Toko',
     businessTypes: ['retail', 'warung'],
     articles: [
@@ -320,7 +320,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Pengaturan produk komoditas timbangan seperti sayur, buah, telur, atau daging.',
     iconType: 'layers',
     stage: 2,
-    stageLabel: 'Tahap 2: Menyiapkan Katalog & Ruangan',
+    stageLabel: 'Tahap 2: Katalog & Meja',
     badge: 'Khusus Retail & Toko',
     businessTypes: ['retail'],
     articles: [
@@ -359,7 +359,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Foto kemasan produk atau isi manual langsung dari layar kasir tanpa keluar menu.',
     iconType: 'package',
     stage: 2,
-    stageLabel: 'Tahap 2: Menyiapkan Katalog & Ruangan',
+    stageLabel: 'Tahap 2: Katalog & Meja',
     badge: 'Khusus Retail & Toko',
     businessTypes: ['retail'],
     articles: [
@@ -400,7 +400,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Foto visual pada menu kasir, kompresi offline, dan ekspor produk JSON.',
     iconType: 'package',
     stage: 2,
-    stageLabel: 'Tahap 2: Menyiapkan Katalog & Ruangan',
+    stageLabel: 'Tahap 2: Katalog & Meja',
     badge: 'Katalog & Menu',
     businessTypes: ['all', 'restaurant', 'retail'],
     articles: [
@@ -438,7 +438,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Bentuk meja visual, zona ruangan (Indoor, Outdoor, VIP), dan kapasitas kursi.',
     iconType: 'utensils',
     stage: 2,
-    stageLabel: 'Tahap 2: Menyiapkan Katalog & Ruangan',
+    stageLabel: 'Tahap 2: Katalog & Meja',
     badge: 'Khusus Resto & Kafe',
     businessTypes: ['restaurant'],
     articles: [
@@ -480,7 +480,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Modal awal laci, pembatas fleksibel nota, dan ukuran tombol ramah jempol.',
     iconType: 'cart',
     stage: 3,
-    stageLabel: 'Tahap 3: Operasional Kasir Harian',
+    stageLabel: 'Tahap 3: Kasir & Transaksi',
     badge: 'Operasional Harian',
     businessTypes: ['all', 'warung', 'restaurant', 'retail'],
     articles: [
@@ -520,7 +520,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Pencatatan nota belanja, diskon potongan, uang tunai, QRIS, dan transfer.',
     iconType: 'banknote',
     stage: 3,
-    stageLabel: 'Tahap 3: Operasional Kasir Harian',
+    stageLabel: 'Tahap 3: Kasir & Transaksi',
     badge: 'Operasional Harian',
     businessTypes: ['all', 'warung', 'restaurant', 'retail'],
     articles: [
@@ -559,7 +559,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Pencatatan pesanan langsung di meja tamu dan kirim tagihan instan ke kasir.',
     iconType: 'utensils',
     stage: 3,
-    stageLabel: 'Tahap 3: Operasional Kasir Harian',
+    stageLabel: 'Tahap 3: Kasir & Transaksi',
     badge: 'Khusus Resto & Kafe',
     businessTypes: ['restaurant'],
     articles: [
@@ -586,7 +586,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Catat belanja bahan dapur, gas, es batu, dan operasional harian toko.',
     iconType: 'file-text',
     stage: 3,
-    stageLabel: 'Tahap 3: Operasional Kasir Harian',
+    stageLabel: 'Tahap 3: Kasir & Transaksi',
     badge: 'Operasional Harian',
     businessTypes: ['all', 'warung', 'restaurant', 'retail'],
     articles: [
@@ -612,7 +612,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Catatan bayar nanti untuk pelanggan tetap, pantau sisa tagihan, dan terima cicilan.',
     iconType: 'users',
     stage: 3,
-    stageLabel: 'Tahap 3: Operasional Kasir Harian',
+    stageLabel: 'Tahap 3: Kasir & Transaksi',
     badge: 'Operasional Harian',
     businessTypes: ['all', 'warung', 'retail'],
     articles: [
@@ -642,7 +642,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Hitung fisik uang laci, verifikasi selisih sistem kasir, dan cetak Z-Report.',
     iconType: 'file-text',
     stage: 4,
-    stageLabel: 'Tahap 4: Penutupan Shift & Fitur Lanjutan',
+    stageLabel: 'Tahap 4: Laporan & Tutup Shift',
     badge: 'Penutupan Kasir',
     businessTypes: ['all', 'warung', 'restaurant', 'retail'],
     articles: [
@@ -670,7 +670,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Analisis grafik penjualan (Garis vs Batang), produk terlaris, dan laba bersih.',
     iconType: 'bar-chart',
     stage: 4,
-    stageLabel: 'Tahap 4: Penutupan Shift & Fitur Lanjutan',
+    stageLabel: 'Tahap 4: Laporan & Tutup Shift',
     badge: 'Laporan Keuangan',
     businessTypes: ['all', 'warung', 'restaurant', 'retail'],
     articles: [
@@ -696,7 +696,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Pasokan barang masuk, pencatatan HPP supplier, dan penyesuaian opname fisik.',
     iconType: 'layers',
     stage: 4,
-    stageLabel: 'Tahap 4: Penutupan Shift & Fitur Lanjutan',
+    stageLabel: 'Tahap 4: Laporan & Tutup Shift',
     badge: 'Khusus Retail & Toko',
     businessTypes: ['retail'],
     articles: [
@@ -745,7 +745,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     shortDesc: 'Unduh seluruh data produk, transaksi, dan riwayat toko ke file cadangan lokal.',
     iconType: 'shield',
     stage: 4,
-    stageLabel: 'Tahap 4: Penutupan Shift & Fitur Lanjutan',
+    stageLabel: 'Tahap 4: Laporan & Tutup Shift',
     badge: 'Keamanan Data',
     businessTypes: ['all', 'setup'],
     articles: [

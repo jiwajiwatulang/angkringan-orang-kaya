@@ -479,6 +479,32 @@ export async function revokeTesterLicenseServer(
   }
 }
 
+export async function extendTesterLicenseServer(
+  token: string,
+  licenseKey: string,
+  extraDays: number,
+  reason?: string
+): Promise<{ success: boolean; newExpiresAt?: string; durationDays?: number; error?: string }> {
+  try {
+    const res = await fetch("/api/owner/tester-license", {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "extend", licenseKey, extraDays, reason }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { success: true, newExpiresAt: data.newExpiresAt, durationDays: data.durationDays };
+    }
+    const err = await res.json().catch(() => ({}));
+    return { success: false, error: err.error || "Gagal memperpanjang lisensi tester." };
+  } catch {
+    return { success: false, error: "Gagal menghubungi server." };
+  }
+}
+
 export interface CommercialLicense {
   licenseKey: string;
   orderId: string;

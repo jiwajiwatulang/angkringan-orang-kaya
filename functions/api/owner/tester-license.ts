@@ -6,6 +6,7 @@ import {
   listTesterLicenses,
   revokeTesterLicense,
   unbindTesterLicense,
+  extendTesterLicense,
   extractBearerToken,
 } from "../../../src/lib/server/sakunotaServer";
 
@@ -81,6 +82,16 @@ export async function onRequestPut(context: any) {
       const res = await revokeTesterLicense(db, token, licenseKey);
       return new Response(JSON.stringify(res), {
         status: res.success ? 200 : 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "extend") {
+      const extraDays = Number(body?.extraDays) || 7;
+      const reason = body?.reason || "Perpanjangan lisensi tester";
+      const res = await extendTesterLicense(db, token, licenseKey, extraDays, reason);
+      return new Response(JSON.stringify(res), {
+        status: res.success ? 200 : 400,
         headers: { "Content-Type": "application/json" },
       });
     }

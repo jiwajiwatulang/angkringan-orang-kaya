@@ -268,14 +268,11 @@ export default function PanduanPage() {
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-8 pt-10 sm:pt-12 pb-16 sm:pb-24">
         {/* Title Section */}
         <div className="max-w-3xl mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100/80 text-blue-700 text-xs font-bold mb-3">
-            <span>Pusat Bantuan Resmi SakuNota</span>
-          </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-            Panduan Lengkap SakuNota
+            Panduan SakuNota
           </h1>
           <p className="mt-2 text-sm sm:text-base text-slate-600 leading-relaxed">
-            Ikuti 4 tahapan berurutan di bawah ini dari setup awal toko, persiapan katalog, operasional harian kasir, hingga penutupan buku.
+            Panduan penggunaan fitur kasir dan alur operasional usaha Anda.
           </p>
 
           {/* Search Box */}
@@ -477,7 +474,7 @@ export default function PanduanPage() {
                   {/* Steps */}
                   <div className="mt-3.5 bg-slate-50 rounded-2xl p-4 border border-slate-200/70 space-y-2">
                     <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-700 block">
-                      Langkah Pengerjaan:
+                      Langkah:
                     </span>
                     <ol className="space-y-1.5 text-xs text-slate-700">
                       {article.steps.map((st, sIdx) => (
@@ -669,15 +666,20 @@ function TopicCard({ topic, onSelect }: { topic: GuideTopic; onSelect: () => voi
   // Badge styling based on badge content
   const badgeStyle = useMemo(() => {
     switch (topic.badge) {
+      case "Persiapan Awal":
       case "Wajib di Awal":
         return "bg-amber-100 text-amber-800 border-amber-200/80";
       case "Khusus Retail & Toko":
+      case "Retail & Toko":
         return "bg-purple-100 text-purple-800 border-purple-200/80";
       case "Khusus Resto & Kafe":
+      case "Resto & Kafe":
         return "bg-rose-100 text-rose-800 border-rose-200/80";
       case "Operasional Harian":
+      case "Kasir & Transaksi":
         return "bg-blue-100 text-blue-800 border-blue-200/80";
       case "Penutupan Kasir":
+      case "Tutup Shift":
         return "bg-emerald-100 text-emerald-800 border-emerald-200/80";
       default:
         return "bg-slate-100 text-slate-700 border-slate-200";
@@ -729,7 +731,7 @@ function TopicCard({ topic, onSelect }: { topic: GuideTopic; onSelect: () => voi
           {topic.articles.length} PANDUAN
         </span>
         <span className="text-xs font-bold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-          Buka Pelajari →
+          Lihat Panduan →
         </span>
       </div>
     </div>

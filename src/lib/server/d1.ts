@@ -863,6 +863,21 @@ export async function revokeTesterLicenseD1(db: D1Database, licenseKey: string):
   return true;
 }
 
+export async function extendTesterLicenseD1(
+  db: D1Database,
+  licenseKey: string,
+  extraDays: number,
+  newExpiresAt: string,
+  updatedNotes?: string
+): Promise<boolean> {
+  await db.prepare(`
+    UPDATE TesterLicenses
+    SET durationDays = durationDays + ?, expiresAt = ?, notes = ?
+    WHERE licenseKey = ?
+  `).bind(extraDays, newExpiresAt, updatedNotes ?? null, licenseKey).run();
+  return true;
+}
+
 export async function unbindTesterLicenseDeviceD1(db: D1Database, licenseKey: string): Promise<boolean> {
   await db.batch([
     db.prepare('DELETE FROM LicenseDeviceKeys WHERE licenseKey = ?').bind(licenseKey),
