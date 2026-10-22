@@ -1,4 +1,7 @@
 "use client";
+import { measuredSplitAmount } from '@/lib/weightRefund';
+import WeightEntry from '@/components/WeightEntry';
+import { lineTotal, priceSuffix, quantityLabel, weightEnabled, type SaleMeasure } from '@/lib/weight';
 import LockIcon from "@/components/LockIcon";
 import LineIcon from "@/components/LineIcon";
 import RetailAddProduct from '@/components/RetailAddProduct';
@@ -38,11 +41,11 @@ import { activateLicenseServer } from '@/lib/ordersClient';
 import { setupHardwareBarcodeScanner, playScannerBeep } from '@/lib/barcodeScanner';
 import BarcodeCameraModal from '@/components/BarcodeCameraModal';
 import { db } from '@/lib/dexie';
-import { destroyAdminSession } from '@/lib/session';
+import { workspaceHref } from '@/lib/demoMode';
 import CashierShiftPanel from '@/components/CashierShiftPanel';
 import CashierPrinter from '@/components/CashierPrinter';
 
-type MenuItem = { id: number; sku?: string; imageData?: string | null; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; modifiers?: any[]; };
+type MenuItem = SaleMeasure & { trackStock?: boolean; stockQty?: number; id: number; sku?: string; imageData?: string | null; nama: string; harga: number; kategori: string; isGroup?: boolean; variants?: MenuItem[]; isSoldOut?: boolean; modifiers?: any[]; };
 type CartItem = MenuItem & { pendingRetailProduct?: RetailDraftProduct; qty: number; selectedModifiers?: { groupName: string; optionName: string; harga: number }[]; itemKey?: string };
 
 export default function POSPage() {
@@ -51,8 +54,7 @@ export default function POSPage() {
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [view, setView] = useState<'kasir' | 'meja' | 'menu' | 'pesanan' | 'shift'>('menu');
-  useEffect(() => { void destroyAdminSession(); }, []);
-  const enterAdmin = async () => { await destroyAdminSession(); window.location.assign('/admin' + (accessStatus.isDemo ? '?demo=true' : '')); };
+  const enterAdmin = () => { window.location.assign(workspaceHref('/admin', accessStatus.isDemo)); };
 
   const [mobileTab, setMobileTab] = useState<MobileTab>('menu');
   const navigateWorkspace = (next: typeof view) => { setView(next); setMobileTab(({ kasir: "home", menu: "menu", meja: "meja", pesanan: "nota", shift: "lainnya" } as const)[next]); };
@@ -413,8 +415,11 @@ export default function POSPage() {
   };
 
   // Cart State
+  const [weightProduct, setWeightProduct] = useState<{ product: MenuItem; editing?: boolean } | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [oldCart, setOldCart] = useState<CartItem[]>([]);
+  const [weightOnly, setWeightOnly] = useState(false);
+  const toggleWeightFilter = () => { setWeightOnly(value => !value); setSearchQuery(''); setActiveCategory('Semua'); };
   const [activeCategory, setActiveCategory] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
   const [menuPage, setMenuPage] = useState<number>(1);
@@ -422,7 +427,7 @@ export default function POSPage() {
 
   useEffect(() => {
     setMenuPage(1);
-  }, [searchQuery, activeCategory]);
+  }, [searchQuery, activeCategory, weightOnly]);
 
   const getCategoryIcon = (category: string, name?: string) => {
     const c = (category || '').toLowerCase();
@@ -928,7 +933,7 @@ export default function POSPage() {
 
       (menus || []).forEach((m: any) => {
         if (!m) return;
-        if (m.nama && (m.nama.includes('(Hot)') || m.nama.includes('(Ice)'))) {
+        if (m.saleUnit !== 'weight' && m.nama && (m.nama.includes('(Hot)') || m.nama.includes('(Ice)'))) {
           const baseName = m.nama.replace(/\s*\(.*\)\s*/, '');
           if (!groups[baseName]) groups[baseName] = [];
           groups[baseName].push(m);
@@ -965,7 +970,7 @@ export default function POSPage() {
   };
 
   useEffect(() => {
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "true") {
+    if (isDemoMode()) {
       try {
         sessionStorage.setItem("sakunota_demo_mode", "true");
       } catch (_) {}
@@ -996,8 +1001,15 @@ export default function POSPage() {
     initAccess();
 
     const interval = setInterval(loadData, 5000);
-    const licenseTimer = setInterval(() => { checkCashierAccess().then(setAccessStatus).catch(() => {}); }, 60000);
-    const recheckAccess = () => { checkCashierAccess(true).then(setAccessStatus).catch(() => {}); };
+    const refreshAccess = (online = false) => {
+      preserveDemoUrl();
+      if (isDemoMode() !== (db.name === 'SakuNotaDemoDB')) { window.location.reload(); return; }
+      checkCashierAccess(online).then(setAccessStatus).catch(() => {});
+    };
+    const licenseTimer = setInterval(() => refreshAccess(), 60000);
+    const recheckAccess = () => refreshAccess(true);
+    const storageChanged = (event: StorageEvent) => { if (['sakunota_license_key', 'sakunota_activation_token'].includes(event.key ?? '')) refreshAccess(); };
+    window.addEventListener('storage', storageChanged);
     window.addEventListener('focus', recheckAccess);
     window.addEventListener('online', recheckAccess);
 
@@ -1009,6 +1021,7 @@ export default function POSPage() {
     return () => {
       clearInterval(interval);
       clearInterval(licenseTimer);
+      window.removeEventListener('storage', storageChanged);
       window.removeEventListener('focus', recheckAccess);
       window.removeEventListener('online', recheckAccess);
       window.removeEventListener("popstate", handlePop);
@@ -1019,7 +1032,7 @@ export default function POSPage() {
 
   const filteredMenu = menuData.filter(m => 
     m &&
-    (activeCategory === "Semua" || m.kategori === activeCategory) &&
+    (activeCategory === "Semua" || m.kategori === activeCategory) && (!weightOnly || m.saleUnit === 'weight') &&
     ((m.nama || '').toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
@@ -1035,6 +1048,8 @@ export default function POSPage() {
       const mods = i.selectedModifiers || [];
       const modSignature = mods.map((m: any) => `${m.groupName}:${m.optionName}`).sort().join('|');
       return {
+        saleUnit: i.saleUnit, priceBasis: i.priceBasis, costPrice: i.costPrice,
+        trackStock: menuData.find(m => m.id === i.menuItemId)?.trackStock, stockQty: menuData.find(m => m.id === i.menuItemId)?.stockQty,
         pendingRetailProduct: i.pendingRetailProduct,
         imageData: i.pendingRetailProduct?.imageData,
         id: i.menuItemId,
@@ -1288,6 +1303,9 @@ export default function POSPage() {
 
   const calculateSplitItemTotal = () => {
     if (!splitBillTargetOrder || !splitBillTargetOrder.items) return 0;
+    if (splitBillTargetOrder.items.some((i: any) => i.saleUnit === 'weight')) {
+      try { return Math.min(splitBillTargetOrder.remainingBalance ?? splitBillTargetOrder.total, measuredSplitAmount(splitBillTargetOrder, splitBillTargetOrder.items, splitBillTargetOrder.items.filter((i: any) => splitSelectedItems[i.id] > 0).map((i: any) => ({ orderItemId: i.id, qty: splitSelectedItems[i.id] })))); } catch { return 0; }
+    }
     let selectedSum = 0;
     const rawSubtotal = splitBillTargetOrder.subtotal || splitBillTargetOrder.total;
 
@@ -1296,7 +1314,7 @@ export default function POSPage() {
       if (qty > 0) {
         const itemUnitPrice = item.hargaSatuan || item.harga || 0;
         const modSum = (item.selectedModifiers || []).reduce((s: number, m: any) => s + (m.harga || 0), 0);
-        selectedSum += qty * (itemUnitPrice + modSum);
+        selectedSum += lineTotal({ ...item, hargaSatuan: itemUnitPrice + modSum }, qty);
       }
     });
 
@@ -1336,6 +1354,7 @@ export default function POSPage() {
         const qty = splitSelectedItems[item.id] || 0;
         if (qty > 0) {
           itemsPaidPayload.push({
+            saleUnit: item.saleUnit, priceBasis: item.priceBasis, orderItemId: item.id,
             menuItemId: item.menuItemId || item.id,
             nama: item.namaMenu || item.nama || 'Item',
             qty: qty,
@@ -1532,6 +1551,10 @@ export default function POSPage() {
 
   const addToCart = (item: any, customModifiers?: { groupName: string; optionName: string; harga: number }[], customPrice?: number) => {
     if (item.isSoldOut) return;
+    if (item.saleUnit === 'weight') {
+      if (!weightEnabled(storeSettings.businessType)) { alert('Penjualan berat hanya tersedia untuk Retail dan Warung'); return; }
+      setWeightProduct({ product: item }); return;
+    }
 
     // Jika item memiliki modifier dan belum dipilih, buka modal pilihan
     if (!customModifiers && item.modifiers && item.modifiers.length > 0) {
@@ -1562,7 +1585,7 @@ export default function POSPage() {
   const addRetailToCart = (product: RetailDraftProduct, qty: number) => {
     if (storeSettings.businessType !== 'retail') return;
     const existing = menuData.find(item => normalizeRetailName(item.nama) === normalizeRetailName(product.nama));
-    if (existing && (existing.harga !== product.harga || existing.isSoldOut || existing.modifiers?.length || existing.isGroup)) {
+    if (existing && (existing.harga !== product.harga || existing.isSoldOut || existing.modifiers?.length || existing.saleUnit === 'weight' || existing.isGroup)) {
       throw new Error('Barang ini sudah ada di katalog. Pilih barang dari katalog untuk melanjutkan.');
     }
     setCart(previous => {
@@ -1594,6 +1617,7 @@ export default function POSPage() {
 
       playScannerBeep('success');
       addToCart(matched);
+      if (matched.saleUnit === 'weight') { setIsBarcodeScanOpen(false); return; }
       setBarcodeScanToast({ message: `+1 "${matched.nama}" masuk keranjang`, type: 'success' });
       setTimeout(() => setBarcodeScanToast(null), 3000);
     } else if (storeSettings.businessType === 'retail') {
@@ -1613,6 +1637,8 @@ export default function POSPage() {
   }, [menuData, storeSettings.businessType]);
 
   const updateQty = (keyOrId: string | number, delta: number) => {
+    const selected = cart.find(i => String(i.itemKey || i.id) === String(keyOrId));
+    if (selected?.saleUnit === 'weight') { setWeightProduct({ product: selected, editing: true }); return; }
     setCart(prev => prev.map(item => {
       const currentKey = item.itemKey || item.id;
       if (currentKey === keyOrId || item.id === keyOrId || currentKey.toString() === keyOrId.toString()) {
@@ -1639,7 +1665,7 @@ export default function POSPage() {
     setEditingOrderId(null);
   };
 
-    const rawSubtotal = cart.reduce((sum, item) => sum + (item.harga * item.qty), 0);
+    const rawSubtotal = cart.reduce((sum, item) => sum + lineTotal(item), 0);
   const discountAmount = discountValue > 0 ? (
     discountType === 'percent' 
       ? Math.round(rawSubtotal * (Number(discountValue) / 100))
@@ -1735,6 +1761,7 @@ export default function POSPage() {
             return {
               id: i.menuItemId,
               nama: menuData.find((m:any) => m.id === i.menuItemId)?.nama || 'Item',
+              saleUnit: i.saleUnit, priceBasis: i.priceBasis, costPrice: i.costPrice,
               harga: i.hargaSatuan,
               kategori: menuData.find((m:any) => m.id === i.menuItemId)?.kategori || '',
               qty: i.qty || i.quantity,
@@ -1751,7 +1778,7 @@ export default function POSPage() {
           });
 
           payload.items = cartFormattedOld;
-          payload.total = cartFormattedOld.reduce((sum:number, item:any) => sum + (item.harga * item.qty), 0);
+          payload.total = cartFormattedOld.reduce((sum:number, item:any) => sum + lineTotal(item), 0);
           finalItems = cartFormattedOld;
           finalTotal = payload.total;
         }
@@ -1878,8 +1905,8 @@ export default function POSPage() {
       if (mode === 'drink' && !isDrinkCategory(item.kategori)) return;
 
       let itemName = item.nama.substring(0, 20).padEnd(20, " ");
-      let itemQtyStr = (item.qty + "x").padEnd(4, " ");
-      let subtotal = item.qty * item.harga;
+      let itemQtyStr = quantityLabel(item).padEnd(4, " ");
+      let subtotal = lineTotal(item);
       total += subtotal;
       txt += `${itemName}\n${itemQtyStr}Rp ${item.harga.toLocaleString('id-ID').padStart(7, " ")}\n`;
     });
@@ -1939,7 +1966,7 @@ export default function POSPage() {
                       ? "bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-bold"
                       : "bg-blue-600 text-white font-black shadow-xs"
                   }`}>
-                    {cart.reduce((sum, item) => sum + item.qty, 0)} item
+                    {cart.reduce((sum, item) => sum + (item.saleUnit === 'weight' ? 1 : item.qty), 0)} item
                   </span>
                 </div>
 
@@ -2044,13 +2071,15 @@ export default function POSPage() {
                         ))}
                       </div>
                     )}
-                    <p className={`text-accent-text font-extrabold mt-0.5 transition-all ${isWideCart ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'} max-lg:landscape:text-xs`}>Rp {item.harga.toLocaleString('id-ID')}</p>
+                    <p className={`text-accent-text font-extrabold mt-0.5 transition-all ${isWideCart ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'} max-lg:landscape:text-xs`}>Rp {(item.saleUnit === 'weight' ? lineTotal(item) : item.harga).toLocaleString('id-ID')}</p>{item.saleUnit === 'weight' && <p className="mt-0.5 text-xs text-muted">Rp{item.harga.toLocaleString('id-ID')}{priceSuffix(item)}</p>}
                   </div>
+                  {item.saleUnit === 'weight' ? <button onClick={() => updateQty(item.itemKey || item.id, 0)} className="min-h-12 shrink-0 rounded-xl border border-line px-3 text-xs font-semibold">{quantityLabel(item)} · Ubah</button> : (
                   <div className={`flex items-center bg-surface rounded-xl border border-line shadow-sm shrink-0 transition-all ${isWideCart ? 'p-1 gap-1' : 'p-0.5'} max-lg:landscape:p-0.5`}>
                     <button onClick={() => updateQty(item.itemKey || item.id, -1)} className={`${isWideCart ? 'w-8 h-8 text-sm' : 'w-7 h-7 text-xs'} max-lg:landscape:w-7 max-lg:landscape:h-7 max-lg:landscape:text-xs rounded-lg bg-card text-fg hover:bg-card flex items-center justify-center font-black transition-colors`}>-</button>
-                    <span className={`${isWideCart ? 'w-8 text-sm' : 'w-7 text-xs'} max-lg:landscape:w-6 max-lg:landscape:text-xs text-center font-bold text-fg`}>{item.qty}</span>
+                    <span className={`${isWideCart ? 'w-8 text-sm' : 'w-7 text-xs'} max-lg:landscape:text-xs text-center font-bold text-fg`}>{item.qty}</span>
                     <button onClick={() => updateQty(item.itemKey || item.id, 1)} className={`${isWideCart ? 'w-8 h-8 text-sm' : 'w-7 h-7 text-xs'} max-lg:landscape:w-7 max-lg:landscape:h-7 max-lg:landscape:text-xs rounded-lg bg-accent hover:bg-accent-hover text-white flex items-center justify-center font-black transition-colors`}>+</button>
                   </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -2242,7 +2271,7 @@ export default function POSPage() {
                     ? "bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-bold"
                     : "bg-blue-600 text-white font-black shadow-xs"
                 }`}>
-                  {cart.reduce((sum, item) => sum + item.qty, 0)} item
+                  {cart.reduce((sum, item) => sum + (item.saleUnit === 'weight' ? 1 : item.qty), 0)} item
                 </span>
               </div>
 
@@ -2347,9 +2376,10 @@ export default function POSPage() {
                       ))}
                     </div>
                   )}
-                  <p className={`text-accent-text font-black mt-0.5 sm:mt-1 ${mobileCartDensity === 'jumbo' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`}>Rp {item.harga.toLocaleString('id-ID')}</p>
+                  <p className={`text-accent-text font-black mt-0.5 sm:mt-1 ${mobileCartDensity === 'jumbo' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`}>Rp {(item.saleUnit === 'weight' ? lineTotal(item) : item.harga).toLocaleString('id-ID')}</p>{item.saleUnit === 'weight' && <p className="mt-0.5 text-xs text-muted">Rp{item.harga.toLocaleString('id-ID')}{priceSuffix(item)}</p>}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
+                  {item.saleUnit === 'weight' ? <button type="button" onClick={() => updateQty(item.itemKey || item.id, 0)} className="min-h-12 shrink-0 rounded-xl border border-line px-3 text-xs font-semibold">{quantityLabel(item)} · Ubah</button> : (
                   <div className="flex items-center bg-surface rounded-xl p-0.5 sm:p-1 border border-line shadow-xs">
                     <button 
                       type="button"
@@ -2371,6 +2401,7 @@ export default function POSPage() {
                       +
                     </button>
                   </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => removeFromCart(item.itemKey || item.id)}
@@ -2701,6 +2732,15 @@ export default function POSPage() {
 
   return (
     <>
+    {weightProduct && <WeightEntry key={`${weightProduct.product.id}-${weightProduct.editing}`} product={{ ...weightProduct.product, stockQty: (weightProduct.product.stockQty ?? 0) + (oldCart.find(i => i.id === weightProduct.product.id)?.qty ?? 0) }} initialGrams={weightProduct.editing ? cart.find(i => i.id === weightProduct.product.id)?.qty : undefined} reservedGrams={weightProduct.editing ? 0 : cart.filter(i => i.id === weightProduct.product.id).reduce((n, i) => n + i.qty, 0)} onClose={() => setWeightProduct(null)} onConfirm={grams => {
+      const product = weightProduct.product;
+      setCart(previous => {
+        const existing = previous.find(i => i.id === product.id);
+        if (existing) return previous.map(i => i === existing ? { ...i, qty: weightProduct.editing ? grams : i.qty + grams } : i);
+        return [...previous, { ...product, qty: grams, itemKey: String(product.id), selectedModifiers: [] }];
+      });
+      setWeightProduct(null);
+    }} />}
     <div id="main-app-container" className="flex flex-col h-screen font-sans relative bg-surface text-fg transition-colors duration-200 overflow-hidden">
       {/* Demo Kasir Alert Banner with 4 Business Switcher */}
       {accessStatus.isDemo && (
@@ -3190,12 +3230,12 @@ export default function POSPage() {
                       <tbody>
                         {receiptData.addedItems.map((item: any, idx: number) => (
                           <tr key={'add'+idx}>
-                            <td className="py-1 text-base font-bold">+ {item.qty}x {item.nama}</td>
+                            <td className="py-1 text-base font-bold">+ {quantityLabel(item)}x {item.nama}</td>
                           </tr>
                         ))}
                         {receiptData.removedItems?.map((item: any, idx: number) => (
                           <tr key={'rem'+idx}>
-                            <td className="py-1 text-base font-bold text-gray-500 line-through">- {item.qty}x {item.nama} (Batal)</td>
+                            <td className="py-1 text-base font-bold text-gray-500 line-through">- {quantityLabel(item)}x {item.nama} (Batal)</td>
                           </tr>
                         ))}
                       </tbody>
@@ -3212,7 +3252,7 @@ export default function POSPage() {
                           {receiptData.items.filter((i:any) => !isDrinkCategory(i.kategori)).map((item: any, idx: number) => (
                             <tr key={'m'+idx}>
                               <td className="py-1 text-base font-medium">
-                                <div>{item.qty}x {item.nama}</div>
+                                <div>{quantityLabel(item)}x {item.nama}</div>
                                 {item.selectedModifiers && item.selectedModifiers.length > 0 && (
                                   <div className="pl-3 mt-0.5 space-y-0.5 text-[11px] font-normal text-gray-700">
                                     {item.selectedModifiers.map((m: any, mIdx: number) => (
@@ -3223,7 +3263,7 @@ export default function POSPage() {
                                   </div>
                                 )}
                               </td>
-                              {printMode === 'all' && <td className="py-1 text-right align-top">Rp {(item.qty * (item.harga || item.hargaSatuan || 0)).toLocaleString('id-ID')}</td>}
+                              {printMode === 'all' && <td className="py-1 text-right align-top">Rp {lineTotal(item).toLocaleString('id-ID')}</td>}
                             </tr>
                           ))}
                         </>
@@ -3234,7 +3274,7 @@ export default function POSPage() {
                           {receiptData.items.filter((i:any) => isDrinkCategory(i.kategori)).map((item: any, idx: number) => (
                             <tr key={'d'+idx}>
                               <td className="py-1 text-base font-medium">
-                                <div>{item.qty}x {item.nama}</div>
+                                <div>{quantityLabel(item)}x {item.nama}</div>
                                 {item.selectedModifiers && item.selectedModifiers.length > 0 && (
                                   <div className="pl-3 mt-0.5 space-y-0.5 text-[11px] font-normal text-gray-700">
                                     {item.selectedModifiers.map((m: any, mIdx: number) => (
@@ -3245,7 +3285,7 @@ export default function POSPage() {
                                   </div>
                                 )}
                               </td>
-                              {printMode === 'all' && <td className="py-1 text-right align-top">Rp {(item.qty * (item.harga || item.hargaSatuan || 0)).toLocaleString('id-ID')}</td>}
+                              {printMode === 'all' && <td className="py-1 text-right align-top">Rp {lineTotal(item).toLocaleString('id-ID')}</td>}
                             </tr>
                           ))}
                         </>
@@ -3342,7 +3382,7 @@ export default function POSPage() {
         {/* Top Application Header (Full Width) */}
         <header className="h-14 sm:h-16 max-lg:landscape:h-11 bg-card border-b border-line px-4 sm:px-6 max-lg:landscape:px-3 flex items-center justify-between shrink-0 z-30 transition-colors shadow-xs">
         {/* Left: Brand & Store Name */}
-        <Link href="/" className="flex items-center space-x-2 md:space-x-3 hover:opacity-85 transition-opacity" title="Kembali ke Beranda SakuNota">
+        <Link href={workspaceHref('/pos', accessStatus.isDemo)} className="flex items-center space-x-2 md:space-x-3 hover:opacity-85 transition-opacity" title="Kembali ke Kasir">
           {storeSettings.storeLogo ? (
             <img
               src={storeSettings.storeLogo}
@@ -3598,25 +3638,55 @@ export default function POSPage() {
               <div className="flex-1 flex flex-col h-full overflow-hidden">
                 <div className="p-4 md:p-6 pb-2 max-lg:landscape:px-3 max-lg:landscape:pt-2 max-lg:landscape:pb-1.5 shrink-0">
                   <div className="flex flex-col space-y-3 max-lg:landscape:space-y-1.5 mb-2 max-lg:landscape:mb-1">
-                    <CategoryScroller categories={categories} value={activeCategory} onChange={setActiveCategory} />
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <CategoryScroller categories={categories} value={activeCategory} onChange={setActiveCategory} />
+                      </div>
+                      {storeSettings.businessType === 'retail' && (
+                        <button
+                          type="button"
+                          onClick={() => setIsRetailAddOpen(true)}
+                          className="min-h-10 shrink-0 rounded-full sm:rounded-xl bg-accent hover:bg-accent-hover px-3.5 py-2 text-xs font-bold text-white shadow-xs flex items-center gap-1.5 transition-all active:scale-95"
+                          title="Tambah Barang Retail Baru Langsung dari Kasir"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                            <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+                          </svg>
+                          <span>Tambah Barang</span>
+                        </button>
+                      )}
+                    </div>
                     <div className="flex gap-2 items-center">
-                      <input 
-                        type="text" 
-                        placeholder="Cari menu makanan, minuman, atau kode barcode..." 
-                        value={searchQuery} 
-                        onChange={e => setSearchQuery(e.target.value)} 
-                        className="flex-1 min-w-0 bg-card border border-line rounded-xl p-3 max-lg:landscape:p-2 text-sm max-lg:landscape:text-xs text-fg focus:border-accent outline-none transition-colors shadow-sm" 
-                      />
+                      <div className="relative flex-1 min-w-0">
+                        <input 
+                          type="text" 
+                          placeholder="Cari menu makanan, minuman, atau kode barcode..." 
+                          value={searchQuery} 
+                          onChange={e => setSearchQuery(e.target.value)} 
+                          className="w-full bg-card border border-line rounded-xl pl-3.5 pr-9 py-3 max-lg:landscape:py-2 text-sm max-lg:landscape:text-xs text-fg focus:border-accent outline-none transition-colors shadow-sm" 
+                        />
+                        {searchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-fg text-xs font-bold p-1 rounded-md"
+                            title="Hapus kata kunci pencarian"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
                       <button
                         type="button"
                         onClick={() => setIsBarcodeScanOpen(true)}
                         className="px-3.5 py-3 max-lg:landscape:px-2.5 max-lg:landscape:py-2 rounded-xl bg-card border border-line hover:border-accent text-fg hover:text-accent-text font-bold text-xs sm:text-sm max-lg:landscape:text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0"
                         title="Pindai Barcode Produk (Kamera / Barcode Gun)"
                       >
-                        Pindai Barcode
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-4 h-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM14.625 3.75c-.621 0-1.125.504-1.125 1.125v4.5c0 .621.504 1.125 1.125 1.125h4.5c.621 0 1.125-.504 1.125-1.125v-4.5c0-.621-.504-1.125-1.125-1.125h-4.5zM14.625 14.625c-.621 0-1.125.504-1.125 1.125v4.5c0 .621.504 1.125 1.125 1.125h4.5c.621 0 1.125-.504 1.125-1.125v-4.5c0-.621-.504-1.125-1.125-1.125h-4.5z" />
+                        </svg>
+                        <span>Pindai Barcode</span>
                       </button>
-
-                      {storeSettings.businessType === 'retail' && <button type="button" onClick={() => setIsRetailAddOpen(true)} className="min-h-11 shrink-0 rounded-xl bg-accent px-3 py-2 text-xs font-bold text-white hover:bg-accent-hover">Tambah Barang</button>}
 
                       {/* Density Controls (S / M / L) */}
                       <div className="hidden sm:flex items-center gap-1 bg-card border border-line rounded-xl p-1 max-lg:landscape:p-0.5 shrink-0 shadow-xs" title="Ukuran Tombol Menu Kasir">
@@ -3748,7 +3818,7 @@ export default function POSPage() {
                                     ? 'text-[11px] sm:text-xs'
                                     : 'text-xs sm:text-sm max-lg:landscape:text-xs'
                                 }`}>
-                                  Rp {item.harga.toLocaleString('id-ID')}
+                                  Rp {item.harga.toLocaleString('id-ID')}{priceSuffix(item)}
                                 </p>
                                 {!isSoldOut && (
                                   <span className={`rounded-lg bg-accent text-white flex items-center justify-center font-bold shadow-sm group-hover:scale-110 transition-transform ${
@@ -3814,7 +3884,7 @@ export default function POSPage() {
               <div className="flex items-center gap-3">
                 <div className="bg-card/20 px-3 py-1.5 rounded-xl text-sm font-black flex items-center gap-1.5 shadow-sm">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M7.5 6v.75H5.513c-.96 0-1.764.724-1.865 1.679l-1.263 12A1.875 1.875 0 004.25 22.5h15.5a1.875 1.875 0 001.865-2.071l-1.263-12a1.875 1.875 0 00-1.865-1.679H16.5V6a4.5 4.5 0 10-9 0zM12 3a3 3 0 00-3 3v.75h6V6a3 3 0 00-3-3zm-3 8.25a3 3 0 106 0v-.75a.75.75 0 011.5 0v.75a4.5 4.5 0 11-9 0v-.75a.75.75 0 011.5 0v.75z" clipRule="evenodd" /></svg>
-                  {cart.reduce((s, i) => s + i.qty, 0)}
+                  {cart.reduce((s, i) => s + (i.saleUnit === 'weight' ? 1 : i.qty), 0)}
                 </div>
                 <div className="text-left leading-tight text-white">
                    <span className="block text-[11px] opacity-90 font-bold uppercase tracking-wider">
@@ -3961,7 +4031,7 @@ export default function POSPage() {
           {/* Floating Cart Bar (appears when items exist in cart and cart sheet is closed) */}
           {!isMobileCartOpen && mobileTab !== 'home' && (
             <MobileFloatingCartBar
-              itemCount={cart.reduce((s, i) => s + i.qty, 0)}
+              itemCount={cart.reduce((s, i) => s + (i.saleUnit === 'weight' ? 1 : i.qty), 0)}
               totalPrice={totalPrice}
               onOpenCart={openMobileCart}
             />
@@ -4761,7 +4831,7 @@ export default function POSPage() {
                             )}
                             <div className="text-[11px] text-fg font-bold">
                               Rp {(item.hargaSatuan || item.harga).toLocaleString('id-ID')}
-                              <span className="text-muted font-normal ml-2">({paidQty}/{totalQty} lunas)</span>
+                              <span className="text-muted font-normal ml-2">({quantityLabel(item, paidQty)}/{quantityLabel(item, totalQty)} lunas)</span>
                             </div>
                           </div>
 
@@ -4778,7 +4848,7 @@ export default function POSPage() {
                               >
                                 -
                               </button>
-                              <span className="w-5 text-center font-black text-xs">{selectedQty}</span>
+                              {item.saleUnit === 'weight' ? <label className="text-xs">g<input aria-label={`Berat dibayar ${item.namaMenu || item.nama} (g)`} type="number" min="0" max={unpaidQty} step="1" value={selectedQty} onChange={e => setSplitSelectedItems(prev => ({ ...prev, [item.id]: Math.max(0, Math.min(unpaidQty, Math.floor(Number(e.target.value) || 0))) }))} className="w-20 rounded border border-line p-2" /></label> : <span className="w-5 text-center font-black text-xs">{selectedQty}</span>}
                               <button
                                 type="button"
                                 onClick={() => setSplitSelectedItems(prev => ({ ...prev, [item.id]: Math.min(unpaidQty, (prev[item.id] || 0) + 1) }))}

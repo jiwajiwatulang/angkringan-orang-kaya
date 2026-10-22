@@ -18,6 +18,7 @@ interface AdminContextType {
   toasts: ToastInfo[];
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   removeToast: (id: string) => void;
+  settingsReady: boolean;
   isAuthenticated: boolean;
   setIsAuthenticated: (val: boolean) => void;
   logout: () => void;
@@ -34,6 +35,7 @@ export function useAdmin() {
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(getStoreSettings());
   const [toasts, setToasts] = useState<ToastInfo[]>([]);
+  const [settingsReady, setSettingsReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   const refreshSettings = async () => {
@@ -42,7 +44,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       setStoreSettings(fresh);
     } catch (_) {
       setStoreSettings(getStoreSettings());
-    }
+    } finally { setSettingsReady(true); }
   };
 
   useEffect(() => {
@@ -81,6 +83,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         toasts,
         showToast,
         removeToast,
+        settingsReady,
         isAuthenticated,
         setIsAuthenticated,
         logout,

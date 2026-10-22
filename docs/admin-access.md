@@ -1,0 +1,13 @@
+# Admin sessions and workspace routing
+
+An authorized Admin session lasts a fixed hour in the same browser tab. Opening the cashier or following a workspace logo no longer logs the user out. Refreshing a tab retains sessionStorage; closing the tab or logging out requires authentication again. Sensitive cashier approvals may still ask for a PIN.
+
+Sessions are bound to a cryptographic token and the current stored PIN/recovery credentials. PIN or recovery-code changes revoke previous sessions atomically with the settings write. Security settings can issue a fresh token for the already authorized tab; other tabs lose access. Old tabs cannot overwrite changed credentials from stale form values, and conditional token deletion cannot revoke a newer session. PIN comparisons read persisted settings, and concurrent incorrect PIN attempts share the five-attempt cooldown.
+
+Old sessions without the current credential binding must authenticate once after this update. Session checks also reject time rollback before issue, fabricated legacy expiry values, and expiry beyond one hour. Settings writes update browser caches only after persistence succeeds. The Admin UI waits for settings, license and session checks before showing protected content.
+
+Any saved activation key/token takes precedence over a demo query or stale demo flag before choosing the local data store. This does not trust the stored key: the existing signature, device binding, expiry and revocation checks still determine access. Expired, revoked or unsigned activations cannot escape into demo. Public devices without activation can use the isolated demo normally. Licensed devices opening `?demo=true` stay in their merchant workspace, and the URL/session demo flags are cleared. Changes of mode across tabs trigger reload before allowing writes.
+
+Workspace logos and navigation stay in the cashier/Admin area, preserving the isolated demo mode only for public demos. The standard catalog toolbar's weight filter uses the same button styling as barcode scanning on desktop and mobile; it filters weighted products across categories and can return to all products. No demo-banner shortcut is introduced.
+
+`npm run test:access` verifies fixed expiry, credential changes and stale tabs, rate limiting, cold-start data-store selection, valid offline licenses and invalid/revoked/expired licenses with demo queries, plus mobile catalog filtering and action styling. Existing POS, stability, weight and offline-build checks remain required. These tests do not establish that all security issues are eliminated; real-browser visual and navigation testing remains outside the previously permitted browser access.

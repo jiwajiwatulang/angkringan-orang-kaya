@@ -85,7 +85,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
       },
       {
         title: 'Mencoba demo kasir dengan aman',
-        summary: 'Data latihan disimpan terpisah dari database toko asli Anda.',
+        summary: 'Data latihan disimpan terpisah dari data toko asli Anda.',
         steps: [
           'Pilih tombol "Coba Demo Kasir" pada halaman utama.',
           'Di kasir demo, Anda bebas mencoba buka shift, scan barcode, tambah pesanan, dan mencetak struk latihan.',
@@ -162,11 +162,11 @@ export const GUIDE_TOPICS: GuideTopic[] = [
           'Nyalakan printer thermal Bluetooth Anda (ukuran 58 mm atau 80 mm).',
           'Buka Admin → Pengaturan → Printer.',
           'Pilih lebar kertas: 58 mm (standar struk kasir mini) atau 80 mm (struk lebar restoran).',
-          'Pada perangkat Android/Capacitor: Tekan "Cari Printer Bluetooth", pilih nama printer Anda (misal: Panda, Eppos, VSC, Zjiang), lalu lakukan Uji Cetak.',
+          'Pada perangkat aplikasi Android: Tekan "Cari Printer Bluetooth", pilih nama printer Anda (misal: Panda, Eppos, VSC, Zjiang), lalu lakukan Uji Cetak.',
           'Pada browser PC/PWA: Cetak struk memanfaatkan dialog cetak sistem bawaan dengan memilih printer thermal yang terpasang.',
           'Lakukan uji coba cetak beberapa menu untuk memastikan teks tercetak tegas dan tidak terpotong tepi.'
         ],
-        tips: 'SakuNota menggunakan koneksi Direct Bluetooth Serial ESC/POS murni sehingga tidak membutuhkan router Wi-Fi atau kuota internet.',
+        tips: 'SakuNota menggunakan koneksi Bluetooth langsung sehingga tidak membutuhkan router Wi-Fi atau kuota internet.',
         targetHref: '/admin/pengaturan/printer',
         targetLabel: 'Pengaturan printer'
       },
@@ -187,41 +187,45 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     ]
   },
   {
-    id: 'data-security',
-    title: 'PIN Admin & Proteksi Keamanan',
-    shortDesc: 'Gembok halaman manajemen dengan PIN dan simpan recovery code pemulihan.',
-    iconType: 'lock',
-    stage: 1,
-    stageLabel: 'Tahap 1: Persiapan Awal',
-    badge: 'Persiapan Awal',
-    businessTypes: ['all', 'setup'],
-    articles: [
-      {
-        title: 'Membuat PIN Admin dan menyimpan Recovery Code',
-        summary: 'Mencegah kasir atau pihak yang tidak berwenang mengubah harga dan melihat omzet.',
-        steps: [
-          'Buka Admin → Pengaturan → Keamanan & Akses.',
-          'Buat 6 digit angka PIN Admin pemilik toko.',
-          'Sistem akan menampilkan Kode Pemulihan Rahasia (Recovery Code). Salin dan catat kode ini di buku catatan pribadi Anda di luar perangkat kasir.',
-          'Setelah PIN aktif, setiap tombol Admin di kasir akan meminta PIN tersebut untuk membuka laporan keuangan, kelola menu, dan pengaturan.',
-          'Jika pemilik lupa PIN, gunakan Recovery Code untuk mereset PIN baru seketika tanpa menghapus data usaha.'
-        ],
-        targetHref: '/admin/pengaturan/keamanan',
-        targetLabel: 'Atur keamanan PIN'
-      },
-      {
-        title: 'Menyiapkan mode offline tanpa internet',
-        summary: 'Pastikan seluruh aset aplikasi tersimpan di memori perangkat.',
-        steps: [
-          'Buka Admin → Pengaturan → Tentang Aplikasi & Bantuan.',
-          'Periksa status kesiapan offline pada kartu Status Offline PWA.',
-          'Jika status belum lengkap, sambungkan internet sebentar dan tekan "Perbarui Aset Offline". Tunggu sampai semua komponen tersimpan 100%.',
-          'Setelah tersimpan, matikan koneksi internet (mode pesawat) dan coba buka ulang halaman kasir. Kasir tetap bekerja lancar tanpa kendala.'
-        ],
-        tips: 'Seluruh database transaksi, menu, dan shift disimpan di IndexedDB perangkat Anda, sehingga toko tetap dapat berjualan di lokasi tanpa sinyal.'
-      }
-    ]
-  },
+  "id": "data-security",
+  "title": "PIN Admin & Proteksi Keamanan",
+  "shortDesc": "Gembok halaman manajemen dengan PIN dan simpan recovery code pemulihan.",
+  "iconType": "lock",
+  "stage": 1,
+  "stageLabel": "Tahap 1: Persiapan Awal",
+  "badge": "Persiapan Awal",
+  "businessTypes": [
+    "all",
+    "setup"
+  ],
+  "articles": [
+    {
+      "title": "Membuat PIN Admin dan menyimpan Recovery Code",
+      "summary": "Mencegah kasir atau pihak yang tidak berwenang mengubah harga dan melihat omzet.",
+      "steps": [
+        "Buka Admin → Pengaturan → Keamanan & Akses.",
+        "Buat PIN Admin pemilik toko dengan 4–12 digit angka.",
+        "Sistem akan menampilkan Kode Pemulihan Rahasia (Recovery Code). Salin dan catat kode ini di buku catatan pribadi Anda di luar perangkat kasir.",
+        "Setelah PIN benar, akses Admin berlaku satu jam di tab yang sama, termasuk saat berpindah ke kasir dan kembali. Logout mengakhiri akses lebih awal.",
+        "Jika pemilik lupa PIN, gunakan Recovery Code untuk mereset PIN baru seketika tanpa menghapus data usaha.",
+        "Mengganti PIN membatalkan akses lama. Gunakan PIN terbaru untuk masuk kembali."
+      ],
+      "targetHref": "/admin/pengaturan/keamanan",
+      "targetLabel": "Atur keamanan PIN"
+    },
+    {
+      "title": "Menyiapkan mode offline tanpa internet",
+      "summary": "Pastikan seluruh aset aplikasi tersimpan di memori perangkat.",
+      "steps": [
+        "Buka Admin → Pengaturan → Tentang Aplikasi & Bantuan.",
+        "Periksa status kesiapan offline pada kartu Status Offline PWA.",
+        "Jika status belum lengkap, sambungkan internet sebentar dan tekan \"Perbarui Aset Offline\". Tunggu sampai semua komponen tersimpan 100%.",
+        "Setelah tersimpan, matikan koneksi internet (mode pesawat) dan coba buka ulang halaman kasir. Kasir tetap bekerja lancar tanpa kendala."
+      ],
+      "tips": "Seluruh data transaksi, menu, dan shift disimpan di penyimpanan perangkat Anda, sehingga toko tetap dapat berjualan di lokasi tanpa sinyal."
+    }
+  ]
+},
 
   // ==========================================
   // TAHAP 2: MENYIAPKAN KATALOG & RUANGAN
@@ -315,44 +319,76 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     ]
   },
   {
-    id: 'retail-weight-sales',
-    title: 'Jual Barang Timbang (Kg / 100g)',
-    shortDesc: 'Pengaturan produk komoditas timbangan seperti sayur, buah, telur, atau daging.',
-    iconType: 'layers',
-    stage: 2,
-    stageLabel: 'Tahap 2: Katalog & Meja',
-    badge: 'Khusus Retail & Toko',
-    businessTypes: ['retail'],
-    articles: [
-      {
-        title: 'Mengatur satuan berat pada katalog produk',
-        summary: 'Pilih satuan Kilogram atau 100 Gram untuk produk yang dijual berdasarkan timbangan.',
-        steps: [
-          'Buka Admin → Kelola Menu & Produk, lalu tambah atau edit produk komoditas timbang.',
-          'Pada bagian "Tipe Satuan", pilih "Satuan Berat (Timbangan)".',
-          'Pilih basis perhitungan: per Kilogram (1.000 g) atau per 100 Gram (misal untuk bumbu giling/keju).',
-          'Masukkan harga jual per kg atau per 100 g (contoh: Jeruk Medan Rp 25.000 / kg).',
-          'Klik Simpan Produk.'
-        ],
-        targetHref: '/admin/menu',
-        targetLabel: 'Atur barang timbang'
-      },
-      {
-        title: 'Menimbang dan menghitung harga otomatis di kasir',
-        summary: 'Kasir hanya perlu mengetik berat fisik, sistem menghitung total rupiah seketika.',
-        steps: [
-          'Di layar Kasir POS, pilih atau ketuk produk timbangan yang dibeli pelanggan (misal: Jeruk Medan).',
-          'Kotak dialog timbangan akan muncul secara otomatis.',
-          'Timbang barang pada timbangan digital Anda, lalu ketik angka berat fisiknya di layar (contoh: 1.45 kg atau 1450 gram).',
-          'Sistem otomatis mengalikan berat fisik dengan tarif per kg: 1.45 kg × Rp 25.000 = Rp 36.250.',
-          'Tekan "Tambah ke Keranjang" dan lanjutkan proses pembayaran seperti biasa.',
-          'Pada struk nota belanja, rincian tercetak rapi: "Jeruk Medan (1.45 kg @ Rp 25.000 = Rp 36.250)".'
-        ],
-        targetHref: '/pos',
-        targetLabel: 'Buka kasir'
-      }
-    ]
-  },
+  "id": "weight-sales",
+  "title": "Jual Barang Timbang",
+  "shortDesc": "Atur harga per kg atau 100 g, lalu masukkan berat di kasir.",
+  "iconType": "package",
+  "stage": 2,
+  "stageLabel": "Tahap 2: Katalog & Meja",
+  "badge": "Warung & Retail",
+  "businessTypes": [
+    "warung",
+    "retail"
+  ],
+  "articles": [
+    {
+      "title": "Coba contoh Warung dan Retail",
+      "summary": "Produk timbang sudah tersedia di demo, tanpa perlu menambah produk sendiri.",
+      "steps": [
+        "Buka demo kasir, lalu pilih Warung atau Retail di bagian atas.",
+        "Buka katalog kasir, lalu pilih kategori Barang Timbang atau cari nama produknya.",
+        "Warung: pilih Lauk Ayam Ungkep seharga Rp48.000 per kg. Masukkan 250 g untuk total Rp12.000. Atau pilih Kacang Goreng seharga Rp8.000 per 100 g; 150 g menghasilkan Rp12.000.",
+        "Retail: pilih Beras Premium Curah seharga Rp18.000 per kg. Masukkan 0,5 kg untuk total Rp9.000. Atau pilih Kopi Bubuk Curah seharga Rp12.000 per 100 g; 250 g menghasilkan Rp30.000.",
+        "Tambah ke keranjang, buka shift bila diminta, lalu selesaikan pembayaran simulasi. Periksa stok, struk, dan modal di Admin."
+      ],
+      "tips": "Contoh memiliki stok dan modal. Mengganti pilihan usaha memulai ulang data demo. Data demo terpisah dari data usaha berlisensi.",
+      "targetHref": "/pos?demo=true",
+      "targetLabel": "Coba produk timbang"
+    },
+    {
+      "title": "Siapkan produk timbang",
+      "summary": "Tersedia untuk usaha Retail dan Warung.",
+      "steps": [
+        "Di Admin → Pengaturan → Profil Usaha, pilih Toko & Retail atau Warung & UMKM.",
+        "Buka Katalog & Stok → Katalog, lalu tambah produk atau ubah produk yang belum memiliki stok dan transaksi.",
+        "Pilih Satuan: Berat. Pilih Harga per: kg atau 100 g, lalu isi harga jualnya.",
+        "Isi Modal dengan satuan harga yang sama jika ingin melihat laba. Contoh: harga Rp18.000 per kg dan modal Rp12.000 per kg.",
+        "Simpan produk. Di bagian Stok, pilih Aktifkan Stok. Isi berat awal dan batas minimum dalam gram. Contoh: 10 kg diisi 10000 g."
+      ],
+      "tips": "Satu produk cukup untuk semua ukuran. Satuan produk yang sudah memiliki stok atau transaksi tidak dapat diganti agar catatan lama tetap sesuai.",
+      "targetHref": "/admin/menu",
+      "targetLabel": "Buka katalog"
+    },
+    {
+      "title": "Coba penjualan di kasir",
+      "summary": "Pilih produk, masukkan berat, lalu tambah ke keranjang.",
+      "steps": [
+        "Buka kasir dan buka shift. Pilih produk timbang dari katalog atau pindai barcode produknya.",
+        "Isi Berat: 250 dan pilih g. Pada harga Rp18.000 per kg, totalnya Rp4.500.",
+        "Untuk kilogram, pilih kg lalu isi 0,5 atau 1,25. Totalnya masing-masing Rp9.000 dan Rp22.500.",
+        "Tekan Tambah ke Keranjang. Tekan Ubah pada berat di keranjang bila perlu mengoreksinya.",
+        "Selesaikan pembayaran seperti biasa. Stok berkurang sesuai berat, dan struk menampilkan g atau kg."
+      ],
+      "tips": "Berat paling kecil 1 g. Gunakan demo atau data latihan untuk mencoba pembayaran. Setelah aplikasi siap digunakan offline, penjualan timbang tetap berjalan tanpa internet.",
+      "targetHref": "/pos?demo=true",
+      "targetLabel": "Coba di demo"
+    },
+    {
+      "title": "Pembayaran terpisah dan pengembalian",
+      "summary": "Bayar atau kembalikan sebagian berat dari nota.",
+      "steps": [
+        "Untuk membagi pembayaran per barang, buka nota belum lunas dan pilih pembayaran per item. Isi berat yang dibayar dalam gram.",
+        "Untuk mengembalikan barang, buka shift lalu masuk Admin → Transaksi dan buka rincian nota yang sudah lunas.",
+        "Buka Pengembalian Barang Timbang. Pilih barang, isi berat yang dikembalikan, alasan, dan cara pengembalian uang.",
+        "Centang Kembalikan barang ke stok hanya jika barang benar-benar kembali dan masih layak dijual.",
+        "Periksa total pengembalian, lalu tekan Simpan Pengembalian. Stok dan laporan akan mengikuti berat yang dikembalikan."
+      ],
+      "tips": "Harga dan modal pada nota lama tetap mengikuti saat penjualan. Misalnya pengembalian 100 g dari penjualan Rp18.000 per kg bernilai Rp1.800 sebelum penyesuaian diskon atau biaya pada nota.",
+      "targetHref": "/admin/transaksi",
+      "targetLabel": "Buka transaksi"
+    }
+  ]
+},
   {
     id: 'retail-add-product',
     title: 'Tambah Barang Cepat saat Kasir',
@@ -411,7 +447,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
           'Buka Admin → Kelola Menu & Produk, lalu klik tombol Edit pada produk.',
           'Pada bagian Foto Produk, pilih file foto dari galeri HP atau kamera komputer Anda (format JPG, PNG, atau WebP).',
           'Aplikasi otomatis mengompresi ukuran foto agar hemat memori dan cepat dimuat di HP kasir.',
-          'Klik Simpan. Foto tersimpan di database lokal perangkat kasir dan dapat ditampilkan selamanya tanpa internet.'
+          'Klik Simpan. Foto tersimpan di penyimpanan perangkat perangkat kasir dan dapat ditampilkan selamanya tanpa internet.'
         ],
         targetHref: '/admin/menu',
         targetLabel: 'Kelola foto produk'
@@ -735,7 +771,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
           'Isi alasan penyesuaian (misal: "Barang rusak kemasan", "Kedaluwarsa", atau "Penghitungan akhir bulan").',
           'Klik Simpan Penyesuaian. Sistem otomatis memperbarui saldo stok dan mencatat selisihnya di riwayat pergerakan stok.'
         ],
-        tips: 'Seluruh perhitungan stok tersimpan aman di database lokal IndexedDB tanpa bergantung pada koneksi internet.'
+        tips: 'Seluruh perhitungan stok tersimpan aman di penyimpanan perangkat tanpa bergantung pada koneksi internet.'
       }
     ]
   },
@@ -750,7 +786,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     businessTypes: ['all', 'setup'],
     articles: [
       {
-        title: 'Mengunduh cadangan database toko (.json)',
+        title: 'Mengunduh cadangan data toko (.json)',
         summary: 'Cadangan mencakup seluruh katalog produk, foto, riwayat transaksi, shift kasir, dan stok.',
         steps: [
           'Buka Admin → Pengaturan → Data & Cadangan.',

@@ -4,7 +4,7 @@
  * Menggantikan timestamp LocalStorage yang rentan manipulasi dengan:
  * 1. Token sesi acak 256-bit yang digenerasi secara kriptografis (Web Crypto).
  * 2. Plaintext token HANYA disimpan di sessionStorage (otomatis terhapus saat tab ditutup).
- * 3. Hash SHA-256 token disimpan di IndexedDB bersama batas waktu kadaluarsa (2 jam).
+ * 3. Hash SHA-256 token disimpan di IndexedDB bersama batas waktu kadaluarsa (1 jam).
  * 4. Peniadaan total parameter bypass seperti ?auth=demo.
  */
 
@@ -12,7 +12,7 @@ import { db } from './dexie';
 
 const SESSION_STORAGE_KEY = 'sakunota_admin_session_token';
 const DB_SESSION_KEY = 'admin_active_session';
-const SESSION_DURATION_MS = 2 * 60 * 60 * 1000; // 2 Jam
+export const SESSION_DURATION_MS = 60 * 60 * 1000; // Fixed one-hour authorization, not extended by navigation.
 
 /**
  * Meng-hash token sesi dengan SHA-256
@@ -39,16 +39,25 @@ export async function createAdminSession(): Promise<string> {
   const rawToken = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
   const tokenHash = await hashToken(rawToken);
 
-  const expiresAt = Date.now() + SESSION_DURATION_MS;
+  const issuedAt = Date.now();
+  const expiresAt = issuedAt + SESSION_DURATION_MS;
+  const config = (await db.table('settings').get('pos_store_settings'))?.value;
+  const credentialHash = await hashToken(JSON.stringify([config?.adminPin ?? '', config?.recoveryCodeHash ?? '']));
 
   // 1. Simpan hash token di IndexedDB lokal
-  await db.table('settings').put({
-    key: DB_SESSION_KEY,
-    value: {
-      tokenHash,
-      expiresAt
-    },
-    updatedAt: new Date().toISOString()
+  await db.transaction('rw', 'settings', async () => {
+    const latest = (await db.table('settings').get('pos_store_settings'))?.value;
+    if (JSON.stringify([latest?.adminPin ?? '', latest?.recoveryCodeHash ?? '']) !== JSON.stringify([config?.adminPin ?? '', config?.recoveryCodeHash ?? ''])) throw new Error('PIN sudah berubah. Masuk kembali dengan PIN terbaru.');
+    await db.table('settings').put({
+      key: DB_SESSION_KEY,
+      value: {
+        tokenHash,
+        issuedAt,
+        credentialHash,
+        expiresAt
+      },
+      updatedAt: new Date().toISOString()
+    });
   });
 
   // 2. Simpan plaintext token HANYA di sessionStorage peramban
@@ -82,21 +91,27 @@ export async function verifyAdminSession(): Promise<boolean> {
     // Ambil data sesi dari IndexedDB
     const entry = await db.table('settings').get(DB_SESSION_KEY);
     if (!entry || !entry.value) {
-      sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      if (sessionStorage.getItem(SESSION_STORAGE_KEY) === rawToken) sessionStorage.removeItem(SESSION_STORAGE_KEY);
       return false;
     }
 
-    const { tokenHash: storedHash, expiresAt } = entry.value;
+    const { tokenHash: storedHash, expiresAt, issuedAt, credentialHash } = entry.value;
+    const config = (await db.table('settings').get('pos_store_settings'))?.value;
+    const currentCredentialHash = await hashToken(JSON.stringify([config?.adminPin ?? '', config?.recoveryCodeHash ?? '']));
+    const validTime = Number.isFinite(issuedAt) && Number.isFinite(expiresAt) && expiresAt <= issuedAt + SESSION_DURATION_MS && Date.now() >= issuedAt && Date.now() < expiresAt;
 
     // Periksa kecocokan hash dan masa berlaku
-    if (storedHash === tokenHash && Date.now() < expiresAt) {
+    if (storedHash === tokenHash && validTime && credentialHash === currentCredentialHash) {
       return true;
     }
 
     // Jika kadaluarsa atau hash tidak cocok: bersihkan
-    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    if (sessionStorage.getItem(SESSION_STORAGE_KEY) === rawToken) sessionStorage.removeItem(SESSION_STORAGE_KEY);
     // An old tab must not revoke a newer owner's session with a different token.
-    if (storedHash === tokenHash && Date.now() >= expiresAt) await db.table('settings').delete(DB_SESSION_KEY);
+    if (storedHash === tokenHash) await db.transaction('rw', 'settings', async () => {
+      const latest = await db.table('settings').get(DB_SESSION_KEY);
+      if (latest?.value?.tokenHash === tokenHash) await db.table('settings').delete(DB_SESSION_KEY);
+    });
     return false;
   } catch (err) {
     console.error('Session verification error:', err);

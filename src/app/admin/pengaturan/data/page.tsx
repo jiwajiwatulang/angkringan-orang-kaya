@@ -1,4 +1,5 @@
 "use client";
+import { verifyMerchantPin } from '@/lib/merchantAccess';
 import LockIcon from "@/components/LockIcon";
 import LineIcon from "@/components/LineIcon";
 
@@ -256,7 +257,7 @@ export default function PengaturanDataPage() {
       return;
     }
 
-    if (resetPinInput !== storeSettings.adminPin) {
+    if (!(await verifyMerchantPin(resetPinInput).catch(() => false))) {
       setResetPinError("PIN Otorisasi salah. Silakan coba lagi.");
       return;
     }
