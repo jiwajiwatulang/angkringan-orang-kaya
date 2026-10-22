@@ -1,3 +1,6 @@
+import { ensureDemoWeightProducts } from './demoWeight';
+import { measuredSplitAmount } from './weightRefund';
+import { lineTotal, validateMeasure, weightEnabled, type SaleMeasure } from './weight';
 import Dexie from 'dexie';
 import { db, MenuItem, Order, OrderItem, Payment, SelectedModifier, PaymentProof, ModifierGroup, TableShape } from './dexie';
 import initialData from './initialData.json';
@@ -127,6 +130,7 @@ export async function getMenus() {
     }
   }
 
+  await ensureDemoWeightProducts(getStoreSettings().businessType);
   let menus = await db.table('menuItems').orderBy('urutan').toArray();
 
   return menus;
@@ -226,8 +230,10 @@ export async function seedDemoMenus(type: string = 'angkringan', adminPin?: stri
   return menusToInsert.length;
 }
 
-export async function createMenu(data: { sku?: string, nama: string, harga: number, kategori: string, isSoldOut?: boolean, modifiers?: any[], imageData?: string | null }) {
+export async function createMenu(data: SaleMeasure & { sku?: string, nama: string, harga: number, kategori: string, isSoldOut?: boolean, modifiers?: any[], imageData?: string | null }) {
   await requireMerchantAdmin();
+  validateMeasure(data);
+  if (data.saleUnit === 'weight' && typeof window !== 'undefined' && !weightEnabled(getStoreSettings().businessType)) throw new Error('Penjualan berat hanya tersedia untuk Retail dan Warung');
   const imageData = validateProductPhoto(data.imageData);
   const cleanName = data.nama.trim();
   const cleanCategory = data.kategori.trim();
@@ -250,7 +256,7 @@ export async function createMenu(data: { sku?: string, nama: string, harga: numb
     isSoldOut: Boolean(data.isSoldOut),
     urutan: count,
     modifiers: data.modifiers || [],
-    imageData
+    imageData, saleUnit: data.saleUnit, priceBasis: data.priceBasis, costPrice: data.costPrice
   });
 }
 
@@ -268,33 +274,42 @@ export async function reorderMenus(items: {id: number, urutan: number}[]) {
   });
 }
 
-export async function updateMenu(id: number, data: { sku?: string; nama?: string; harga?: number; kategori?: string; isSoldOut?: boolean; modifiers?: any[]; imageData?: string | null }) {
+export async function updateMenu(id: number, data: SaleMeasure & { sku?: string; nama?: string; harga?: number; kategori?: string; isSoldOut?: boolean; modifiers?: any[]; imageData?: string | null }) {
   await requireMerchantAdmin();
-  const updateData: any = {};
-  if (data.sku !== undefined) {
-    const cleanSku = data.sku.trim();
-    if (cleanSku) {
-      const duplicate = await db.table('menuItems').filter((m: MenuItem) => m.id !== id && (m.sku || '').toLowerCase() === cleanSku.toLowerCase()).first();
-      if (duplicate) {
-        throw new Error(`SKU / Kode Menu "${cleanSku}" sudah digunakan oleh menu "${duplicate.nama}". Mohon gunakan kode lain atau kosongkan.`);
+  return db.transaction('rw', ['menuItems', 'orderItems'], async () => {
+    const previous = await db.table('menuItems').get(id);
+    if (!previous) throw new Error('Produk tidak ditemukan');
+    const merged = { ...previous, ...data };
+    validateMeasure(merged);
+    if (merged.saleUnit === 'weight' && typeof window !== 'undefined' && !weightEnabled(getStoreSettings().businessType)) throw new Error('Penjualan berat hanya tersedia untuk Retail dan Warung');
+    if ((previous.saleUnit ?? 'pcs') !== (merged.saleUnit ?? 'pcs') && (previous.trackStock || await db.table('orderItems').where('menuItemId').equals(id).count())) throw new Error('Satuan produk yang sudah memiliki stok atau transaksi tidak dapat diubah');
+    const updateData: any = {};
+    for (const key of ['saleUnit', 'priceBasis', 'costPrice'] as const) if (data[key] !== undefined) updateData[key] = data[key];
+    if (data.sku !== undefined) {
+      const cleanSku = data.sku.trim();
+      if (cleanSku) {
+        const duplicate = await db.table('menuItems').filter((m: MenuItem) => m.id !== id && (m.sku || '').toLowerCase() === cleanSku.toLowerCase()).first();
+        if (duplicate) {
+          throw new Error(`SKU / Kode Menu "${cleanSku}" sudah digunakan oleh menu "${duplicate.nama}". Mohon gunakan kode lain atau kosongkan.`);
+        }
+        updateData.sku = cleanSku;
+      } else {
+        updateData.sku = undefined;
       }
-      updateData.sku = cleanSku;
-    } else {
-      updateData.sku = undefined;
     }
-  }
-  if (data.nama !== undefined) updateData.nama = data.nama.trim();
-  if (data.harga !== undefined) updateData.harga = Number(data.harga);
-  if (data.kategori !== undefined) updateData.kategori = data.kategori.trim();
-  if (data.isSoldOut !== undefined) updateData.isSoldOut = Boolean(data.isSoldOut);
-  if (data.modifiers !== undefined) updateData.modifiers = data.modifiers;
-  if (data.imageData !== undefined) updateData.imageData = validateProductPhoto(data.imageData);
+    if (data.nama !== undefined) updateData.nama = data.nama.trim();
+    if (data.harga !== undefined) updateData.harga = Number(data.harga);
+    if (data.kategori !== undefined) updateData.kategori = data.kategori.trim();
+    if (data.isSoldOut !== undefined) updateData.isSoldOut = Boolean(data.isSoldOut);
+    if (data.modifiers !== undefined) updateData.modifiers = data.modifiers;
+    if (data.imageData !== undefined) updateData.imageData = validateProductPhoto(data.imageData);
 
-  const count = await db.table('menuItems').update(id, updateData);
-  if (count === 0) {
-    throw new Error(`Menu dengan ID ${id} tidak ditemukan.`);
-  }
-  return true;
+    const count = await db.table('menuItems').update(id, updateData);
+    if (count === 0) {
+      throw new Error(`Menu dengan ID ${id} tidak ditemukan.`);
+    }
+    return true;
+  });
 }
 
 export async function toggleMenuSoldOut(id: number, isSoldOut: boolean) {
@@ -499,8 +514,8 @@ async function readOrders(orders: Order[]) {
 
     const orderProofs = proofs.filter(pr => pr.orderId === order.id);
     const completedPayments = orderPayments.filter(p => p.status === 'completed');
-    const totalPaid = completedPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
-    const remainingBalance = Math.max(0, order.total - totalPaid);
+    const totalPaid = completedPayments.reduce((sum: number, p: any) => sum + p.amount - (p.weightRefundedAmount ?? 0), 0);
+    const remainingBalance = Math.max(0, order.total - (order.weightRefundAmount ?? 0) - totalPaid);
 
     return {
       ...order,
@@ -513,6 +528,35 @@ async function readOrders(orders: Order[]) {
       remainingBalance: orderPayments.length > 0 ? remainingBalance : (order.status === 'paid' ? 0 : order.total)
     };
   });
+}
+
+async function prepareMeasuredItems(items: any[], oldItems: any[] = []) {
+  const result = [];
+  for (const input of items) {
+    if (!Number.isSafeInteger(input.qty) || input.qty <= 0) throw new Error(input.pendingRetailProduct ? 'Data barang belum lengkap.' : 'Jumlah barang tidak valid');
+    const product = await db.table('menuItems').get(input.menuItemId ?? input.id);
+    const old = oldItems.find(i => i.menuItemId === (input.menuItemId ?? input.id) && JSON.stringify(i.selectedModifiers ?? []) === JSON.stringify(input.selectedModifiers ?? []));
+    const source = old ?? product;
+    if (source?.saleUnit === 'weight') {
+      if (typeof window !== 'undefined' && !weightEnabled(getStoreSettings().businessType)) throw new Error('Penjualan berat hanya tersedia untuk Retail dan Warung');
+      if (input.selectedModifiers?.length || input.pendingRetailProduct) throw new Error('Pilihan barang tidak valid');
+      const harga = source.hargaSatuan ?? source.harga;
+      validateMeasure({ ...source, harga });
+      result.push({ ...input, harga, saleUnit: 'weight', priceBasis: source.priceBasis ?? 1000, costPrice: source.costPrice ?? null });
+    } else {
+      if (input.saleUnit === 'weight') throw new Error('Satuan produk telah berubah. Pilih ulang barang');
+      result.push({ ...input, saleUnit: 'pcs', priceBasis: undefined, costPrice: source?.costPrice ?? null });
+    }
+  }
+  return result;
+}
+
+function checkMeasuredTotal(data: any) {
+  if (!data.items.some((i: any) => i.saleUnit === 'weight')) return;
+  const subtotal = data.items.reduce((sum: number, i: any) => sum + lineTotal(i), 0);
+  if (![data.discount ?? 0, data.tax ?? 0, data.serviceCharge ?? 0].every(n => Number.isSafeInteger(n) && n >= 0) || (data.discount ?? 0) > subtotal) throw new Error('Diskon atau biaya tidak valid');
+  const total = subtotal - (data.discount ?? 0) + (data.tax ?? 0) + (data.serviceCharge ?? 0);
+  if (data.subtotal !== subtotal || data.total !== total || !Number.isSafeInteger(total) || total < 0) throw new Error('Total berubah. Periksa kembali keranjang');
 }
 
 export async function createOrder(data: any) {
@@ -532,6 +576,9 @@ export async function createOrder(data: any) {
         return { id: existing.id, createdAt: existing.createdAt, isDuplicate: true };
       }
     }
+
+    data = { ...data, items: await prepareMeasuredItems(data.items) };
+    checkMeasuredTotal(data);
 
     // 2. Cap transaksi ke shift kasir aktif (atomic query)
     let currentShiftId = data.shiftId || null;
@@ -600,7 +647,7 @@ export async function createOrder(data: any) {
       pendingRetailProduct: !isPaid ? item.pendingRetailProduct : undefined,
       namaMenu: item.nama || item.namaMenu || 'Item',
       kategoriMenu: item.kategori || item.kategoriMenu || 'Umum',
-      qty: item.qty,
+      qty: item.qty, saleUnit: item.saleUnit, priceBasis: item.priceBasis, costPrice: item.costPrice,
       paidQty: isPaid ? item.qty : (item.paidQty || 0),
       hargaSatuan: item.harga ?? item.hargaSatuan ?? 0,
       selectedModifiers: item.selectedModifiers || []
@@ -668,6 +715,9 @@ export async function updateOrder(id: number, data: any) {
   await Dexie.waitFor(requireCashierWriteAccess());
   return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'tables', 'menuItems', 'inventoryMovements', 'paymentProofs', 'shifts', 'auditLogs'], async () => {
     const existingOrder = await db.table('orders').get(id);
+    const originalItems = await db.table('orderItems').where('orderId').equals(id).toArray();
+    data = { ...data, items: await prepareMeasuredItems(data.items, originalItems) };
+    checkMeasuredTotal(data);
     if (!existingOrder || existingOrder.status === 'void') throw new Error('Nota tidak ditemukan atau sudah dibatalkan.');
     if ((existingOrder.paidAmount || 0) > 0) throw new Error('Nota yang sudah menerima pembayaran tidak dapat diubah. Gunakan refund.');
     await db.table('orders').update(id, {
@@ -708,7 +758,7 @@ export async function updateOrder(id: number, data: any) {
       pendingRetailProduct: item.pendingRetailProduct,
       namaMenu: item.nama || item.namaMenu || 'Item',
       kategoriMenu: item.kategori || item.kategoriMenu || 'Umum',
-      qty: item.qty,
+      qty: item.qty, saleUnit: item.saleUnit, priceBasis: item.priceBasis, costPrice: item.costPrice,
       paidQty: item.paidQty || 0,
       hargaSatuan: item.harga ?? item.hargaSatuan ?? 0,
       selectedModifiers: item.selectedModifiers || []
@@ -759,7 +809,7 @@ export async function recordPayment(data: {
   cashTendered?: number;
   change?: number;
   splitType: 'full' | 'item' | 'equal' | 'partial';
-  itemsPaid?: { menuItemId: number; itemKey?: string; nama: string; qty: number; harga: number }[];
+  itemsPaid?: { saleUnit?: 'pcs' | 'weight'; priceBasis?: 100 | 1000; orderItemId?: number; menuItemId: number; itemKey?: string; nama: string; qty: number; harga: number }[];
   operatorName: string;
   notes?: string;
   proof?: { imageData: string; fileName?: string; fileSize?: number; mimeType?: string; notes?: string };
@@ -783,8 +833,8 @@ export async function recordPayment(data: {
       .and((p: any) => p.status === 'completed')
       .toArray();
 
-    const alreadyPaid = existingPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
-    const remainingBefore = Math.max(0, order.total - alreadyPaid);
+    const alreadyPaid = existingPayments.reduce((sum: number, p: any) => sum + p.amount - (p.weightRefundedAmount ?? 0), 0);
+    const remainingBefore = Math.max(0, order.total - (order.weightRefundAmount ?? 0) - alreadyPaid);
 
     if (remainingBefore <= 0) {
       throw new Error('Nota ini sudah lunas.');
@@ -793,6 +843,12 @@ export async function recordPayment(data: {
     // Batasi nominal bayar agar tidak melebihi sisa tagihan
     if (!Number.isFinite(data.amount)) throw new Error('Nominal pembayaran tidak valid.');
     const payAmount = Math.min(data.amount, remainingBefore);
+    const measuredItems = await db.table('orderItems').where('orderId').equals(data.orderId).sortBy('id');
+    if (data.splitType === 'item' && measuredItems.some(i => i.saleUnit === 'weight')) {
+      const expected = Math.min(remainingBefore, measuredSplitAmount(order, measuredItems, data.itemsPaid ?? []));
+      if (expected !== payAmount) throw new Error('Nominal pembayaran barang tidak sesuai');
+      data.itemsPaid = (data.itemsPaid ?? []).map(i => { const original = measuredItems.find(m => m.id === i.orderItemId)!; return { ...i, menuItemId: original.menuItemId, nama: original.namaMenu, harga: original.hargaSatuan, saleUnit: original.saleUnit, priceBasis: original.priceBasis }; });
+    }
     if (payAmount <= 0) {
       throw new Error('Nominal pembayaran harus lebih dari Rp 0.');
     }
@@ -852,7 +908,7 @@ export async function recordPayment(data: {
     if (data.splitType === 'item' && data.itemsPaid && data.itemsPaid.length > 0) {
       const orderItems = await db.table('orderItems').where('orderId').equals(data.orderId).toArray();
       for (const paidItem of data.itemsPaid) {
-        const oi = orderItems.find((i: any) => i.menuItemId === paidItem.menuItemId);
+        const oi = orderItems.find((i: any) => paidItem.orderItemId ? i.id === paidItem.orderItemId : i.menuItemId === paidItem.menuItemId);
         if (oi) {
           const currentPaidQty = oi.paidQty || 0;
           await db.table('orderItems').update(oi.id, {
@@ -863,10 +919,10 @@ export async function recordPayment(data: {
     }
 
     const newTotalPaid = alreadyPaid + payAmount;
-    const remainingAfter = Math.max(0, order.total - newTotalPaid);
+    const remainingAfter = Math.max(0, order.total - (order.weightRefundAmount ?? 0) - newTotalPaid);
     const isFullyPaid = remainingAfter === 0;
 
-    if (isFullyPaid) await finishRetailOrder(data.orderId);
+    if (isFullyPaid) { await finishRetailOrder(data.orderId); await db.table('orderItems').where('orderId').equals(data.orderId).modify(i => { i.paidQty = i.qty; }); }
 
     // 5. Update Nota Induk
     await db.table('orders').update(data.orderId, {
@@ -926,7 +982,7 @@ export async function refundPartialPayment(paymentId: number, options: { reason:
       refundReason: options.reason || 'Refund Pembayaran Parsial',
       refundedAt: new Date().toISOString(),
       refundOperator: options.operator || 'Admin',
-      cashRefundAmount: payment.paymentMethod === 'Cash' ? payment.amount : 0,
+      cashRefundAmount: payment.paymentMethod === 'Cash' ? payment.amount - (payment.weightRefundedAmount ?? 0) : 0,
       refundShiftId: refundShift?.id ?? payment.shiftId
     });
 
@@ -934,7 +990,7 @@ export async function refundPartialPayment(paymentId: number, options: { reason:
     if (payment.splitType === 'item' && payment.itemsPaid && payment.itemsPaid.length > 0) {
       const orderItems = await db.table('orderItems').where('orderId').equals(payment.orderId).toArray();
       for (const paidItem of payment.itemsPaid) {
-        const oi = orderItems.find((i: any) => i.menuItemId === paidItem.menuItemId);
+        const oi = orderItems.find((i: any) => paidItem.orderItemId ? i.id === paidItem.orderItemId : i.menuItemId === paidItem.menuItemId);
         if (oi && oi.paidQty) {
           await db.table('orderItems').update(oi.id, {
             paidQty: Math.max(0, oi.paidQty - paidItem.qty)
@@ -949,8 +1005,8 @@ export async function refundPartialPayment(paymentId: number, options: { reason:
       .and((p: any) => p.status === 'completed')
       .toArray();
 
-    const newTotalPaid = activePayments.reduce((sum: number, p: any) => sum + p.amount, 0);
-    const newRemaining = Math.max(0, order.total - newTotalPaid);
+    const newTotalPaid = activePayments.reduce((sum: number, p: any) => sum + p.amount - (p.weightRefundedAmount ?? 0), 0);
+    const newRemaining = Math.max(0, order.total - (order.weightRefundAmount ?? 0) - newTotalPaid);
 
     // 4. Update status nota induk
     await db.table('orders').update(payment.orderId, {
@@ -973,7 +1029,7 @@ export async function refundPartialPayment(paymentId: number, options: { reason:
     await db.table('auditLogs').add({
       action: 'PARTIAL_REFUND',
       orderId: payment.orderId,
-      amount: payment.amount,
+      amount: payment.amount - (payment.weightRefundedAmount ?? 0),
       reason: `Refund pembayaran parsial #${paymentId} (${payment.paymentMethod}): ${options.reason}`,
       refundMethod: payment.paymentMethod === 'Cash' ? 'Tunai' : payment.paymentMethod,
       operator: options.operator || 'Admin',
@@ -982,7 +1038,7 @@ export async function refundPartialPayment(paymentId: number, options: { reason:
 
     return {
       paymentId,
-      refundedAmount: payment.amount,
+      refundedAmount: payment.amount - (payment.weightRefundedAmount ?? 0),
       newTotalPaid,
       remainingBalance: newRemaining
     };
@@ -1027,13 +1083,13 @@ export async function processVoidRefund(orderId: number, options: { reason: stri
     // Tandai seluruh payment dari nota ini sebagai refunded jika ada
     const orderPayments = await db.table('payments').where('orderId').equals(orderId).toArray();
     const refundShift = await getActiveShift();
-    const paidTotal = orderPayments.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0);
+    const paidTotal = orderPayments.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount - (p.weightRefundedAmount ?? 0), 0);
     const requestedRefund = Number(options.refundAmount);
     if (!Number.isFinite(requestedRefund) || requestedRefund < 0 || requestedRefund > paidTotal) throw new Error('Nominal refund tidak valid atau melebihi pembayaran.');
     let cashRefundRemaining = options.isRefunded && ['Cash', 'Tunai'].includes(options.refundMethod) ? requestedRefund : 0;
     for (const p of orderPayments) {
       if (p.status === 'completed') {
-        const cashRefundAmount = Math.min(cashRefundRemaining, p.amount);
+        const cashRefundAmount = Math.min(cashRefundRemaining, p.amount - (p.weightRefundedAmount ?? 0));
         cashRefundRemaining -= cashRefundAmount;
         await db.table('payments').update(p.id, {
           status: 'refunded',
@@ -1314,7 +1370,7 @@ export async function matchBulkPaymentProofs(files: {
 
 // --- FITUR PENGELOLAAN DATA MASSAL (BULK MANAGEMENT) ---
 
-export async function bulkImportMenus(items: {
+export async function bulkImportMenus(items: (SaleMeasure & {
   sku?: string;
   nama: string;
   harga: number;
@@ -1326,9 +1382,10 @@ export async function bulkImportMenus(items: {
   stockQty?: number;
   minimumStock?: number;
   stockUnit?: string;
-}[], options: { mode: 'create_only' | 'update_existing' | 'upsert' }) {
+})[], options: { mode: 'create_only' | 'update_existing' | 'upsert' }) {
   await requireMerchantAdmin();
   for (const item of items) {
+    if (item.saleUnit === 'weight' && typeof window !== 'undefined' && !weightEnabled(getStoreSettings().businessType)) throw new Error('Penjualan berat hanya tersedia untuk Retail dan Warung');
     if (item.imageData !== undefined) validateProductPhoto(item.imageData);
     if (item.trackStock && (!Number.isInteger(item.stockQty) || item.stockQty! < 0 || !Number.isInteger(item.minimumStock ?? 0) || (item.minimumStock ?? 0) < 0)) throw new Error('Stok impor tidak valid.');
   }
@@ -1363,6 +1420,8 @@ export async function bulkImportMenus(items: {
         ? existing.find(m => (m.sku || '').toLowerCase() === sku.toLowerCase()) || existing.find(m => !m.sku && m.nama.toLowerCase() === cleanName.toLowerCase())
         : existing.find(m => m.nama.toLowerCase() === cleanName.toLowerCase());
 
+      if (match && raw.saleUnit !== undefined && (match.saleUnit ?? 'pcs') !== raw.saleUnit) { errors.push({ row: rowNum, item: raw, reason: 'Satuan produk berbeda' }); continue; }
+      try { validateMeasure({ ...match, ...raw }); } catch (e) { errors.push({ row: rowNum, item: raw, reason: (e as Error).message }); continue; }
       if (match) {
         if (options.mode === 'create_only') {
           skippedCount++;
@@ -1374,6 +1433,8 @@ export async function bulkImportMenus(items: {
           harga: harga,
           kategori: raw.kategori ? raw.kategori.trim() : match.kategori,
           isSoldOut: match.trackStock ? match.isSoldOut : raw.isSoldOut !== undefined ? Boolean(raw.isSoldOut) : match.isSoldOut,
+          ...(raw.costPrice !== undefined ? { costPrice: raw.costPrice } : {}),
+          ...(raw.priceBasis !== undefined ? { priceBasis: raw.priceBasis } : {}),
           ...(raw.imageData !== undefined ? { imageData: validateProductPhoto(raw.imageData) } : {}),
           ...(raw.modifiers !== undefined ? { modifiers: raw.modifiers } : {})
         });
@@ -1385,6 +1446,7 @@ export async function bulkImportMenus(items: {
         }
         maxUrutan++;
         const newMenu = {
+          saleUnit: raw.saleUnit, priceBasis: raw.priceBasis, costPrice: raw.costPrice,
           sku: sku || undefined,
           nama: cleanName,
           harga: harga,
@@ -1394,7 +1456,7 @@ export async function bulkImportMenus(items: {
           modifiers: raw.modifiers || [],
           imageData: validateProductPhoto(raw.imageData),
           trackStock: Boolean(raw.trackStock), stockQty: raw.trackStock ? raw.stockQty : 0,
-          minimumStock: raw.minimumStock ?? 0, stockUnit: raw.stockUnit || 'pcs'
+          minimumStock: raw.minimumStock ?? 0, stockUnit: raw.saleUnit === 'weight' ? 'g' : raw.stockUnit || 'pcs'
         };
         const newId = await db.table('menuItems').add(newMenu) as number;
         if (newMenu.trackStock) {
@@ -1787,6 +1849,7 @@ export async function getShiftLiveStats(shiftId: number) {
   // Expected Cash = Modal Awal + Penjualan Tunai - Refund Tunai + Kas Masuk - Kas Keluar
   // A refund can belong to this shift even when its original sale was in a previous shift.
   if (allPayments.length === 0) cashRefunds += storePayments.filter((p: any) => p.refundShiftId === shiftId && p.shiftId !== shiftId).reduce((sum: number, p: any) => sum + (p.cashRefundAmount || 0), 0);
+  cashRefunds += (await db.table('weightRefunds').where('shiftId').equals(shiftId).toArray()).filter(r => r.method === 'Cash').reduce((sum, r) => sum + r.amount, 0);
   const expectedCash = (Number(shift.startingCash) || 0) + cashSales - cashRefunds + cashIn - cashOut;
 
   const verifiedNonCash = typeof allPayments !== 'undefined'
@@ -1849,7 +1912,7 @@ export async function openShift(data: { operatorName: string, startingCash: numb
 export async function closeShift(shiftId: number, data: { actualCash: number, notes?: string, operatorName?: string }) {
   await requireActiveCashierShift(shiftId);
   if (!Number.isFinite(data.actualCash) || data.actualCash < 0) throw new Error('Jumlah uang fisik tidak valid.');
-  return db.transaction('rw', ['shifts', 'orders', 'payments', 'cashMovements', 'auditLogs'], async () => {
+  return db.transaction('rw', ['shifts', 'orders', 'payments', 'cashMovements', 'auditLogs', 'weightRefunds'], async () => {
   const stats = await getShiftLiveStats(shiftId);
   if (stats.status !== 'open') throw new Error('Shift sudah ditutup.');
   const actual = Number(data.actualCash) || 0;
@@ -1938,7 +2001,8 @@ export async function deleteCashMovement(id: number) {
 
 export async function resetAllTransactions() {
   await requireMerchantAdmin();
-  await db.transaction('rw', ['orders', 'orderItems', 'payments', 'paymentProofs', 'tables', 'auditLogs', 'shifts', 'cashMovements'], async () => {
+  await db.transaction('rw', ['orders', 'orderItems', 'payments', 'paymentProofs', 'tables', 'auditLogs', 'shifts', 'cashMovements', 'weightRefunds', 'refundEvents'], async () => {
+    await db.table('weightRefunds').clear(); await db.table('refundEvents').clear();
     await db.table('orderItems').clear();
     await db.table('orders').clear();
     await db.table('payments').clear();
@@ -2076,7 +2140,9 @@ export async function exportAllData() {
     auditLogs,
     shifts,
     cashMovements,
-    inventoryMovements
+    inventoryMovements,
+    weightRefunds: await db.table('weightRefunds').toArray(),
+    refundEvents: await db.table('refundEvents').toArray()
   };
   });
 }
@@ -2143,8 +2209,10 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
   if (!validation.isValid) {
     throw new Error(validation.error || 'Format file cadangan tidak valid: Data menu tidak ditemukan.');
   }
+  for (const name of ['weightRefunds', 'refundEvents']) if (data[name] !== undefined && !Array.isArray(data[name])) throw new Error('Riwayat pengembalian tidak valid');
   if (data.inventoryMovements !== undefined && !Array.isArray(data.inventoryMovements)) throw new Error('Riwayat stok tidak valid.');
   for (const product of data.menus) {
+    validateMeasure(product);
     validateProductPhoto(product.imageData);
     if (product.trackStock && (!Number.isInteger(product.stockQty) || product.stockQty < 0 || !Number.isInteger(product.minimumStock ?? 0) || (product.minimumStock ?? 0) < 0)) throw new Error('Saldo stok dalam cadangan tidak valid.');
   }
@@ -2173,7 +2241,8 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
 
   // Helper pemulihan data ke tabel Dexie - SEMUA tabel DAN pengaturan dieksekusi dalam 1 transaksi ACID
   const restoreToTables = async (payload: any) => {
-    await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems', 'payments', 'paymentProofs', 'auditLogs', 'shifts', 'cashMovements', 'settings', 'inventoryMovements'], async () => {
+    await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems', 'payments', 'paymentProofs', 'auditLogs', 'shifts', 'cashMovements', 'settings', 'inventoryMovements', 'weightRefunds', 'refundEvents'], async () => {
+      for (const name of ['weightRefunds', 'refundEvents']) { await db.table(name).clear(); if (payload[name]?.length) await db.table(name).bulkAdd(payload[name]); }
       await db.table('inventoryMovements').clear();
       if (payload.inventoryMovements?.length) await db.table('inventoryMovements').bulkAdd(payload.inventoryMovements);
       await db.table('auditLogs').clear();
@@ -2188,7 +2257,7 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
 
       if (payload.menus && payload.menus.length > 0) {
         const cleanMenus = payload.menus.map((m: any) => ({
-          id: m.id,
+          id: m.id, saleUnit: m.saleUnit, priceBasis: m.priceBasis, costPrice: m.costPrice,
           sku: m.sku || undefined,
           nama: m.nama,
           harga: Number(m.harga) || 0,

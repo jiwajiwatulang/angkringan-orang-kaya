@@ -49,6 +49,7 @@ export async function submitWaiterOrder(tableId: number, lines: WaiterLine[], no
     for (const line of lines) {
       if (!Number.isInteger(line.qty) || line.qty < 1 || line.qty > 999) throw new Error('Jumlah pesanan tidak valid.');
       const menu = await db.table('menuItems').get(line.menuItemId) as MenuItem | undefined;
+      if (menu?.saleUnit === 'weight') throw new Error('Barang timbang dipesan melalui kasir');
       if (!menu || menu.isSoldOut || !Number.isFinite(menu.harga) || menu.harga < 0) throw new Error('Menu tidak tersedia.');
       const groups = menu.modifiers || getDefaultModifiersForCategory(menu.kategori, menu.nama);
       const selectedModifiers: SelectedModifier[] = [];

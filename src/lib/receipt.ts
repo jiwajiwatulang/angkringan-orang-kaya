@@ -1,3 +1,4 @@
+import { lineTotal, quantityLabel } from './weight';
 import { StoreSettings, getStoreSettings } from './settings';
 import { Capacitor } from '@capacitor/core';
 import { BluetoothSerial } from '@ascentio-it/capacitor-bluetooth-serial';
@@ -161,11 +162,11 @@ export function generateEscPosReceipt(
 
     const qty = Number(item.qty || 1);
     const harga = Number(item.harga || 0);
-    const subtotal = qty * harga;
+    const subtotal = lineTotal(item, qty);
     calculatedSubtotal += subtotal;
 
     const itemName = item.nama || item.namaMenu || 'Item';
-    const leftHeader = `${qty}x ${itemName}`;
+    const leftHeader = `${quantityLabel(item, qty)} ${itemName}`;
     const rightHeader = formatCurrency(subtotal);
 
     if (mode === 'all') {
@@ -226,7 +227,7 @@ export function generateEscPosReceipt(
         txt += lineTwoCols(pLabel, formatCurrency(p.amount));
         if (p.itemsPaid && p.itemsPaid.length > 0) {
           p.itemsPaid.forEach((it: any) => {
-            txt += `    • ${it.qty}x ${it.nama}\n`;
+            txt += `    • ${quantityLabel(it)} ${it.nama}\n`;
           });
         }
       });
@@ -335,7 +336,7 @@ export function generatePartialPaymentReceipt(order: any, payment: any, settings
   if (payment.itemsPaid && payment.itemsPaid.length > 0) {
     txt += "Menu yang dibayar:\n";
     payment.itemsPaid.forEach((it: any) => {
-      txt += lineTwoCols(` • ${it.qty}x ${it.nama}`, formatCurrency(it.harga * it.qty));
+      txt += lineTwoCols(` • ${quantityLabel(it)} ${it.nama}`, formatCurrency(lineTotal(it)));
     });
   }
 
@@ -475,7 +476,7 @@ function renderReceiptInnerHtml(
 
     const qty = Number(it.qty || 1);
     const harga = Number(it.harga || 0);
-    const subtotal = qty * harga;
+    const subtotal = lineTotal(it, qty);
     calculatedSubtotal += subtotal;
 
     const name = it.nama || it.namaMenu || 'Item';
@@ -492,7 +493,7 @@ function renderReceiptInnerHtml(
     return `
       <tr>
         <td class="col-item">
-          <div class="item-name">${qty}x ${name}</div>
+          <div class="item-name">${quantityLabel(it, qty)} ${name}</div>
           ${modifiersHtml}
           ${notesHtml}
         </td>

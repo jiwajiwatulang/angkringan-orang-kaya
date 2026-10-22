@@ -1,3 +1,4 @@
+import { ensureDemoWeightProducts } from './demoWeight';
 import { db, type TableShape } from '@/lib/dexie';
 import { getStoreSettings, saveStoreSettings, type StoreSettings } from '@/lib/settings';
 
@@ -400,6 +401,7 @@ export async function applyBusinessDemoPreset(type: BusinessDemoType): Promise<{
     modifiers: m.modifiers || []
   }));
   await db.table('menuItems').bulkAdd(menusToInsert);
+  const addedWeightProducts = await ensureDemoWeightProducts(preset.id);
 
   // 3. Bersihkan & isi Tables (dengan zone, shape, capacity, posX, posY)
   await db.table('tables').clear();
@@ -423,7 +425,7 @@ export async function applyBusinessDemoPreset(type: BusinessDemoType): Promise<{
     await db.table('auditLogs').add({
       action: 'RESET',
       amount: 0,
-      reason: `Memuat Preset Demo Usaha: ${preset.title} (${preset.menus.length} produk, ${createdTableCount} meja)`,
+      reason: `Memuat Preset Demo Usaha: ${preset.title} (${menusToInsert.length + addedWeightProducts} produk, ${createdTableCount} meja)`,
       operator: 'SakuNota Demo',
       timestamp: new Date().toISOString()
     });
@@ -431,7 +433,7 @@ export async function applyBusinessDemoPreset(type: BusinessDemoType): Promise<{
 
   return {
     preset,
-    menuCount: menusToInsert.length,
+    menuCount: menusToInsert.length + addedWeightProducts,
     tableCount: createdTableCount
   };
 }

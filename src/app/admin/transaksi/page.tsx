@@ -1,4 +1,6 @@
 "use client";
+import WeightReturn from '@/components/WeightReturn';
+import { lineTotal, quantityLabel } from '@/lib/weight';
 import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -314,7 +316,7 @@ export default function AdminTransaksiPage() {
       await processVoidRefund(voidTargetOrder.id, {
         reason: voidReason,
         isRefunded: isRefundCash,
-        refundAmount: voidTargetOrder.total,
+        refundAmount: isRefundCash ? (voidTargetOrder.paidAmount ?? voidTargetOrder.total - (voidTargetOrder.weightRefundAmount ?? 0)) : 0,
         refundMethod: isRefundCash ? "Tunai" : voidTargetOrder.paymentMethod,
         operator: "Admin",
       });
@@ -1585,8 +1587,8 @@ export default function AdminTransaksiPage() {
                 <div className="space-y-1">
                   {(receiptData.items || []).map((it: any, idx: number) => (
                     <div key={idx} className="flex justify-between">
-                      <span>{it.qty}x {it.nama || it.namaMenu}</span>
-                      <span>Rp {(it.hargaSatuan || it.harga) * it.qty}</span>
+                      <span>{quantityLabel(it)} {it.nama || it.namaMenu}{it.refundedQty > 0 && <small className="block text-muted">Dikembalikan {quantityLabel(it, it.refundedQty)}</small>}</span>
+                      <span>Rp {lineTotal(it).toLocaleString('id-ID')}</span>
                     </div>
                   ))}
                 </div>
@@ -1602,6 +1604,8 @@ export default function AdminTransaksiPage() {
                 </div>
               </div>
 
+              {receiptData.weightRefundAmount > 0 && <p className="text-sm">Pengembalian: Rp{receiptData.weightRefundAmount.toLocaleString('id-ID')}</p>}
+              <WeightReturn key={receiptData.id} order={receiptData} onSaved={loadData} />
               {/* SEKSI BUKTI PEMBAYARAN (QRIS / TRANSFER) */}
               {(receiptData.paymentMethod === "QRIS" || receiptData.paymentMethod === "Transfer" || receiptData.proofs?.length > 0) && (
                 <div className="p-3.5 bg-card/60 rounded-2xl border border-line space-y-3">
@@ -1999,7 +2003,7 @@ export default function AdminTransaksiPage() {
               Batalkan Nota #{voidTargetOrder.id}?
             </h3>
             <p className="text-xs text-muted text-center mt-1 mb-4">
-              Nilai: <strong>Rp {(voidTargetOrder.total || 0).toLocaleString("id-ID")}</strong> ({voidTargetOrder.paymentMethod})
+              Nilai: <strong>Rp {(voidTargetOrder.paidAmount ?? voidTargetOrder.total - (voidTargetOrder.weightRefundAmount ?? 0)).toLocaleString("id-ID")}</strong> ({voidTargetOrder.paymentMethod})
             </p>
 
             <form onSubmit={handleProcessVoidSubmit} className="space-y-3.5">

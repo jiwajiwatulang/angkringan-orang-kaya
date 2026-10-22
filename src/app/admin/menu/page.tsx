@@ -31,9 +31,10 @@ import {
 import { App } from "@capacitor/app";
 import { ModifierGroup, ModifierOption } from "@/lib/dexie";
 import BarcodeCameraModal from "@/components/BarcodeCameraModal";
+import { weightEnabled, priceSuffix, type SaleMeasure } from '@/lib/weight';
 import InventoryPanel from "@/components/InventoryPanel";
 
-type MenuItem = {
+type MenuItem = SaleMeasure & {
   id: number;
   sku?: string;
   nama: string;
@@ -46,7 +47,7 @@ type MenuItem = {
 };
 
 function CatalogPanel() {
-  const { showToast } = useAdmin();
+  const { showToast, storeSettings } = useAdmin();
   const [menus, setMenus] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -96,6 +97,9 @@ function CatalogPanel() {
   const [formSku, setFormSku] = useState("");
   const [isBarcodeScanOpen, setIsBarcodeScanOpen] = useState(false);
   const [formNama, setFormNama] = useState("");
+  const [formSaleUnit, setFormSaleUnit] = useState<'pcs' | 'weight'>('pcs');
+  const [formBasis, setFormBasis] = useState<100 | 1000>(1000);
+  const [formCost, setFormCost] = useState('');
   const [formHarga, setFormHarga] = useState("");
   const [formKategori, setFormKategori] = useState("Lauk");
   const [isCustomKategori, setIsCustomKategori] = useState(false);
@@ -240,7 +244,7 @@ function CatalogPanel() {
     setFormImage(null);
     setFormSku(""); // SKU benar-benar opsional & kosong
     setFormNama("");
-    setFormHarga("");
+    setFormHarga(''); setFormSaleUnit('pcs'); setFormBasis(1000); setFormCost('');
     const defaultCat = categories.find((c) => c !== "Semua") || "Lauk";
     setFormKategori(defaultCat);
     setIsCustomKategori(false);
@@ -256,7 +260,7 @@ function CatalogPanel() {
     setFormImage(menu.imageData || null);
     setFormSku(menu.sku || "");
     setFormNama(menu.nama);
-    setFormHarga(menu.harga.toString());
+    setFormHarga(menu.harga.toString()); setFormSaleUnit(menu.saleUnit ?? 'pcs'); setFormBasis(menu.priceBasis ?? 1000); setFormCost(menu.costPrice == null ? '' : String(menu.costPrice));
     setFormKategori(menu.kategori || "Lauk");
     setIsCustomKategori(false);
     setCustomKategori("");
@@ -396,6 +400,7 @@ function CatalogPanel() {
       return (
         formNama.trim() !== editingMenu.nama.trim() ||
         Number(formHarga) !== editingMenu.harga ||
+        formSaleUnit !== (editingMenu.saleUnit ?? 'pcs') || formBasis !== (editingMenu.priceBasis ?? 1000) || formCost !== (editingMenu.costPrice == null ? '' : String(editingMenu.costPrice)) ||
         finalKat !== origKat ||
         formSku.trim() !== origSku ||
         formIsSoldOut !== Boolean(editingMenu.isSoldOut) ||
@@ -469,7 +474,7 @@ function CatalogPanel() {
           }
         }
       }
-      finalModifiers = formModifiers;
+      finalModifiers = formSaleUnit === 'weight' ? [] : formModifiers;
     }
 
     setIsSavingMenu(true);
@@ -478,7 +483,7 @@ function CatalogPanel() {
         await updateMenu(editingMenu.id, {
           sku: formSku.trim(),
           nama: cleanNama,
-          harga: finalHarga,
+          harga: finalHarga, saleUnit: formSaleUnit, priceBasis: formBasis, costPrice: formCost.trim() === '' ? null : Number(formCost),
           kategori: finalKat,
           isSoldOut: formIsSoldOut,
           modifiers: finalModifiers,
@@ -489,7 +494,7 @@ function CatalogPanel() {
         await createMenu({
           sku: formSku.trim() || undefined,
           nama: cleanNama,
-          harga: finalHarga,
+          harga: finalHarga, saleUnit: formSaleUnit, priceBasis: formBasis, costPrice: formCost.trim() === '' ? null : Number(formCost),
           kategori: finalKat,
           isSoldOut: formIsSoldOut,
           modifiers: finalModifiers,
@@ -946,7 +951,7 @@ function CatalogPanel() {
                           </span>
                         </td>
                         <td className="py-3 px-3 font-black text-sm text-accent-text">
-                          Rp {menu.harga.toLocaleString("id-ID")}
+                          Rp {menu.harga.toLocaleString("id-ID")}{priceSuffix(menu)}
                         </td>
                         <td className="py-3 px-3 text-muted">
                           {modCount > 0 ? (
@@ -1063,7 +1068,7 @@ function CatalogPanel() {
                       </div>
 
                       <div className="text-base font-black text-accent-text ml-6">
-                        Rp {menu.harga.toLocaleString("id-ID")}
+                        Rp {menu.harga.toLocaleString("id-ID")}{priceSuffix(menu)}
                       </div>
                     </div>
 
@@ -1760,10 +1765,15 @@ function CatalogPanel() {
                 />
               </div>
 
+              {weightEnabled(storeSettings.businessType) && <div className="grid grid-cols-2 gap-3">
+                <label className="text-xs font-bold">Satuan<select aria-label="Satuan produk" value={formSaleUnit} onChange={e => { setFormSaleUnit(e.target.value as 'pcs' | 'weight'); if (e.target.value === 'weight') { setFormEnableModifiers(false); setFormModifiers([]); } }} className="mt-1 w-full rounded-xl border border-line bg-card p-3 text-sm"><option value="pcs">Pcs</option><option value="weight">Berat</option></select></label>
+                {formSaleUnit === 'weight' && <label className="text-xs font-bold">Harga per<select aria-label="Harga per" value={formBasis} onChange={e => setFormBasis(Number(e.target.value) as 100 | 1000)} className="mt-1 w-full rounded-xl border border-line bg-card p-3 text-sm"><option value="1000">kg</option><option value="100">100 g</option></select></label>}
+              </div>}
+              {weightEnabled(storeSettings.businessType) && <label className="block text-xs font-bold">Modal {formSaleUnit === 'weight' ? `per ${formBasis === 100 ? '100 g' : 'kg'}` : 'per pcs'} (Rp, opsional)<input aria-label="Modal" type="number" min="0" step="1" value={formCost} onChange={e => setFormCost(e.target.value)} className="mt-1 w-full rounded-xl border border-line bg-card p-3 text-sm" /></label>}
               {/* Harga Jual */}
               <div>
                 <label className="block text-xs font-bold text-fg mb-1">
-                  Harga Jual (Rp) *
+                  {formSaleUnit === 'weight' ? `Harga per ${formBasis === 100 ? '100 g' : 'kg'} (Rp) *` : 'Harga Jual (Rp) *'}
                 </label>
                 <input
                   type="number"
@@ -1915,6 +1925,7 @@ function CatalogPanel() {
                 <label className="flex items-start gap-2.5 cursor-pointer select-none">
                   <input
                     type="checkbox"
+                    disabled={formSaleUnit === 'weight'}
                     checked={formEnableModifiers}
                     onChange={(e) => {
                       const checked = e.target.checked;

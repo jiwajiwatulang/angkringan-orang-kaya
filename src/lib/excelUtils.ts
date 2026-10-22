@@ -1,3 +1,4 @@
+import { quantityLabel } from './weight';
 import * as XLSX from 'xlsx';
 
 /**
@@ -226,7 +227,7 @@ export function exportMenusToExcel(menus: any[], format: 'xlsx' | 'csv' = 'xlsx'
  */
 export function exportOrdersToExcel(orders: any[], format: 'xlsx' | 'csv' = 'xlsx') {
   const exportData = orders.map(o => {
-    const itemsSummary = (o.items || []).map((i: any) => `${i.nama || i.namaMenu} (${i.qty}x)`).join(', ');
+    const itemsSummary = (o.items || []).map((i: any) => `${i.nama || i.namaMenu} (${quantityLabel(i)})`).join(', ');
     return {
       'No. Nota': `#${o.id}`,
       'Tanggal': new Date(o.createdAt).toLocaleString('id-ID'),
@@ -240,6 +241,8 @@ export function exportOrdersToExcel(orders: any[], format: 'xlsx' | 'csv' = 'xls
       'Pajak PBJT (Rp)': o.tax || 0,
       'Service (Rp)': o.serviceCharge || 0,
       'Total Akhir (Rp)': o.total,
+      'Pengembalian Timbang (Rp)': o.weightRefundAmount ?? 0,
+      'Penjualan Bersih (Rp)': o.total - (o.weightRefundAmount ?? 0),
       'Daftar Menu': itemsSummary,
       'Catatan': o.notes || ''
     };

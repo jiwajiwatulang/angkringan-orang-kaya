@@ -1,5 +1,6 @@
 "use client";
 
+import { lineTotal, quantityLabel, priceSuffix } from '@/lib/weight';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -48,7 +49,7 @@ export default function InventoryPanel({ embedded = false }: { embedded?: boolea
     setPurchasePrice('');
     setRecordExpense(true);
     setMinimum(String(product.minimumStock ?? 5));
-    setUnit(product.stockUnit ?? 'pcs');
+    setUnit(product.saleUnit === 'weight' ? 'g' : product.stockUnit ?? 'pcs');
   }
 
   async function save(event: React.FormEvent) {
@@ -60,7 +61,7 @@ export default function InventoryPanel({ embedded = false }: { embedded?: boolea
     try {
       const numAmount = Number(amount);
       const numPurchasePrice = Number(purchasePrice) || 0;
-      const totalCost = numAmount * numPurchasePrice;
+      const totalCost = lineTotal({ ...selection.product, harga: numPurchasePrice, qty: numAmount });
 
       if (selection.type === 'opening') {
         await configureStock(selection.product.id!, numAmount, Number(minimum), unit);
@@ -126,7 +127,7 @@ export default function InventoryPanel({ embedded = false }: { embedded?: boolea
         {[
           ['Produk Terpantau', `${tracked.length} Jenis`, 'Produk dengan pelacakan persediaan'],
           ['Stok Menipis / Habis', `${low.length} Item`, 'Perlu segera direstok dari supplier'],
-          ['Total Unit Fisik', `${tracked.reduce((sum, p) => sum + (p.stockQty ?? 0), 0)} Unit`, 'Total akumulasi seluruh persediaan']
+          ['Stok Pcs', `${tracked.filter(p => p.saleUnit !== 'weight').reduce((sum, p) => sum + (p.stockQty ?? 0), 0)} Unit`, 'Produk yang dijual per pcs']
         ].map(([title, value, sub]) => (
           <div key={title} className="bg-surface rounded-2xl border border-line p-5 space-y-1 shadow-sm">
             <p className="text-xs text-muted font-bold uppercase tracking-wider">{title}</p>
@@ -189,14 +190,14 @@ export default function InventoryPanel({ embedded = false }: { embedded?: boolea
                   <td className="px-5 py-4 tabular-nums">
                     {p.trackStock ? (
                       <span className={`font-black text-sm ${(p.stockQty ?? 0) <= (p.minimumStock ?? 0) ? 'text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-lg' : 'text-fg'}`}>
-                        {p.stockQty ?? 0} <span className="text-[11px] font-normal text-muted">{p.stockUnit || 'pcs'}</span>
+                        {p.saleUnit === 'weight' ? quantityLabel(p, p.stockQty ?? 0) : `${p.stockQty ?? 0} ${p.stockUnit || 'pcs'}`}
                       </span>
                     ) : (
                       <span className="text-muted italic">Belum dipantau</span>
                     )}
                   </td>
                   <td className="px-5 py-4 tabular-nums">
-                    {p.trackStock ? `${p.minimumStock ?? 0} ${p.stockUnit || 'pcs'}` : '—'}
+                    {p.trackStock ? p.saleUnit === 'weight' ? quantityLabel(p, p.minimumStock ?? 0) : `${p.minimumStock ?? 0} ${p.stockUnit || 'pcs'}` : '—'}
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex flex-wrap gap-1.5">
@@ -284,10 +285,10 @@ export default function InventoryPanel({ embedded = false }: { embedded?: boolea
                   </td>
                   <td className="py-3 px-3 tabular-nums font-black text-sm">
                     <span className={m.delta > 0 ? 'text-emerald-700' : 'text-rose-700'}>
-                      {m.delta > 0 ? `+${m.delta}` : m.delta}
+                      {m.delta > 0 ? '+' : '-'}{quantityLabel(products.find(p => p.id === m.menuItemId) ?? {}, Math.abs(m.delta))}
                     </span>
                   </td>
-                  <td className="py-3 px-3 tabular-nums font-bold text-fg">{m.balance}</td>
+                  <td className="py-3 px-3 tabular-nums font-bold text-fg">{quantityLabel(products.find(p => p.id === m.menuItemId) ?? {}, m.balance)}</td>
                   <td className="py-3 px-3">
                     {m.supplierName ? (
                       <div>
@@ -354,7 +355,7 @@ export default function InventoryPanel({ embedded = false }: { embedded?: boolea
                   className="flex-1 bg-card border border-line rounded-xl px-3 py-2.5 text-base font-black text-fg outline-none focus:border-accent"
                 />
                 <span className="text-xs font-bold text-muted bg-card px-3 py-2.5 rounded-xl border border-line">
-                  {selection.product.stockUnit || unit}
+                  {selection.product.saleUnit === 'weight' ? 'g' : selection.product.stockUnit || unit}
                 </span>
               </div>
             </div>
@@ -377,7 +378,7 @@ export default function InventoryPanel({ embedded = false }: { embedded?: boolea
 
                 <div className="space-y-1">
                   <label className="block text-xs font-bold text-fg">
-                    Harga Beli Satuan (HPP) (Rp):
+                    Harga Beli (Rp{priceSuffix(selection.product)}):
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-muted">
@@ -396,7 +397,7 @@ export default function InventoryPanel({ embedded = false }: { embedded?: boolea
                     <div className="p-2.5 rounded-xl bg-card border border-line flex items-center justify-between text-xs mt-1">
                       <span className="text-muted font-bold">Total Nilai Pembelian:</span>
                       <span className="font-black text-accent-text text-sm">
-                        Rp {(Number(amount) * Number(purchasePrice)).toLocaleString('id-ID')}
+                        Rp {lineTotal({ ...selection.product, harga: Number(purchasePrice), qty: Number(amount) }).toLocaleString('id-ID')}
                       </span>
                     </div>
                   )}
@@ -443,6 +444,7 @@ export default function InventoryPanel({ embedded = false }: { embedded?: boolea
                   <input
                     required
                     maxLength={20}
+                    readOnly={selection.product.saleUnit === 'weight'}
                     value={unit}
                     onChange={e => setUnit(e.target.value)}
                     placeholder="pcs, botol, porsi, kg, pack"

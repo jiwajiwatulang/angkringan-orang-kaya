@@ -1,5 +1,6 @@
 import Dexie, { type Table as DexieTable } from 'dexie';
 import { isDemoMode } from './demoMode';
+import type { SaleMeasure } from './weight';
 import type { RetailDraftProduct } from './retailDraft';
 
 export interface ModifierOption {
@@ -17,7 +18,7 @@ export interface ModifierGroup {
   options: ModifierOption[];
 }
 
-export interface MenuItem {
+export interface MenuItem extends SaleMeasure {
   id?: number;
   sku?: string; // Kode unik produk / SKU untuk pencocokan bulk import
   nama: string;
@@ -52,7 +53,8 @@ export interface SelectedModifier {
   harga: number;
 }
 
-export interface OrderItem {
+export interface OrderItem extends SaleMeasure {
+  refundedQty?: number;
   pendingRetailProduct?: RetailDraftProduct;
   id?: number;
   orderId: number;
@@ -83,6 +85,7 @@ export interface PaymentProof {
 }
 
 export interface Payment {
+  weightRefundedAmount?: number;
   id?: number;
   orderId: number;
   shiftId?: number | null;
@@ -91,7 +94,7 @@ export interface Payment {
   cashTendered?: number;
   change?: number;
   splitType: 'full' | 'item' | 'equal' | 'partial';
-  itemsPaid?: { menuItemId: number; itemKey?: string; nama: string; qty: number; harga: number }[];
+  itemsPaid?: { saleUnit?: 'pcs' | 'weight'; priceBasis?: 100 | 1000; orderItemId?: number; menuItemId: number; itemKey?: string; nama: string; qty: number; harga: number }[];
   paidAt: string;
   operatorName: string;
   notes?: string;
@@ -105,6 +108,7 @@ export interface Payment {
 }
 
 export interface Order {
+  weightRefundAmount?: number;
   id?: number;
   shiftId?: number | null; // Terikat langsung ke sesi Shift kasir
   idempotencyKey?: string; // Mencegah double-order / duplicate charge
@@ -270,5 +274,10 @@ db.version(8).stores({
 db.version(9).stores({
   inventoryMovements: '++id, menuItemId, orderId, type, timestamp',
 });
+
+// v10 was used by the previous refund release; preserve that table on upgrade.
+db.version(10).stores({ refundEvents: '++id, idempotencyKey, orderId, paymentId, shiftId, method, type, createdAt' });
+// Existing products and transactions remain untouched; absent saleUnit means pcs.
+db.version(11).stores({ weightRefunds: '++id, requestId, orderId, orderItemId, shiftId, timestamp' });
 
 export { db };
