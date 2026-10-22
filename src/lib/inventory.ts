@@ -1,10 +1,11 @@
+import { lineTotal } from './weight';
 import { requireMerchantAdmin } from './merchantAccess';
 import { db } from './dexie';
 
 export const inventoryTables = ['menuItems', 'inventoryMovements'];
 
 function quantity(value: number) {
-  if (!Number.isFinite(value) || value < 0 || !Number.isInteger(value)) {
+  if (!Number.isFinite(value) || value < 0 || !Number.isSafeInteger(value)) {
     throw new Error('Jumlah stok harus berupa bilangan bulat nol atau lebih.');
   }
   return value;
@@ -17,7 +18,7 @@ export async function configureStock(menuItemId: number, stockQty: number, minim
     const product = await db.table('menuItems').get(menuItemId);
     if (!product) throw new Error('Produk tidak ditemukan.');
     if (product.trackStock) throw new Error('Stok sudah aktif. Gunakan stok masuk, keluar, atau opname.');
-    await db.table('menuItems').update(menuItemId, { trackStock: true, stockQty, minimumStock, stockUnit: stockUnit.trim() || 'pcs', isSoldOut: stockQty === 0 });
+    await db.table('menuItems').update(menuItemId, { trackStock: true, stockQty, minimumStock, stockUnit: product.saleUnit === 'weight' ? 'g' : stockUnit.trim() || 'pcs', isSoldOut: stockQty === 0 });
     await db.table('inventoryMovements').add({ menuItemId, productName: product.nama, type: 'opening', delta: stockQty, balance: stockQty, reason: 'Saldo awal stok', operator: 'Admin', timestamp: new Date().toISOString() });
   });
 }
@@ -52,7 +53,7 @@ export async function adjustStock(input: {
       countedQty: input.type === 'count' ? input.amount : undefined,
       supplierName: input.supplierName?.trim() || undefined,
       purchasePrice: input.purchasePrice ? Number(input.purchasePrice) : undefined,
-      totalCost: (input.purchasePrice && input.amount) ? Number(input.purchasePrice) * input.amount : undefined,
+      totalCost: (input.purchasePrice && input.amount) ? lineTotal({ ...product, harga: Number(input.purchasePrice), qty: input.amount }) : undefined,
       reason: input.reason.trim(),
       operator: 'Admin',
       timestamp: new Date().toISOString()
@@ -81,7 +82,8 @@ export async function applyOrderStock(orderId: number, oldItems: any[], newItems
     const product = await db.table('menuItems').get(id);
     if (!product?.trackStock) continue;
     const balance = (product.stockQty ?? 0) + delta;
-    if (balance < 0) throw new Error(`Stok ${product.nama} tidak mencukupi (tersedia ${product.stockQty}).`);
+    if (balance < 0) throw new Error('Stok tidak mencukupi');
+    quantity(balance);
     await db.table('menuItems').update(id, { stockQty: balance, isSoldOut: balance === 0 });
     await db.table('inventoryMovements').add({ menuItemId: id, productName: product.nama, orderId, type: delta < 0 ? 'sale' : 'return', delta, balance, reason, operator: 'Kasir', timestamp: new Date().toISOString() });
   }

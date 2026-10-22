@@ -1,4 +1,5 @@
 "use client";
+import { lineTotal, quantityLabel, weightSalesSummary, weightEnabled, type SaleMeasure } from '@/lib/weight';
 import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -70,14 +71,16 @@ export default function AdminDashboardPage() {
   const paymentRevision = useLiveQuery(() => db.table("payments").toArray(), []);
   useEffect(() => { let current = true; getOrders().then(data => { if (current) setOrders(data); }); return () => { current = false; }; }, [orderRevision, paymentRevision]);
 
-  const { currentOrders, previousOrders } = selectDashboardOrders(orders, timeRange);
+  const { currentOrders, previousOrders } = selectDashboardOrders(orders.map(o => ({ ...o, total: o.total - (o.weightRefundAmount ?? 0) })), timeRange);
+
+  const weightSales = weightSalesSummary(currentOrders);
 
   // Current Metrics
   const currentGrossSales = currentOrders.reduce((sum, o) => sum + (o.total || 0), 0);
   const currentOrderCount = currentOrders.length;
   const currentAov = currentOrderCount > 0 ? Math.round(currentGrossSales / currentOrderCount) : 0;
   const currentUnitsSold = currentOrders.reduce((sum, o) => {
-    return sum + (o.items || []).reduce((iSum: number, item: any) => iSum + (item.qty || 1), 0);
+    return sum + (o.items || []).reduce((iSum: number, item: any) => iSum + (item.saleUnit === 'weight' ? 0 : item.qty || 1), 0);
   }, 0);
 
   // Previous Metrics for Delta Calculation
@@ -85,7 +88,7 @@ export default function AdminDashboardPage() {
   const prevOrderCount = previousOrders.length;
   const prevAov = prevOrderCount > 0 ? Math.round(prevGrossSales / prevOrderCount) : 0;
   const prevUnitsSold = previousOrders.reduce((sum, o) => {
-    return sum + (o.items || []).reduce((iSum: number, item: any) => iSum + (item.qty || 1), 0);
+    return sum + (o.items || []).reduce((iSum: number, item: any) => iSum + (item.saleUnit === 'weight' ? 0 : item.qty || 1), 0);
   }, 0);
 
   const calcDelta = (curr: number, prev: number) => {
@@ -155,7 +158,7 @@ export default function AdminDashboardPage() {
       payments.forEach((p: any) => {
         const method = String(p.paymentMethod || 'Cash').toLowerCase();
         const key = method.includes('qris') ? 'QRIS' : method.includes('transfer') ? 'Transfer' : 'Cash';
-        map[key].total += p.amount || 0; map[key].count += 1;
+        map[key].total += (p.amount || 0) - (p.weightRefundedAmount ?? 0); map[key].count += 1;
       });
     });
 
@@ -170,24 +173,23 @@ export default function AdminDashboardPage() {
 
   // Top Products by Units Sold (Shopify Top Products)
   const topProducts = useMemo(() => {
-    const itemMap: Record<string, { qty: number; revenue: number; kategori: string }> = {};
+    const itemMap: Record<string, SaleMeasure & { qty: number; revenue: number; kategori: string }> = {};
 
     currentOrders.forEach((o) => {
       (o.items || []).forEach((item: any) => {
         const name = item.name || item.nama || item.menuName || "Menu";
         const cat = item.kategori || item.category || "Umum";
-        const price = item.harga ?? item.price ?? item.hargaSatuan ?? 0;
-        const qty = item.qty || 1;
+        const qty = (item.qty || 1) - (item.refundedQty ?? 0);
 
-        if (!itemMap[name]) itemMap[name] = { qty: 0, revenue: 0, kategori: cat };
+        if (!itemMap[name]) itemMap[name] = { qty: 0, revenue: 0, kategori: cat, saleUnit: item.saleUnit };
         itemMap[name].qty += qty;
-        itemMap[name].revenue += price * qty;
+        itemMap[name].revenue += lineTotal(item, qty);
       });
     });
 
     return Object.entries(itemMap)
       .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.qty - a.qty)
+      .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
   }, [currentOrders]);
 
@@ -317,7 +319,7 @@ export default function AdminDashboardPage() {
 
         ctx.fillStyle = "#64748b";
         ctx.font = "13px sans-serif";
-        ctx.fillText(`${p.qty} porsi terjual`, 110, rowY + 18);
+        ctx.fillText(`${quantityLabel(p)} terjual`, 110, rowY + 18);
 
         // Revenue
         ctx.fillStyle = "#0f172a";
@@ -415,7 +417,7 @@ export default function AdminDashboardPage() {
     if (topProducts.length > 0) {
       msg += `*MENU PALING LARIS*\n`;
       topProducts.forEach((p, i) => {
-        msg += `${i + 1}. ${p.name} (${p.qty} unit) - Rp ${p.revenue.toLocaleString("id-ID")}\n`;
+        msg += `${i + 1}. ${p.name} (${quantityLabel(p)}) - Rp ${p.revenue.toLocaleString("id-ID")}\n`;
       });
       msg += `\n`;
     }
@@ -507,9 +509,6 @@ export default function AdminDashboardPage() {
             {storeSettings.storeName || "SakuNota"} • Sistem kasir dan pencatatan transaksi 100% offline.
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-3 text-xs font-bold">
-            <span className="px-2.5 py-1 bg-card text-fg rounded-xl border border-line">
-              Cabang: {storeSettings.storeName || "Toko Pusat"}
-            </span>
             <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200">
               Kas Laci: Rp {activeShift ? Number(activeShift.startingCash || 0).toLocaleString("id-ID") : "0"}
             </span>
@@ -530,6 +529,9 @@ export default function AdminDashboardPage() {
 
 
 
+      {weightEnabled(storeSettings.businessType) && currentOrders.some(o => o.items?.some((i: any) => i.saleUnit === 'weight')) && <section aria-label="Penjualan timbang" className="grid grid-cols-1 gap-3 sm:grid-cols-3 mb-4">
+        {[['Berat Terjual', quantityLabel({ saleUnit: 'weight' }, weightSales.grams)], ['Modal Barang Timbang', weightSales.cost == null ? 'Data modal belum lengkap' : `Rp${weightSales.cost.toLocaleString('id-ID')}`], ['Laba Barang Timbang', weightSales.profit == null ? 'Data modal belum lengkap' : `Rp${weightSales.profit.toLocaleString('id-ID')}`]].map(([label, value]) => <div key={label} className="rounded-2xl border border-line bg-surface p-4"><p className="text-xs text-muted">{label}</p><p className="mt-2 text-lg font-bold tabular-nums">{value}</p></div>)}
+      </section>}
       {/* 2. Four Shopify-Grade Metric Cards with Delta Growth Badges */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Metric 1: Total Omzet */}
@@ -939,8 +941,8 @@ export default function AdminDashboardPage() {
               </div>
             ) : (
               topProducts.map((p, idx) => {
-                const maxQty = topProducts[0]?.qty || 1;
-                const percent = Math.round((p.qty / maxQty) * 100);
+                const maxQty = topProducts[0]?.revenue || 1;
+                const percent = Math.round((p.revenue / maxQty) * 100);
 
                 return (
                   <div
@@ -961,7 +963,7 @@ export default function AdminDashboardPage() {
 
                     <div className="text-right shrink-0">
                       <span className="font-black text-fg text-sm block">
-                        {p.qty} <span className="text-[10px] font-normal text-muted">unit</span>
+                        {quantityLabel(p)}
                       </span>
                       <div className="w-20 h-1.5 bg-line rounded-full overflow-hidden mt-1 ml-auto">
                         <div

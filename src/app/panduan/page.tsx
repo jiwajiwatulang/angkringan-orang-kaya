@@ -315,6 +315,11 @@ export default function PanduanPage() {
           <p className="mt-3 text-sm text-slate-500">Kasbon masuk katalog setelah lunas. Persiapan pengenalan foto tersedia di Pengaturan, khusus Retail.</p>
         </section>}
 
+        {!searchQuery && <section aria-labelledby="weight-quick-guide" className="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="weight-quick-guide" className="text-lg font-bold text-slate-900">Jual Barang Timbang</h2><button type="button" onClick={() => setSelectedTopic(TOPICS.find(topic => topic.id === 'weight-sales')!)} className="min-h-11 rounded-xl bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">Lihat Cara Pakai</button></div>
+          <ol className="mt-3 grid list-inside list-decimal gap-3 text-sm text-slate-700 sm:grid-cols-3"><li>Di katalog, pilih <strong>Satuan: Berat</strong> dan isi harga per kg atau 100 g.</li><li>Di kasir, pilih barang lalu masukkan beratnya.</li><li>Periksa total, tambah ke keranjang, lalu bayar seperti biasa.</li></ol>
+        </section>}
+
         {/* 3. Cards Grid: 3 Columns Desktop, 2 Tablet, 1 Mobile (Exact Sentrik POS Reference Pattern) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
           {filteredTopics.map((topic) => (

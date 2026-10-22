@@ -1,11 +1,12 @@
 "use client";
+import { priceSuffix, type SaleMeasure } from '@/lib/weight';
 import LineIcon from "@/components/LineIcon";
 import ProductPhoto from "@/components/ProductPhoto";
 import CategoryScroller from "@/components/CategoryScroller";
 
 import React, { useState } from "react";
 
-interface MenuItem {
+interface MenuItem extends SaleMeasure {
   id: number;
   nama: string;
   harga: number;
@@ -261,7 +262,7 @@ export default function MobileCatalogScreen({
                   {/* Bottom: Price & Tactile "+" Button */}
                   <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
                     <span className="text-xs font-black text-blue-600 truncate">
-                      Rp {item.harga.toLocaleString("id-ID")}
+                      Rp {item.harga.toLocaleString("id-ID")}{priceSuffix(item)}
                     </span>
 
                     <button
