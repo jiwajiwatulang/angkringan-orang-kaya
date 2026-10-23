@@ -31,9 +31,13 @@ export class LocalReplica {
   async rememberEmployee(data:{id:string;access:string;verifier:string;name:string}) {
     const claims=await verifyAccess(data.access,this.deviceId,this.identity,this.publicKey);
     if(claims.storeId!==this.storeId||claims.employeeId!==data.id||!claims.pinDigest) throw new AccessError();
-    await this.db.table('credentials').put(data);
+    await this.db.transaction('rw',[this.db.table('credentials'),this.db.table('settings')],async()=>{
+      await this.db.table('credentials').put(data);
+      await this.db.table('settings').put({key:'accessBlocked',value:false});
+    });
   }
   async loginOffline(id:string,pin:string) {
+    if((await this.db.table('settings').get('accessBlocked'))?.value) throw new AccessError('Masuk dengan internet terlebih dahulu.',401);
     const data=await this.db.table('credentials').get(id);
     if(!data) throw new AccessError('Masuk dengan internet terlebih dahulu.',401);
     const claims=await verifyAccess(data.access,this.deviceId,this.identity,this.publicKey);
@@ -85,6 +89,12 @@ export class LocalReplica {
         await this.db.table('outbox').delete(row.id);
       } catch(error){
         await this.db.table('outbox').update(row.id,{attempts:row.attempts+1,lastError:'Pengiriman belum berhasil.'});
+        if(error instanceof AccessError && [401,403].includes(error.status)){
+          this.access='';
+          await this.db.transaction('rw',[this.db.table('credentials'),this.db.table('settings')],async()=>{
+            await this.db.table('credentials').clear();await this.db.table('settings').put({key:'accessBlocked',value:true});
+          });
+        }
         throw error; // Never send a dependent payment before its failed order.
       }
     }

@@ -25,7 +25,7 @@ export function signAccess(claims: AccessClaims, privateJwk: string): string {
   const signature = crypto.sign('sha256',Buffer.from(`SNMD1.${payload}`),{key,dsaEncoding:'ieee-p1363'}).toString('base64url');
   return `SNMD1.${payload}.${signature}`;
 }
-export function readAccess(token: string, privateJwk: string, now = Date.now()): AccessClaims {
+export function readAccess(token: string, privateJwk: string, now = Date.now(), renewDevice = false): AccessClaims {
   try {
     if (token.length > 4096) throw new Error();
     const [prefix,payload,signature,extra] = token.split('.');
@@ -33,7 +33,8 @@ export function readAccess(token: string, privateJwk: string, now = Date.now()):
     const key = crypto.createPublicKey(crypto.createPrivateKey({key:JSON.parse(privateJwk),format:'jwk'}));
     if (!crypto.verify('sha256',Buffer.from(`${prefix}.${payload}`),{key,dsaEncoding:'ieee-p1363'},Buffer.from(signature,'base64url'))) throw new Error();
     const claims = JSON.parse(Buffer.from(payload,'base64url').toString()) as AccessClaims;
-    if (!validClaims(claims,now)) throw new Error();
+    if (!validClaims(claims,renewDevice?claims.issuedAt+1:now)) throw new Error();
+    if(renewDevice && (claims.role!=='cashier'||claims.employeeId)) throw new Error();
     return claims;
   } catch { throw new AccessError('Silakan masuk lagi.',401); }
 }

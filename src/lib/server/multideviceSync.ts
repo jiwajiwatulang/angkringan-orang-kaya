@@ -6,7 +6,8 @@ import {project,visibleEntity,type Entity} from '../multidevice/projection';
 
 // The mutation marker is request-local. A failed CAS must never borrow another request's revision.
 const LIVE=`EXISTS(SELECT 1 FROM MdDevices d WHERE d.storeId=MdStores.id AND d.id=? AND d.epoch=? AND d.role=? AND d.publicKey=? AND d.revoked=0)
- AND (? IS NULL OR EXISTS(SELECT 1 FROM MdEmployees e WHERE e.storeId=MdStores.id AND e.id=? AND e.epoch=? AND e.active=1))`;
+ AND (? IS NULL OR EXISTS(SELECT 1 FROM MdEmployees e WHERE e.storeId=MdStores.id AND e.id=? AND e.epoch=? AND e.active=1))
+ AND EXISTS(SELECT 1 FROM MdDevices o JOIN LicenseDeviceKeys k ON k.deviceId=o.id AND k.publicKey=o.publicKey WHERE o.storeId=MdStores.id AND o.role='owner' AND o.revoked=0 AND k.licenseKey=MdStores.licenseKey)`;
 function liveValues(c:AccessClaims){return [c.deviceId,c.deviceEpoch,c.role,c.deviceKey,c.employeeId||null,c.employeeId||null,c.employeeEpoch||null];}
 async function ensureLive(db:D1Database,c:AccessClaims){
   if(c.expiresAt<=Date.now()) throw new AccessError('Silakan masuk lagi.',401);

@@ -21,6 +21,7 @@ import * as paymentSnap from "../functions/api/payment/snap";
 import * as promoCheck from "../functions/api/promo/check";
 import * as ownerPromos from "../functions/api/owner/promos";
 import { verifyOwnerSession, getD1 } from './lib/server/sakunotaServer';
+import { handleMultiDevice } from './lib/server/multideviceHttp';
 
 export interface Env {
   DB: any;
@@ -36,6 +37,7 @@ export interface Env {
   SAKUNOTA_OWNER_SALT?: string;
   SAKUNOTA_OWNER_USERNAME?: string;
   SAKUNOTA_LICENSE_PRIVATE_JWK?: string;
+  SAKUNOTA_MULTI_DEVICE?: string;
   PUBLIC_RATE_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> };
 }
 
@@ -67,6 +69,9 @@ function withCors(response: Response): Response {
 
 export default {
   async fetch(request: Request, env: Env, ctx: any): Promise<Response> {
+    if(new URL(request.url).pathname.replace(/\/$/,'')==='/api/store') {
+      return handleMultiDevice(request,env);
+    }
     if (env) {
       if (env.SAKUNOTA_SERVER_SECRET) process.env.SAKUNOTA_SERVER_SECRET = env.SAKUNOTA_SERVER_SECRET;
       if (env.SAKUNOTA_OWNER_SALT) process.env.SAKUNOTA_OWNER_SALT = env.SAKUNOTA_OWNER_SALT;

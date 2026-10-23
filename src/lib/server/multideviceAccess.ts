@@ -58,7 +58,7 @@ export async function enrollOwner(env:MultiDeviceEnv,data:{activation:string;dev
   return grant(env,device);
 }
 export async function authorize(env:MultiDeviceEnv,access:string,action:string,body:unknown,proof:DeviceProof):Promise<AccessClaims> {
-  const claims=readAccess(access,signingKey(env));
+  const claims=readAccess(access,signingKey(env),Date.now(),action==='refresh');
   const identity=verifyDeviceProof(`multi.${action}.${digest(JSON.stringify(body))}`,claims.storeId,claims.deviceId,access,proof);
   if(identity!==claims.deviceKey) throw new AccessError('Silakan masuk lagi.',401);
   const device=await env.DB.prepare('SELECT * FROM MdDevices WHERE storeId=? AND id=? AND revoked=0').bind(claims.storeId,claims.deviceId).first<DeviceRow>();
@@ -66,6 +66,9 @@ export async function authorize(env:MultiDeviceEnv,access:string,action:string,b
   const store=await env.DB.prepare('SELECT licenseKey FROM MdStores WHERE id=?').bind(claims.storeId).first<{licenseKey:string}>();
   if(!store) throw new AccessError();
   await activeLicense(env.DB,store.licenseKey);
+  const ownerBinding=await env.DB.prepare(`SELECT d.id FROM MdDevices d JOIN LicenseDeviceKeys k ON k.deviceId=d.id AND k.publicKey=d.publicKey
+    WHERE d.storeId=? AND d.role='owner' AND d.revoked=0 AND k.licenseKey=?`).bind(claims.storeId,store.licenseKey).first();
+  if(!ownerBinding) throw new AccessError('Perangkat toko perlu dihubungkan kembali.');
   if(claims.employeeId){
     const employee=await env.DB.prepare('SELECT epoch,active FROM MdEmployees WHERE storeId=? AND id=?').bind(claims.storeId,claims.employeeId).first<{epoch:number;active:number}>();
     if(!employee?.active || employee.epoch!==claims.employeeEpoch) throw new AccessError('Akses karyawan berakhir.');
@@ -109,7 +112,8 @@ export async function approvePairing(env:MultiDeviceEnv,owner:AccessClaims,id:st
   await env.DB.batch([
     env.DB.prepare(`INSERT INTO MdDevices(id,storeId,role,publicKey,name)
       SELECT candidateId,storeId,'cashier',candidateKey,candidateName FROM MdPairings
-      WHERE id=? AND storeId=? AND expiresAt>? AND consumed=0 AND candidateId IS NOT NULL`).bind(id,owner.storeId,Date.now()),
+      WHERE id=? AND storeId=? AND expiresAt>? AND consumed=0 AND candidateId IS NOT NULL
+      ON CONFLICT(storeId,id) DO UPDATE SET publicKey=excluded.publicKey,name=excluded.name,epoch=MdDevices.epoch+1,revoked=0 WHERE MdDevices.revoked=1 AND MdDevices.role='cashier'`).bind(id,owner.storeId,Date.now()),
     env.DB.prepare(`UPDATE MdPairings SET approved=1,consumed=1 WHERE id=? AND storeId=? AND expiresAt>?
       AND EXISTS(SELECT 1 FROM MdDevices d WHERE d.storeId=MdPairings.storeId AND d.id=MdPairings.candidateId AND d.publicKey=MdPairings.candidateKey AND d.revoked=0)`).bind(id,owner.storeId,Date.now()),
   ]);
@@ -157,4 +161,10 @@ export async function listAccess(env:MultiDeviceEnv,claims:AccessClaims) {
   const devices=await env.DB.prepare('SELECT id,name,role,revoked FROM MdDevices WHERE storeId=? AND revoked=0 ORDER BY role DESC').bind(claims.storeId).all();
   const pairings=await env.DB.prepare('SELECT id,candidateName,expiresAt FROM MdPairings WHERE storeId=? AND candidateId IS NOT NULL AND consumed=0 AND expiresAt>?').bind(claims.storeId,Date.now()).all();
   return {employees:employees.results,devices:devices.results,pairings:pairings.results};
+}
+export async function renewCashierDevice(env:MultiDeviceEnv,claims:AccessClaims) {
+  if(claims.role!=='cashier'||claims.employeeId) throw new AccessError();
+  const device=await env.DB.prepare('SELECT * FROM MdDevices WHERE storeId=? AND id=? AND epoch=? AND revoked=0').bind(claims.storeId,claims.deviceId,claims.deviceEpoch).first<DeviceRow>();
+  if(!device) throw new AccessError('Perangkat sudah dilepas.');
+  return grant(env,device);
 }

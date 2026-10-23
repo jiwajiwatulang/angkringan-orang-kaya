@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS MdNonces (
   storeId TEXT NOT NULL, deviceId TEXT NOT NULL, nonce TEXT NOT NULL, expiresAt INTEGER NOT NULL,
   PRIMARY KEY(storeId,deviceId,nonce)
 );
+CREATE INDEX IF NOT EXISTS md_nonce_expiry ON MdNonces(expiresAt);
 CREATE TABLE IF NOT EXISTS MdEvents (
   sequence INTEGER PRIMARY KEY AUTOINCREMENT, storeId TEXT NOT NULL REFERENCES MdStores(id),
   id TEXT NOT NULL, deviceId TEXT NOT NULL, operatorId TEXT NOT NULL,
