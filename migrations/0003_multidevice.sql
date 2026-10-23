@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS MdEvents (
   receivedAt INTEGER NOT NULL, UNIQUE(storeId,id)
 );
 CREATE INDEX IF NOT EXISTS md_events_cursor ON MdEvents(storeId,sequence);
+CREATE TABLE IF NOT EXISTS MdRecoveries (
+  storeId TEXT NOT NULL, eventId TEXT NOT NULL, authorizedBy TEXT NOT NULL,
+  recoveredAt INTEGER NOT NULL, PRIMARY KEY(storeId,eventId)
+);
 CREATE TABLE IF NOT EXISTS MdEntities (
   storeId TEXT NOT NULL REFERENCES MdStores(id), kind TEXT NOT NULL, id TEXT NOT NULL,
   revision INTEGER NOT NULL, payload TEXT NOT NULL,

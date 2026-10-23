@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type {D1Database} from './d1';
 import {digest} from './multideviceCrypto';
-import {AccessError,validateEnvelope,type AccessClaims,type StoreEvent} from '../multidevice/protocol';
+import {AccessError,requireOwner,validateEnvelope,type AccessClaims,type StoreEvent} from '../multidevice/protocol';
 import {project,visibleEntity,type Entity} from '../multidevice/projection';
 
 // The mutation marker is request-local. A failed CAS must never borrow another request's revision.
@@ -14,7 +14,10 @@ async function ensureLive(db:D1Database,c:AccessClaims){
   if(!await db.prepare(`SELECT id FROM MdStores WHERE id=? AND ${LIVE}`).bind(c.storeId,...liveValues(c)).first()) throw new AccessError('Akses sudah berakhir.');
 }
 export async function submitEvent(db:D1Database,claims:AccessClaims,event:StoreEvent) {
-  validateEnvelope(event,claims);await ensureLive(db,claims);
+  return writeEvent(db,claims,claims,event);
+}
+async function writeEvent(db:D1Database,actor:AccessClaims,claims:AccessClaims,event:StoreEvent,recovering=false) {
+  validateEnvelope(event,claims);await ensureLive(db,actor);
   const payload=JSON.stringify(event),hash=digest(payload);
   if(payload.length>150000) throw new AccessError('Nota terlalu besar.',413);
   for(let attempt=0;attempt<8;attempt++){
@@ -39,11 +42,13 @@ export async function submitEvent(db:D1Database,claims:AccessClaims,event:StoreE
     const mutation=crypto.randomUUID(),revision=state.revision+1;
     const guard='EXISTS(SELECT 1 FROM MdStores WHERE id=? AND mutation=?)';
     const statements=[
-      db.prepare(`UPDATE MdStores SET revision=revision+1,mutation=? WHERE id=? AND revision=? AND ${LIVE}`).bind(mutation,claims.storeId,state.revision,...liveValues(claims)),
+      db.prepare(`UPDATE MdStores SET revision=revision+1,mutation=? WHERE id=? AND revision=? AND ${LIVE}`).bind(mutation,claims.storeId,state.revision,...liveValues(actor)),
       db.prepare(`INSERT INTO MdEvents(storeId,id,deviceId,operatorId,kind,entityId,payload,digest,receivedAt)
         SELECT ?,?,?,?,?,?,?,?,? WHERE ${guard}`).bind(claims.storeId,event.id,claims.deviceId,event.operatorId,event.kind,event.entityId,payload,hash,Date.now(),claims.storeId,mutation),
       ...changes.map(entity=>db.prepare(`INSERT INTO MdEntities(storeId,kind,id,revision,payload) SELECT ?,?,?,?,? WHERE ${guard}
         ON CONFLICT(storeId,kind,id) DO UPDATE SET revision=excluded.revision,payload=excluded.payload`).bind(claims.storeId,entity.kind,entity.id,revision,JSON.stringify(entity.value),claims.storeId,mutation)),
+      ...(recovering?[db.prepare(`INSERT INTO MdRecoveries(storeId,eventId,authorizedBy,recoveredAt) SELECT ?,?,?,? WHERE ${guard}
+        ON CONFLICT(storeId,eventId) DO NOTHING`).bind(claims.storeId,event.id,actor.deviceId,Date.now(),claims.storeId,mutation)]:[]),
     ];
     try {await db.batch(statements);} catch(error){
       // Concurrent same-ID retries may race; the next loop verifies equality before acknowledging.
@@ -52,9 +57,25 @@ export async function submitEvent(db:D1Database,claims:AccessClaims,event:StoreE
     }
     const stored=await db.prepare('SELECT sequence,digest FROM MdEvents WHERE storeId=? AND id=?').bind(claims.storeId,event.id).first<{sequence:number;digest:string}>();
     if(stored){if(stored.digest!==hash) throw new AccessError('Nota berbeda memakai nomor yang sama.',409);return {id:event.id,sequence:stored.sequence,duplicate:false};}
-    await ensureLive(db,claims);
+    await ensureLive(db,actor);
   }
   throw new AccessError('Data sedang diperbarui. Coba lagi.',409);
+}
+export async function recoverEvent(db:D1Database,owner:AccessClaims,event:StoreEvent){
+  requireOwner(owner);await ensureLive(db,owner);
+  if(!event || event.storeId!==owner.storeId)throw new AccessError('Cadangan berasal dari toko lain.');
+  const device=await db.prepare('SELECT publicKey,role,epoch FROM MdDevices WHERE storeId=? AND id=?').bind(owner.storeId,event.deviceId).first<{publicKey:string;role:'owner'|'cashier';epoch:number}>();
+  if(!device)throw new AccessError('Perangkat asal tidak dikenali.');
+  const origin:AccessClaims={...owner,deviceId:event.deviceId,deviceKey:device.publicKey,role:device.role,deviceEpoch:device.epoch};
+  if(device.role==='cashier'){
+    const employee=await db.prepare('SELECT epoch FROM MdEmployees WHERE storeId=? AND id=?').bind(owner.storeId,event.operatorId).first<{epoch:number}>();
+    if(!employee)throw new AccessError('Karyawan asal tidak dikenali.');
+    origin.employeeId=event.operatorId;origin.employeeEpoch=employee.epoch;
+  }else if(event.operatorId!==event.deviceId)throw new AccessError('Cadangan tidak sesuai.');
+  // Only the live owner authorizes recovery. No old device or employee is reactivated.
+  // Preserve the original event bytes/ID so an earlier accepted delivery remains the same event.
+  const result=await writeEvent(db,owner,origin,event,true);
+  return result;
 }
 export async function pullEntities(db:D1Database,claims:AccessClaims,cursor:number) {
   await ensureLive(db,claims);

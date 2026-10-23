@@ -13,11 +13,16 @@ export async function environment() {
   await env.DB.exec(readFileSync('migrations/0003_multidevice.sql','utf8'));
   return env;
 }
-export async function owner(env:MultiDeviceEnv,key=`SN-MD-${crypto.randomUUID()}`) {
+export async function owner(env:MultiDeviceEnv,key=`SN-MD-${crypto.randomUUID()}`,replace=false) {
   const id=crypto.randomUUID();
   const proof=testDeviceProof('multi.enroll',key,id);
   const identity=publicKeyIdentity(proof.publicKey);
-  await env.DB.prepare('INSERT INTO Licenses(licenseKey,orderId,businessName,issuedAt,signature,boundDeviceId) VALUES (?,?,?,?,?,?)').bind(key,'test-order','Test Shop',new Date().toISOString(),'test',id).run();
+  if(replace){
+    await env.DB.batch([
+      env.DB.prepare('UPDATE Licenses SET boundDeviceId=? WHERE licenseKey=?').bind(id,key),
+      env.DB.prepare('DELETE FROM LicenseDeviceKeys WHERE licenseKey=?').bind(key),
+    ]);
+  }else await env.DB.prepare('INSERT INTO Licenses(licenseKey,orderId,businessName,issuedAt,signature,boundDeviceId) VALUES (?,?,?,?,?,?)').bind(key,'test-order','Test Shop',new Date().toISOString(),'test',id).run();
   await env.DB.prepare('INSERT INTO LicenseDeviceKeys(licenseKey,deviceId,publicKey) VALUES (?,?,?)').bind(key,id,identity).run();
   const claims={v:2,licenseKey:key,deviceId:id,deviceKey:identity,licenseType:'berbayar',expiresAt:null,businessName:'Test Shop',issuedAt:Date.now()};
   const payload=Buffer.from(JSON.stringify(claims)).toString('base64url');

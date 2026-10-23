@@ -16,6 +16,7 @@ export class DeviceClient {
   }
   list(){return this.call<AccessList>('list');}
   send(event:StoreEvent){return this.call<{id:string;sequence:number}>('send',{event});}
+  recover(event:StoreEvent){return this.call<{id:string;sequence:number}>('recover',{event});}
   pull(cursor:number){return this.call<{cursor:number;entities:Entity[];hasMore:boolean}>('pull',{cursor});}
 }
 async function call<T>(body:unknown):Promise<T>{

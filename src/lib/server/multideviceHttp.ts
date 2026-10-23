@@ -1,7 +1,7 @@
 import type {DeviceProof} from '../licenseProtocol';
 import {AccessError,requireOwner,type StoreEvent} from '../multidevice/protocol';
 import {enrollOwner,requestPairing,authorize,createPairing,approvePairing,revokeDevice,saveEmployee,employeeLogin,listAccess,renewCashierDevice,signingKey,type MultiDeviceEnv} from './multideviceAccess';
-import {pullEntities,submitEvent} from './multideviceSync';
+import {pullEntities,submitEvent,recoverEvent} from './multideviceSync';
 
 export interface MultiDeviceHttpEnv extends MultiDeviceEnv {PUBLIC_RATE_LIMITER?:{limit(options:{key:string}):Promise<{success:boolean}>}}
 function response(body:unknown,status=200){return Response.json(body,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'}});}
@@ -33,6 +33,7 @@ export async function handleMultiDevice(request:Request,env:MultiDeviceHttpEnv):
     if(action==='pull')return response(await pullEntities(env.DB,claims,Number(data.cursor)));
     if(action==='send')return response(await submitEvent(env.DB,claims,data.event as StoreEvent));
     requireOwner(claims);
+    if(action==='recover')return response(await recoverEvent(env.DB,claims,data.event as StoreEvent));
     if(action==='pair.create')return response(await createPairing(env,claims));
     if(action==='pair.approve')return response(await approvePairing(env,claims,String(data.id||'')));
     if(action==='device.revoke')return response(await revokeDevice(env,claims,String(data.id||'')));
