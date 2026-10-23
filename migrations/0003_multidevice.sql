@@ -42,3 +42,8 @@ CREATE TABLE IF NOT EXISTS MdEntities (
   revision INTEGER NOT NULL, payload TEXT NOT NULL,
   PRIMARY KEY(storeId,kind,id)
 );
+CREATE TABLE IF NOT EXISTS MdPayloadChunks (
+  storeId TEXT NOT NULL REFERENCES MdStores(id), kind TEXT NOT NULL, id TEXT NOT NULL,
+  part INTEGER NOT NULL, payload TEXT NOT NULL,
+  PRIMARY KEY(storeId,kind,id,part)
+);

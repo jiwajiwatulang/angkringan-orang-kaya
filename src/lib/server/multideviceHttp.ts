@@ -8,7 +8,7 @@ function response(body:unknown,status=200){return Response.json(body,{status,hea
 async function boundedBody(request:Request){
   if(!request.headers.get('Content-Type')?.startsWith('application/json')) throw new AccessError('Permintaan tidak sesuai.',415);
   const reader=request.body?.getReader();if(!reader) throw new AccessError('Lengkapi data.',400);
-  const chunks:Uint8Array[]=[],limit=160000;let total=0;
+  const chunks:Uint8Array[]=[],limit=8*1024*1024+16384;let total=0;
   try {
     for(;;){const {done,value}=await reader.read();if(done)break;total+=value.byteLength;if(total>limit){await reader.cancel();throw new AccessError('Data terlalu besar.',413);}chunks.push(value);}
   } finally{reader.releaseLock();}

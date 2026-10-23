@@ -15,7 +15,8 @@
     "test:offline": "tsx test_offline_readiness.ts",
     "typecheck": "tsc --noEmit",
     "preview:local": "tsx scripts/preview-local.ts",
-    "test:multidevice": "tsx --test tests/multidevice-*.test.ts tests/multidevice-ui.test.tsx"
+    "test:multidevice": "tsx --test tests/multidevice-*.test.ts tests/multidevice-ui.test.tsx",
+    "qa:multidevice": "tsx scripts/qa-multidevice.ts"
   },
   "dependencies": {
     "@ascentio-it/capacitor-bluetooth-serial": "^8.0.1",
@@ -43,6 +44,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "esbuild": "^0.28.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "fake-indexeddb": "^6.2.5",

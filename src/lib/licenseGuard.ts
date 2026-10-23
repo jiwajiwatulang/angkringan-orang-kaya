@@ -5,6 +5,8 @@ import { getLocalDeviceId, verifyLicenseServer } from "./ordersClient";
 import { deviceKeyIdentity } from './deviceIdentity';
 import { verifyOfflineLicense } from './offlineLicense';
 import { isDemoMode, demoSessionValid } from './demoMode';
+import {getPosScope} from './multidevice/posWire';
+import {posPartition} from './multidevice/posPartition';
 let lastOnlineCheck = 0;
 let verification: Promise<Awaited<ReturnType<typeof verifyLicenseServer>>> | undefined;
 
@@ -44,6 +46,10 @@ export function detectClockTampering(): boolean {
 export async function checkCashierAccess(forceOnlineCheck: boolean = false): Promise<CashierAccessStatus> {
   const denied = (error: string): CashierAccessStatus => ({ isValid:false, isDemo:false, status:'unregistered', error });
   if (typeof window === 'undefined') return denied('Perangkat belum tersedia.');
+  if(posPartition()){
+    const scope=getPosScope();if(!scope||scope.claims.expiresAt<=Date.now())return denied('Silakan masuk kasir.');
+    return {isValid:true,isDemo:false,status:'paid_active',businessName:'SakuNota'};
+  }
   if (isDemoMode()) {
     const valid = demoSessionValid();
     return {isValid:valid,isDemo:true,status:valid?'trial_active':'demo_expired',businessName:'Demo SakuNota',error:valid?undefined:'Sesi simulasi demo 30 menit telah berakhir. Anda dapat mengulang demo kapan saja secara gratis atau aktifkan lisensi resmi.'};

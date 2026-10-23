@@ -15,8 +15,10 @@ test('operator switches revoke the previous local session; only previously valid
   const env=await environment(),o=await owner(env),pair=await createPairing(env,o.claims),id=crypto.randomUUID();
   const request=()=>({code:pair.code,deviceId:id,deviceName:'Tablet',proof:testDeviceProof('multi.pair',pair.code,id)});
   await requestPairing(env,request());await approvePairing(env,o.claims,pair.id);const device=await requestPairing(env,request());if(device.pending)throw new Error();
+  let disconnected=false;
   class TestClient extends DeviceClient {
     async call<T>(action:string,data:Record<string,unknown>={}):Promise<T>{
+      if(disconnected)throw new TypeError('Connection unavailable');
       if(device.pending)throw new Error();
       const response=await handleMultiDevice(new Request('http://local/api/store',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,data,access:device.access,proof:requestProof(action,device.claims,device.access,data)})}),env);
       const result=await response.json() as {error?:string};if(!response.ok)throw new AccessError(result.error,response.status);return result as T;
@@ -32,6 +34,11 @@ test('operator switches revoke the previous local session; only previously valid
     assert.equal((await sessions.login(first,'482953',true)).claims.employeeId,first);
     assert.equal((await sessions.current())?.claims.employeeId,first);
     assert.equal((await sessions.employees(false)).length,1);
+    disconnected=true;
+    assert.equal((await sessions.employees(true)).length,1);
+    assert.equal((await sessions.login(first,'482953',true)).claims.employeeId,first);
+    await assert.rejects(()=>sessions.login(first,'000000',true));
+    assert.equal(await sessions.current(),null);disconnected=false;
     await sessions.logout();assert.equal(await sessions.current(),null);
     assert.equal((await sessions.login(first,'482953',false)).claims.employeeId,first);
     await assert.rejects(()=>sessions.login(second,'000000',true));assert.equal(await sessions.current(),null);

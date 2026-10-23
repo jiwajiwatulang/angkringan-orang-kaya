@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { StoreSettings } from "@/lib/settings";
 import CashierPrinter from "@/components/CashierPrinter";
+import {getPosScope} from '@/lib/multidevice/posWire';
 
 interface MobileHeaderProps {
   storeSettings: StoreSettings;
@@ -85,7 +86,7 @@ export default function MobileHeader({
           </button>
         )}
         <CashierPrinter settings={storeSettings} />
-        <button type="button" onClick={onAdmin} className="px-2.5 py-1.5 bg-card border border-line text-fg rounded-xl text-xs font-bold">Admin</button>
+        {getPosScope()?.claims.role!=='cashier'&&<button type="button" onClick={onAdmin} className="px-2.5 py-1.5 bg-card border border-line text-fg rounded-xl text-xs font-bold">Admin</button>}
       </div>
     </header>
   );

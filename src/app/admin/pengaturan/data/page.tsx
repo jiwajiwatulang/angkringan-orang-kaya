@@ -17,8 +17,18 @@ import {
 import { db } from "@/lib/dexie";
 import { App } from "@capacitor/app";
 import { applyBusinessDemoPreset, BUSINESS_DEMO_PRESETS, BusinessDemoType } from "@/lib/demoCatalog";
+import {posPartition} from '@/lib/multidevice/posPartition';
+import {currentPosRuntime} from '@/lib/multidevice/posRuntime';
+import DeviceRecovery from '@/components/DeviceRecovery';
 
 export default function PengaturanDataPage() {
+  if(posPartition()){
+    const runtime=currentPosRuntime();
+    return runtime?<div className="max-w-3xl space-y-4"><h1 className="text-2xl font-bold">Data & Cadangan</h1><DeviceRecovery client={runtime.client}/></div>:<p role="status">Memuat data…</p>;
+  }
+  return <LegacyDataPage/>;
+}
+function LegacyDataPage(){
   const router = useRouter();
   const { storeSettings, refreshSettings, showToast } = useAdmin();
 

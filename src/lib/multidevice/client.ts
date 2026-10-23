@@ -14,6 +14,7 @@ export class DeviceClient {
   private currentClaims:AccessClaims;
   constructor(private access:string,claims:AccessClaims,private publicKey:JsonWebKey=LICENSE_PUBLIC_KEY){this.currentClaims=claims;}
   get claims(){return this.currentClaims;}
+  snapshot(){return {access:this.access,claims:this.claims};}
   async renew(){
     if(this.claims.role!=='cashier'||this.claims.employeeId)throw new AccessError();
     const result=await this.call<{access:string}>('refresh');
@@ -59,6 +60,10 @@ export async function requestPairingClient(code:string,deviceName:string){
     const claims=await verifyAccess(result.access,deviceId,await deviceKeyIdentity());
     if(claims.role!=='cashier'||claims.employeeId)throw new Error('Perangkat belum dapat dihubungkan.');
     await db.table('settings').put({key:'multi_device_access',value:{access:result.access,storeId:claims.storeId,deviceId}});
+    if(process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE==='enabled'){
+      const {activatePosPartition}=await import('./posActivation');
+      await activatePosPartition(db,result.access,claims);location.assign('/pos');
+    }
   }
   return result;
 }

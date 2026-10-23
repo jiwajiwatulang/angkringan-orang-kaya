@@ -1,5 +1,6 @@
 "use client";
 import LockIcon from "@/components/LockIcon";
+import {getPosScope} from "@/lib/multidevice/posWire";
 import LineIcon from "@/components/LineIcon";
 import RetailAddProduct from '@/components/RetailAddProduct';
 import { sameBarcode } from '@/lib/productReference';
@@ -52,7 +53,7 @@ export default function POSPage() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [view, setView] = useState<'kasir' | 'meja' | 'menu' | 'pesanan' | 'shift'>('menu');
   useEffect(() => { void destroyAdminSession(); }, []);
-  const enterAdmin = async () => { await destroyAdminSession(); window.location.assign('/admin' + (accessStatus.isDemo ? '?demo=true' : '')); };
+  const enterAdmin = async () => { if(getPosScope()?.claims.role==='cashier')return; await destroyAdminSession(); window.location.assign('/admin' + (accessStatus.isDemo ? '?demo=true' : '')); };
 
   const [mobileTab, setMobileTab] = useState<MobileTab>('menu');
   const navigateWorkspace = (next: typeof view) => { setView(next); setMobileTab(({ kasir: "home", menu: "menu", meja: "meja", pesanan: "nota", shift: "lainnya" } as const)[next]); };
@@ -80,7 +81,7 @@ export default function POSPage() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
   // Form states for Shift
-  const [shiftOperatorName, setShiftOperatorName] = useState("Kasir");
+  const [shiftOperatorName, setShiftOperatorName] = useState(getPosScope()?.operatorName||"Kasir");
   const [shiftStartingCash, setShiftStartingCash] = useState("200000");
   const [shiftNotes, setShiftNotes] = useState("");
   const [countedPhysicalCash, setCountedPhysicalCash] = useState("");
@@ -1337,6 +1338,7 @@ export default function POSPage() {
         if (qty > 0) {
           itemsPaidPayload.push({
             menuItemId: item.menuItemId || item.id,
+            ...(getPosScope()?{orderItemId:item.id}:{}),
             nama: item.namaMenu || item.nama || 'Item',
             qty: qty,
             harga: item.hargaSatuan || item.harga || 0
@@ -2701,7 +2703,7 @@ export default function POSPage() {
 
   return (
     <>
-    <div id="main-app-container" className="flex flex-col h-screen font-sans relative bg-surface text-fg transition-colors duration-200 overflow-hidden">
+    <div id="main-app-container" style={getPosScope()?{height:'100%'}:undefined} className="flex flex-col h-screen font-sans relative bg-surface text-fg transition-colors duration-200 overflow-hidden">
       {/* Demo Kasir Alert Banner with 4 Business Switcher */}
       {accessStatus.isDemo && (
         <div className="bg-amber-100/90 dark:bg-amber-950/80 border-b border-amber-300 dark:border-amber-800 px-3 sm:px-4 py-2 max-lg:landscape:py-1 flex flex-wrap items-center justify-between text-xs text-amber-950 dark:text-amber-100 font-medium shrink-0 z-40 gap-2">
@@ -3403,7 +3405,7 @@ export default function POSPage() {
           )}
 
           <CashierPrinter settings={storeSettings} />
-          <button type="button" onClick={enterAdmin} className="px-3 py-2 max-lg:landscape:py-1 max-lg:landscape:px-2.5 rounded-xl border border-line bg-card text-fg font-bold text-xs hover:bg-line/80 hover:border-accent/40 cursor-pointer transition-all duration-150 active:scale-95 shadow-xs">Admin</button>
+          {getPosScope()?.claims.role!=='cashier'&&<button type="button" onClick={enterAdmin} className="px-3 py-2 max-lg:landscape:py-1 max-lg:landscape:px-2.5 rounded-xl border border-line bg-card text-fg font-bold text-xs hover:bg-line/80 hover:border-accent/40 cursor-pointer transition-all duration-150 active:scale-95 shadow-xs">Admin</button>}
 
         </div>
       </header>
@@ -4024,6 +4026,7 @@ export default function POSPage() {
                   type="text" 
                   maxLength={30}
                   value={shiftOperatorName}
+                  readOnly={getPosScope()?.claims.role==='cashier'}
                   onChange={(e) => setShiftOperatorName(e.target.value)}
                   placeholder="Nama Kasir"
                   className="w-full border border-line rounded-xl p-2.5 text-sm text-fg bg-surface outline-none focus:border-accent"
@@ -4977,12 +4980,12 @@ export default function POSPage() {
                                 className="px-2 py-1 bg-line hover:bg-line text-fg rounded-lg text-[10px] font-bold"
                               > Struk
                               </button>
-                              <button
+                              {getPosScope()?.claims.role!=='cashier'&&<button
                                 type="button"
                                 onClick={() => handleRequestRefundPayment(p)}
                                 className="px-2 py-1 bg-rose-950 text-rose-700 hover:bg-rose-500/15 rounded-lg text-[10px] font-bold border border-rose-200"
                               > Refund
-                              </button>
+                              </button>}
                             </div>
                           )}
                         </div>

@@ -1,6 +1,9 @@
 import Dexie, { type Table as DexieTable } from 'dexie';
 import { isDemoMode } from './demoMode';
 import type { RetailDraftProduct } from './retailDraft';
+import {posDatabaseName} from './multidevice/posPartition';
+import {installPosCapture} from './multidevice/posCapture';
+import {getPosScope} from './multidevice/posWire';
 
 export interface ModifierOption {
   id: string;
@@ -190,7 +193,8 @@ export interface CashMovement {
 
 // Demo activity never reads or overwrites a merchant's real database.
 const demoDatabase = isDemoMode();
-const db = new Dexie(demoDatabase ? 'SakuNotaDemoDB' : 'AngkringanDB');
+const partitionName=posDatabaseName();
+const db = new Dexie(partitionName || (demoDatabase ? 'SakuNotaDemoDB' : 'AngkringanDB'));
 db.version(5).stores({
   menuItems: '++id, nama, kategori, isSoldOut, urutan',
   tables: '++id, nomor, status',
@@ -270,5 +274,9 @@ db.version(8).stores({
 db.version(9).stores({
   inventoryMovements: '++id, menuItemId, orderId, type, timestamp',
 });
+if(partitionName){
+  db.version(12).stores({posOutbox:'id,ordinal',posMeta:'key',posIds:'key'});
+  installPosCapture(db,getPosScope);
+}
 
 export { db };

@@ -1,4 +1,5 @@
 import Dexie from 'dexie';
+import {getPosScope} from './multidevice/posWire';
 import { db, MenuItem, Order, OrderItem, Payment, SelectedModifier, PaymentProof, ModifierGroup, TableShape } from './dexie';
 import initialData from './initialData.json';
 import { getStoreSettings, SETTINGS_STORAGE_KEY } from './settings';
@@ -466,7 +467,8 @@ export async function getOrders(): Promise<any[]> {
 
 export async function getCashierOrders() {
   const shift = await getActiveShift();
-  const orders = await db.table('orders').filter(o => cashierCanSeeOrder(o, shift?.id)).reverse().toArray();
+  const scope=getPosScope();
+  const orders = await db.table('orders').filter(o => cashierCanSeeOrder(o, shift?.id)&&(!scope||scope.claims.role==='owner'||o.mdDeviceId===scope.claims.deviceId&&o.mdOperatorId===scope.claims.employeeId)).reverse().toArray();
   return readOrders(orders);
 }
 
@@ -536,13 +538,14 @@ export async function createOrder(data: any) {
     // 2. Cap transaksi ke shift kasir aktif (atomic query)
     let currentShiftId = data.shiftId || null;
     if (!currentShiftId) {
-      const activeShift = await db.table('shifts').where('status').equals('open').first();
+      const activeShift = await getActiveShift();
       if (activeShift) currentShiftId = activeShift.id;
     }
 
     const orderStatus = data.status || 'paid';
     const isPaid = orderStatus === 'paid';
     const total = data.total;
+    if(getPosScope()&&isPaid&&total>0&&!currentShiftId)throw new Error('Mulai shift kasir terlebih dahulu.');
 
     const proofPayload = (data as any).proof || (data as any).paymentProof;
     const hasProof = Boolean(proofPayload?.imageData);
@@ -759,7 +762,7 @@ export async function recordPayment(data: {
   cashTendered?: number;
   change?: number;
   splitType: 'full' | 'item' | 'equal' | 'partial';
-  itemsPaid?: { menuItemId: number; itemKey?: string; nama: string; qty: number; harga: number }[];
+  itemsPaid?: { menuItemId: number; orderItemId?:number; itemKey?: string; nama: string; qty: number; harga: number }[];
   operatorName: string;
   notes?: string;
   proof?: { imageData: string; fileName?: string; fileSize?: number; mimeType?: string; notes?: string };
@@ -773,11 +776,12 @@ export async function recordPayment(data: {
     // 1. Tentukan shift ID aktif secara atomic
     let shiftId = data.shiftId || null;
     if (!shiftId) {
-      const activeShift = await db.table('shifts').where('status').equals('open').first();
+      const activeShift = await getActiveShift();
       if (activeShift) shiftId = activeShift.id;
     }
 
     // 2. Ambil seluruh pembayaran aktif sebelumnya
+    if(getPosScope()&&!shiftId)throw new Error('Mulai shift kasir terlebih dahulu.');
     const existingPayments = await db.table('payments')
       .where('orderId').equals(data.orderId)
       .and((p: any) => p.status === 'completed')
@@ -852,7 +856,7 @@ export async function recordPayment(data: {
     if (data.splitType === 'item' && data.itemsPaid && data.itemsPaid.length > 0) {
       const orderItems = await db.table('orderItems').where('orderId').equals(data.orderId).toArray();
       for (const paidItem of data.itemsPaid) {
-        const oi = orderItems.find((i: any) => i.menuItemId === paidItem.menuItemId);
+        const oi = orderItems.find((i: any) => getPosScope()&&paidItem.orderItemId?i.id===paidItem.orderItemId:i.menuItemId===paidItem.menuItemId);
         if (oi) {
           const currentPaidQty = oi.paidQty || 0;
           await db.table('orderItems').update(oi.id, {
@@ -919,6 +923,7 @@ export async function refundPartialPayment(paymentId: number, options: { reason:
     const order = await db.table('orders').get(payment.orderId);
     if (!order) throw new Error('Nota tidak ditemukan.');
     const refundShift = await getActiveShift();
+    if(getPosScope()&&!refundShift)throw new Error('Mulai shift pengembalian terlebih dahulu.');
 
     // 1. Tandai pembayaran sebagai refunded
     await db.table('payments').update(paymentId, {
@@ -927,6 +932,7 @@ export async function refundPartialPayment(paymentId: number, options: { reason:
       refundedAt: new Date().toISOString(),
       refundOperator: options.operator || 'Admin',
       cashRefundAmount: payment.paymentMethod === 'Cash' ? payment.amount : 0,
+      ...(getPosScope()?{mdRefundAmount:payment.amount,mdRefundMethod:payment.paymentMethod}:{}),
       refundShiftId: refundShift?.id ?? payment.shiftId
     });
 
@@ -934,7 +940,7 @@ export async function refundPartialPayment(paymentId: number, options: { reason:
     if (payment.splitType === 'item' && payment.itemsPaid && payment.itemsPaid.length > 0) {
       const orderItems = await db.table('orderItems').where('orderId').equals(payment.orderId).toArray();
       for (const paidItem of payment.itemsPaid) {
-        const oi = orderItems.find((i: any) => i.menuItemId === paidItem.menuItemId);
+        const oi = orderItems.find((i: any) => getPosScope()&&paidItem.orderItemId?i.id===paidItem.orderItemId:i.menuItemId===paidItem.menuItemId);
         if (oi && oi.paidQty) {
           await db.table('orderItems').update(oi.id, {
             paidQty: Math.max(0, oi.paidQty - paidItem.qty)
@@ -990,6 +996,11 @@ export async function refundPartialPayment(paymentId: number, options: { reason:
 }
 
 export async function getOrderPayments(orderId: number) {
+  const scope=getPosScope();
+  if(scope?.claims.role==='cashier'){
+    const order=await db.table('orders').get(orderId);
+    if(!order||order.mdDeviceId!==scope.claims.deviceId||order.mdOperatorId!==scope.claims.employeeId)throw new Error('Transaksi ini milik kasir lain.');
+  }
   if (typeof window !== 'undefined') {
     const order = await db.table('orders').get(orderId);
     const shift = await getActiveShift();
@@ -1031,16 +1042,19 @@ export async function processVoidRefund(orderId: number, options: { reason: stri
     const requestedRefund = Number(options.refundAmount);
     if (!Number.isFinite(requestedRefund) || requestedRefund < 0 || requestedRefund > paidTotal) throw new Error('Nominal refund tidak valid atau melebihi pembayaran.');
     let cashRefundRemaining = options.isRefunded && ['Cash', 'Tunai'].includes(options.refundMethod) ? requestedRefund : 0;
+    let refundRemaining=options.isRefunded?requestedRefund:0;
     for (const p of orderPayments) {
       if (p.status === 'completed') {
         const cashRefundAmount = Math.min(cashRefundRemaining, p.amount);
         cashRefundRemaining -= cashRefundAmount;
+        const mdRefundAmount=Math.min(refundRemaining,p.amount);refundRemaining-=mdRefundAmount;
         await db.table('payments').update(p.id, {
           status: 'refunded',
           refundReason: `Void Nota: ${options.reason}`,
           refundedAt: new Date().toISOString(),
           refundOperator: options.operator || 'Admin',
           cashRefundAmount,
+          ...(getPosScope()?{mdRefundAmount,mdRefundMethod:options.refundMethod}:{}),
           refundShiftId: refundShift?.id ?? p.shiftId
         });
       }
@@ -1713,7 +1727,8 @@ export async function importHistoricalTransactions(transactions: {
 
 export async function getActiveShift() {
   const shifts = await db.table('shifts').where({ status: 'open' }).toArray();
-  return shifts.length > 0 ? shifts[0] : null;
+  const scope=getPosScope();
+  return shifts.find(shift=>!scope||shift.mdDeviceId===scope.claims.deviceId&&shift.mdOperatorId===(scope.claims.employeeId||scope.claims.deviceId))||null;
 }
 
 export async function getAllShifts() {
@@ -1725,6 +1740,7 @@ export async function getShiftLiveStats(shiftId: number) {
   await requireActiveCashierShift(shiftId);
   const shift = await db.table('shifts').get(shiftId);
   if (!shift) throw new Error('Shift tidak ditemukan.');
+  if(getPosScope()&&shift.status==='closed')return {...shift,...shift.mdClosedStats};
 
   const storePayments = await db.table('payments').toArray();
   const allPayments = storePayments.filter(p => p.shiftId === shiftId);
@@ -1810,6 +1826,7 @@ export async function getShiftLiveStats(shiftId: number) {
 }
 
 export async function openShift(data: { operatorName: string, startingCash: number, notes?: string }) {
+  if(getPosScope()?.claims.role==='cashier')data={...data,operatorName:getPosScope()!.operatorName};
   await Dexie.waitFor(requireCashierWriteAccess());
   if (!Number.isFinite(data.startingCash) || data.startingCash < 0) throw new Error('Modal awal tidak valid.');
   return db.transaction('rw', ['shifts', 'auditLogs'], async () => {
@@ -1856,6 +1873,7 @@ export async function closeShift(shiftId: number, data: { actualCash: number, no
   const difference = actual - stats.expectedCash;
 
   const updatePayload = {
+    ...(getPosScope()?{mdClosedStats:stats}:{}),
     endTime: new Date().toISOString(),
     actualCash: actual,
     cashDifference: difference,

@@ -42,14 +42,14 @@ export interface SaleLine {
 }
 export type StoreEvent = {
   id: string; storeId: string; deviceId: string; operatorId: string;
-  kind: 'catalog.put' | 'settings.put' | 'shift.open' | 'shift.close' | 'order.create' | 'payment.record' | 'refund.record' | 'stock.adjust';
+  kind: 'catalog.put' | 'settings.put' | 'shift.open' | 'shift.close' | 'order.create' | 'payment.record' | 'refund.record' | 'stock.adjust' | 'pos.commit';
   entityId: string; data: Record<string, unknown>;
 };
 export function validateEnvelope(event: StoreEvent, claims: AccessClaims) {
   for (const id of [event.id, event.entityId, event.storeId, event.deviceId, event.operatorId]) assertId(id);
   if (event.storeId !== claims.storeId || event.deviceId !== claims.deviceId || event.operatorId !== (claims.employeeId || claims.deviceId)) throw new AccessError();
   if (!event.data || typeof event.data !== 'object' || Array.isArray(event.data)) throw new AccessError('Data tidak valid.', 400);
-  if (!['catalog.put','settings.put','shift.open','shift.close','order.create','payment.record','refund.record','stock.adjust'].includes(event.kind)) throw new AccessError('Tindakan tidak tersedia.',400);
+  if (!['catalog.put','settings.put','shift.open','shift.close','order.create','payment.record','refund.record','stock.adjust','pos.commit'].includes(event.kind)) throw new AccessError('Tindakan tidak tersedia.',400);
   if (['catalog.put','settings.put','refund.record','stock.adjust'].includes(event.kind)) requireOwner(claims);
   if (claims.role === 'cashier' && !claims.employeeId) throw new AccessError('Silakan masuk kasir.');
 }

@@ -11,7 +11,7 @@ export function validateArchive(value:unknown,storeId:string):RecoveryArchive {
   const outbox=(data.outbox as OutboxRow[]).slice().sort((a,b)=>a.ordinal-b.ordinal).map(row=>{
     if(!row||!row.event||row.event.storeId!==storeId||row.event.deviceId!==data.deviceId||row.id!==row.event.id||!Number.isSafeInteger(row.ordinal)||row.ordinal<=ordinal||seen.has(row.id))throw new AccessError('Cadangan tidak valid.',400);
     assertId(row.id);assertId(row.event.entityId);assertId(row.event.operatorId);
-    if(!row.event.data||typeof row.event.data!=='object'||JSON.stringify(row.event).length>150000)throw new AccessError('Cadangan tidak valid.',400);
+    if(!row.event.data||typeof row.event.data!=='object'||JSON.stringify(row.event).length>8*1024*1024)throw new AccessError('Cadangan tidak valid.',400);
     seen.add(row.id);ordinal=row.ordinal;return {id:row.id,ordinal:row.ordinal,attempts:0,event:row.event};
   });
   return {version:1,storeId,deviceId:data.deviceId,outbox};

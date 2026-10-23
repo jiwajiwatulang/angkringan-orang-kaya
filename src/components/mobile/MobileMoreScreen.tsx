@@ -1,4 +1,5 @@
 "use client";
+import {getPosScope} from "@/lib/multidevice/posWire";
 import LineIcon from "@/components/LineIcon";
 
 import React from "react";
@@ -93,7 +94,8 @@ export default function MobileMoreScreen({
         </div>
       </div>
 
-      {/* 3. Compact 4-Grid Navigation Shortcuts (Tidak Memanjang ke Bawah) */}
+      {/* Owner navigation */}
+      {getPosScope()?.claims.role!=='cashier'&&<>
       <div>
         <span className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider px-1 block mb-2">
           Pengaturan &amp; Backoffice
@@ -181,6 +183,7 @@ export default function MobileMoreScreen({
         </div>
       </div>
 
+      </>}
       {/* 4. Help & Wizard */}
       {showOnboarding && <div>
         <button

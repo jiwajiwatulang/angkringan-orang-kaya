@@ -1,6 +1,8 @@
 export const DEMO_DURATION_MS = 30 * 60 * 1000;
 export const DEMO_ORDER_LIMIT = 50;
+import {posPartition} from './multidevice/posPartition';
 export function isDemoMode(): boolean {
+  if(posPartition())return false; // Authorization still requires the signed device grant before any write.
   return typeof window !== 'undefined' && (new URLSearchParams(window.location?.search || '').get('demo') === 'true' || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sakunota_demo_mode') === 'true'));
 }
 export function demoSessionValid(): boolean {

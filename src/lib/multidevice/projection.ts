@@ -1,4 +1,7 @@
 import {AccessError,assertId,integer,lineAmount,text,validateEnvelope,type AccessClaims,type CatalogProduct,type SaleLine,type StoreEvent} from './protocol';
+import {projectPosCommit,visiblePosEntity} from './posProjection';
+import type {PosCommit} from './posWire';
+import {POS_PROFILE_FIELDS} from './posProfile';
 
 export interface Entity {kind:string;id:string;value:Record<string,unknown>}
 export type Lookup = (kind:string,id:string)=>Promise<Record<string,unknown>|undefined>;
@@ -10,6 +13,7 @@ function amount(value:unknown):number {return integer(value);}
 function sum(a:number,b:number) {const result=a+b;if(!Number.isSafeInteger(result)) throw new AccessError('Jumlah terlalu besar.',400);return result;}
 export async function project(event:StoreEvent,claims:AccessClaims,lookup:Lookup):Promise<Entity[]> {
   validateEnvelope(event,claims);
+  if(event.kind==='pos.commit')return projectPosCommit(event as PosCommit,claims,lookup);
   const d=event.data, entityId=event.entityId;
   const existing=await lookup(event.kind.split('.')[0],entityId);
   const owned=(row:Record<string,unknown>)=>{
@@ -33,11 +37,23 @@ export async function project(event:StoreEvent,claims:AccessClaims,lookup:Lookup
     return [{kind:'catalog',id:entityId,value:{...product}},{kind:'catalogVersion',id:`${entityId}_${product.version}`,value:{...product}}];
   }
   if(event.kind==='settings.put') {
-    only(d,['expectedVersion','storeName','receiptFooter']);
+    only(d,['expectedVersion','storeName','receiptFooter','profile']);
     const expected=integer(d.expectedVersion);
     if(expected!==Number(existing?.version||0)) throw new AccessError('Pengaturan sudah berubah. Perbarui data.',409);
     if(typeof d.receiptFooter!=='string'||d.receiptFooter.length>200) throw new AccessError('Catatan terlalu panjang.',400);
-    return [{kind:'settings',id:entityId,value:{version:expected+1,storeName:text(d.storeName),receiptFooter:d.receiptFooter}}];
+    let profile:Record<string,unknown>|undefined;
+    if(d.profile!==undefined){
+      if(!d.profile||typeof d.profile!=='object'||Array.isArray(d.profile))throw new AccessError('Pengaturan tidak valid.',400);
+      profile=d.profile as Record<string,unknown>;only(profile,[...POS_PROFILE_FIELDS]);
+      for(const key of ['taxPercent','servicePercent'])if(profile[key]!==undefined&&(typeof profile[key]!=='number'||!Number.isFinite(profile[key])||Number(profile[key])<0||Number(profile[key])>100))throw new AccessError('Persentase tidak valid.',400);
+      for(const [key,value] of Object.entries(profile)){
+        if(key.startsWith('enable')||key.startsWith('receiptShow')||key==='taxAppliesToService'){if(typeof value!=='boolean')throw new AccessError('Pengaturan tidak valid.',400);}
+        else if(!['taxPercent','servicePercent'].includes(key)&&(typeof value!=='string'||value.length>(key==='storeLogo'?400000:1000)))throw new AccessError('Pengaturan tidak valid.',400);
+      }
+      if(profile.serviceMode!==undefined&&!['resto','quick'].includes(String(profile.serviceMode)))throw new AccessError('Pengaturan tidak valid.',400);
+      if(profile.paperWidth!==undefined&&!['58mm','80mm'].includes(String(profile.paperWidth)))throw new AccessError('Pengaturan tidak valid.',400);
+    }
+    return [{kind:'settings',id:entityId,value:{version:expected+1,storeName:text(d.storeName),receiptFooter:d.receiptFooter,...(profile?{profile}:{})}},{kind:'settingsVersion',id:`${entityId}_${expected+1}`,value:{version:expected+1,profile}}];
   }
   if(event.kind==='shift.open') {
     only(d,['startingCash']);if(existing) throw new AccessError('Shift sudah tercatat.',409);
@@ -128,6 +144,7 @@ export async function project(event:StoreEvent,claims:AccessClaims,lookup:Lookup
 }
 
 export function visibleEntity(entity:Entity,claims:AccessClaims):Entity|undefined {
+  if(entity.kind.startsWith('pos_'))return visiblePosEntity(entity,claims);
   if(claims.role==='owner') return entity;
   if(entity.kind==='catalog'||entity.kind==='catalogVersion') {
     const {cost:_cost,...value}=entity.value;return {...entity,value};

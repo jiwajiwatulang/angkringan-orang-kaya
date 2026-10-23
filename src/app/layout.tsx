@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { siteDescription } from "@/lib/publicMetadata";
+import PosSessionBoundary from '@/components/PosSessionBoundary';
 
 const inter = Inter({
   variable: "--font-inter",
@@ -136,7 +137,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-full flex flex-col bg-app text-fg font-sans">
-        {children}
+        <PosSessionBoundary>{children}</PosSessionBoundary>
         <script
           dangerouslySetInnerHTML={{
             __html: `

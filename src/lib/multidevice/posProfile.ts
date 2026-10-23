@@ -1,0 +1,2 @@
+export const POS_PROFILE_FIELDS=['storeName','storeAddress','storePhone','receiptFooter','paperWidth','enableWatermark','serviceMode','taxName','taxPercent','enableTax','taxAppliesToService','servicePercent','enableService','businessType','storeLogo','receiptHeader','receiptCustomNote','receiptShowLogo','receiptShowCashier','receiptShowCustomer','receiptShowTable','receiptShowNotes'] as const;
+export function publicPosProfile(value:Record<string,unknown>){return Object.fromEntries(POS_PROFILE_FIELDS.filter(key=>value[key]!==undefined).map(key=>[key,value[key]]));}

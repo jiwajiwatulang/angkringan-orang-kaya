@@ -3,7 +3,7 @@ import {AccessError,validClaims,type AccessClaims} from './protocol';
 export async function sha256(value:string) {
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),n=>n.toString(16).padStart(2,'0')).join('');
 }
-export async function verifyAccess(access:string,deviceId:string,identity:string,publicJwk=LICENSE_PUBLIC_KEY):Promise<AccessClaims> {
+export async function verifyAccess(access:string,deviceId:string,identity:string,publicJwk=LICENSE_PUBLIC_KEY,expiredDevice=false):Promise<AccessClaims> {
   try {
     if(access.length>4096) throw new Error();
     const [prefix,payload,signature,extra]=access.split('.');
@@ -11,7 +11,8 @@ export async function verifyAccess(access:string,deviceId:string,identity:string
     const key=await crypto.subtle.importKey('jwk',publicJwk,{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
     if(!await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},key,fromBase64Url(signature),new TextEncoder().encode(`${prefix}.${payload}`))) throw new Error();
     const claims=JSON.parse(new TextDecoder().decode(fromBase64Url(payload))) as AccessClaims;
-    if(!validClaims(claims)||claims.deviceId!==deviceId||claims.deviceKey!==identity) throw new Error();
+    if(!validClaims(claims,expiredDevice?claims.issuedAt+1:Date.now())||claims.deviceId!==deviceId||claims.deviceKey!==identity) throw new Error();
+    if(expiredDevice&&(claims.role!=='cashier'||claims.employeeId))throw new Error();
     return claims;
   } catch {throw new AccessError('Silakan masuk lagi.',401);}
 }

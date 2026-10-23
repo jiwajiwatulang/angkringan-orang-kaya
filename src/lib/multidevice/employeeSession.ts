@@ -4,6 +4,7 @@ import {verifyAccess} from './offlineAccess';
 import {LocalReplica,replicaDatabase} from './replica';
 import type {DeviceClient} from './client';
 import {LICENSE_PUBLIC_KEY} from '../licenseProtocol';
+export function transportUnavailable(error:unknown){return error instanceof AccessError?error.status>=500:error instanceof TypeError||error instanceof DOMException&&['AbortError','TimeoutError'].includes(error.name);}
 
 export class EmployeeSessions {
   readonly replica:LocalReplica;
@@ -16,12 +17,14 @@ export class EmployeeSessions {
     const result=await this.device.renew();
     await this.local.table('settings').put({key:'multi_device_access',value:{access:result.access,storeId:result.claims.storeId,deviceId:this.deviceId}});
   }
-  async employees(online:boolean){
+  async employees(online:boolean):Promise<{id:string;name:string;active:number}[]>{
     if(online){
+      try{
       await this.ensureDeviceAccess();
       const {employees}=await this.device.list();
       await this.local.table('settings').put({key:'multi_employee_names',value:employees.map(({id,name,active})=>({id,name,active}))});
       return employees;
+      }catch(error){if(!transportUnavailable(error))throw error;return this.employees(false);}
     }
     const known=await this.replica.db.table('credentials').toArray();
     const allowed:{id:string;name:string;active:number}[]=[];
@@ -34,11 +37,10 @@ export class EmployeeSessions {
     // Invalidate the previous operator before checking a new PIN, including a failed switch.
     await this.logout();
     if(online){
-      await this.ensureDeviceAccess();
       // A definitive server rejection must not fall back to a cached offline PIN.
       let result:{access:string;claims:AccessClaims;offlineVerifier:string;name:string};
-      try{result=await this.device.call('employee.login',{id,pin});}
-      catch(error){if(error instanceof AccessError && error.status>=400 && error.status<500)await this.replica.db.table('credentials').delete(id);throw error;}
+      try{await this.ensureDeviceAccess();result=await this.device.call('employee.login',{id,pin});}
+      catch(error){if(error instanceof AccessError && error.status>=400 && error.status<500)await this.replica.db.table('credentials').delete(id);if(transportUnavailable(error))return this.login(id,pin,false);throw error;}
       const claims=await verifyAccess(result.access,this.deviceId,this.identity,this.publicKey);
       if(claims.storeId!==this.device.claims.storeId||claims.employeeId!==id||claims.role!=='cashier')throw new AccessError();
       await this.replica.rememberEmployee({id,access:result.access,verifier:result.offlineVerifier,name:result.name});

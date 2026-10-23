@@ -8,8 +8,13 @@ import { db } from "@/lib/dexie";
 import { selectDashboardOrders, buildSalesSeries } from "@/lib/dashboardMetrics";
 import { useAdmin } from "./AdminContext";
 import { getOrders, getActiveShift, getShiftLiveStats } from "@/lib/api";
+import StoreDashboard from '@/components/StoreDashboard';
+import {posPartition} from '@/lib/multidevice/posPartition';
 
 export default function AdminDashboardPage() {
+  return posPartition()?<StoreDashboard/>:<LegacyDashboard/>;
+}
+function LegacyDashboard(){
   const { storeSettings } = useAdmin();
   const [orders, setOrders] = useState<any[]>([]);
   const [activeShift, setActiveShift] = useState<any>(null);

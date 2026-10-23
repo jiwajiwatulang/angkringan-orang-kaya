@@ -1,38 +1,27 @@
-# Multi-device integration audit
+# Multi-device POS integration — 23 October 2026
 
-Base: `origin/main` ed297ce. Dedicated branch: `feat/multi-device-v1`.
+Branch: `feat/multi-device-v1`. PR: #4, Draft. Baseline `origin/main` remains `ed297ce5c6f240cfb0afde9b9c9af372415bdf8b` (fetched again during validation). No PR #1/#2/#3 commits were merged or cherry-picked. Both feature switches default off. No production migration or deployment.
 
-The production access/weight branch (`origin/fix/admin-session-license-navigation`, c20ac85) and Dashboard financial work are not ancestors of main. Do not copy their migrations or silently merge them. Main has Dexie v9, one device license binding, numeric local transaction keys, and mutable payment refund records. The financial ledger/COGS/weight integration is a release dependency, not an implemented capability of main.
+## Implemented behavior
 
-Existing boundaries: `licenseDeviceAccess` authenticates the original device; `merchantAccess` checks local Admin; `api` handles orders, payments, shifts and backup; `inventory` uses local movements; demo uses a separate database. D1 currently contains licensing, not merchant transactions.
+- A verified owner/device grant selects a separate `SakuNotaPOS-{store}-{device}` local store. The original merchant store is retained. Legacy records bootstrap in resumable receipt-sized groups, retaining numeric local relationships and assigning global wire IDs. Employee login is mounted around the actual POS; cashier routes and Admin functions require the correct signed role.
+- Existing POS order, payment, split allocation, proof, shift, stock and audit writes atomically include an outbox event through Dexie middleware. A failed local transaction rolls back both records and outbox. IDs survive reopening and lost responses. Downloads cannot overwrite unsent local changes.
+- The server validates row versions, origin/operator, historical catalog prices, modifiers, receipt arithmetic, payment limits, stock reservation deltas and closed shifts. Stock movements add to canonical quantities; an old-price offline sale preserves newer owner catalog edits. Closed-shift totals are derived from accepted records and frozen. Split allocations carry global line IDs.
+- Product/receipt photos use bounded delivery and chunked D1 payload storage, including the existing 2 MB proof limit. No access grant, PIN verifier or private key is exported in recovery archives. Pending archives can be recovered by the live owner after replacement without reviving the old device or duplicating accepted receipts.
+- Owner dashboard reads the actual synchronized POS records. Its isolated compatibility view recognizes collections on payment dates and returns on refund dates, includes partial collections and retained money after cancellation, and supports negative refund-only days. It does not import Dashboard PR #1. Regular single-device dashboard behavior remains unchanged.
+- Employee switching clears the previous session. Known, still-authorized employees can sign in with cached PIN verification when transport fails even if the browser reports online. A definitive 4xx rejection cannot fall back to offline authorization. Cached authorization expires within 24 hours; offline devices cannot learn a revocation until communication resumes.
 
-Implementation is isolated behind a server-side opt-in. No automatic enrollment, production migration, merge or deployment. The legacy data store is never rewritten by the new transport. Use additive D1 tables and a separate per-store local store; imported numeric IDs must never become network IDs.
+## Validation evidence
 
-Release gates: legacy POS adapter, ledger integration after financial review, restoring/replacing devices without replay, actual independent browser profiles with interrupted connectivity, printed receipts, 390px/desktop screenshots, and full financial reconciliation. Unit tests and HTTP checks do not satisfy these gates. Keep unfinished interfaces inaccessible rather than showing active controls for unfinished behavior.
+- `npm test`: 198 passed.
+- `npm run test:stability`: 35 passed.
+- `npm run test:multidevice`: 30 passed, including actual API calls and two separate POS processes/local stores against the local D1 implementation.
+- Typecheck passed. Production build produced 28 static routes. Offline readiness resolved 160 assets. Final logs and screenshots are in this chat's `outputs` directory.
+- Actual API scenarios include order editing/tombstones, cash plus QRIS, refund after closing a shift, immutable close totals, stock reservations, unpaid Retail draft then installment repayment, a 2.7 MB encoded payment image, atomic rollback, concurrent offline sales with an owner price update, repeated delivery, and owner replacement with a lost acknowledgment.
+- Browser QA renders the actual POS, employee login, recovery controls and owner dashboard with generated local signing keys. It uses localhost/127.0.0.1 storage isolation, not production or third-party credentials. PIN entry, cashier access restrictions, shift opening, sale/receipt, operator switching and received owner totals were exercised. Three browser receipts totaled Rp30,000 and three notes after an offline reopen, a nonempty cashier archive recovered through the Owner UI, reconnect, and one deliberately lost acknowledgment; there were no duplicate notes. Mobile viewport width 390 has no horizontal overflow; lower navigation remains within the viewport after adding sync status.
 
-## Implemented foundation (not the completed v1 release)
+## Review/release boundary
 
-- Dedicated D1 tables; deterministic store identity; live owner/cashier slot constraints.
-- Original licensed device proof enrolls the owner. A short-lived, opaque QR capability requires a second, explicit owner approval. Proofs bind the payload, device, access and nonce.
-- Employee PINs use salted PBKDF2; signed 24-hour offline access binds the employee's verifier, device key and credential epoch. Both device and employee revocation are checked before server operations. Offline revocation cannot be learned while disconnected; new server operations are rejected after revocation.
-- Versioned catalog, retained historical price/cost, owner-only settings and cost fields, cashier-only own orders/shift scope.
-- An isolated event projection handles orders, payments, refunds, shifts and additive stock. Event writes and projections share a D1 batch with a revision CAS plus unique mutation marker. This projection is **not yet the existing POS financial ledger**.
-- Separate local replicas commit projection and outbox atomically. Delivery preserves dependency order and reuses event IDs; acknowledgment is required before removal. A late download cannot replace a new pending local sale. A connectivity listener and retry timer are available for the future adapter.
-- Owner device/employee panel and QR receiver routes exist behind the frontend gate. Both gates default off; the existing POS does not activate them. There is no active navigation entry advertising unfinished functionality.
+These are local functional results, not a claim that every bug is absent. The in-app browser exposes one browser context: two origins are not two independent browser profiles or two hardware devices. Network failure/lost-response injection exercises the real application transport; physical airplane-mode installation, browser/process destruction, Cloudflare-hosted staging behavior/limits and physical printer output remain separate release checks. No production writes, secrets, merge or deployment were used to replace those checks.
 
-## Still required
-
-1. Review/choose the financial + weight baseline, then implement the existing POS adapter (including quick add, split payments, discounts/tax, payment proofs, print paths and action/URL guards). The current cashier license guard does not accept the new device grant.
-2. Mount a real employee login screen into that adapter; retain role and operator scope on every existing read/write entry point. Core offline PIN verification is not a completed employee login journey.
-3. Add safe restore/replacement and legacy bootstrap. The foundation exports owner data without keys or employee verifiers; **no restore/import routine is implemented**. No claim is made that a backup restores a failed device. Unsent/unbacked-up local data can be lost if the device is destroyed.
-4. Integrate owner dashboard with received/pending completeness; confirm the other device's state before showing “Semua Data Terbaru”. The status component alone is not dashboard integration.
-5. Test real independent browser profiles, offline/reconnect/forced-close, receipts, mobile performance and actual 390px/tablet/desktop screenshots. Browser automation was previously denied; it was not bypassed.
-6. Reconcile the existing dual ledger, weighted refunds, immutable closed-shift reports, data migration, backup replay and complete POS behavior end-to-end. A successful foundation projection test does not establish these properties for the application.
-
-## Validation, 23 October 2026 (WITA)
-
-`npm test`: 198 passed. `test:stability`: 35 passed. `test:multidevice`: 22 passed. Typecheck, production build and offline readiness passed. Build generates 28 static routes and 159 offline files. The new suite is included in CI.
-
-Independent storage simulation uses two separate Dexie databases backed by fake-indexeddb and SQLite through the local D1 adapter, not real browsers or Cloudflare production. It covers concurrent sales, cashier privacy, tenfold retries, lost acknowledgments, reopening persisted queues, price/cost history, partial weighted refund/restock, closed shifts, PIN lockout/rotation, store isolation, demo exclusion, revocation and original-license unbinding. The HTTP gate and bounded input parser are exercised through local Requests.
-
-No production migration, secret changes, real transactions, merge or deployment. This PR must remain draft and the feature must remain off.
+PR #1's financial implementation and PR #2's weighted refund semantics remain unapproved and absent. The current adapter integrates main's supported POS behavior; it does not claim that unmerged weighted ledger code has been validated. Keep PR #4 Draft and switches off for final review and deployment-specific acceptance.

@@ -3,6 +3,16 @@ import type {D1Database} from './d1';
 import {digest} from './multideviceCrypto';
 import {AccessError,requireOwner,validateEnvelope,type AccessClaims,type StoreEvent} from '../multidevice/protocol';
 import {project,visibleEntity,type Entity} from '../multidevice/projection';
+import {MAX_DELIVERY_BYTES,PAYLOAD_CHUNK_CHARS} from '../multidevice/limits';
+
+function chunks(payload:string){return payload.length<=PAYLOAD_CHUNK_CHARS?[]:Array.from({length:Math.ceil(payload.length/PAYLOAD_CHUNK_CHARS)},(_,i)=>payload.slice(i*PAYLOAD_CHUNK_CHARS,(i+1)*PAYLOAD_CHUNK_CHARS));}
+async function readPayload(db:D1Database,storeId:string,kind:string,id:string,payload:string){
+  const marker=JSON.parse(payload);
+  if(!marker||!Number.isSafeInteger(marker.mdPayloadParts))return marker;
+  const parts=await db.prepare('SELECT payload FROM MdPayloadChunks WHERE storeId=? AND kind=? AND id=? ORDER BY part').bind(storeId,kind,id).all<{payload:string}>();
+  if(parts.results.length!==marker.mdPayloadParts)throw new AccessError('Data belum lengkap.',503);
+  return JSON.parse(parts.results.map(row=>row.payload).join(''));
+}
 
 // The mutation marker is request-local. A failed CAS must never borrow another request's revision.
 const LIVE=`EXISTS(SELECT 1 FROM MdDevices d WHERE d.storeId=MdStores.id AND d.id=? AND d.epoch=? AND d.role=? AND d.publicKey=? AND d.revoked=0)
@@ -19,7 +29,7 @@ export async function submitEvent(db:D1Database,claims:AccessClaims,event:StoreE
 async function writeEvent(db:D1Database,actor:AccessClaims,claims:AccessClaims,event:StoreEvent,recovering=false) {
   validateEnvelope(event,claims);await ensureLive(db,actor);
   const payload=JSON.stringify(event),hash=digest(payload);
-  if(payload.length>150000) throw new AccessError('Nota terlalu besar.',413);
+  if(new TextEncoder().encode(payload).length>MAX_DELIVERY_BYTES) throw new AccessError('Nota terlalu besar.',413);
   for(let attempt=0;attempt<8;attempt++){
     const duplicate=await db.prepare('SELECT digest,sequence,deviceId,operatorId FROM MdEvents WHERE storeId=? AND id=?').bind(claims.storeId,event.id).first<{digest:string;sequence:number;deviceId:string;operatorId:string}>();
     if(duplicate){
@@ -32,7 +42,7 @@ async function writeEvent(db:D1Database,actor:AccessClaims,claims:AccessClaims,e
     try {
       changes=await project(event,claims,async(kind,id)=>{
         const row=await db.prepare('SELECT payload FROM MdEntities WHERE storeId=? AND kind=? AND id=?').bind(claims.storeId,kind,id).first<{payload:string}>();
-        return row?JSON.parse(row.payload):undefined;
+        return row?readPayload(db,claims.storeId,kind,id,row.payload):undefined;
       });
     } catch(error){
       const latest=await db.prepare('SELECT revision FROM MdStores WHERE id=?').bind(claims.storeId).first<{revision:number}>();
@@ -41,12 +51,22 @@ async function writeEvent(db:D1Database,actor:AccessClaims,claims:AccessClaims,e
     }
     const mutation=crypto.randomUUID(),revision=state.revision+1;
     const guard='EXISTS(SELECT 1 FROM MdStores WHERE id=? AND mutation=?)';
+    const payloadWrites=(kind:string,id:string,value:string)=>{
+      const parts=chunks(value);
+      return {stored:parts.length?JSON.stringify({mdPayloadParts:parts.length}):value,statements:[
+        db.prepare(`DELETE FROM MdPayloadChunks WHERE storeId=? AND kind=? AND id=? AND ${guard}`).bind(claims.storeId,kind,id,claims.storeId,mutation),
+        ...parts.map((part,index)=>db.prepare(`INSERT INTO MdPayloadChunks(storeId,kind,id,part,payload) SELECT ?,?,?,?,? WHERE ${guard}`).bind(claims.storeId,kind,id,index,part,claims.storeId,mutation)),
+      ]};
+    };
+    const storedEvent=payloadWrites('event',event.id,payload);
+    const storedEntities=changes.map(entity=>({entity,...payloadWrites(entity.kind,entity.id,JSON.stringify(entity.value))}));
     const statements=[
       db.prepare(`UPDATE MdStores SET revision=revision+1,mutation=? WHERE id=? AND revision=? AND ${LIVE}`).bind(mutation,claims.storeId,state.revision,...liveValues(actor)),
       db.prepare(`INSERT INTO MdEvents(storeId,id,deviceId,operatorId,kind,entityId,payload,digest,receivedAt)
-        SELECT ?,?,?,?,?,?,?,?,? WHERE ${guard}`).bind(claims.storeId,event.id,claims.deviceId,event.operatorId,event.kind,event.entityId,payload,hash,Date.now(),claims.storeId,mutation),
-      ...changes.map(entity=>db.prepare(`INSERT INTO MdEntities(storeId,kind,id,revision,payload) SELECT ?,?,?,?,? WHERE ${guard}
-        ON CONFLICT(storeId,kind,id) DO UPDATE SET revision=excluded.revision,payload=excluded.payload`).bind(claims.storeId,entity.kind,entity.id,revision,JSON.stringify(entity.value),claims.storeId,mutation)),
+        SELECT ?,?,?,?,?,?,?,?,? WHERE ${guard}`).bind(claims.storeId,event.id,claims.deviceId,event.operatorId,event.kind,event.entityId,storedEvent.stored,hash,Date.now(),claims.storeId,mutation),
+      ...storedEvent.statements,
+      ...storedEntities.flatMap(({entity,stored,statements})=>[db.prepare(`INSERT INTO MdEntities(storeId,kind,id,revision,payload) SELECT ?,?,?,?,? WHERE ${guard}
+        ON CONFLICT(storeId,kind,id) DO UPDATE SET revision=excluded.revision,payload=excluded.payload`).bind(claims.storeId,entity.kind,entity.id,revision,stored,claims.storeId,mutation),...statements]),
       ...(recovering?[db.prepare(`INSERT INTO MdRecoveries(storeId,eventId,authorizedBy,recoveredAt) SELECT ?,?,?,? WHERE ${guard}
         ON CONFLICT(storeId,eventId) DO NOTHING`).bind(claims.storeId,event.id,actor.deviceId,Date.now(),claims.storeId,mutation)]:[]),
     ];
@@ -84,7 +104,7 @@ export async function pullEntities(db:D1Database,claims:AccessClaims,cursor:numb
   if(!page.results.length) return {cursor,entities:[] as Entity[],hasMore:false};
   const upper=page.results[page.results.length-1].revision;
   const rows=await db.prepare('SELECT kind,id,payload FROM MdEntities WHERE storeId=? AND revision>? AND revision<=? ORDER BY revision,kind,id').bind(claims.storeId,cursor,upper).all<{kind:string;id:string;payload:string}>();
-  const entities=rows.results.map(row=>visibleEntity({kind:row.kind,id:row.id,value:JSON.parse(row.payload)},claims)).filter((row):row is Entity=>!!row);
+  const entities=(await Promise.all(rows.results.map(async row=>visibleEntity({kind:row.kind,id:row.id,value:await readPayload(db,claims.storeId,row.kind,row.id,row.payload)},claims)))).filter((row):row is Entity=>!!row);
   const more=await db.prepare('SELECT id FROM MdEntities WHERE storeId=? AND revision>? LIMIT 1').bind(claims.storeId,upper).first();
   return {cursor:upper,entities,hasMore:!!more};
 }

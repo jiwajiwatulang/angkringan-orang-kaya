@@ -1,4 +1,5 @@
 import { db } from './dexie';
+import {getPosScope} from './multidevice/posWire';
 
 export interface StoreSettings {
   storeName: string;
@@ -168,6 +169,7 @@ export async function loadStoreSettingsAsync(): Promise<StoreSettings> {
  * Guarantees that Dexie IndexedDB write has completed before resolving.
  */
 export async function saveStoreSettingsAsync(settings: StoreSettings): Promise<void> {
+  if(db.name.startsWith('SakuNotaPOS-')&&getPosScope()?.claims.role!=='owner')throw new Error('Pengaturan hanya dapat diubah pemilik.');
   const merged: StoreSettings = { ...DEFAULT_SETTINGS, ...settings };
   memoryCache = merged;
 
