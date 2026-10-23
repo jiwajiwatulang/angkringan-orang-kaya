@@ -50,6 +50,10 @@ function Cashier({sessions}:{sessions:EmployeeSessions}){
 }
 async function main(){
   const root=createRoot(document.getElementById('root')!);
+  if(new URLSearchParams(location.search).has('portal')){
+    const {OwnerDeviceRows}=await import('../../src/components/OwnerDeviceOverview');
+    root.render(<main className="mx-auto max-w-3xl p-5 text-fg"><h1 className="mb-5 text-2xl font-bold">Perangkat Toko</h1><OwnerDeviceRows data={{enabled:true,next:null,items:[{licenseKey:'SN-LOCAL-BROWSER-ONLY',devices:[{id:'owner',name:'Laptop Pemilik',role:'owner',lastReceivedAt:Date.now()},{id:'cashier',name:'Kasir Depan',role:'cashier',lastReceivedAt:null}]}]}}/></main>);return;
+  }
   try{
     if(location.pathname==='/pos'){
       const [{default:POS},{default:Boundary}]=await Promise.all([import('../../src/app/pos/page'),import('../../src/components/PosSessionBoundary')]);

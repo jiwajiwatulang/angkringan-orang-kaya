@@ -30,3 +30,11 @@ test('public renewal/help pages remain accessible while POS and Admin wait for v
     for(const path of ['/pos','/admin','/admin/pengaturan']){const html=render(path);assert.equal(html.includes('Page content'),false);assert.ok(html.includes('Memuat data'));}
   }finally{delete process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE;if(prior)Object.defineProperty(globalThis,'localStorage',prior);else delete (globalThis as any).localStorage;}
 });
+
+
+test('owner portal shows both roles and receipt times without claiming live connectivity',async()=>{
+  const {OwnerDeviceRows}=await import('../src/components/OwnerDeviceOverview');
+  const html=renderToStaticMarkup(<OwnerDeviceRows data={{enabled:true,next:null,items:[{licenseKey:'SN-LOCAL-TEST',devices:[{id:'owner',name:'Laptop Pemilik',role:'owner',lastReceivedAt:100000},{id:'cashier',name:'Kasir Depan',role:'cashier',lastReceivedAt:null}]}]}}/>);
+  for(const label of ['2 / 2 perangkat','Pemilik','Kasir','Data diterima','Belum ada data diterima'])assert.ok(html.includes(label));
+  assert.equal(/Online|Semua Data Terbaru|PIN|publicKey/.test(html),false);
+});

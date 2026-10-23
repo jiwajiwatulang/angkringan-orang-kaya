@@ -31,3 +31,14 @@ PR #1's financial implementation and PR #2's weighted refund semantics remain un
 The first GitHub run exposed a test-fixture clock race: two Date.now calls could create an authorization duration one millisecond above the allowed limit. The fixture now derives both timestamps from one reading; security duration enforcement is unchanged. The existing Cloudflare trigger for feat/multi-device-v1 attempted preview without a safe previews configuration. Only that branch trigger was changed to npm run build followed by wrangler deploy --dry-run, so branch validation cannot publish. The production trigger, bindings, resources and secrets were not changed. Local Worker packaging passed (222.45 KiB, dry-run exited without upload).
 
 The repository now declares a separate 120/minute Multi-Device ingress budget; entry and account actions also retain the original 30/minute budget. This prevents two idle devices polling every three seconds from exhausting the public limiter. The additional binding is source configuration only and has not been deployed. The regression test sends 40 authenticated pulls successfully and still rejects the 31st account request.
+
+
+## Owner portal follow-up
+
+The platform `/owner` Devices tab now lists enrolled stores (commercial, tester and beta), the two active device slots, device roles and the latest accepted event time. This is metadata only, not business revenue or online presence. Revoked devices, signing keys, employee credentials and transaction payloads are excluded. Pagination is 20 stores with explicit refresh. `/api/owner/devices` requires a live platform-owner session, returns no-store responses, remains disabled without the existing server flag and never initializes or mutates tables.
+
+The previous license telemetry remains labelled as the primary device. Store-owner sales and stock still belong to `/admin`; this portal does not grant access to merchants' financial records.
+
+Regression testing exposed a real intermittent grant issuance bug: two clock reads could create a token whose duration exceeded the 24-hour maximum by 1 ms. Grant issuance now uses one clock read. An advancing-clock test protects the fix without relaxing token validation.
+
+Validation: 36 Multi-Device tests, typecheck and static build. Desktop 1280px and mobile 390px screenshots use the actual list renderer with explicitly local fixture data, not a production login or full portal end-to-end session. Existing release gates remain in force.

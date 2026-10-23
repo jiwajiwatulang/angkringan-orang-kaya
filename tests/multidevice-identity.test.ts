@@ -26,3 +26,13 @@ test('cashier cannot invoke an owner operation directly',()=>{
   assert.throws(()=>requireOwner({...claims,employeeId:'employee-1234567890'}));
   assert.doesNotThrow(()=>requireOwner(claims));
 });
+
+
+test('server-issued access stays within its permitted duration when the clock advances between reads',async t=>{
+  const {environment,owner}=await import('./multideviceFixtures');
+  const {OFFLINE_ACCESS_MS}=await import('../src/lib/multidevice/protocol');
+  const env=await environment();let now=Date.now();
+  t.mock.method(Date,'now',()=>now++);
+  const session=await owner(env);
+  assert.equal(session.claims.expiresAt-session.claims.issuedAt,OFFLINE_ACCESS_MS);
+});

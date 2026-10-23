@@ -4,6 +4,7 @@ import * as licenseVerify from "../functions/api/license/verify";
 import * as ordersCheck from "../functions/api/orders/check";
 import * as ordersCreate from "../functions/api/orders/create";
 import * as ordersUploadProof from "../functions/api/orders/upload-proof";
+import * as ownerDevices from "../functions/api/owner/devices";
 import * as ownerLicenses from "../functions/api/owner/licenses";
 import * as ownerLogin from "../functions/api/owner/login";
 import * as ownerLogout from "../functions/api/owner/logout";
@@ -212,6 +213,9 @@ export default {
         }
 
         // Route: /api/owner/licenses
+        else if (pathname === "/api/owner/devices") {
+          response = method === "GET" ? await ownerDevices.onRequestGet(context) : new Response(null, {status:405});
+        }
         else if (pathname === "/api/owner/licenses") {
           if (method === "GET") response = await ownerLicenses.onRequestGet(context);
           else if (method === "PUT") response = await ownerLicenses.onRequestPut(context);

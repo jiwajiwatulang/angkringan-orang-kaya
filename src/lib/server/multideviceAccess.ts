@@ -35,7 +35,8 @@ async function grant(env:MultiDeviceEnv, device:DeviceRow, employee?:EmployeeRow
   const store=await env.DB.prepare('SELECT licenseKey FROM MdStores WHERE id=?').bind(device.storeId).first<{licenseKey:string}>();
   if(!store) throw new AccessError();
   const license=await activeLicense(env.DB,store.licenseKey);
-  const claims:AccessClaims={version:1,storeId:device.storeId,deviceId:device.id,deviceKey:device.publicKey,role:device.role,deviceEpoch:device.epoch,issuedAt:Date.now(),expiresAt:Date.now()+OFFLINE_ACCESS_MS};
+  const issuedAt=Date.now();
+  const claims:AccessClaims={version:1,storeId:device.storeId,deviceId:device.id,deviceKey:device.publicKey,role:device.role,deviceEpoch:device.epoch,issuedAt,expiresAt:issuedAt+OFFLINE_ACCESS_MS};
   if ('expiresAt' in license && license.expiresAt) claims.expiresAt=Math.min(claims.expiresAt,Date.parse(license.expiresAt));
   if(employee){claims.employeeId=employee.id;claims.employeeEpoch=employee.epoch;claims.pinDigest=digest(employee.verifier);}
   return {access:signAccess(claims,signingKey(env)),claims};

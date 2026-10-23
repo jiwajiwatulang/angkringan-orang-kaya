@@ -1,4 +1,5 @@
 "use client";
+import OwnerDeviceOverview from "@/components/OwnerDeviceOverview";
 import LineIcon from "@/components/LineIcon";
 
 import { formatServerDate } from "@/lib/dateFormat";
@@ -2177,9 +2178,11 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
             <div>
               <h3 className="font-black text-base text-fg">Pemantauan Lisensi & Perangkat Aktif</h3>
               <p className="text-xs text-muted">
-                Kelola ikatan perangkat pengguna. SakuNota menjaga privasi penuh: hanya status koneksi perangkat dan versi aplikasi yang dipantau saat kasir online, tanpa menarik omzet usaha.
+                Lihat perangkat terdaftar dan waktu data diterima. Omzet usaha tetap berada di dashboard toko.
               </p>
             </div>
+
+            {ownerToken && <OwnerDeviceOverview token={ownerToken}/>}
 
             {/* Informative Migration Callout for Owner */}
             <div className="p-4 sm:p-5 rounded-2xl bg-card border border-purple-500/30 space-y-2 text-xs">
@@ -2194,7 +2197,7 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
               </p>
               <ol className="list-decimal pl-4 space-y-1 text-muted text-[11px]">
                 <li><strong>Lisensi:</strong> Hak pakai aplikasi. Owner menekan tombol <em>Lepas Perangkat</em> di bawah, lalu pedagang memasukkan lisensinya di HP baru.</li>
-                <li><strong>Data Usaha:</strong> Menu, omzet, dan transaksi tersimpan lokal di IndexedDB HP lama. Pedagang harus melakukan <em>Cadangkan Data</em> di HP lama, lalu <em>Pulihkan Data</em> di HP baru.</li>
+                <li><strong>Data Usaha:</strong> Cadangkan data sebelum berganti perangkat. Untuk toko dengan dua perangkat, pastikan data sudah terkirim sebelum memulihkan di perangkat baru. Gunakan <em>Cadangkan Data</em> di HP lama, lalu <em>Pulihkan Data</em> di HP baru.</li>
               </ol>
             </div>
 
@@ -2251,7 +2254,7 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
                         </div>
 
                         <div className="text-[11px] text-muted">
-                          Status Perangkat: {l.boundDeviceId ? (
+                          Perangkat Utama: {l.boundDeviceId ? (
                             <span className="text-emerald-600 dark:text-emerald-700 font-bold">
                               Terikat pada {l.deviceName || "Perangkat Kasir"} ({l.boundDeviceId})
                             </span>
@@ -2431,7 +2434,7 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
                           </div>
 
                           <div className="text-[11px] text-muted pt-0.5">
-                            Status Perangkat: {t.boundDeviceId ? (
+                            Perangkat Utama: {t.boundDeviceId ? (
                               <span className="text-emerald-600 dark:text-emerald-700 font-bold">
                                 Terikat pada {t.deviceName || "Perangkat Tester"} ({t.boundDeviceId})
                               </span>
