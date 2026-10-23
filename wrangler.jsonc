@@ -5,6 +5,7 @@
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
+  "vars": { "SAKUNOTA_MULTI_DEVICE": "enabled" },
   "ratelimits": [
     { "name": "PUBLIC_RATE_LIMITER", "namespace_id": "2026101901", "simple": { "limit": 30, "period": 60 } },
     { "name": "MULTI_DEVICE_RATE_LIMITER", "namespace_id": "2026102304", "simple": { "limit": 120, "period": 60 } }

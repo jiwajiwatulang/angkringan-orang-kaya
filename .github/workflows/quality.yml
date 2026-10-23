@@ -23,7 +23,9 @@ jobs:
       - run: npm run test:multidevice:edge
       - run: npm run build
       - run: npm run test:offline
+      - run: npm run test:release
       - run: npm run build
         env:
           NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE: enabled
       - run: npm run test:offline
+      - run: npm run test:release
