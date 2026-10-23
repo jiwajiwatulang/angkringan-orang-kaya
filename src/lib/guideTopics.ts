@@ -104,6 +104,17 @@ export const GUIDE_TOPICS: GuideTopic[] = [
           'Setelah verifikasi berhasil, matikan kembali internet. Lisensi tetap aktif selamanya tanpa biaya langganan bulanan.'
         ],
         tips: 'Jangan gunakan fitur "Hapus Data Browser / Clear Cache Total" karena kunci verifikasi tersimpan di penyimpanan lokal perangkat kasir.'
+      },
+      {
+        title: 'Pasang ke layar utama HP & tablet (PWA)',
+        summary: 'Buka kasir layar penuh dari ikon beranda HP tanpa bilah peramban web dan siap dipakai offline.',
+        steps: [
+          'Di HP Android (Chrome): Buka sakunota.my.id, ketuk menu titik tiga di sudut kanan atas, lalu pilih "Instal aplikasi" atau "Tambahkan ke Layar Utama".',
+          'Di iPhone / iPad (Safari): Buka sakunota.my.id, ketuk tombol Bagikan (ikon kotak panah ke atas) di menu bawah, lalu pilih "Tambahkan ke Layar Utama" (Add to Home Screen).',
+          'Di Komputer / Laptop (Chrome atau Edge): Klik ikon instalasi kecil di sisi kanan kolom alamat URL (address bar), lalu pilih "Instal".',
+          'Ikon SakuNota akan muncul di layar beranda perangkat Anda. Saat dibuka, aplikasi langsung tampil bersih satu layar penuh tanpa bilah browser dan siap digunakan jualan secara offline.'
+        ],
+        tips: 'Setelah terpasang di layar utama, Anda tidak perlu lagi mengetik alamat web. Cukup ketuk ikon SakuNota untuk langsung membuka kasir.'
       }
     ]
   },
