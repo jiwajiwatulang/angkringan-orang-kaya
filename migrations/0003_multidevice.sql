@@ -1,6 +1,7 @@
 -- Opt-in only. Never rebind or rewrite existing licenses or merchant records.
 CREATE TABLE IF NOT EXISTS MdStores (
-  id TEXT PRIMARY KEY, licenseKey TEXT NOT NULL UNIQUE, revision INTEGER NOT NULL DEFAULT 0
+  id TEXT PRIMARY KEY, licenseKey TEXT NOT NULL UNIQUE, revision INTEGER NOT NULL DEFAULT 0,
+  mutation TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS MdDevices (
   id TEXT NOT NULL, storeId TEXT NOT NULL REFERENCES MdStores(id),
