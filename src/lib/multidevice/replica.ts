@@ -1,7 +1,7 @@
 import Dexie from 'dexie';
 import {AccessError,assertId,type AccessClaims,type StoreEvent} from './protocol';
 import {project,type Entity} from './projection';
-import {verifyAccess,verifyOfflinePin,keyIdentity} from './offlineAccess';
+import {verifyAccess,verifyOfflinePin} from './offlineAccess';
 import {LICENSE_PUBLIC_KEY} from '../licenseProtocol';
 
 export interface OutboxRow {id:string;event:StoreEvent;attempts:number;ordinal:number;lastError?:string}
@@ -10,15 +10,19 @@ export interface Transport {
   pull(cursor:number):Promise<{cursor:number;entities:Entity[];hasMore:boolean}>;
 }
 // Separate store/device partitions; no mutation or upgrade of the existing merchant/demo database.
-export function replicaDatabase(storeId:string,deviceId:string,demo=false) {
+export function replicaDatabase(storeId:string,deviceId:string) {
   assertId(storeId);assertId(deviceId);
-  const database=new Dexie(`SakuNota${demo?'Demo':'Store'}Replica-${storeId}-${deviceId}`);
+  const database=new Dexie(`SakuNotaStoreReplica-${storeId}-${deviceId}`);
   database.version(1).stores({entities:'[kind+id],kind',outbox:'id,ordinal',settings:'key',credentials:'id'});
   return database;
 }
 export class LocalReplica {
   private access='';private syncing:Promise<void>|undefined;
-  constructor(readonly db:Dexie,readonly storeId:string,readonly deviceId:string,private identity:string,private publicKey:JsonWebKey=LICENSE_PUBLIC_KEY){}
+  private listeners=new Set<()=>void>();
+  constructor(readonly db:Dexie,readonly storeId:string,readonly deviceId:string,private identity:string,private publicKey:JsonWebKey=LICENSE_PUBLIC_KEY){
+    assertId(storeId);assertId(deviceId);
+    if(db.name!==`SakuNotaStoreReplica-${storeId}-${deviceId}`)throw new AccessError('Gunakan perangkat toko yang terhubung.');
+  }
   async useAccess(access:string) {
     const claims=await verifyAccess(access,this.deviceId,this.identity,this.publicKey);
     if(claims.storeId!==this.storeId) throw new AccessError();
@@ -58,11 +62,15 @@ export class LocalReplica {
     await this.db.table('settings').delete(key);this.access=data.access;return claims;
   }
   logout(){this.access='';}
+  onPending(listener:()=>void){this.listeners.add(listener);return()=>{this.listeners.delete(listener);};}
   async enqueue(kind:StoreEvent['kind'],entityId:string,data:Record<string,unknown>,requestId=crypto.randomUUID()) {
     const claims=await this.claims();
     const event:StoreEvent={id:requestId,storeId:this.storeId,deviceId:this.deviceId,operatorId:claims.employeeId||this.deviceId,kind,entityId,data};
     // All IDs precede the write; projection and delivery intent either both commit or neither does.
     await this.db.transaction('rw',[this.db.table('entities'),this.db.table('outbox'),this.db.table('settings')],async()=>{
+      const now=Date.now(),clock=await this.db.table('settings').get('clock');
+      if(clock?.value>now+60000) throw new AccessError('Sesuaikan waktu perangkat.');
+      await this.db.table('settings').put({key:'clock',value:Math.max(now,clock?.value||0)});
       const saved=await this.db.table('settings').get(`event:${requestId}`);
       if(saved){if(saved.value!==JSON.stringify(event)) throw new AccessError('Nota berbeda memakai nomor yang sama.',409);return;}
       const changes=await project(event,claims,async(kind,id)=>(await this.db.table('entities').get([kind,id]))?.value);
@@ -73,6 +81,7 @@ export class LocalReplica {
       // Tombstone remains after acknowledgment and through restores to prevent replay.
       await this.db.table('settings').put({key:`event:${requestId}`,value:JSON.stringify(event)});
     });
+    for(const listener of this.listeners){try{listener();}catch{/* A status subscriber cannot undo a committed sale. */}}
     return event;
   }
   synchronize(transport:Transport):Promise<void> {
@@ -121,15 +130,4 @@ export class LocalReplica {
     const claims=await this.claims();if(claims.role!=='owner') throw new AccessError();
     return this.db.transaction('r',[this.db.table('entities'),this.db.table('outbox'),this.db.table('settings')],async()=>({version:1,storeId:this.storeId,deviceId:this.deviceId,entities:await this.db.table('entities').toArray(),outbox:await this.db.table('outbox').toArray(),markers:await this.db.table('settings').filter(row=>row.key.startsWith('event:')).toArray()}));
   }
-}
-export async function replicaKeyIdentity(database:Dexie):Promise<string> {
-  let saved=await database.table('settings').get('deviceKeys');
-  if(!saved){
-    const keys=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},false,['sign','verify']);
-    await database.transaction('rw',database.table('settings'),async()=>{
-      if(!await database.table('settings').get('deviceKeys')) await database.table('settings').put({key:'deviceKeys',value:keys});
-    });
-    saved=await database.table('settings').get('deviceKeys');
-  }
-  return keyIdentity(saved.value);
 }

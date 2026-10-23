@@ -5,6 +5,7 @@ import type {AccessClaims,StoreEvent} from './protocol';
 import type {Entity} from './projection';
 import {db} from '../dexie';
 import {AccessError} from './protocol';
+import {isDemoMode} from '../demoMode';
 
 export interface AccessList {devices?:{id:string;name:string;role:string;revoked:number}[];employees:{id:string;name:string;active:number}[];pairings?:{id:string;candidateName:string;expiresAt:number}[]}
 export class DeviceClient {
@@ -23,6 +24,7 @@ async function call<T>(body:unknown):Promise<T>{
   if(!response.ok)throw new AccessError(typeof data.error==='string'?data.error:'Data belum dapat diperbarui.',response.status);return data as T;
 }
 export async function enrollOwnerClient(){
+  if(isDemoMode()||db.name==='SakuNotaDemoDB')throw new Error('Keluar dari demo terlebih dahulu.');
   const activation=localStorage.getItem('sakunota_activation_token')||'',licenseKey=localStorage.getItem('sakunota_license_key')||'',deviceId=getLocalDeviceId();
   const proof=await createDeviceProof('multi.enroll',licenseKey,deviceId,activation);
   const result=await call<{access:string;claims:AccessClaims}>({action:'enroll',data:{activation,deviceName:'Perangkat Pemilik'},proof});
@@ -30,6 +32,7 @@ export async function enrollOwnerClient(){
   return new DeviceClient(result.access,claims);
 }
 export async function requestPairingClient(code:string,deviceName:string){
+  if(isDemoMode()||db.name==='SakuNotaDemoDB')throw new Error('Keluar dari demo terlebih dahulu.');
   const deviceId=getLocalDeviceId(),proof=await createDeviceProof('multi.pair',code,deviceId,'');
   const result=await call<{pending:true}|{pending:false;access:string;claims:AccessClaims}>({action:'pair.request',data:{code,deviceId,deviceName},proof});
   if(!result.pending){

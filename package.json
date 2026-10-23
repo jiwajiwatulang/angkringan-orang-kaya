@@ -14,7 +14,8 @@
     "test:stability": "tsx --test tests/stability.test.ts tests/offline-worker.test.ts tests/waiter.test.ts tests/products-cashier.test.ts tests/security.test.ts tests/promo.test.ts tests/retail-add.test.ts",
     "test:offline": "tsx test_offline_readiness.ts",
     "typecheck": "tsc --noEmit",
-    "preview:local": "tsx scripts/preview-local.ts"
+    "preview:local": "tsx scripts/preview-local.ts",
+    "test:multidevice": "tsx --test tests/multidevice-*.test.ts tests/multidevice-ui.test.tsx"
   },
   "dependencies": {
     "@ascentio-it/capacitor-bluetooth-serial": "^8.0.1",

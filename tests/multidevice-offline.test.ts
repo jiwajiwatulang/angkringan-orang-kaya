@@ -2,10 +2,12 @@ import 'fake-indexeddb/auto';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import Dexie from 'dexie';
 import {LocalReplica,replicaDatabase,type Transport} from '../src/lib/multidevice/replica';
 import {environment,owner} from './multideviceFixtures';
 import {testPublicJwk} from './securityFixtures';
 import {submitEvent,pullEntities} from '../src/lib/server/multideviceSync';
+import {startStoreUpdates} from '../src/lib/multidevice/automaticUpdates';
 
 test('pending writes survive reopening, retain dependency order, and a lost acknowledgment never duplicates data',async()=>{
   const env=await environment(),o=await owner(env),p=crypto.randomUUID();
@@ -39,4 +41,21 @@ test('late pull cannot overwrite a sale queued while data is downloading',async(
     return {cursor:2,hasMore:false,entities:[{kind:'catalog',id,value:{name:'Lama'}}]};
   }});
   assert.equal((await db.table('entities').get(['catalog',id])).value.name,'Lokal');assert.equal((await r.status()).pending,1);await db.delete();
+});
+test('a demo database cannot be attached to merchant replication',async()=>{
+  const env=await environment(),o=await owner(env);
+  assert.throws(()=>new LocalReplica(new Dexie('SakuNotaDemoDB'),o.claims.storeId,o.id,o.claims.deviceKey,testPublicJwk));
+});
+test('automatic updates resume pending data when connectivity returns',async()=>{
+  const env=await environment(),o=await owner(env),db=replicaDatabase(o.claims.storeId,o.id),r=new LocalReplica(db,o.claims.storeId,o.id,o.claims.deviceKey,testPublicJwk);await r.useAccess(o.access);
+  let online=false,listener=()=>{},ready=()=>{},finished=()=>{};
+  const initial=new Promise<void>(resolve=>{ready=resolve;}),complete=new Promise<void>(resolve=>{finished=resolve;});
+  const stop=startStoreUpdates(r,{send:event=>submitEvent(env.DB,o.claims,event),pull:cursor=>pullEntities(env.DB,o.claims,cursor)},status=>{if(!status.online)ready();if(status.online&&status.pending===0&&!status.failed)finished();},{online:()=>online,subscribe:callback=>{listener=callback;return()=>{listener=()=>{};};}});
+  let timeout:ReturnType<typeof setTimeout>|undefined;
+  try{
+    await initial;await r.enqueue('catalog.put',crypto.randomUUID(),{expectedVersion:0,name:'Teh',price:5000,cost:null,unit:'pcs',priceBasis:1,active:true});
+    assert.equal((await r.status()).pending,1);online=true;listener();
+    await Promise.race([complete,new Promise<void>((_,reject)=>{timeout=setTimeout(()=>reject(new Error('automatic update did not finish')),3000);})]);
+    assert.equal((await r.status()).pending,0);assert.equal(await env.DB.prepare('SELECT count(*) n FROM MdEvents').first<number>('n'),1);
+  }finally{if(timeout)clearTimeout(timeout);stop();await db.delete();}
 });
