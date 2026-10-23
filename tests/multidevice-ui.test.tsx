@@ -4,6 +4,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import StoreDataStatus from '../src/components/StoreDataStatus';
 import QRCode from 'qrcode';
+import {PathnameContext} from 'next/dist/shared/lib/hooks-client-context.shared-runtime';
 
 test('unknown remote state never claims every device has current data',()=>{
   const unknown=renderToStaticMarkup(<StoreDataStatus pending={0} online/>);
@@ -18,4 +19,14 @@ test('pairing image is generated locally from an opaque fragment without busines
   const url=new URL('https://example.test/hubungkan-perangkat');url.hash=new URLSearchParams({code:'a'.repeat(43)}).toString();
   const png=await QRCode.toDataURL(url.toString());assert.ok(png.startsWith('data:image/png;base64,'));
   assert.equal(url.search,'');assert.equal(/license|pin|storeId/.test(url.toString()),false);
+});
+test('public renewal/help pages remain accessible while POS and Admin wait for verified access',async()=>{
+  const prior=Object.getOwnPropertyDescriptor(globalThis,'localStorage');process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE='enabled';
+  Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:()=>JSON.stringify({storeId:'a'.repeat(64),deviceId:'device-1234567890123456'})}});
+  try{
+    const {default:Boundary}=await import('../src/components/PosSessionBoundary');
+    const render=(path:string)=>renderToStaticMarkup(<PathnameContext.Provider value={path}><Boundary><p>Page content</p></Boundary></PathnameContext.Provider>);
+    for(const path of ['/','/checkout','/panduan','/privacy'])assert.ok(render(path).includes('Page content'));
+    for(const path of ['/pos','/admin','/admin/pengaturan']){const html=render(path);assert.equal(html.includes('Page content'),false);assert.ok(html.includes('Memuat data'));}
+  }finally{delete process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE;if(prior)Object.defineProperty(globalThis,'localStorage',prior);else delete (globalThis as any).localStorage;}
 });

@@ -15,7 +15,7 @@ Branch: `feat/multi-device-v1`. PR: #4, Draft. Baseline `origin/main` remains `e
 
 - `npm test`: 198 passed.
 - `npm run test:stability`: 35 passed.
-- `npm run test:multidevice`: 31 passed, including actual API calls and two separate POS processes/local stores against the local D1 implementation.
+- `npm run test:multidevice`: 32 passed, including actual API calls and two separate POS processes/local stores against the local D1 implementation.
 - Typecheck passed. Production build produced 28 static routes. Offline readiness resolved 160 assets. Final logs and screenshots are in this chat's `outputs` directory.
 - Actual API scenarios include order editing/tombstones, cash plus QRIS, refund after closing a shift, immutable close totals, stock reservations, unpaid Retail draft then installment repayment, a 2.7 MB encoded payment image, atomic rollback, concurrent offline sales with an owner price update, repeated delivery, and owner replacement with a lost acknowledgment.
 - Browser QA renders the actual POS, employee login, recovery controls and owner dashboard with generated local signing keys. It uses localhost/127.0.0.1 storage isolation, not production or third-party credentials. PIN entry, cashier access restrictions, shift opening, sale/receipt, operator switching and received owner totals were exercised. Three browser receipts totaled Rp30,000 and three notes after an offline reopen, a nonempty cashier archive recovered through the Owner UI, reconnect, and one deliberately lost acknowledgment; there were no duplicate notes. Mobile viewport width 390 has no horizontal overflow; lower navigation remains within the viewport after adding sync status.

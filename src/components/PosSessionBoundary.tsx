@@ -1,16 +1,18 @@
 "use client";
 import React,{useEffect,useState} from 'react';
+import {usePathname} from 'next/navigation';
 import {posPartition} from '@/lib/multidevice/posPartition';
 import {initializePosRuntime,enterEmployee,leaveEmployee,type PosRuntime} from '@/lib/multidevice/posRuntime';
 import EmployeeLogin from './EmployeeLogin';
 import {db} from '@/lib/dexie';
 export default function PosSessionBoundary({children}:{children:React.ReactNode}){
+  const pathname=usePathname(),workspace=pathname==='/pos'||pathname.startsWith('/admin');
   const [enabled,setEnabled]=useState(false),[ready,setReady]=useState(false),[runtime,setRuntime]=useState<PosRuntime>(),[error,setError]=useState(''),[pending,setPending]=useState(0),[online,setOnline]=useState(true),[failed,setFailed]=useState(false);
   const initialize=async()=>{try{setError('');const active=await initializePosRuntime();setRuntime({...active});setReady(true);}catch(e){setError(e instanceof Error?e.message:'Data belum dapat dibuka.');}};
   const backup=async()=>{
     try{if(!runtime)return;const data=await runtime.synchronizer.backup(),url=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download=`sakunota-pengiriman-${new Date().toISOString().slice(0,10)}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch{setError('Cadangan belum dapat disimpan.');}
   };
-  useEffect(()=>{const workspace=location.pathname==='/pos'||location.pathname.startsWith('/admin');const selected=workspace&&!!posPartition();setEnabled(selected);if(selected)void initialize();else setReady(true);},[]);
+  useEffect(()=>{const selected=workspace&&!!posPartition();setEnabled(selected);setReady(!selected);if(selected)void initialize();},[pathname]);
   useEffect(()=>{
     if(!enabled||!runtime?.scope)return;
     let stopped=false,running=false;
@@ -19,8 +21,8 @@ export default function PosSessionBoundary({children}:{children:React.ReactNode}
     return()=>{stopped=true;clearInterval(timer);window.removeEventListener('online',update);window.removeEventListener('offline',update);};
   },[enabled,runtime]);
   if(process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE!=='enabled')return <>{children}</>;
-  if(!enabled&&ready)return <>{children}</>;
-  if(!ready)return <main className="mx-auto w-full max-w-md space-y-4 p-6"><p role={error?'alert':'status'}>{error||'Memuat data…'}</p>{error&&<button className="min-h-11 rounded-xl bg-blue-600 px-4 text-white" onClick={()=>void initialize()}>Coba Lagi</button>}</main>;
+  if(!workspace||!posPartition())return <>{children}</>;
+  if(!enabled||!ready)return <main className="mx-auto w-full max-w-md space-y-4 p-6"><p role={error?'alert':'status'}>{error||'Memuat data…'}</p>{error&&<button className="min-h-11 rounded-xl bg-blue-600 px-4 text-white" onClick={()=>void initialize()}>Coba Lagi</button>}</main>;
   if(runtime?.employees&&!runtime.scope)return <main className="flex min-h-dvh items-center justify-center p-4"><EmployeeLogin sessions={runtime.employees} onSuccess={async session=>{const next=await enterEmployee(session);setRuntime({...next});}}/></main>;
   if(runtime?.scope?.claims.role==='cashier'&&typeof location!=='undefined'&&location.pathname!=='/pos'){location.replace('/pos');return null;}
   const cashierPage=typeof location!=='undefined'&&location.pathname==='/pos';
