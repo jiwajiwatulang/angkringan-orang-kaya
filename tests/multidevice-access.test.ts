@@ -4,6 +4,10 @@ import crypto from 'node:crypto';
 import {createPairing,requestPairing,approvePairing,revokeDevice,saveEmployee,employeeLogin,listAccess,authorize} from '../src/lib/server/multideviceAccess';
 import {testDeviceProof} from './securityFixtures';
 import {environment,owner,auth,requestProof} from './multideviceFixtures';
+import {renewCashierDevice} from '../src/lib/server/multideviceAccess';
+import {signAccess,readAccess} from '../src/lib/server/multideviceCrypto';
+import {testSigningJwk} from './securityFixtures';
+import {OFFLINE_ACCESS_MS} from '../src/lib/multidevice/protocol';
 
 test('two devices require approval, a third cannot occupy a slot, and revocation rejects old grants',async()=>{
   const env=await environment(),primary=await owner(env),pair=await createPairing(env,primary.claims),id=crypto.randomUUID();
@@ -48,4 +52,18 @@ test('proofs are payload-bound, one-use, and store isolation is cryptographic',a
   await assert.rejects(()=>authorize(env,a.access,'save',body,proof),/digunakan/);
   await assert.rejects(()=>authorize(env,b.access,'save',body,requestProof('save',a.claims,b.access,body)));
   assert.notEqual(a.claims.storeId,b.claims.storeId);
+});
+test('expired device authorization can renew online without reviving an expired employee or a revoked device',async()=>{
+  const env=await environment(),primary=await owner(env),pair=await createPairing(env,primary.claims),id=crypto.randomUUID();
+  const data=()=>({code:pair.code,deviceId:id,deviceName:'Tablet',proof:testDeviceProof('multi.pair',pair.code,id)});
+  await requestPairing(env,data());await approvePairing(env,primary.claims,pair.id);const device=await requestPairing(env,data());if(device.pending)throw new Error();
+  const expired={...device.claims,issuedAt:Date.now()-OFFLINE_ACCESS_MS*2,expiresAt:Date.now()-OFFLINE_ACCESS_MS},access=signAccess(expired,JSON.stringify(testSigningJwk));
+  await assert.rejects(()=>authorize(env,access,'list',{},requestProof('list',expired,access,{})));
+  const authorized=await authorize(env,access,'refresh',{},requestProof('refresh',expired,access,{}));
+  const renewed=await renewCashierDevice(env,authorized);assert.ok(readAccess(renewed.access,JSON.stringify(testSigningJwk)).expiresAt>Date.now());
+  const employeeId=crypto.randomUUID();await saveEmployee(env,primary.claims,{id:employeeId,name:'Pagi',pin:'482953',active:true});
+  const employee=await employeeLogin(env,renewed.claims,{id:employeeId,pin:'482953'});
+  await assert.rejects(()=>authorize(env,employee.access,'refresh',{},requestProof('refresh',employee.claims,employee.access,{})));
+  await revokeDevice(env,primary.claims,id);
+  await assert.rejects(()=>authorize(env,access,'refresh',{},requestProof('refresh',expired,access,{})));
 });

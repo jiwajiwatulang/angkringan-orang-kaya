@@ -24,11 +24,13 @@ export class LocalReplica {
     if(db.name!==`SakuNotaStoreReplica-${storeId}-${deviceId}`)throw new AccessError('Gunakan perangkat toko yang terhubung.');
   }
   async useAccess(access:string) {
+    if((await this.db.table('settings').get('accessBlocked'))?.value)throw new AccessError('Masuk dengan internet terlebih dahulu.',401);
     const claims=await verifyAccess(access,this.deviceId,this.identity,this.publicKey);
     if(claims.storeId!==this.storeId) throw new AccessError();
     this.access=access;return claims;
   }
   private async claims() {
+    if((await this.db.table('settings').get('accessBlocked'))?.value)throw new AccessError('Masuk dengan internet terlebih dahulu.',401);
     const claims=await verifyAccess(this.access,this.deviceId,this.identity,this.publicKey);
     if(claims.storeId!==this.storeId) throw new AccessError();return claims;
   }

@@ -2,6 +2,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import QRCode from 'qrcode';
 import type {DeviceClient,AccessList} from '@/lib/multidevice/client';
+import DeviceRecovery from './DeviceRecovery';
 
 const button='min-h-11 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50';
 const secondary='min-h-11 rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-fg disabled:opacity-50';
@@ -61,6 +62,7 @@ export default function DevicesPanel({client}:{client:DeviceClient}){
           <div className="flex gap-2"><button type="submit" disabled={busy} className={button}>Simpan</button><button type="button" disabled={busy} className={secondary} onClick={()=>setEditing(null)}>Batal</button></div>
         </form>}
       </section>
+      <DeviceRecovery client={client}/>
     </>}
   </div>;
 }

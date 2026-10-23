@@ -49,17 +49,19 @@ export async function enrollOwner(env:MultiDeviceEnv,data:{activation:string;dev
   if(binding?.deviceId!==claims.deviceId || binding.publicKey!==identity) throw new AccessError('Gunakan perangkat pemilik yang sudah aktif.');
   assertId(claims.deviceId);
   const storeId=digest(`SakuNota/store/v1/${claims.licenseKey}`);
+  const currentBinding='EXISTS(SELECT 1 FROM LicenseDeviceKeys k WHERE k.licenseKey=? AND k.deviceId=? AND k.publicKey=?)';
+  const bindingValues=[claims.licenseKey,claims.deviceId,identity];
   await env.DB.batch([
     env.DB.prepare('INSERT INTO MdStores(id,licenseKey) VALUES (?,?) ON CONFLICT(id) DO NOTHING').bind(storeId,claims.licenseKey),
     // LicenseDeviceKeys was checked against the newly activated original-device proof.
     // Rotate the owner slot without replacing the store or any business records.
-    env.DB.prepare("UPDATE MdDevices SET revoked=1,epoch=epoch+1 WHERE storeId=? AND role='owner' AND revoked=0 AND (id<>? OR publicKey<>?)").bind(storeId,claims.deviceId,identity),
-    env.DB.prepare(`INSERT INTO MdDevices(id,storeId,role,publicKey,name) VALUES (?,?,'owner',?,?)
+    env.DB.prepare(`UPDATE MdDevices SET revoked=1,epoch=epoch+1 WHERE storeId=? AND role='owner' AND revoked=0 AND (id<>? OR publicKey<>?) AND ${currentBinding}`).bind(storeId,claims.deviceId,identity,...bindingValues),
+    env.DB.prepare(`INSERT INTO MdDevices(id,storeId,role,publicKey,name) SELECT ?,?,'owner',?,? WHERE ${currentBinding}
       ON CONFLICT(storeId,id) DO UPDATE SET publicKey=excluded.publicKey,name=excluded.name,revoked=0,
       epoch=CASE WHEN MdDevices.revoked=1 OR MdDevices.publicKey<>excluded.publicKey THEN MdDevices.epoch+1 ELSE MdDevices.epoch END
-      WHERE MdDevices.role='owner'`).bind(claims.deviceId,storeId,identity,text(data.deviceName)),
+      WHERE MdDevices.role='owner'`).bind(claims.deviceId,storeId,identity,text(data.deviceName),...bindingValues),
   ]);
-  const device=await env.DB.prepare("SELECT * FROM MdDevices WHERE storeId=? AND id=? AND role='owner' AND revoked=0").bind(storeId,claims.deviceId).first<DeviceRow>();
+  const device=await env.DB.prepare(`SELECT * FROM MdDevices WHERE storeId=? AND id=? AND role='owner' AND revoked=0 AND ${currentBinding}`).bind(storeId,claims.deviceId,...bindingValues).first<DeviceRow>();
   if(!device || device.publicKey!==identity) throw new AccessError('Perangkat pemilik perlu diperiksa.');
   return grant(env,device);
 }

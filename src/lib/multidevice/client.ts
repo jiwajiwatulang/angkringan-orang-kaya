@@ -6,13 +6,32 @@ import type {Entity} from './projection';
 import {db} from '../dexie';
 import {AccessError} from './protocol';
 import {isDemoMode} from '../demoMode';
+import {LocalReplica,replicaDatabase} from './replica';
+import {LICENSE_PUBLIC_KEY} from '../licenseProtocol';
 
 export interface AccessList {devices?:{id:string;name:string;role:string;revoked:number}[];employees:{id:string;name:string;active:number}[];pairings?:{id:string;candidateName:string;expiresAt:number}[]}
 export class DeviceClient {
-  constructor(private access:string,readonly claims:AccessClaims){}
+  private currentClaims:AccessClaims;
+  constructor(private access:string,claims:AccessClaims,private publicKey:JsonWebKey=LICENSE_PUBLIC_KEY){this.currentClaims=claims;}
+  get claims(){return this.currentClaims;}
+  async renew(){
+    if(this.claims.role!=='cashier'||this.claims.employeeId)throw new AccessError();
+    const result=await this.call<{access:string}>('refresh');
+    const claims=await verifyAccess(result.access,this.claims.deviceId,this.claims.deviceKey,this.publicKey);
+    if(claims.storeId!==this.claims.storeId||claims.role!=='cashier'||claims.employeeId)throw new AccessError();
+    this.access=result.access;this.currentClaims=claims;
+    return {access:this.access,claims};
+  }
+  async openReplica(){
+    const verified=await verifyAccess(this.access,this.claims.deviceId,this.claims.deviceKey,this.publicKey);
+    if(verified.storeId!==this.claims.storeId)throw new AccessError();
+    const replica=new LocalReplica(replicaDatabase(verified.storeId,verified.deviceId),verified.storeId,verified.deviceId,verified.deviceKey,this.publicKey);
+    await replica.useAccess(this.access);return replica;
+  }
   async call<T>(action:string,data:Record<string,unknown>={}):Promise<T>{
-    const proof=await createDeviceProof(`multi.${action}.${await sha256(JSON.stringify(data))}`,this.claims.storeId,this.claims.deviceId,this.access);
-    return call<T>({action,data,access:this.access,proof});
+    const claims=this.claims,access=this.access;
+    const proof=await createDeviceProof(`multi.${action}.${await sha256(JSON.stringify(data))}`,claims.storeId,claims.deviceId,access);
+    return call<T>({action,data,access,proof});
   }
   list(){return this.call<AccessList>('list');}
   send(event:StoreEvent){return this.call<{id:string;sequence:number}>('send',{event});}
