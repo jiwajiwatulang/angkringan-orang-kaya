@@ -4,7 +4,8 @@ import {testSigningJwk} from './securityFixtures';
 import {pinVerifier,verifyPin,readAccess,signAccess} from '../src/lib/server/multideviceCrypto';
 import {OFFLINE_ACCESS_MS,requireOwner, type AccessClaims} from '../src/lib/multidevice/protocol';
 
-const claims:AccessClaims={version:1,storeId:'store-1234567890123456',deviceId:'device-1234567890123456',deviceKey:'public-key',deviceEpoch:1,role:'owner',issuedAt:Date.now(),expiresAt:Date.now()+OFFLINE_ACCESS_MS};
+const issuedAt=Date.now();
+const claims:AccessClaims={version:1,storeId:'store-1234567890123456',deviceId:'device-1234567890123456',deviceKey:'public-key',deviceEpoch:1,role:'owner',issuedAt,expiresAt:issuedAt+OFFLINE_ACCESS_MS};
 test('signed access rejects modification, expiry, future issue time and excessive offline duration',()=>{
   const key=JSON.stringify(testSigningJwk),token=signAccess(claims,key);
   assert.equal(readAccess(token,key).role,'owner');
