@@ -22,13 +22,10 @@ import {currentPosRuntime} from '@/lib/multidevice/posRuntime';
 import DeviceRecovery from '@/components/DeviceRecovery';
 
 export default function PengaturanDataPage() {
-  if(posPartition()){
-    const runtime=currentPosRuntime();
-    return runtime?<div className="max-w-3xl space-y-4"><h1 className="text-2xl font-bold">Data & Cadangan</h1><DeviceRecovery client={runtime.client}/></div>:<p role="status">Memuat data…</p>;
-  }
   return <LegacyDataPage/>;
 }
 function LegacyDataPage(){
+  const paired=!!posPartition(),runtime=currentPosRuntime();
   const router = useRouter();
   const { storeSettings, refreshSettings, showToast } = useAdmin();
 
@@ -190,6 +187,10 @@ function LegacyDataPage(){
       const json = JSON.parse(text);
       const validation = validateBackupSchema(json);
 
+      if (paired && (!json.multiDevice || json.multiDevice.storeId !== posPartition()?.storeId)) {
+        showToast("Pilih cadangan lengkap dari usaha beberapa perangkat ini.", "error");
+        return;
+      }
       if (!validation.isValid) {
         showToast("File ini tidak dapat digunakan. Pilih file cadangan SakuNota yang benar.", "error");
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -197,7 +198,7 @@ function LegacyDataPage(){
       }
 
       setPreviewFileName(file.name);
-      setPreviewStats(validation.stats);
+      setPreviewStats({...validation.stats, menuCount: validation.stats.menus, orderCount: validation.stats.orders, backupDate: json.exportedAt});
       setPreviewBackupData(json);
     } catch {
       showToast("File ini tidak dapat digunakan. Pilih file cadangan SakuNota yang benar.", "error");
@@ -382,7 +383,7 @@ function LegacyDataPage(){
       </div>
 
       {/* Rollback Snapshot jika baru saja melakukan pemulihan */}
-      {preRestoreSnapshot && (
+      {!paired && preRestoreSnapshot && (
         <div className="p-5 rounded-3xl bg-amber-50 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <span className="text-2xl text-amber-900"><LineIcon name="info" /></span>
@@ -469,7 +470,7 @@ function LegacyDataPage(){
               <span>Pilih File Cadangan</span>
             </button>
             <p className="text-[10px] text-muted text-center leading-tight">
-              Anda akan melihat rincian isi file sebelum data diganti.
+              {paired ? 'Periksa ringkasan cadangan sebelum dipulihkan.' : 'Anda akan melihat rincian isi file sebelum data diganti.'}
             </p>
           </div>
         </div>
@@ -500,6 +501,9 @@ function LegacyDataPage(){
         </div>
       </div>
 
+      {paired&&runtime&&<DeviceRecovery client={runtime.client}/>}
+      {paired&&<p className="text-sm text-muted">Cadangan lengkap menyimpan salinan data pada perangkat ini. Saat dipulihkan, transaksi yang belum terkirim diteruskan dan data usaha dimuat kembali tanpa menimpa nota yang sudah diterima.</p>}
+      {!paired&&<>
       {/* Preset Sample Data Usaha (4 Jenis Usaha) */}
       <div className="p-5 sm:p-6 rounded-3xl bg-surface border border-line space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line">
@@ -623,6 +627,7 @@ function LegacyDataPage(){
       </div>
 
       {/* ======================================================== */}
+      </>}
       {/* MODAL 1: Konfirmasi Kembalikan Data (Restore) */}
       {/* ======================================================== */}
       {previewBackupData && previewStats && (
@@ -653,7 +658,7 @@ function LegacyDataPage(){
 
             {/* Warning Text */}
             <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-xs text-amber-200 leading-relaxed">
-              <strong>Peringatan Penting:</strong> Data yang sekarang ada di perangkat ini akan diganti dengan data dari file cadangan. Salinan darurat data saat ini akan dibuat otomatis untuk berjaga-jaga.
+              {paired ? 'Transaksi yang belum terkirim akan dipulihkan. Data usaha dimuat kembali melalui internet tanpa menimpa nota yang sudah diterima.' : <><strong>Peringatan Penting:</strong> Data yang sekarang ada di perangkat ini akan diganti dengan data dari file cadangan. Salinan darurat data saat ini akan dibuat otomatis untuk berjaga-jaga.</>}
             </div>
 
             {/* Rincian File */}
@@ -793,7 +798,7 @@ function LegacyDataPage(){
                 <div className="space-y-1 flex-1">
                   <h4 className="font-black text-fg text-sm">Di HP Baru: Kembalikan Data</h4>
                   <p className="text-muted leading-relaxed">
-                    Buka SakuNota di browser HP baru (misal Google Chrome). Buka menu <strong>Data & Cadangan</strong>, lalu tekan tombol <strong>Pilih File Cadangan</strong> dan pilih file tadi.
+                    {paired ? 'Hubungkan perangkat pemilik pengganti ke usaha yang sama. Buka Data & Cadangan, pilih cadangan lengkap, lalu pulihkan saat internet tersedia.' : <>Buka SakuNota di browser HP baru (misal Google Chrome). Buka menu <strong>Data & Cadangan</strong>, lalu tekan tombol <strong>Pilih File Cadangan</strong> dan pilih file tadi.</>}
                   </p>
                 </div>
               </div>

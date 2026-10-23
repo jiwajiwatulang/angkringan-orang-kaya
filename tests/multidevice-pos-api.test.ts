@@ -21,6 +21,19 @@ test('actual POS operations commit one durable event atomically and reconcile sp
     const input={status:'unpaid',total:20000,subtotal:20000,items:[{id:Number(product),nama:'Kopi',harga:10000,qty:2}]};
     const note=await api.createOrder(input);
     assert.equal(await db.table('posOutbox').count(),1);
+    const pending=(await db.table('posOutbox').toArray())[0];
+    const forged=structuredClone(pending.event);
+    forged.data.rows.find((row:any)=>row.table==='orders').value.status='paid';
+    await assert.rejects(()=>submitEvent(env.DB,o.claims,forged),/belum lunas/);
+    assert.equal((await pullEntities(env.DB,o.claims,0)).entities.filter(row=>row.kind==='pos_orders').length,0);
+    const backup=await api.exportAllData();
+    assert.equal(backup.orders.length,1);assert.equal(backup.orderItems.length,1);
+    assert.equal(backup.menus.length,1);assert.equal(backup.shifts.length,1);
+    assert.equal(backup.multiDevice?.outbox.length,1);
+    assert.deepEqual(backup.multiDevice?.outbox[0].event,pending.event);
+    assert.equal(JSON.stringify(backup).includes('"access"'),false);
+    assert.equal(JSON.stringify(backup).includes('"claims"'),false);
+    assert.equal(backup.settings.adminPin,undefined);
     await flush();
     await api.updateOrder(Number(note.id),{...input,total:30000,subtotal:30000,items:[{id:Number(product),nama:'Kopi',harga:10000,qty:3}]});await flush();
     await api.recordPayment({orderId:Number(note.id),paymentMethod:'Cash',amount:10000,splitType:'partial',operatorName:'Pemilik'});await flush();
@@ -47,6 +60,16 @@ test('actual POS operations commit one durable event atomically and reconcile sp
     await api.recordPayment({orderId:Number(retail.id),paymentMethod:'Cash',amount:1000,splitType:'partial',operatorName:'Pemilik'});await flush();
     await api.recordPayment({orderId:Number(retail.id),paymentMethod:'Cash',amount:4000,splitType:'partial',operatorName:'Pemilik'});await flush();
     assert.equal(await db.table('menuItems').where('nama').equals('Barang Baru').count(),1);
+    const multiDraft=await api.createOrder({status:'unpaid',total:5000,items:[{id:-1,nama:'Draft Satu',harga:2000,qty:1,pendingRetailProduct:{nama:'Draft Satu',harga:2000}},{id:-2,nama:'Draft Dua',harga:3000,qty:1,pendingRetailProduct:{nama:'Draft Dua',harga:3000}}]});await flush();
+    const drafts=await db.table('orderItems').where('orderId').equals(Number(multiDraft.id)).toArray();
+    await api.recordPayment({orderId:Number(multiDraft.id),paymentMethod:'Cash',amount:2000,splitType:'item',operatorName:'Pemilik',itemsPaid:[{orderItemId:drafts[0].id,menuItemId:drafts[0].menuItemId,nama:'Draft Satu',qty:1,harga:2000}]});await flush();
+    assert.equal(await db.table('menuItems').where('nama').equals('Draft Satu').count(),0);
+    await api.recordPayment({orderId:Number(multiDraft.id),paymentMethod:'Cash',amount:3000,splitType:'item',operatorName:'Pemilik',itemsPaid:[{orderItemId:drafts[1].id,menuItemId:drafts[1].menuItemId,nama:'Draft Dua',qty:1,harga:3000}]});await flush();
+    assert.equal(await db.table('menuItems').where('nama').equals('Draft Satu').count(),1);
+    assert.equal(await db.table('menuItems').where('nama').equals('Draft Dua').count(),1);
+    // Local receipt IDs and canonical IDs differ; every resolved line must retain its own paid quantity.
+    const complete=(await pullEntities(env.DB,o.claims,0)).entities.filter(row=>row.kind==='pos_orderItems'&&['Draft Satu','Draft Dua'].includes(String(row.value.namaMenu)));
+    assert.equal(complete.length,2);assert.ok(complete.every(row=>row.value.paidQty===1&&row.value.menuItemId));
     setPosScope({claims:o.claims,access:o.access,operatorName:'Pemilik',importingLegacy:true});
     const legacyProduct=await db.table('menuItems').add({nama:'Beras Lama',harga:5000,kategori:'Sembako',trackStock:true,stockQty:7,isSoldOut:false});await flush();
     const legacyShift=await db.table('shifts').add({operatorName:'Pemilik',status:'closed',startingCash:0,actualCash:12000,endTime:new Date().toISOString()});await flush();

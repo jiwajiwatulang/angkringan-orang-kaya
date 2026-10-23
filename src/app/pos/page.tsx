@@ -1,6 +1,7 @@
 "use client";
 import LockIcon from "@/components/LockIcon";
 import {getPosScope} from "@/lib/multidevice/posWire";
+import {orderItemsToCart} from "@/lib/orderCart";
 import LineIcon from "@/components/LineIcon";
 import RetailAddProduct from '@/components/RetailAddProduct';
 import { sameBarcode } from '@/lib/productReference';
@@ -1032,21 +1033,7 @@ export default function POSPage() {
   };
 
   const loadOrderIntoCart = (order: any) => {
-    const loadedCart = order.items.map((i: any) => {
-      const mods = i.selectedModifiers || [];
-      const modSignature = mods.map((m: any) => `${m.groupName}:${m.optionName}`).sort().join('|');
-      return {
-        pendingRetailProduct: i.pendingRetailProduct,
-        imageData: i.pendingRetailProduct?.imageData,
-        id: i.menuItemId,
-        nama: i.nama || i.namaMenu || menuData.find(m => m.id === i.menuItemId)?.nama || 'Item Terhapus',
-        harga: i.hargaSatuan,
-        kategori: i.kategori || i.kategoriMenu || menuData.find(m => m.id === i.menuItemId)?.kategori || 'Lainnya',
-        qty: i.qty || i.quantity,
-        selectedModifiers: mods,
-        itemKey: modSignature ? `${i.menuItemId}_${modSignature}` : `${i.menuItemId}`
-      };
-    });
+    const loadedCart = orderItemsToCart(order.items, menuData);
     setCart(loadedCart);
     setOldCart(JSON.parse(JSON.stringify(loadedCart)));
     setCustomerName(order.customerName || "");
@@ -1337,7 +1324,7 @@ export default function POSPage() {
         const qty = splitSelectedItems[item.id] || 0;
         if (qty > 0) {
           itemsPaidPayload.push({
-            menuItemId: item.menuItemId || item.id,
+            menuItemId: getPosScope() ? item.menuItemId : item.menuItemId || item.id,
             ...(getPosScope()?{orderItemId:item.id}:{}),
             nama: item.namaMenu || item.nama || 'Item',
             qty: qty,
@@ -1731,19 +1718,7 @@ export default function POSPage() {
           // Merge items for implicit addition
           const existingOrder = activeOrders.find(o => o.id === targetOrderId);
 
-          const cartFormattedOld = existingOrder.items.map((i: any) => {
-            const mods = i.selectedModifiers || [];
-            const modSignature = mods.map((m: any) => `${m.groupName}:${m.optionName}`).sort().join('|');
-            return {
-              id: i.menuItemId,
-              nama: menuData.find((m:any) => m.id === i.menuItemId)?.nama || 'Item',
-              harga: i.hargaSatuan,
-              kategori: menuData.find((m:any) => m.id === i.menuItemId)?.kategori || '',
-              qty: i.qty || i.quantity,
-              selectedModifiers: mods,
-              itemKey: modSignature ? `${i.menuItemId}_${modSignature}` : `${i.menuItemId}`
-            };
-          });
+          const cartFormattedOld = orderItemsToCart(existingOrder.items, menuData);
 
           cart.forEach(newItem => {
             const newKey = newItem.itemKey || `${newItem.id}`;

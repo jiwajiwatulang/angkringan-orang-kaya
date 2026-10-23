@@ -399,7 +399,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
           'Foto bagian depan kemasan barang dengan pencahayaan cukup dan tulisan nama produk yang jelas.',
           'Sistem akan mencocokkan nama merek, varian, dan ukuran secara cerdas; harga jual tetap Anda tentukan sendiri sesuai harga warung/toko Anda.'
         ],
-        tips: 'Foto diproses secara lokal di perangkat Anda dan tidak dikirim ke server luar manapun, menjaga privasi dan kecepatan kerja offline.',
+        tips: 'Pengenalan foto dilakukan di perangkat. Jika usaha memakai beberapa perangkat, data produk dan foto yang disimpan ikut dibagikan ke perangkat usaha yang diizinkan.',
         targetHref: '/admin/pengaturan',
         targetLabel: 'Siapkan pengenalan foto'
       }
@@ -761,11 +761,26 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     businessTypes: ['all', 'setup'],
     articles: [
       {
+        title: 'Cadangan lengkap dan transaksi belum terkirim',
+        summary: 'Gunakan perangkat pemilik untuk menyimpan cadangan lengkap usaha beberapa perangkat.',
+        steps: [
+          'Buka Admin → Pengaturan → Data & Cadangan di perangkat pemilik.',
+          'Tekan "Cadangkan Sekarang" untuk menyimpan salinan katalog, nota, pembayaran, shift, stok, dan transaksi yang belum terkirim pada perangkat ini.',
+          'Bagian "Cadangan Pengiriman" hanya menyimpan transaksi yang belum terkirim, bukan seluruh riwayat usaha.',
+          'Jika muncul "Transaksi kasir sebelumnya perlu dipulihkan oleh pemilik", masuk kembali sebagai kasir yang membuat transaksi untuk mengirimkannya atau menyimpan cadangan pengirimannya. Jika akses kasir sudah dinonaktifkan, minta pemilik memulihkan aksesnya. Cadangan milik kasir lain tidak disertakan dalam cadangan kasir yang sedang masuk.',
+          'Pemilik dapat memulihkan file transaksi yang belum terkirim melalui "Pilih Cadangan Pengiriman" saat internet tersedia.',
+          'Jangan hapus data browser atau perangkat lama sebelum transaksi selesai diterima. Perangkat pemilik tidak dapat mencadangkan transaksi offline yang masih berada di perangkat kasir lain.'
+        ],
+        tips: 'Demo memakai data latihan terpisah, termasuk saat perangkat sudah terhubung ke usaha.',
+        targetHref: '/admin/pengaturan/data',
+        targetLabel: 'Buka Data & Cadangan'
+      },
+      {
         title: 'Mengunduh cadangan database toko (.json)',
         summary: 'Cadangan mencakup seluruh katalog produk, foto, riwayat transaksi, shift kasir, dan stok.',
         steps: [
           'Buka Admin → Pengaturan → Data & Cadangan.',
-          'Pada bagian Backup Data Usaha, tekan tombol "Unduh Cadangan Lengkap (.json)".',
+          'Pada bagian Backup Data Usaha, tekan tombol "Cadangkan Sekarang".',
           'File cadangan akan tersimpan di folder Download perangkat Anda.',
           'Kirimkan atau simpan salinan file cadangan tersebut ke Google Drive, WhatsApp pribadi, atau flashdisk sebagai proteksi jika HP/laptop kasir rusak atau hilang.',
           'Lakukan backup cadangan secara berkala (misalnya setiap minggu atau akhir bulan).'
@@ -775,13 +790,14 @@ export const GUIDE_TOPICS: GuideTopic[] = [
       },
       {
         title: 'Memulihkan data toko ke perangkat baru (Restore)',
-        summary: 'Pindahkan seluruh riwayat toko ke HP atau komputer baru dalam 10 detik.',
+        summary: 'Periksa cadangan dan mode usaha sebelum memulihkan data di perangkat baru.',
         steps: [
+          'Untuk usaha beberapa perangkat, hubungkan perangkat pemilik pengganti ke usaha yang sama terlebih dahulu dan sambungkan internet.',
           'Buka SakuNota di perangkat baru Anda.',
           'Buka Admin → Pengaturan → Data & Cadangan.',
           'Pada bagian Restore Data Usaha, pilih file cadangan (.json) yang sebelumnya sudah Anda simpan.',
           'Periksa pratinjau ringkasan data: jumlah transaksi, menu produk, dan riwayat shift yang terdeteksi.',
-          'Tekan "Konfirmasi Pulihkan Data". Dalam hitungan detik seluruh toko Anda kembali lengkap seperti sedia kala.'
+          'Tekan "Ya, Kembalikan Data Sekarang". Pada usaha beberapa perangkat, transaksi yang belum terkirim diteruskan lalu data usaha dimuat kembali tanpa menimpa nota yang sudah diterima. Pada mode satu perangkat, data lokal diganti dari cadangan.'
         ],
         targetHref: '/admin/pengaturan/data',
         targetLabel: 'Pulihkan data toko'

@@ -34,6 +34,10 @@ export async function resumeRecovery(db:Dexie,claims:AccessClaims,recover:(event
   for(let index=job.index;index<archive.outbox.length;index++){
     const event=archive.outbox[index].event,ack=await recover(event);
     if(ack.id!==event.id||!Number.isSafeInteger(ack.sequence)||ack.sequence<1)throw new AccessError('Pemulihan belum dikonfirmasi.',409);
+    if(db.tables.some(table=>table.name==='posOutbox')){
+      const local=await db.table('posOutbox').get(event.id);
+      if(local&&JSON.stringify(local.event)===JSON.stringify(event))await db.table('posOutbox').delete(event.id);
+    }
     // A crash before this write resends the same event and cannot create another sale.
     await db.table('settings').put({key:'recoveryJob',value:{archive,index:index+1}});
   }

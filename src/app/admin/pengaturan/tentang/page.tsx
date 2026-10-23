@@ -284,10 +284,10 @@ export default function PengaturanTentangPage() {
             </div>
             <div className="text-xs text-muted space-y-2 leading-relaxed">
               <p>
-                1. <strong>Data Privat:</strong> Semua transaksi, nama pelanggan, menu, dan riwayat shift kasir disimpan di memori perangkat Anda sendiri.
+                1. <strong>Data Privat:</strong> Data usaha disimpan di perangkat. Jika Anda mengaktifkan beberapa perangkat, data transaksi juga dikirim ke layanan SakuNota agar perangkat usaha menerima data yang sama.
               </p>
               <p>
-                2. <strong>Bebas Sadap:</strong> SakuNota tidak menjual atau mengirimkan rincian keuangan usaha Anda ke server eksternal.
+                2. <strong>Privasi Usaha:</strong> SakuNota tidak menjual data usaha Anda. Data bersama hanya dapat diakses melalui perangkat dan akun yang diizinkan untuk usaha Anda.
               </p>
               <p>
                 3. <strong>Cadangan Mandiri:</strong> Anda berhak penuh mengekspor dan menyimpan cadangan data Anda kapan saja.

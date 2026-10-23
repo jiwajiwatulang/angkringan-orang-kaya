@@ -72,7 +72,14 @@ export function installPosCapture(db:Dexie,getScope:()=>PosScope|undefined){
           }
           if(name==='payments'&&Array.isArray(wire.itemsPaid)){
             wire.itemsPaid=await Promise.all(wire.itemsPaid.map(async(item:Record<string,any>)=>{
-              const copy={...item};for(const [field,parent] of [['menuItemId','menuItems'],['orderItemId','orderItems']] as const){if(!copy[field])continue;const record=await down.table(parent).get({trans:request.trans,key:copy[field]});if(!record?.mdId){if(current.importingLegacy){copy[field]=null;continue;}throw new AccessError('Barang pembayaran tidak ditemukan.');}copy[field]=record.mdId;}return copy;
+              const copy={...item};
+              if(copy.orderItemId){
+                const line=await down.table('orderItems').get({trans:request.trans,key:copy.orderItemId});
+                // A retail draft has no catalog ID until final settlement. The receipt line remains authoritative.
+                if(line?.pendingRetailProduct)copy.menuItemId=null;
+                else if(line)copy.menuItemId=line.menuItemId;
+              }
+              for(const [field,parent] of [['menuItemId','menuItems'],['orderItemId','orderItems']] as const){if(!copy[field])continue;const record=await down.table(parent).get({trans:request.trans,key:copy[field]});if(!record?.mdId){if(current.importingLegacy){copy[field]=null;continue;}throw new AccessError('Barang pembayaran tidak ditemukan.');}copy[field]=record.mdId;}return copy;
             }));
           }
           const row=batch.rows.get(`${name}:${value.mdId}`)!;row.value=wire;

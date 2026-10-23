@@ -8,11 +8,11 @@ import { db } from "@/lib/dexie";
 import { selectDashboardOrders, buildSalesSeries } from "@/lib/dashboardMetrics";
 import { useAdmin } from "./AdminContext";
 import { getOrders, getActiveShift, getShiftLiveStats } from "@/lib/api";
-import StoreDashboard from '@/components/StoreDashboard';
+import {posDashboard} from '@/lib/multidevice/posDashboard';
 import {posPartition} from '@/lib/multidevice/posPartition';
 
 export default function AdminDashboardPage() {
-  return posPartition()?<StoreDashboard/>:<LegacyDashboard/>;
+  return <LegacyDashboard/>;
 }
 function LegacyDashboard(){
   const { storeSettings } = useAdmin();
@@ -75,19 +75,20 @@ function LegacyDashboard(){
   const paymentRevision = useLiveQuery(() => db.table("payments").toArray(), []);
   useEffect(() => { let current = true; getOrders().then(data => { if (current) setOrders(data); }); return () => { current = false; }; }, [orderRevision, paymentRevision]);
 
-  const { currentOrders, previousOrders } = selectDashboardOrders(orders, timeRange);
+  const ledger = posPartition() ? posDashboard(orders, timeRange) : undefined;
+  const { currentOrders, previousOrders } = ledger || selectDashboardOrders(orders, timeRange);
 
   // Current Metrics
-  const currentGrossSales = currentOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-  const currentOrderCount = currentOrders.length;
+  const currentGrossSales = ledger?.net ?? currentOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  const currentOrderCount = ledger?.count ?? currentOrders.length;
   const currentAov = currentOrderCount > 0 ? Math.round(currentGrossSales / currentOrderCount) : 0;
   const currentUnitsSold = currentOrders.reduce((sum, o) => {
     return sum + (o.items || []).reduce((iSum: number, item: any) => iSum + (item.qty || 1), 0);
   }, 0);
 
   // Previous Metrics for Delta Calculation
-  const prevGrossSales = previousOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-  const prevOrderCount = previousOrders.length;
+  const prevGrossSales = ledger?.previous.net ?? previousOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  const prevOrderCount = ledger?.previous.count ?? previousOrders.length;
   const prevAov = prevOrderCount > 0 ? Math.round(prevGrossSales / prevOrderCount) : 0;
   const prevUnitsSold = previousOrders.reduce((sum, o) => {
     return sum + (o.items || []).reduce((iSum: number, item: any) => iSum + (item.qty || 1), 0);
@@ -103,10 +104,13 @@ function LegacyDashboard(){
   const deltaAov = calcDelta(currentAov, prevAov);
   const deltaUnits = calcDelta(currentUnitsSold, prevUnitsSold);
 
-  const chartPoints = buildSalesSeries(currentOrders, timeRange);
+  const chartPoints = ledger?.chart ?? buildSalesSeries(currentOrders, timeRange);
 
   const maxChartOmzet = Math.max(...chartPoints.map((p) => p.omzet), 50000);
   const chartCeiling = maxChartOmzet > 0 ? Math.ceil(maxChartOmzet * 1.15) : 100000;
+
+  const chartFloor = Math.min(0,...chartPoints.map(p=>p.omzet));
+  const chartSpan = chartCeiling-chartFloor;
 
   // SVG dimensions for smooth bezier curve
   const svgW = 800;
@@ -118,9 +122,11 @@ function LegacyDashboard(){
 
   const svgCoords = chartPoints.map((p, i) => {
     const x = paddingX + (i / Math.max(1, chartPoints.length - 1)) * usableW;
-    const y = paddingY + usableH - (p.omzet / chartCeiling) * usableH;
+    const y = paddingY + usableH - ((p.omzet-chartFloor) / chartSpan) * usableH;
     return { x, y, ...p };
   });
+
+  const zeroY = paddingY+usableH-(0-chartFloor)/chartSpan*usableH;
 
   // Construct smooth SVG path (Cubic Bezier Spline)
   const svgPathD = useMemo(() => {
@@ -140,15 +146,16 @@ function LegacyDashboard(){
 
   const svgAreaD = useMemo(() => {
     if (svgCoords.length === 0) return "";
-    const bottomY = paddingY + usableH;
+    const bottomY = zeroY;
     let d = svgPathD;
     d += ` L ${svgCoords[svgCoords.length - 1].x} ${bottomY}`;
     d += ` L ${svgCoords[0].x} ${bottomY} Z`;
     return d;
-  }, [svgPathD, svgCoords, paddingY, usableH]);
+  }, [svgPathD, svgCoords, zeroY]);
 
   // Payment Breakdown (Shopify Sales by Channel)
   const paymentBreakdown = useMemo(() => {
+    if(ledger)return ledger.methods;
     const map: Record<string, { total: number; count: number }> = {
       Cash: { total: 0, count: 0 },
       QRIS: { total: 0, count: 0 },
@@ -171,7 +178,7 @@ function LegacyDashboard(){
       count: data.count,
       percent: Math.round((data.total / total) * 100),
     }));
-  }, [currentOrders, currentGrossSales]);
+  }, [currentOrders, currentGrossSales, ledger]);
 
   // Top Products by Units Sold (Shopify Top Products)
   const topProducts = useMemo(() => {
@@ -455,7 +462,7 @@ function LegacyDashboard(){
             </h2>
           </div>
           <p className="text-xs text-muted mt-0.5">
-            {storeSettings.storeName || "SakuNota"} • Transaksi lunas, tren penjualan, dan produk terlaris pada perangkat toko ini.
+            {storeSettings.storeName || "SakuNota"} • {ledger ? "Ringkasan pembayaran dan penjualan usaha." : "Transaksi lunas, tren penjualan, dan produk terlaris pada perangkat toko ini."}
           </p>
         </div>
 
@@ -679,7 +686,7 @@ function LegacyDashboard(){
           {/* Subtle Horizontal Reference Grid Lines & Y-Axis Scale */}
           <div className="absolute inset-x-2 top-8 bottom-12 flex flex-col justify-between pointer-events-none">
             {[1, 0.75, 0.5, 0.25, 0].map((ratio) => {
-              const val = Math.round(chartCeiling * ratio);
+              const val = Math.round(chartFloor + chartSpan * ratio);
               return (
                 <div key={ratio} className="border-b border-dashed border-line/60 w-full flex justify-end">
                   <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 bg-surface px-2 py-0.5 -mt-3 rounded border border-line/50 shadow-xs">
@@ -770,8 +777,8 @@ function LegacyDashboard(){
                     const barWidth = Math.max(10, Math.min(36, (usableW / Math.max(1, svgCoords.length)) * 0.65));
                     return svgCoords.map((coord, idx) => {
                       const isHovered = hoveredPoint?.label === coord.label && hoveredPoint?.sublabel === coord.sublabel;
-                      const bHeight = Math.max(coord.omzet > 0 ? 6 : 2, (coord.omzet / chartCeiling) * usableH);
-                      const bY = paddingY + usableH - bHeight;
+                      const bHeight = Math.max(2, Math.abs(coord.omzet / chartSpan) * usableH);
+                      const bY = coord.omzet >= 0 ? zeroY - bHeight : zeroY;
                       const bX = coord.x - barWidth / 2;
 
                       return (

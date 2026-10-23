@@ -47,7 +47,7 @@ export default function PrivacyPolicyPage() {
               SakuNota sangat menghormati privasi dan rahasia dapur usaha Anda. Seluruh catatan jualan - termasuk daftar menu, harga makanan, pesanan pembeli, meja, catatan shift, dan riwayat omzet kasir - <strong>tersimpan aman langsung di memori HP atau komputer kasir Anda sendiri</strong>.
             </p>
             <p className="text-slate-600">
-              Data transaksi harian Anda <strong>tidak pernah kami intip, tidak disimpan di server luar, dan tidak dijual ke pihak mana pun</strong>. Anda memiliki kebebasan penuh untuk mencadangkan (backup) data ke file HP Anda kapan saja.
+              Data transaksi disimpan di perangkat. Jika Anda mengaktifkan beberapa perangkat, data transaksi juga dikirim ke layanan SakuNota untuk menyamakan data usaha. <strong>Data usaha tidak dijual ke pihak mana pun.</strong> Anda memiliki kebebasan penuh untuk mencadangkan (backup) data ke file HP Anda kapan saja.
             </p>
           </section>
 

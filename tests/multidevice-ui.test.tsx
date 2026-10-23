@@ -11,6 +11,8 @@ test('unknown remote state never claims every device has current data',()=>{
   assert.ok(unknown.includes('Data Terakhir Diterima'));assert.equal(unknown.includes('Semua Data Terbaru'),false);
   assert.ok(renderToStaticMarkup(<StoreDataStatus pending={0} online allDevicesConfirmed/>).includes('Semua Data Terbaru'));
   assert.ok(renderToStaticMarkup(<StoreDataStatus pending={3} online={false}/>).includes('3 Data Belum Terkirim'));
+  const review=renderToStaticMarkup(<StoreDataStatus pending={3} online={false} needsReview/>);
+  assert.ok(review.includes('Stok Perlu Dicek'));assert.ok(review.includes('Tidak Tersambung'));assert.ok(review.includes('3 Data Belum Terkirim'));
   for(const state of [{pending:0,online:true},{pending:3,online:false},{pending:1,online:true,failed:true},{pending:0,online:true,needsReview:true}]){
     assert.equal(/database|token|UUID|API|sync engine|Cloudflare|migration/.test(renderToStaticMarkup(<StoreDataStatus {...state}/>)),false);
   }

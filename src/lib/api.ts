@@ -1,3 +1,4 @@
+import {posPartition} from './multidevice/posPartition';
 import Dexie from 'dexie';
 import {getPosScope} from './multidevice/posWire';
 import { db, MenuItem, Order, OrderItem, Payment, SelectedModifier, PaymentProof, ModifierGroup, TableShape } from './dexie';
@@ -2035,6 +2036,7 @@ export async function resetDemoSandbox(presetType?: BusinessDemoType) {
 
 export async function exportAllData() {
   await requireMerchantAdmin();
+  const partition=posPartition();
   return db.transaction('r', db.tables, async () => {
   const menus = await db.table('menuItems').toArray();
   const tables = await db.table('tables').toArray();
@@ -2083,6 +2085,11 @@ export async function exportAllData() {
     version: 3,
     appName: 'SakuNota',
     exportedAt: new Date().toISOString(),
+    ...(partition ? {multiDevice:{
+      version:1, storeId:partition.storeId, deviceId:partition.deviceId,
+      // Preserve original signed-delivery intent, never device grants or employee credentials.
+      outbox:(await db.table('posOutbox').orderBy('ordinal').toArray()).map(({id,event,ordinal})=>({id,event,ordinal,attempts:0}))
+    }} : {}),
     integrity,
     settings,
     menus,
@@ -2157,6 +2164,18 @@ export function validateBackupSchema(data: any): {
 export async function importAllData(data: any, options?: { skipPreBackup?: boolean }) {
   if (db.name === 'SakuNotaDemoDB') throw new Error('Pemulihan data usaha hanya tersedia pada perangkat berlisensi atau trial. Demo menggunakan data latihan.');
   await requireMerchantAdmin();
+  if(posPartition()){
+    const {currentPosRuntime}=await import('./multidevice/posRuntime');
+    const {stageRecovery,resumeRecovery}=await import('./multidevice/recovery');
+    const runtime=currentPosRuntime();
+    if(!runtime||!data?.multiDevice)throw new Error('Pilih cadangan lengkap dari usaha beberapa perangkat ini.');
+    await stageRecovery(db,runtime.client.claims,data.multiDevice);
+    await resumeRecovery(db,runtime.client.claims,event=>runtime.client.recover(event));
+    // A full restore must re-read accepted records even if this device's cursor was already current.
+    await db.table('posMeta').put({key:'cursor',value:0});
+    await runtime.synchronizer.synchronize();
+    return;
+  }
   const validation = validateBackupSchema(data);
   if (!validation.isValid) {
     throw new Error(validation.error || 'Format file cadangan tidak valid: Data menu tidak ditemukan.');

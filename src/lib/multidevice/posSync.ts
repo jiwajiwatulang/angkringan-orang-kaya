@@ -47,14 +47,26 @@ export class PosSynchronizer {
   synchronize(){if(!this.running)this.running=this.run().finally(()=>{this.running=undefined;});return this.running;}
   private async run(){
     const pending=await this.db.table('posOutbox').orderBy('ordinal').toArray();
+    const blocked=new Set<string>();
     for(const row of pending){
-      const client=row.claims.deviceId===this.client.claims.deviceId&&row.claims.employeeId===this.client.claims.employeeId?this.client:new DeviceClient(row.access,row.claims);
+      const actor=`${row.claims.deviceId}:${row.claims.employeeId||''}`;
+      if(blocked.has(actor))continue;
+      const current=row.claims.deviceId===this.client.claims.deviceId&&row.claims.employeeId===this.client.claims.employeeId;
+      const client=current?this.client:new DeviceClient(row.access,row.claims);
       try{
         const ack=await client.send(row.event as PosCommit);
         if(ack.id!==row.id)throw new AccessError('Pengiriman belum dikonfirmasi.',409);
         await this.db.table('posOutbox').delete(row.id);
-      }catch(error){await this.db.table('posOutbox').update(row.id,{attempts:row.attempts+1,error:'Pengiriman belum berhasil.'});throw error;}
+      }catch(error){
+        const status=(error as {status?:number}).status;
+        const needsRecovery=!current&&(status===401||status===403);
+        await this.db.table('posOutbox').update(row.id,{attempts:row.attempts+1,error:needsRecovery?'Transaksi kasir sebelumnya perlu dipulihkan.':'Pengiriman belum berhasil.',needsRecovery});
+        if(!needsRecovery)throw error;
+        blocked.add(actor);
+      }
     }
+    // Pull still verifies the active employee's access. importPosEntities refuses to replace
+    // the local snapshot while immutable offline work exists, and the loop then stops.
     let cursor=Number((await this.db.table('posMeta').get('cursor'))?.value||0);
     for(let page=0;page<1000;page++){
       const result=await this.client.pull(cursor);

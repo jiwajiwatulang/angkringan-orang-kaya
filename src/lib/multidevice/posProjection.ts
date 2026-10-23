@@ -173,11 +173,14 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
       if(payment.splitType==='item'&&!bootstrap)for(const item of payment.itemsPaid||[]){
         integer(item.qty,true);integer(item.harga);
         let matched:string|undefined;
-        for(const lineId of itemIds){const line=await get('orderItems',lineId);if(line&&!line.mdDeleted&&line.menuItemId===item.menuItemId&&line.hargaSatuan===item.harga&&(!item.orderItemId||lineId===item.orderItemId)){matched=lineId;break;}}
+        for(const lineId of itemIds){const line=await get('orderItems',lineId);if(line&&!line.mdDeleted&&line.hargaSatuan===item.harga&&(item.orderItemId?lineId===item.orderItemId:line.menuItemId===item.menuItemId)){matched=lineId;break;}}
         if(!matched)throw new AccessError('Barang pembayaran tidak sesuai nota.',409);
         paidItems.set(matched,(paidItems.get(matched)||0)+item.qty);
       }
     }}
+    // Preserve receipts imported before payment records existed; new receipts must have accepted payments.
+    const legacyPaid=previousOrder?.status==='paid'&&previousOrder.paidAmount===0&&paymentIds.size===0;
+    if(!bootstrap&&order.status==='paid'&&paid!==order.total&&!legacyPaid)throw new AccessError('Nota belum lunas. Lengkapi pembayaran terlebih dahulu.',409);
     if(paid>order.total)throw new AccessError('Pembayaran melebihi tagihan.',409);
     if(!bootstrap)for(const id of itemIds){const item=await get('orderItems',id);if(!item||item.mdDeleted)continue;const paidQty=paidItems.get(id)||0;if(paidQty>item.qty)throw new AccessError('Jumlah barang sudah dibayar.',409);add('pos_orderItems',id,{...item,paidQty:paid===order.total?item.qty:paidQty});}
     // Billing balances are derived from accepted payments; transmitted aggregates are not authoritative.
