@@ -24,10 +24,17 @@ export async function submitEvent(db:D1Database,claims:AccessClaims,event:StoreE
     }
     const state=await db.prepare('SELECT revision FROM MdStores WHERE id=?').bind(claims.storeId).first<{revision:number}>();
     if(!state) throw new AccessError();
-    const changes=await project(event,claims,async(kind,id)=>{
-      const row=await db.prepare('SELECT payload FROM MdEntities WHERE storeId=? AND kind=? AND id=?').bind(claims.storeId,kind,id).first<{payload:string}>();
-      return row?JSON.parse(row.payload):undefined;
-    });
+    let changes:Entity[];
+    try {
+      changes=await project(event,claims,async(kind,id)=>{
+        const row=await db.prepare('SELECT payload FROM MdEntities WHERE storeId=? AND kind=? AND id=?').bind(claims.storeId,kind,id).first<{payload:string}>();
+        return row?JSON.parse(row.payload):undefined;
+      });
+    } catch(error){
+      const latest=await db.prepare('SELECT revision FROM MdStores WHERE id=?').bind(claims.storeId).first<{revision:number}>();
+      if(latest?.revision!==state.revision) continue;
+      throw error;
+    }
     const mutation=crypto.randomUUID(),revision=state.revision+1;
     const guard='EXISTS(SELECT 1 FROM MdStores WHERE id=? AND mutation=?)';
     const statements=[

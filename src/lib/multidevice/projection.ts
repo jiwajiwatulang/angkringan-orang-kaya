@@ -26,6 +26,7 @@ export async function project(event:StoreEvent,claims:AccessClaims,lookup:Lookup
     if(expected!==Number(existing?.version||0)) throw new AccessError('Data harga sudah berubah. Perbarui data.',409);
     if(d.unit!=='pcs' && d.unit!=='g') throw new AccessError('Satuan tidak valid.',400);
     const basis=integer(d.priceBasis,true);
+    if(existing && existing.unit!==d.unit) throw new AccessError('Satuan barang yang sudah tersimpan tidak dapat diganti.',409);
     if((d.unit==='pcs' && basis!==1) || (d.unit==='g' && ![100,1000].includes(basis))) throw new AccessError('Satuan tidak valid.',400);
     if(typeof d.active!=='boolean') throw new AccessError('Data tidak valid.',400);
     const product:CatalogProduct={id:entityId,version:expected+1,name:text(d.name),price:amount(d.price),cost:d.cost===null?null:amount(d.cost),unit:d.unit,priceBasis:basis,active:d.active};
@@ -43,13 +44,13 @@ export async function project(event:StoreEvent,claims:AccessClaims,lookup:Lookup
     const live=await lookup('activeShift',`${claims.deviceId}_${event.operatorId}`);
     if(live?.shiftId) throw new AccessError('Tutup shift sebelumnya.',409);
     return [{kind:'shift',id:entityId,value:{deviceId:claims.deviceId,operatorId:event.operatorId,status:'open',startingCash:amount(d.startingCash),cashSales:0,nonCashSales:0,cashRefunds:0,nonCashRefunds:0}},
-      {kind:'activeShift',id:`${claims.deviceId}_${event.operatorId}`,value:{shiftId:entityId}}];
+      {kind:'activeShift',id:`${claims.deviceId}_${event.operatorId}`,value:{shiftId:entityId,deviceId:claims.deviceId,operatorId:event.operatorId}}];
   }
   if(event.kind==='shift.close') {
     only(d,['actualCash']);if(!existing || existing.status!=='open') throw new AccessError('Shift sudah ditutup.',409);owned(existing);
     const actualCash=amount(d.actualCash),expectedCash=sum(Number(existing.startingCash),Number(existing.cashSales))-Number(existing.cashRefunds);
     return [{kind:'shift',id:entityId,value:{...existing,status:'closed',actualCash,expectedCash,cashDifference:actualCash-expectedCash}},
-      {kind:'activeShift',id:`${claims.deviceId}_${event.operatorId}`,value:{shiftId:null}}];
+      {kind:'activeShift',id:`${claims.deviceId}_${event.operatorId}`,value:{shiftId:null,deviceId:claims.deviceId,operatorId:event.operatorId}}];
   }
   if(event.kind==='order.create') {
     only(d,['shiftId','lines','customerName']);if(existing) throw new AccessError('Nota sudah tercatat.',409);
@@ -95,15 +96,19 @@ export async function project(event:StoreEvent,claims:AccessClaims,lookup:Lookup
     if(refund>Number(payment.amount)-Number(payment.refunded)) throw new AccessError('Pengembalian melebihi pembayaran.',409);
     const lines=structuredClone(order.lines) as Record<string,unknown>[];
     const stocks=new Map<string,Record<string,unknown>>();
+    let returnAmount=0;
     if(d.returns!==undefined){
       if(!Array.isArray(d.returns)||d.returns.length>200) throw new AccessError('Barang tidak valid.',400);
       for(const returned of d.returns){
         only(returned,['line','quantity']);const index=integer(returned.line),quantity=integer(returned.quantity,true),line=lines[index];
         if(!line||quantity>Number(line.quantity)-Number(line.returnedQuantity)) throw new AccessError('Jumlah pengembalian tidak sesuai.',409);
-        line.returnedQuantity=Number(line.returnedQuantity)+quantity;
+        const before=Number(line.returnedQuantity),after=before+quantity;
+        returnAmount=sum(returnAmount,lineAmount(after,Number(line.price),Number(line.priceBasis))- (before===0?0:lineAmount(before,Number(line.price),Number(line.priceBasis))));
+        line.returnedQuantity=after;
         const productId=id(line.productId),stock=stocks.get(productId)||await lookup('stock',productId)||{quantity:0};
         const next=sum(Number(stock.quantity),quantity);stocks.set(productId,{quantity:next,needsReview:next<0});
       }
+      if(returnAmount!==refund) throw new AccessError('Nominal pengembalian tidak sesuai barang.',409);
     }
     const field=payment.method==='Cash'?'cashRefunds':'nonCashRefunds';
     return [{kind:'refund',id:entityId,value:{paymentId,orderId,shiftId,amount:refund,reason:text(d.reason,300),deviceId:claims.deviceId,operatorId:event.operatorId,returns:d.returns||[]}},

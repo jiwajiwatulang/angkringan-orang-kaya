@@ -3,7 +3,7 @@ export const OFFLINE_ACCESS_MS = 24 * 60 * 60 * 1000;
 export const PAIRING_MS = 5 * 60 * 1000;
 export interface AccessClaims {
   version: 1; storeId: string; deviceId: string; deviceKey: string;
-  role: DeviceRole; deviceEpoch: number; employeeId?: string; employeeEpoch?: number;
+  role: DeviceRole; deviceEpoch: number; employeeId?: string; employeeEpoch?: number; pinDigest?: string;
   issuedAt: number; expiresAt: number;
 }
 export class AccessError extends Error {
@@ -30,7 +30,7 @@ export function validClaims(claims: AccessClaims, now = Date.now()): boolean {
     now >= claims.issuedAt - 60000 && now < claims.expiresAt &&
     claims.expiresAt - claims.issuedAt <= OFFLINE_ACCESS_MS && claims.expiresAt > claims.issuedAt &&
     (claims.role !== 'owner' || !claims.employeeId) &&
-    (!claims.employeeId || (Number.isSafeInteger(claims.employeeEpoch) && claims.employeeEpoch! > 0));
+    (!claims.employeeId || (Number.isSafeInteger(claims.employeeEpoch) && claims.employeeEpoch! > 0 && /^[a-f0-9]{64}$/.test(claims.pinDigest || '')));
 }
 export interface CatalogProduct {
   id: string; version: number; name: string; price: number; cost: number | null;
