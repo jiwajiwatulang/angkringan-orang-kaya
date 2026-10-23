@@ -55,7 +55,7 @@ export function validateEnvelope(event: StoreEvent, claims: AccessClaims) {
 }
 export function lineAmount(quantity: number, price: number, basis: number): number {
   integer(quantity, true); integer(price); integer(basis, true);
-  const result = (BigInt(quantity) * BigInt(price) + BigInt(basis) / 2n) / BigInt(basis);
+  const result = (BigInt(quantity) * BigInt(price) + BigInt(basis) / BigInt(2)) / BigInt(basis);
   if (result > BigInt(Number.MAX_SAFE_INTEGER)) throw new AccessError('Jumlah terlalu besar.',400);
   return Number(result);
 }

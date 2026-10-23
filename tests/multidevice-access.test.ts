@@ -1,0 +1,51 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import {createPairing,requestPairing,approvePairing,revokeDevice,saveEmployee,employeeLogin,listAccess,authorize} from '../src/lib/server/multideviceAccess';
+import {testDeviceProof} from './securityFixtures';
+import {environment,owner,auth,requestProof} from './multideviceFixtures';
+
+test('two devices require approval, a third cannot occupy a slot, and revocation rejects old grants',async()=>{
+  const env=await environment(),primary=await owner(env),pair=await createPairing(env,primary.claims),id=crypto.randomUUID();
+  const data=()=>({code:pair.code,deviceId:id,deviceName:'Tablet Kasir',proof:testDeviceProof('multi.pair',pair.code,id)});
+  assert.equal((await requestPairing(env,data())).pending,true);
+  await approvePairing(env,primary.claims,pair.id);
+  const secondary=await requestPairing(env,data());assert.equal(secondary.pending,false);
+  if(secondary.pending) throw new Error();
+  assert.equal(secondary.claims.role,'cashier');await auth(env,secondary,'list');
+  await assert.rejects(()=>createPairing(env,primary.claims));
+  const third=crypto.randomUUID();
+  await assert.rejects(()=>requestPairing(env,{code:pair.code,deviceId:third,deviceName:'Third',proof:testDeviceProof('multi.pair',pair.code,third)}));
+  await assert.rejects(()=>saveEmployee(env,secondary.claims,{id:crypto.randomUUID(),name:'Bad',pin:'482953',active:true}));
+  await revokeDevice(env,primary.claims,id);
+  await assert.rejects(()=>auth(env,secondary,'list'),/dilepas/);
+  assert.ok(await createPairing(env,primary.claims));
+});
+test('PIN login, lockout, rotation, employee revocation and response privacy',async()=>{
+  const env=await environment(),primary=await owner(env),pair=await createPairing(env,primary.claims),id=crypto.randomUUID();
+  const data=()=>({code:pair.code,deviceId:id,deviceName:'Tablet',proof:testDeviceProof('multi.pair',pair.code,id)});
+  await requestPairing(env,data());await approvePairing(env,primary.claims,pair.id);
+  const secondary=await requestPairing(env,data());if(secondary.pending) throw new Error();
+  const employee=crypto.randomUUID();await saveEmployee(env,primary.claims,{id:employee,name:'Kasir Pagi',pin:'482953',active:true});
+  const session=await employeeLogin(env,secondary.claims,{id:employee,pin:'482953'});assert.equal(session.claims.employeeId,employee);
+  const list=JSON.stringify(await listAccess(env,secondary.claims));assert.equal(/verifier|482953|licenseKey|publicKey/.test(list),false);
+  for(let i=0;i<5;i++) await assert.rejects(()=>employeeLogin(env,secondary.claims,{id:employee,pin:'000000'}));
+  await assert.rejects(()=>employeeLogin(env,secondary.claims,{id:employee,pin:'482953'}));
+  await env.DB.prepare('UPDATE MdEmployees SET lockedUntil=? WHERE storeId=? AND id=?').bind(Date.now()-1,primary.claims.storeId,employee).run();
+  assert.ok(await employeeLogin(env,secondary.claims,{id:employee,pin:'482953'}));
+  await saveEmployee(env,primary.claims,{id:employee,name:'Kasir Pagi',pin:'958274',active:true});
+  await assert.rejects(()=>auth(env,session,'list'),/berakhir/);
+  await assert.rejects(()=>employeeLogin(env,secondary.claims,{id:employee,pin:'482953'}));
+  const rotated=await employeeLogin(env,secondary.claims,{id:employee,pin:'958274'});
+  await saveEmployee(env,primary.claims,{id:employee,name:'Kasir Pagi',active:false});
+  await assert.rejects(()=>auth(env,rotated,'list'));
+});
+test('proofs are payload-bound, one-use, and store isolation is cryptographic',async()=>{
+  const env=await environment(),a=await owner(env),b=await owner(env),body={id:'employee-1234567890'};
+  const proof=requestProof('save',a.claims,a.access,body);
+  await assert.rejects(()=>authorize(env,a.access,'save',{...body,id:'another-1234567890'},proof));
+  await authorize(env,a.access,'save',body,proof);
+  await assert.rejects(()=>authorize(env,a.access,'save',body,proof),/digunakan/);
+  await assert.rejects(()=>authorize(env,b.access,'save',body,requestProof('save',a.claims,b.access,body)));
+  assert.notEqual(a.claims.storeId,b.claims.storeId);
+});
