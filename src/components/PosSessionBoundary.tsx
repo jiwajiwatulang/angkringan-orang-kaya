@@ -10,7 +10,7 @@ export default function PosSessionBoundary({children}:{children:React.ReactNode}
   const backup=async()=>{
     try{if(!runtime)return;const data=await runtime.synchronizer.backup(),url=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download=`sakunota-pengiriman-${new Date().toISOString().slice(0,10)}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch{setError('Cadangan belum dapat disimpan.');}
   };
-  useEffect(()=>{const selected=!!posPartition();setEnabled(selected);if(selected)void initialize();else setReady(true);},[]);
+  useEffect(()=>{const workspace=location.pathname==='/pos'||location.pathname.startsWith('/admin');const selected=workspace&&!!posPartition();setEnabled(selected);if(selected)void initialize();else setReady(true);},[]);
   useEffect(()=>{
     if(!enabled||!runtime?.scope)return;
     let stopped=false,running=false;
