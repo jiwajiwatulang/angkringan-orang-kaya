@@ -42,3 +42,14 @@ The previous license telemetry remains labelled as the primary device. Store-own
 Regression testing exposed a real intermittent grant issuance bug: two clock reads could create a token whose duration exceeded the 24-hour maximum by 1 ms. Grant issuance now uses one clock read. An advancing-clock test protects the fix without relaxing token validation.
 
 Validation: 36 Multi-Device tests, typecheck and static build. Desktop 1280px and mobile 390px screenshots use the actual list renderer with explicitly local fixture data, not a production login or full portal end-to-end session. Existing release gates remain in force.
+
+
+## Production hotfix: active license rejected on Workers
+
+After the user-authorized production release of f15c9d2 (Worker 517c6b58-7829-4d63-b623-bd1ead00f453), the Perangkat page rejected a valid existing tester activation. This was reproduced with the actual Workers runtime at the production compatibility date: Node-compatible crypto.sign/verify rejected nested KeyObject inputs, while PEM input worked. Pure Node tests did not expose the incompatibility.
+
+Original activation verification, scoped access issuance and scoped access verification now serialize their key inputs to PEM, matching the established single-device license path. The signed bytes, keys, expiry checks, physical-device binding and role checks are unchanged. No reactivation, license unbinding or local data deletion is required.
+
+New npm run test:multidevice:edge runs an ephemeral local Workers runtime and isolated local D1 through Wrangler, without production bindings. It reproduces the reported enrollment failure before the fix, then verifies active tester enrollment, browser verification of grants, owner list access, pairing, employee PIN login and renewal. It also rejects forged activations, copied device activations, cashier owner-actions, revoked devices and revoked licenses. This check is now required in CI.
+
+The earlier keep-off/no-deploy statements above describe the pre-release review boundary. The user subsequently explicitly authorized publication and this hotfix. PR remains separate from main; rollout uses both feature switches enabled and existing production secrets preserved.

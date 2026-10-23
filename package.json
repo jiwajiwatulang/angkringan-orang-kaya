@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "preview:local": "tsx scripts/preview-local.ts",
     "test:multidevice": "tsx --test tests/multidevice-*.test.ts tests/multidevice-ui.test.tsx",
+    "test:multidevice:edge": "node scripts/test-multidevice-edge.mjs",
     "qa:multidevice": "tsx scripts/qa-multidevice.ts"
   },
   "dependencies": {

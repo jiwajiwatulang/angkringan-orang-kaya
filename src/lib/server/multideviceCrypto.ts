@@ -22,7 +22,7 @@ export function verifyPin(pin: string, verifier: string): boolean {
 export function signAccess(claims: AccessClaims, privateJwk: string): string {
   const key = crypto.createPrivateKey({key:JSON.parse(privateJwk),format:'jwk'});
   const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
-  const signature = crypto.sign('sha256',Buffer.from(`SNMD1.${payload}`),{key,dsaEncoding:'ieee-p1363'}).toString('base64url');
+  const signature = crypto.sign('sha256',Buffer.from(`SNMD1.${payload}`),{key:key.export({type:'pkcs8',format:'pem'}),dsaEncoding:'ieee-p1363'}).toString('base64url');
   return `SNMD1.${payload}.${signature}`;
 }
 export function readAccess(token: string, privateJwk: string, now = Date.now(), renewDevice = false): AccessClaims {
@@ -31,7 +31,7 @@ export function readAccess(token: string, privateJwk: string, now = Date.now(), 
     const [prefix,payload,signature,extra] = token.split('.');
     if (prefix !== 'SNMD1' || !payload || !signature || extra) throw new Error();
     const key = crypto.createPublicKey(crypto.createPrivateKey({key:JSON.parse(privateJwk),format:'jwk'}));
-    if (!crypto.verify('sha256',Buffer.from(`${prefix}.${payload}`),{key,dsaEncoding:'ieee-p1363'},Buffer.from(signature,'base64url'))) throw new Error();
+    if (!crypto.verify('sha256',Buffer.from(`${prefix}.${payload}`),{key:key.export({type:'spki',format:'pem'}),dsaEncoding:'ieee-p1363'},Buffer.from(signature,'base64url'))) throw new Error();
     const claims = JSON.parse(Buffer.from(payload,'base64url').toString()) as AccessClaims;
     if (!validClaims(claims,renewDevice?claims.issuedAt+1:now)) throw new Error();
     if(renewDevice && (claims.role!=='cashier'||claims.employeeId)) throw new Error();

@@ -1,0 +1,47 @@
+import crypto from 'node:crypto';
+import {initD1Tables,type D1Database} from '../../src/lib/server/d1';
+import {handleMultiDevice} from '../../src/lib/server/multideviceHttp';
+import {proofMessage,publicKeyIdentity} from '../../src/lib/licenseProtocol';
+import {verifyAccess} from '../../src/lib/multidevice/offlineAccess';
+import {digest} from '../../src/lib/server/multideviceCrypto';
+// Loopback-only runtime regression. This file is not part of the production Worker.
+export default {async fetch(request:Request,env:{DB:D1Database;MIGRATION:string}) {
+  const steps:string[]=[];
+  try{
+    await initD1Tables(env.DB);
+    for(const sql of env.MIGRATION.split(';').filter(sql=>sql.trim()))await env.DB.prepare(sql).run();
+    const signer=crypto.generateKeyPairSync('ec',{namedCurve:'prime256v1'});
+    const privateJwk=JSON.stringify(signer.privateKey.export({format:'jwk'}));
+    const publicJwk=signer.publicKey.export({format:'jwk'}) as JsonWebKey;
+    const runtime={DB:env.DB,SAKUNOTA_MULTI_DEVICE:'enabled',SAKUNOTA_LICENSE_PRIVATE_JWK:privateJwk};
+    const device=()=>{const pair=crypto.generateKeyPairSync('ec',{namedCurve:'prime256v1'});return {id:crypto.randomUUID(),pair,identity:publicKeyIdentity(pair.publicKey.export({format:'jwk'}) as JsonWebKey)};};
+    const proof=(d:ReturnType<typeof device>,action:string,key:string,token='')=>{const timestamp=Date.now(),nonce=crypto.randomUUID();return {publicKey:d.pair.publicKey.export({format:'jwk'}),timestamp,nonce,signature:crypto.sign('sha256',Buffer.from(proofMessage(action,key,d.id,token,timestamp,nonce)),{key:d.pair.privateKey.export({format:'pem',type:'pkcs8'}),dsaEncoding:'ieee-p1363'}).toString('base64url')};};
+    const invoke=async(body:unknown,expected=200)=>{const response=await handleMultiDevice(new Request('http://localhost/api/store',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),runtime);const data=await response.json() as any;if(response.status!==expected)throw new Error(`${(body as any).action}: expected ${expected}, got ${response.status}: ${data.error}`);return data;};
+    const o=device(),key=`SN-TEST-EDGE-${crypto.randomUUID()}`,expiresAt=new Date(Date.now()+30*86400000).toISOString();
+    await env.DB.prepare('INSERT INTO TesterLicenses(licenseKey,recipientName,whatsapp,createdAt,expiresAt,durationDays,boundDeviceId) VALUES (?,?,?,?,?,?,?)').bind(key,'Local Runtime Test','',new Date().toISOString(),expiresAt,30,o.id).run();
+    await env.DB.prepare('INSERT INTO LicenseDeviceKeys(licenseKey,deviceId,publicKey) VALUES (?,?,?)').bind(key,o.id,o.identity).run();
+    const claims={v:2,licenseKey:key,deviceId:o.id,deviceKey:o.identity,licenseType:'tester',expiresAt,businessName:'Local Runtime Test',issuedAt:Date.now()};
+    const payload=Buffer.from(JSON.stringify(claims)).toString('base64url');
+    const activation=`SN2.${payload}.${crypto.sign('sha256',Buffer.from(payload),{key:signer.privateKey.export({format:'pem',type:'pkcs8'}),dsaEncoding:'ieee-p1363'}).toString('base64url')}`;
+    const parts=activation.split('.');parts[2]=(parts[2][0]==='A'?'B':'A')+parts[2].slice(1);const forged=parts.join('.');
+    await invoke({action:'enroll',data:{activation:forged,deviceName:'Pemilik'},proof:proof(o,'multi.enroll',key,forged)},401);steps.push('forged activation denied');
+    const impostor=device();await invoke({action:'enroll',data:{activation,deviceName:'Other'},proof:proof(impostor,'multi.enroll',key,activation)},403);steps.push('copied activation on another device denied');
+    const enrolled=await invoke({action:'enroll',data:{activation,deviceName:'Pemilik'},proof:proof(o,'multi.enroll',key,activation)});steps.push('active tester enrollment');
+    await verifyAccess(enrolled.access,o.id,o.identity,publicJwk);steps.push('browser verifies owner grant');
+    const call=(d:ReturnType<typeof device>,session:any,action:string,data:Record<string,unknown>={},expected=200)=>invoke({action,data,access:session.access,proof:proof(d,`multi.${action}.${digest(JSON.stringify(data))}`,session.claims.storeId,session.access)},expected);
+    const initial=await call(o,enrolled,'list');if(initial.devices.length!==1)throw new Error('Owner slot missing');steps.push('owner authenticated list');
+    const c=device(),pair=await call(o,enrolled,'pair.create');
+    await invoke({action:'pair.request',data:{code:pair.code,deviceId:c.id,deviceName:'Kasir'},proof:proof(c,'multi.pair',pair.code)});
+    const pending=await call(o,enrolled,'list');await call(o,enrolled,'pair.approve',{id:pending.pairings[0].id});
+    const cashier=await invoke({action:'pair.request',data:{code:pair.code,deviceId:c.id,deviceName:'Kasir'},proof:proof(c,'multi.pair',pair.code)});
+    const cashierClaims=await verifyAccess(cashier.access,c.id,c.identity,publicJwk);cashier.claims=cashierClaims;steps.push('cashier pairing and browser grant');
+    const id=crypto.randomUUID();await call(o,enrolled,'employee.save',{id,name:'Kasir Pagi',pin:'482953',active:true});
+    const employee=await call(c,cashier,'employee.login',{id,pin:'482953'});await verifyAccess(employee.access,c.id,c.identity,publicJwk);steps.push('employee PIN login');
+    await call(c,employee,'pair.create',{},403);steps.push('cashier owner-action denied');
+    await call(c,cashier,'refresh');steps.push('cashier grant renewal');
+    await call(o,enrolled,'device.revoke',{id:c.id});await call(c,cashier,'list',{},403);steps.push('revoked device denied');
+    await env.DB.prepare('UPDATE TesterLicenses SET revoked=1 WHERE licenseKey=?').bind(key).run();
+    await call(o,enrolled,'list',{},403);steps.push('revoked license denied');
+    return Response.json({success:true,steps});
+  }catch(error){return Response.json({success:false,steps,error:(error as Error).message},{status:500});}
+}};

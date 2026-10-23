@@ -25,7 +25,7 @@ function originalClaims(token:string, key:string):LicenseClaims {
     const [v,p,s,extra] = token.split('.');
     if (v!=='SN2' || !p || !s || extra || token.length>8192) throw new Error();
     const publicKey=crypto.createPublicKey(crypto.createPrivateKey({key:JSON.parse(key),format:'jwk'}));
-    if (!crypto.verify('sha256',Buffer.from(p),{key:publicKey,dsaEncoding:'ieee-p1363'},Buffer.from(s,'base64url'))) throw new Error();
+    if (!crypto.verify('sha256',Buffer.from(p),{key:publicKey.export({type:'spki',format:'pem'}),dsaEncoding:'ieee-p1363'},Buffer.from(s,'base64url'))) throw new Error();
     const claims=JSON.parse(Buffer.from(p,'base64url').toString()) as LicenseClaims;
     if(claims.v!==2 || (claims.expiresAt && (!Number.isFinite(Date.parse(claims.expiresAt)) || Date.now()>=Date.parse(claims.expiresAt)))) throw new Error();
     return claims;
