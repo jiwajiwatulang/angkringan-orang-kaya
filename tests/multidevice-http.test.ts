@@ -19,3 +19,12 @@ test('HTTP verifies proof before dispatch and refuses unbounded or malformed bod
   assert.equal((await handleMultiDevice(request({action:'list',data:{injected:true},access:o.access,proof}),env)).status,401);
   assert.equal((await handleMultiDevice(request({data:'x'.repeat(MAX_DELIVERY_BYTES+20000)}),env)).status,413);
 });
+test('two-device polling has a separate budget while account entry keeps its stricter limit',async()=>{
+  const env=await environment(),o=await owner(env);let syncCalls=0,authCalls=0;
+  const limits={...env,MULTI_DEVICE_RATE_LIMITER:{limit:async()=>({success:++syncCalls<=120})},PUBLIC_RATE_LIMITER:{limit:async()=>({success:++authCalls<=30})}};
+  const call=async(action:string,data:Record<string,unknown>)=>handleMultiDevice(new Request('https://test/api/store',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,data,access:o.access,proof:requestProof(action,o.claims,o.access,data)})}),limits);
+  for(let i=0;i<40;i++)assert.equal((await call('pull',{cursor:0})).status,200);
+  assert.equal(authCalls,0);
+  for(let i=0;i<30;i++)assert.equal((await call('list',{})).status,200);
+  assert.equal((await call('list',{})).status,429);assert.equal(authCalls,31);
+});

@@ -39,6 +39,7 @@ export interface Env {
   SAKUNOTA_LICENSE_PRIVATE_JWK?: string;
   SAKUNOTA_MULTI_DEVICE?: string;
   PUBLIC_RATE_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> };
+  MULTI_DEVICE_RATE_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> };
 }
 
 function corsHeaders() {
