@@ -761,7 +761,7 @@ function LegacyDashboard(){
                     <path
                       d={svgAreaD}
                       fill="url(#shopifyGradient)"
-                      className="transition-all duration-300"
+                      className="transition-opacity duration-300"
                     />
                   )}
 
@@ -774,7 +774,7 @@ function LegacyDashboard(){
                       strokeWidth="3"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="transition-all duration-300"
+                      className="transition-opacity duration-300"
                     />
                   )}
 
@@ -802,7 +802,7 @@ function LegacyDashboard(){
                           fill={isHovered ? "#2563EB" : coord.omzet > 0 ? "#2563EB" : "#94A3B8"}
                           stroke="#FFFFFF"
                           strokeWidth={isHovered ? "2.5" : "1.5"}
-                          className="transition-all duration-150"
+                          className="transition-colors duration-150"
                         />
                       </g>
                     );
@@ -851,7 +851,7 @@ function LegacyDashboard(){
                                 ? "url(#shopifyBarGradient)"
                                 : "#CBD5E1"
                             }
-                            className="transition-all duration-200"
+                            className="transition-colors duration-200"
                           />
                           {/* Highlight Top Cap when hovered */}
                           {isHovered && (
