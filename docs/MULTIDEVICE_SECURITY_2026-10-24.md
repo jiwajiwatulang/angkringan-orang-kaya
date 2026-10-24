@@ -40,4 +40,12 @@ Arsip pemulihan yang dibatalkan tetap disimpan di perangkat, dengan tombol untuk
 
 ## Deployment
 
-Menunggu publikasi dan verifikasi domain produksi. Deploy menggunakan `--keep-vars` agar variabel, binding database, dan fitur beberapa perangkat tidak dinonaktifkan.
+**Berhasil dipublikasikan dan diverifikasi.**
+
+- Commit aplikasi: `96bf131`.
+- Versi Workers: `94ff68f8-9690-4f9b-ab0b-e4f1457e9c9a`.
+- Deployment terkonfirmasi `2026-10-24T02:44:21.911Z`, **100% trafik** ke versi tersebut.
+- Deploy memakai `--keep-vars`; konfigurasi produksi dan binding tetap dipertahankan.
+- Sebanyak 24 pemeriksaan halaman/aset pada `sakunota.my.id` dan `www.sakunota.my.id` berhasil. Manifest, service worker dan enam berkas aplikasi terkait cocok dengan build lokal yang diuji.
+- Browser produksi: FAQ homepage, tautan Buku Panduan, pencarian dan artikel akses kasir/pemulihan berhasil pada lebar 390 dan 1365 piksel, tanpa halaman melebar atau error JavaScript. Pengecualian sertifikat pada browser pengujian hanya menangani proxy environment; konfigurasi TLS aplikasi tidak diubah.
+- Tidak mengirim percobaan manipulasi atau transaksi uji ke database pelanggan produksi.
