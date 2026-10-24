@@ -3,6 +3,7 @@ import LockIcon from "@/components/LockIcon";
 
 import { isDemoMode, preserveDemoUrl, demoSessionValid } from "@/lib/demoMode";
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { App } from "@capacitor/app";
@@ -767,7 +768,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 Demo Kasir
               </span>
               <span className="font-medium text-[11px] sm:text-xs">
-                Anda sedang dalam <strong>Mode Demo Admin</strong>. Data & pengaturan di sini adalah simulasi uji coba.
+                <span className="sm:hidden">Data latihan</span><span className="hidden sm:inline">Anda sedang dalam <strong>Mode Demo Admin</strong>. Data &amp; pengaturan di sini adalah simulasi uji coba.</span>
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -841,13 +842,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Page Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8 max-w-7xl w-full mx-auto">
           {children}
         </main>
       </div>
 
       {/* --- MOBILE BOTTOM NAVIGATION (HP < 768px) --- */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-md border-t border-line z-40 px-1 py-1.5 grid grid-cols-4 items-center">
+      {typeof document !== "undefined" && createPortal(<nav aria-label="Navigasi Admin" className="admin-bottom-nav md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-line z-40 px-1 pt-1.5 grid grid-cols-4 items-center" style={{paddingBottom:"calc(0.375rem + env(safe-area-inset-bottom))"}}>
         <Link
           href="/admin"
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
@@ -896,7 +897,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           <span className="text-lg"><LineIcon name="settings" /></span>
           <span className="truncate w-full text-center">Lainnya</span>
         </button>
-      </div>
+      </nav>, document.body)}
 
       {/* --- MOBILE "LAINNYA" BOTTOM SHEET --- */}
       {isLainnyaOpen && (

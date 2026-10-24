@@ -1,7 +1,7 @@
 "use client";
 import LineIcon from "@/components/LineIcon";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/dexie";
@@ -21,6 +21,13 @@ function LegacyDashboard(){
   const [shiftStats, setShiftStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const chartRef = useRef<HTMLDivElement>(null);
+  const [chartWidth, setChartWidth] = useState(800);
+  useEffect(() => {
+    if(!chartRef.current)return;
+    const observer = new ResizeObserver(entries => setChartWidth(Math.max(240, entries[0].contentRect.width)));
+    observer.observe(chartRef.current);return () => observer.disconnect();
+  }, []);
   // Shopify-Style Date Range Filter
   const [timeRange, setTimeRange] = useState<"today" | "yesterday" | "7days" | "30days" | "thisMonth">("7days");
   const [chartType, setChartType] = useState<"line" | "bar">("line");
@@ -42,6 +49,21 @@ function LegacyDashboard(){
     } catch (_) {}
   }, []);
 
+  useEffect(() => {
+    const close = () => setHoveredPoint(null);
+    const outside = (event: PointerEvent) => { if (!chartRef.current?.contains(event.target as Node)) close(); };
+    const keyboard = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
+    document.addEventListener('pointerdown', outside);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    document.addEventListener('keydown', keyboard);
+    return () => { document.removeEventListener('pointerdown', outside); window.removeEventListener('scroll', close, true); window.removeEventListener('resize', close); document.removeEventListener('keydown', keyboard); };
+  }, []);
+  useEffect(() => { setHoveredPoint(null); }, [timeRange, chartType]);
+  const compactMoney = (value: number) => {
+    const amount = Math.abs(value), sign = value < 0 ? '−' : '';
+    return `Rp ${sign}${amount >= 1000000 ? `${Number((amount / 1000000).toFixed(1)).toLocaleString('id-ID')} jt` : amount >= 1000 ? `${Math.round(amount / 1000).toLocaleString('id-ID')} rb` : amount.toLocaleString('id-ID')}`;
+  };
   const handleSelectChartType = (type: "line" | "bar") => {
     setChartType(type);
     try {
@@ -107,13 +129,14 @@ function LegacyDashboard(){
   const chartPoints = ledger?.chart ?? buildSalesSeries(currentOrders, timeRange);
 
   const maxChartOmzet = Math.max(...chartPoints.map((p) => p.omzet), 50000);
-  const chartCeiling = maxChartOmzet > 0 ? Math.ceil(maxChartOmzet * 1.15) : 100000;
+  const chartStep = (10 ** Math.floor(Math.log10(maxChartOmzet))) / 5;
+  const chartCeiling = Math.ceil(maxChartOmzet / chartStep) * chartStep;
 
   const chartFloor = Math.min(0,...chartPoints.map(p=>p.omzet));
   const chartSpan = chartCeiling-chartFloor;
 
   // SVG dimensions for smooth bezier curve
-  const svgW = 800;
+  const svgW = chartWidth;
   const svgH = 220;
   const paddingX = 40;
   const paddingY = 25;
@@ -422,7 +445,7 @@ function LegacyDashboard(){
     msg += ` *Omzet*: Rp ${currentGrossSales.toLocaleString("id-ID")}\n`;
     msg += ` *Transaksi Selesai*: ${currentOrderCount} nota\n`;
     msg += ` *Porsi Terjual*: ${currentUnitsSold} item\n`;
-    msg += ` *Rata-rata Nota (AOV)*: Rp ${currentAov.toLocaleString("id-ID")}\n\n`;
+    msg += ` *Rata-rata per Nota*: Rp ${currentAov.toLocaleString("id-ID")}\n\n`;
 
     if (topProducts.length > 0) {
       msg += `*MENU PALING LARIS*\n`;
@@ -593,7 +616,7 @@ function LegacyDashboard(){
         {/* Metric 3: AOV (Average Order Value) */}
         <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted">Rata-rata Nota (AOV)</span>
+            <span className="text-xs font-bold text-muted">Rata-rata per Nota</span>
             <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 ${
               deltaAov >= 0
                 ? "bg-emerald-100 text-emerald-800"
@@ -638,7 +661,7 @@ function LegacyDashboard(){
       </div>
 
       {/* 3. The Core Visual: Shopify-Style Area Trend Graph with Hover Tooltip */}
-      <div className="bg-surface rounded-3xl p-5 sm:p-7 border border-line shadow-xs space-y-4">
+      <div ref={chartRef} className="dashboard-chart bg-surface rounded-3xl p-4 sm:p-7 border border-line shadow-xs space-y-4" onPointerLeave={event => { if(event.pointerType === 'mouse') setHoveredPoint(null); }}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line">
           <div>
             <h3 className="text-base font-black text-fg flex items-center gap-2">
@@ -690,7 +713,7 @@ function LegacyDashboard(){
               return (
                 <div key={ratio} className="border-b border-dashed border-line/60 w-full flex justify-end">
                   <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 bg-surface px-2 py-0.5 -mt-3 rounded border border-line/50 shadow-xs">
-                    Rp {val >= 1000 ? `${Math.round(val / 1000)}k` : val}
+                    {compactMoney(val)}
                   </span>
                 </div>
               );
@@ -702,6 +725,12 @@ function LegacyDashboard(){
             <svg
               viewBox={`0 0 ${svgW} ${svgH}`}
               className="w-full h-56 sm:h-64 overflow-visible"
+              onPointerUp={event => {
+                if(event.pointerType === 'mouse')return;
+                const rect=event.currentTarget.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width*svgW;
+                const point=svgCoords.reduce((best,p)=>Math.abs(p.x-x)<Math.abs(best.x-x)?p:best,svgCoords[0]);
+                if(point)setHoveredPoint(current=>current?.label===point.label&&current?.sublabel===point.sublabel?null:point);
+              }}
             >
               <defs>
                 <linearGradient id="shopifyGradient" x1="0" y1="0" x2="0" y2="1">
@@ -749,8 +778,11 @@ function LegacyDashboard(){
                     return (
                       <g
                         key={idx}
-                        onMouseEnter={() => setHoveredPoint(coord)}
-                        onClick={() => setHoveredPoint(coord)}
+                        onPointerEnter={event => { if(event.pointerType === 'mouse') setHoveredPoint(coord); }}
+                        onClick={event => { if(event.detail === 0)setHoveredPoint(coord); }}
+                        role="button" tabIndex={0} aria-label={`${coord.sublabel}: Rp ${coord.omzet.toLocaleString('id-ID')}, ${coord.count} transaksi`}
+                        onFocus={event => { if(event.currentTarget.matches(':focus-visible')) setHoveredPoint(coord); }} onBlur={() => setHoveredPoint(null)}
+                        onKeyDown={event => { if(event.key === 'Enter' || event.key === ' '){event.preventDefault();setHoveredPoint(coord);} }}
                         className="cursor-pointer"
                       >
                         {/* Hover hotspot hit-box */}
@@ -784,8 +816,11 @@ function LegacyDashboard(){
                       return (
                         <g
                           key={idx}
-                          onMouseEnter={() => setHoveredPoint(coord)}
-                          onClick={() => setHoveredPoint(coord)}
+                          onPointerEnter={event => { if(event.pointerType === 'mouse') setHoveredPoint(coord); }}
+                          onClick={event => { if(event.detail === 0)setHoveredPoint(coord); }}
+                        role="button" tabIndex={0} aria-label={`${coord.sublabel}: Rp ${coord.omzet.toLocaleString('id-ID')}, ${coord.count} transaksi`}
+                        onFocus={event => { if(event.currentTarget.matches(':focus-visible')) setHoveredPoint(coord); }} onBlur={() => setHoveredPoint(null)}
+                        onKeyDown={event => { if(event.key === 'Enter' || event.key === ' '){event.preventDefault();setHoveredPoint(coord);} }}
                           className="cursor-pointer"
                         >
                           {/* Transparent full-height hit area */}
@@ -831,47 +866,20 @@ function LegacyDashboard(){
               )}
             </svg>
 
-            {/* Hover Tooltip Box */}
-            {hoveredPoint && (() => {
-              const isNearTop = (hoveredPoint.y / svgH) < 0.45;
-              const isNearLeft = (hoveredPoint.x / svgW) < 0.18;
-              const isNearRight = (hoveredPoint.x / svgW) > 0.82;
+            {/* Detail stays inside the card and can be dismissed explicitly. */}
+            {hoveredPoint && <div className="chart-detail absolute inset-x-0 top-0 z-10 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-card px-3 py-2 text-sm" role="status">
+              <div><span className="block text-xs text-muted">{hoveredPoint.sublabel}</span><strong>Rp {hoveredPoint.omzet.toLocaleString('id-ID')}</strong><span className="ml-2 text-xs text-muted">{hoveredPoint.count} transaksi</span></div>
+              <button type="button" aria-label="Tutup rincian grafik" className="min-h-11 min-w-11 rounded-lg text-muted" onClick={() => setHoveredPoint(null)}>×</button>
+            </div>}
 
-              const xTranslate = isNearLeft ? 'translate-x-0' : isNearRight ? '-translate-x-full' : '-translate-x-1/2';
-              const yTranslate = isNearTop ? 'translate-y-4' : '-translate-y-full -translate-y-2';
-
-              return (
-                <div
-                  style={{
-                    left: `${(hoveredPoint.x / svgW) * 100}%`,
-                    top: `${(hoveredPoint.y / svgH) * 100}%`,
-                  }}
-                  className={`absolute z-30 pointer-events-none ${xTranslate} ${yTranslate}`}
-                >
-                  <div className="bg-slate-900/95 dark:bg-slate-950 text-white rounded-2xl px-4 py-2.5 shadow-2xl border-2 border-blue-500 text-xs min-w-[150px] text-center space-y-1 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md">
-                    <span className="text-xs text-slate-100 font-extrabold block tracking-wide">
-                      {hoveredPoint.sublabel} ({hoveredPoint.label})
-                    </span>
-                    <div className="text-base font-black text-sky-300 tracking-tight">
-                      Rp {hoveredPoint.omzet.toLocaleString("id-ID")}
-                    </div>
-                    <div className="pt-0.5">
-                      <span className="inline-block px-3 py-0.5 rounded-full bg-blue-500/25 text-blue-200 border border-blue-400/40 text-xs font-bold shadow-xs">
-                        {hoveredPoint.count} pesanan
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
           </div>
 
           {/* Bottom X-Axis Labels */}
           <div className="flex justify-between items-center px-2 pt-2.5 border-t border-line">
-            {chartPoints.map((p, idx) => (
+            {chartPoints.filter((_, index) => chartPoints.length <= (chartWidth < 480 ? 4 : 7) || index % Math.ceil((chartPoints.length - 1) / (chartWidth < 480 ? 3 : 5)) === 0 || index === chartPoints.length - 1).map((p, idx) => (
               <div key={idx} className="text-center flex-1 truncate px-0.5">
                 <span className="block text-xs font-black text-fg truncate">{p.label}</span>
-                <span className="text-[11px] font-semibold text-muted truncate block">{p.sublabel}</span>
+
               </div>
             ))}
           </div>
