@@ -725,6 +725,12 @@ function LegacyDashboard(){
             <svg
               viewBox={`0 0 ${svgW} ${svgH}`}
               className="w-full h-56 sm:h-64 overflow-visible"
+              onPointerMove={event => {
+                if(event.pointerType !== 'mouse')return;
+                const rect=event.currentTarget.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width*svgW;
+                const point=svgCoords.reduce((best,p)=>Math.abs(p.x-x)<Math.abs(best.x-x)?p:best,svgCoords[0]);
+                if(point)setHoveredPoint(point);
+              }}
               onPointerUp={event => {
                 if(event.pointerType === 'mouse')return;
                 const rect=event.currentTarget.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width*svgW;
