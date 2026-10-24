@@ -395,23 +395,31 @@ export default function POSPage() {
   const [paymentSheetDragY, setPaymentSheetDragY] = useState(0);
   const paymentSheetTouchStartRef = useRef<number | null>(null);
 
+  const paymentSheetDragRef = useRef(0);
+
+  const resetPaymentDrag = () => {
+    paymentSheetTouchStartRef.current = null;
+    paymentSheetDragRef.current = 0;
+    setPaymentSheetDragY(0);
+  };
+
   const handlePaymentTouchStart = (e: React.TouchEvent) => {
-    paymentSheetTouchStartRef.current = e.touches[0].clientY;
+    resetPaymentDrag();
+    if (e.touches.length === 1) paymentSheetTouchStartRef.current = e.touches[0].clientY;
   };
 
   const handlePaymentTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) { resetPaymentDrag(); return; }
     if (paymentSheetTouchStartRef.current === null) return;
-    const diff = e.touches[0].clientY - paymentSheetTouchStartRef.current;
-    if (diff > 0) setPaymentSheetDragY(diff);
-    else setPaymentSheetDragY(0);
+    const distance = Math.max(0, e.touches[0].clientY - paymentSheetTouchStartRef.current);
+    paymentSheetDragRef.current = distance;
+    setPaymentSheetDragY(distance);
   };
 
   const handlePaymentTouchEnd = () => {
-    if (paymentSheetDragY > 70) {
-      handleClosePaymentModal();
-    }
-    setPaymentSheetDragY(0);
-    paymentSheetTouchStartRef.current = null;
+    const shouldClose = paymentSheetDragRef.current > 70;
+    resetPaymentDrag();
+    if (shouldClose) handleClosePaymentModal();
   };
 
   // Cart State
@@ -439,6 +447,25 @@ export default function POSPage() {
 
   // Payment & Modal State
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentViewport, setPaymentViewport] = useState<{height: number; top: number} | null>(null);
+  useEffect(() => {
+    if (!isPaymentModalOpen) return;
+    const viewport = window.visualViewport;
+    const update = () => {
+      resetPaymentDrag();
+      setPaymentViewport({height: viewport?.height ?? window.innerHeight, top: viewport?.offsetTop ?? 0});
+    };
+    update();
+    viewport?.addEventListener('resize', update);
+    viewport?.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
+    return () => {
+      viewport?.removeEventListener('resize', update);
+      viewport?.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [isPaymentModalOpen]);
+
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState("");
@@ -2756,12 +2783,14 @@ export default function POSPage() {
       {/* Payment Modal */}
       {isPaymentModalOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4 max-lg:landscape:p-2 overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4 max-lg:landscape:p-2 overflow-hidden overscroll-none animate-in fade-in duration-200"
+          style={paymentViewport ? {top: paymentViewport.top, height: paymentViewport.height, bottom: 'auto'} : undefined}
           onClick={handleClosePaymentModal}
         >
           <div 
-            className="bg-card p-4 sm:p-6 md:p-8 max-lg:landscape:p-3.5 rounded-t-3xl sm:rounded-2xl w-full max-w-md max-lg:landscape:max-w-xl shadow-2xl relative flex flex-col max-h-[90vh] landscape:max-h-[95dvh] transition-transform ease-out"
+            className="bg-card p-4 sm:p-6 md:p-8 max-lg:landscape:p-3.5 rounded-t-3xl sm:rounded-2xl w-full max-w-md max-lg:landscape:max-w-xl shadow-2xl relative flex flex-col max-h-[90dvh] landscape:max-h-[95dvh] overflow-hidden transition-transform ease-out"
             style={{
+              maxHeight: paymentViewport ? paymentViewport.height * 0.95 : undefined,
               transform: paymentSheetDragY > 0 ? `translateY(${paymentSheetDragY}px)` : undefined,
               touchAction: 'pan-y'
             }}
@@ -2773,7 +2802,7 @@ export default function POSPage() {
               onTouchStart={handlePaymentTouchStart}
               onTouchMove={handlePaymentTouchMove}
               onTouchEnd={handlePaymentTouchEnd}
-              onClick={handleClosePaymentModal}
+              onTouchCancel={resetPaymentDrag}
             >
               <div className="w-14 h-1.5 bg-slate-600 rounded-full mb-1"></div>
               <span className="text-[10px] text-muted font-semibold flex items-center gap-1">
@@ -2783,9 +2812,6 @@ export default function POSPage() {
 
             <div 
               className="flex justify-between items-center mb-4 max-lg:landscape:mb-2 shrink-0"
-              onTouchStart={handlePaymentTouchStart}
-              onTouchMove={handlePaymentTouchMove}
-              onTouchEnd={handlePaymentTouchEnd}
             >
               <h2 className="text-xl max-lg:landscape:text-base font-bold text-fg">Selesaikan Pembayaran</h2>
               <button 
@@ -2797,7 +2823,7 @@ export default function POSPage() {
               </button>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+            <div aria-label="Formulir pembayaran" className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y pr-1">
               {/* Prominent Total Tagihan at TOP (Hidden in compact landscape because bottom bar already shows Total Pembayaran) */}
               <div className="bg-surface border border-line rounded-2xl p-4 text-center mb-4 shadow-inner max-lg:landscape:hidden">
                 <span className="text-[11px] uppercase tracking-wider text-muted font-bold block">Total Tagihan</span>
