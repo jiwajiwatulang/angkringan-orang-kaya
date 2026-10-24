@@ -35,6 +35,16 @@ Pemulihan beberapa perangkat membutuhkan internet dan perangkat pemilik yang ter
 
 Pengujian memakai perangkat/browser dan D1 lokal dengan data sintetis. Ini tidak merupakan klaim bahwa seluruh bug tidak mungkin ada atau pengujian perangkat fisik sudah dilakukan.
 
-## Deployment
+## Deployment — berhasil 24 Oktober 2026
 
-**Belum dipublikasikan dari pekerjaan ini.** Percobaan autentikasi Cloudflare ditolak dengan `Invalid access token` (9109). Identitas deployment yang diberikan tidak menggantikan kredensial akses. Build dapat dipaketkan lokal; deployment produksi memerlukan token aktif. Pertahankan variabel produksi dan binding yang ada (`wrangler deploy --keep-vars`); jangan menonaktifkan fitur beberapa perangkat untuk menyamarkan regresi. Setelah rilis, verifikasi versi dan aset pada domain produksi sebelum menyatakan deployment berhasil.
+- Commit aplikasi yang dipublikasikan: `2d63c52`, cabang `fix/multidevice-dashboard-regressions`.
+- Worker: `angkringan-orang-kaya`.
+- Versi aktif: `ffb77a5d-58d3-4049-817f-646a52a271e4`.
+- Cloudflare mengonfirmasi deployment pada `2026-10-24T00:26:19.377Z` dengan **100% trafik** ke versi tersebut.
+- URL utama: https://sakunota.my.id. Domain `www.sakunota.my.id` juga tercantum pada hasil deployment.
+- Deploy memakai `--keep-vars`; variabel produksi, binding database, dan pembatas laju tetap dipertahankan. Tidak menjalankan migrasi atau reset data produksi.
+- Verifikasi domain utama: halaman POS demo, Admin, Data & Cadangan, Panduan, dan Privasi merespons berhasil. Manifest offline memakai versi build yang benar; service worker dan empat berkas aplikasi terkait dashboard, cadangan, dan panduan cocok byte demi byte dengan build lokal yang diuji.
+- Browser produksi pada lebar HP 390 piksel: demo Retail dapat dibuka, tidak melebar ke samping, memakai database demo terpisah, dan tidak menghasilkan error halaman. Browser pengujian memakai pengecualian sertifikat hanya untuk proxy environment; konfigurasi TLS aplikasi tidak diubah.
+- Endpoint `angkringan-orang-kaya.ranutarde.workers.dev` tercantum pada hasil deployment, tetapi pemeriksaan langsung dari environment ini diblokir proxy dengan CONNECT HTTP 403 sebelum mencapai Worker. Verifikasi konten dilakukan melalui domain utama.
+
+Token lama ditolak Cloudflare (9109). Token pengganti berhasil diautentikasi dan dipakai tanpa disimpan dalam kode atau laporan. Catatan ini memperbarui status sebelumnya yang masih menunggu kredensial.
