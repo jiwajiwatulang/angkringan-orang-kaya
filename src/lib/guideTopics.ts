@@ -536,6 +536,20 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     businessTypes: ['all', 'warung', 'restaurant', 'retail'],
     articles: [
       {
+        title: 'Batas akses kasir dan pemeriksaan QRIS atau transfer',
+        summary: 'Kasir melayani pembeli; pemilik mengesahkan pembayaran nontunai dan pengembalian.',
+        steps: [
+          'Pada usaha beberapa perangkat, masuk sebagai karyawan yang sedang bertugas dan gunakan shift sendiri.',
+          'Catat pembayaran Tunai, QRIS, atau Transfer sesuai dana yang diterima. Untuk QRIS dan Transfer, unggah bukti pembayaran bila tersedia.',
+          'Pemilik memeriksa penerimaan dana di rekening atau layanan pembayaran sebelum menekan verifikasi bukti. Foto yang diunggah kasir tidak otomatis berarti pembayaran sudah terverifikasi.',
+          'Kesalahan pada nota yang sudah dibayar ditangani dengan pembatalan atau pengembalian oleh pemilik. Riwayat transaksi tetap tercatat.',
+          'Stok mengikuti barang dan perubahan jumlah pada nota. Barang masuk, barang keluar di luar penjualan, serta stok opname dilakukan pemilik melalui Katalog & Stok.'
+        ],
+        tips: 'Untuk Retail, barang baru tetap masuk katalog setelah pembayaran berhasil. Pengenalan foto tidak mengubah pembagian akses kasir dan pemilik.',
+        targetHref: '/pos',
+        targetLabel: 'Buka kasir'
+      },
+      {
         title: 'Mencatat penjualan kasir dan hitung kembalian',
         summary: 'Pilih produk, atur jumlah porsi, dan terima pembayaran dengan kembalian otomatis.',
         steps: [
@@ -760,6 +774,19 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     badge: 'Keamanan Data',
     businessTypes: ['all', 'setup'],
     articles: [
+      {
+        title: 'Melanjutkan atau membatalkan pemulihan yang terhenti',
+        summary: 'Cadangan asli tetap disimpan saat pekerjaan pemulihan dibatalkan.',
+        steps: [
+          'Masuk sebagai pemilik lalu buka Admin → Pengaturan → Data & Cadangan.',
+          'Jika koneksi terputus, sambungkan internet dan tekan "Lanjutkan Pemulihan". Nota yang sudah diterima tidak dihitung dua kali saat pengiriman diulang.',
+          'Jika pemulihan sudah dimulai tetapi tertahan pada transaksi yang ditolak, atau Anda ingin mengganti file, tekan "Simpan & Batalkan Pemulihan". Cadangan asli diunduh dan salinannya tetap disimpan pada perangkat.',
+          'Tombol "Unduh Cadangan yang Dibatalkan" dapat dipakai untuk menyimpan ulang cadangan pembatalan terakhir.',
+          'Periksa file pengganti lalu pilih "Pilih Cadangan Pengiriman". Pembatalan pemulihan tidak menarik kembali transaksi yang sudah diterima dan tidak menghapus transaksi yang masih tersimpan.'
+        ],
+        targetHref: '/admin/pengaturan/data',
+        targetLabel: 'Buka pemulihan cadangan'
+      },
       {
         title: 'Cadangan lengkap dan transaksi belum terkirim',
         summary: 'Gunakan perangkat pemilik untuk menyimpan cadangan lengkap usaha beberapa perangkat.',

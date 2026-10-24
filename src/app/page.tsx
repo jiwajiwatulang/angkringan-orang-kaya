@@ -1100,26 +1100,26 @@ export default function SakuNotaLandingPage() {
                   <span>Privasi &amp; Backup</span>
                 </div>
                 <h3 className="text-xs sm:text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
-                  100% Offline di Memori HP &amp; Cadangkan Mandiri
+                  Kasir Tanpa Internet &amp; Cadangan Data
                 </h3>
                 <p className="text-[11px] sm:text-sm text-slate-600 leading-relaxed">
-                  Seluruh data tersimpan privat di perangkat Anda sendiri. Mudah dicadangkan ke file dan dipulihkan saat ganti HP baru.
+                  Transaksi tersimpan di perangkat dan bisa dicadangkan. Jika beberapa perangkat diaktifkan, data dibagikan hanya ke perangkat usaha yang Anda izinkan saat tersambung internet.
                 </p>
                 <ul className="hidden sm:block space-y-2 pt-1 text-xs text-slate-700">
                   <li className="flex items-start gap-2">
                     <span className="text-blue-600 font-bold"><LineIcon name="success" /></span>
-                    <span>Buka kasir hanya dalam 1 detik tanpa menunggu loading server luar.</span>
+                    <span>Kasir tetap bisa melayani tanpa internet setelah persiapan dan aktivasi.</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-600 font-bold"><LineIcon name="success" /></span>
-                    <span>Backup data ke file HP kapan saja dan pulihkan saat ganti perangkat.</span>
+                    <span>Cadangkan data dan transaksi belum terkirim sebelum mengganti perangkat.</span>
                   </li>
                 </ul>
               </div>
               <div className="pt-1">
-                <span className="text-[11px] sm:text-xs font-extrabold text-blue-600 group-hover:underline inline-flex items-center gap-1">
-                  100% Offline &amp; Aman →
-                </span>
+                <Link href="/panduan" className="text-[11px] sm:text-xs font-extrabold text-blue-600 group-hover:underline inline-flex items-center gap-1">
+                  Panduan Data &amp; Cadangan →
+                </Link>
               </div>
             </div>
 
@@ -1474,11 +1474,11 @@ export default function SakuNotaLandingPage() {
             {[
               {
                 q: "Untuk apa aplikasi SakuNota?",
-                a: "SakuNota adalah aplikasi kasir (Point of Sale) untuk warung makan, kafe, restoran, dan kedai kuliner agar pencatatan pesanan, pengelolaan meja, cetak struk Bluetooth, dan rekap omzet harian berjalan rapi tanpa biaya langganan bulanan.",
+                a: "SakuNota adalah aplikasi kasir (Point of Sale) untuk warung makan, kafe, restoran, dan retail agar pencatatan pesanan, pengelolaan meja, cetak struk Bluetooth, dan rekap omzet harian berjalan rapi tanpa biaya langganan bulanan.",
               },
               {
                 q: "Apakah benar-benar bisa dipakai tanpa internet?",
-                a: "Ya, 100% bisa dipakai tanpa koneksi internet. SakuNota bekerja langsung di memori HP Anda. Saat kuota habis, mati lampu, atau sinyal hilang total, kasir tetap melayani pembeli dan mencetak struk tanpa macet.",
+                a: "Kasir bisa melayani tanpa internet setelah persiapan dan aktivasi. Pada usaha beberapa perangkat, pengiriman data, pemasangan perangkat, dan pembaruan akses tetap memerlukan internet.",
               },
               {
                 q: "Bagaimana cara mengaktifkan Lisensi SakuNota atau Lisensi Tester?",
@@ -1487,6 +1487,18 @@ export default function SakuNotaLandingPage() {
               {
                 q: "Berapa harga SakuNota?",
                 a: "Harga promo peluncuran hanya Rp50.000 (harga normal Rp99.000) sekali bayar untuk 1 perangkat kasir aktif selamanya. Tidak ada biaya bulanan dan tidak ada potongan komisi penjualan.",
+              },
+              {
+                q: "Bagaimana pembagian akses pemilik dan karyawan?",
+                a: "Pada usaha yang mengaktifkan beberapa perangkat, kasir masuk dengan akun masing-masing. Pemilik mengatur akses karyawan, memeriksa pembayaran nontunai, serta menyetujui pembatalan dan pengembalian.",
+              },
+              {
+                q: "Apakah QRIS dan transfer langsung dianggap terverifikasi?",
+                a: "Kasir mencatat pembayaran dan mengunggah bukti. Pemilik memeriksa penerimaan dana sebelum mengesahkannya. Mengunggah foto bukti saja tidak mengesahkan pembayaran.",
+              },
+              {
+                q: "Bagaimana memperbaiki nota atau cadangan yang bermasalah?",
+                a: "Gunakan pembatalan atau pengembalian dengan akses pemilik agar riwayat tetap tercatat. Jika pemulihan cadangan terhenti, lanjutkan saat koneksi tersedia atau simpan dan batalkan pemulihan sebelum memilih file pengganti. Langkah lengkap tersedia di Buku Panduan.",
               },
               {
                 q: "Bagaimana cara memasangnya di HP?",
@@ -1901,7 +1913,7 @@ export default function SakuNotaLandingPage() {
                     <span><LineIcon name="security" /></span> Jaminan Keamanan Data Toko
                   </div>
                   <p className="leading-relaxed text-slate-700">
-                    Semua transaksi, menu, dan rekap shift selama uji coba tersimpan utuh di perangkat Anda dan dapat diekspor kapan pun.
+                    Transaksi, menu, dan rekap shift dapat dicadangkan dari perangkat. Berbagi data ke perangkat usaha lain hanya berjalan jika fitur beberapa perangkat diaktifkan.
                   </p>
                 </div>
 

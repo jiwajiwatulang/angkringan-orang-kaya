@@ -86,7 +86,7 @@ test('imported unpaid Retail lines retain independent edits and their drafts whe
 
 test('recovering a locally pending event clears only that acknowledged event and resumes safely after lost response',async()=>{
   const db=database(),c={...claims,role:'owner' as const},id=randomUUID();
-  const event:any={id,entityId:id,kind:'pos.commit',storeId:c.storeId,deviceId:c.deviceId,operatorId:c.deviceId,data:{rows:[]}};
+  const event:any={id,entityId:id,kind:'pos.commit',storeId:c.storeId,deviceId:c.deviceId,operatorId:c.deviceId,data:{rows:[{table:'orders',id,expectedVersion:0,value:{mdId:id,mdStoreId:c.storeId,mdVersion:1,status:'unpaid',total:5000}}]}};
   const archive={version:1,storeId:c.storeId,deviceId:c.deviceId,outbox:[{id,ordinal:1,attempts:0,event}]};
   try{
     await db.table('orders').add({total:5000,status:'paid'});

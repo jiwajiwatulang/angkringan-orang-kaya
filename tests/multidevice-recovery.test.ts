@@ -51,3 +51,46 @@ test('recovery rejects a different store, malformed order and cashier privilege 
     assert.throws(()=>validateArchive({version:1,storeId:a.claims.storeId,deviceId:a.id,outbox:[{id:crypto.randomUUID(),ordinal:0,event:{}}]},a.claims.storeId));
   }finally{await db.delete();}
 });
+
+test('invalid recovery structure is rejected before staging; cancellation retains pending data and permits a replacement',async()=>{
+  const {cancelRecovery}=await import('../src/lib/multidevice/recovery');
+  const env=await environment(),session=await owner(env),db=replicaDatabase(session.claims.storeId,session.id);
+  try{
+    const id=crypto.randomUUID(),event:any={id,entityId:id,kind:'pos.commit',storeId:session.claims.storeId,deviceId:session.id,operatorId:session.id,data:{rows:[]}};
+    const archive={version:1,storeId:session.claims.storeId,deviceId:session.id,outbox:[{id,ordinal:1,attempts:0,event}]};
+    await assert.rejects(()=>stageRecovery(db,session.claims,archive));
+    assert.equal(await db.table('settings').get('recoveryJob'),undefined);
+    // A legacy, permanently rejected job must remain cancellable after upgrade.
+    await db.table('settings').put({key:'recoveryJob',value:{archive,index:0}});
+    await assert.rejects(()=>cancelRecovery(db,{...session.claims,role:'cashier'}));
+    const original=await cancelRecovery(db,session.claims);
+    assert.deepEqual(original,archive);
+    const retained=await db.table('settings').where('key').startsWith('recoveryCancelled:').toArray();
+    assert.equal(retained.length,1);assert.deepEqual(retained[0].value.archive,archive);
+    assert.equal(await db.table('settings').get('recoveryJob'),undefined);
+    await stageRecovery(db,session.claims,{...archive,outbox:[]});
+    await resumeRecovery(db,session.claims,async()=>{throw new Error('empty archive must not send');});
+    assert.equal(await db.table('settings').get('recoveryJob'),undefined);
+  }finally{await db.delete();}
+});
+
+test('an in-flight recovery cannot resurrect a cancelled job or erase its replacement',async()=>{
+  const {cancelRecovery}=await import('../src/lib/multidevice/recovery');
+  const env=await environment(),session=await owner(env),db=replicaDatabase(session.claims.storeId,session.id);
+  try{
+    const id=crypto.randomUUID(),event:any={id,entityId:id,kind:'shift.open',storeId:session.claims.storeId,deviceId:session.id,operatorId:session.id,data:{startingCash:0}};
+    const archive={version:1,storeId:session.claims.storeId,deviceId:session.id,outbox:[{id,ordinal:1,attempts:0,event}]};
+    await stageRecovery(db,session.claims,archive);
+    let release!:(value:{id:string;sequence:number})=>void,started!:()=>void;
+    const pending=new Promise<{id:string;sequence:number}>(resolve=>{release=resolve;}),sending=new Promise<void>(resolve=>{started=resolve;});
+    const running=resumeRecovery(db,session.claims,async()=>{started();return pending;});
+    const rejected=assert.rejects(()=>running,(e:any)=>e.status===409);
+    await sending;await cancelRecovery(db,session.claims);
+    await stageRecovery(db,session.claims,{...archive,outbox:[]});
+    const next=(await db.table('settings').get('recoveryJob')).value;
+    release({id,sequence:1});await rejected;
+    assert.deepEqual((await db.table('settings').get('recoveryJob')).value,next);
+    await resumeRecovery(db,session.claims,async()=>{throw new Error('replacement is empty');});
+    assert.equal(await db.table('settings').get('recoveryJob'),undefined);
+  }finally{await db.delete();}
+});

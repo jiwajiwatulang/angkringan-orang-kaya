@@ -1,14 +1,16 @@
 "use client";
 import React,{useEffect,useState} from 'react';
 import type {DeviceClient} from '@/lib/multidevice/client';
-import {stageRecovery,resumeRecovery} from '@/lib/multidevice/recovery';
+import {stageRecovery,resumeRecovery,cancelRecovery,type RecoveryArchive} from '@/lib/multidevice/recovery';
 import {currentPosRuntime} from '@/lib/multidevice/posRuntime';
 
 export default function DeviceRecovery({client}:{client:DeviceClient}){
   const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[failed,setFailed]=useState(false),[pending,setPending]=useState(false);
+  const [cancelled,setCancelled]=useState<RecoveryArchive>();
+  const download=(data:unknown,name:string)=>{const url=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
   const recoveryDb=async()=>currentPosRuntime()?.synchronizer.db||(await client.openReplica()).db;
-  useEffect(()=>{let cancelled=false;void (async()=>{const db=await recoveryDb();if(!cancelled)setPending(!!(await db.table('settings').get('recoveryJob'))?.value);})().catch(()=>{});return()=>{cancelled=true;};},[client]);
-  const perform=async(task:()=>Promise<void>)=>{setBusy(true);setFailed(false);setMessage('');try{await task();}catch(e){setFailed(true);setMessage(e instanceof Error?e.message:'Data belum dapat dipulihkan.');}finally{setBusy(false);}};
+  useEffect(()=>{let cancelled=false;void (async()=>{const db=await recoveryDb();if(!cancelled){setPending(!!(await db.table('settings').get('recoveryJob'))?.value);const saved=await db.table('settings').where('key').startsWith('recoveryCancelled:').toArray();saved.sort((a,b)=>b.value.cancelledAt-a.value.cancelledAt);setCancelled(saved[0]?.value.archive);}})().catch(()=>{});return()=>{cancelled=true;};},[client]);
+  const perform=async(task:()=>Promise<void>)=>{setBusy(true);setFailed(false);setMessage('');try{await task();}catch(e){setFailed(true);setMessage(e instanceof Error?e.message:'Data belum dapat dipulihkan.');}finally{try{setPending(!!(await (await recoveryDb()).table('settings').get('recoveryJob'))?.value);}catch{}setBusy(false);}};
   const resume=async()=>{
     const db=await recoveryDb();
     await resumeRecovery(db,client.claims,event=>client.recover(event));
@@ -29,7 +31,15 @@ export default function DeviceRecovery({client}:{client:DeviceClient}){
           await stageRecovery(await recoveryDb(),client.claims,data);setPending(true);await resume();
         });
       }}/></label>
-      {pending&&<button type="button" disabled={busy} className="min-h-11 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50" onClick={()=>void perform(resume)}>Lanjutkan Pemulihan</button>}
+      {pending&&<>
+        <button type="button" disabled={busy} className="min-h-11 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50" onClick={()=>void perform(resume)}>Lanjutkan Pemulihan</button>
+        <button type="button" disabled={busy} className="min-h-11 rounded-xl border border-line px-4 py-2.5 text-sm font-semibold disabled:opacity-50" onClick={()=>void perform(async()=>{
+          const archive=await cancelRecovery(await recoveryDb(),client.claims);
+          if(archive){setCancelled(archive);download(archive,'sakunota-cadangan-pemulihan.json');}
+          setMessage('Pemulihan dibatalkan. Cadangan asli tetap disimpan di perangkat. Pilih cadangan pengganti untuk melanjutkan.');
+        })}>Simpan &amp; Batalkan Pemulihan</button>
+      </>}
+      {cancelled&&<button type="button" disabled={busy} className="min-h-11 rounded-xl border border-line px-4 py-2.5 text-sm font-semibold disabled:opacity-50" onClick={()=>download(cancelled,'sakunota-cadangan-pemulihan.json')}>Unduh Cadangan yang Dibatalkan</button>}
     </div>
     <p className="text-sm text-muted">Cadangan menyimpan data yang belum terkirim. Simpan sebelum mengganti perangkat.</p>
     {message&&<p role={failed?'alert':'status'} className={`text-sm ${failed?'text-red-700':'text-blue-700'}`}>{message}</p>}

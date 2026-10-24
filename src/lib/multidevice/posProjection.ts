@@ -29,6 +29,8 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
   for(const row of rows){
     const prior=await old(row.table,row.id),value=row.value;
     if(bootstrap&&prior)throw new AccessError('Data awal sudah tersimpan.',409);
+    // Financial history is corrected by authorized reversals, never client deletion markers.
+    if(value.mdDeleted&&!['menuItems','tables','orderItems'].includes(row.table))throw new AccessError('Catatan transaksi tidak dapat dihapus. Gunakan pembatalan atau pengembalian.',403);
     let stockOnly=false;
     const tableStatusOnly=row.table==='tables'&&prior&&Object.keys({...prior,...value}).every(key=>['status','mdVersion'].includes(key)||same(prior[key],value[key]));
     if(row.table==='menuItems'&&prior){
@@ -89,6 +91,7 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
       (await index(`orderItems_${value.orderId}`)).add(row.id);
     }
     if(row.table==='orders'){
+      if(claims.role==='cashier'&&value.isHistorical)throw new AccessError('Riwayat lama hanya dapat dimasukkan pemilik.',403);
       if(value.tableId)(await index(`tableOrders_${value.tableId}`)).add(row.id);
       for(const field of ['subtotal','discount','tax','serviceCharge','total'])if(value[field]!=null)integer(value[field]);
       if(prior&&Number(prior.paidAmount)>0&&['total','subtotal','discount','tax','serviceCharge','shiftId'].some(field=>!same(prior[field],value[field])))throw new AccessError('Nilai nota yang dibayar tidak dapat diganti.',409);
@@ -104,6 +107,12 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
       integer(value.amount,true);
       if(!['completed','refunded'].includes(value.status))throw new AccessError('Pembayaran tidak valid.',400);
       if(!['Cash','QRIS','Transfer'].includes(value.paymentMethod))throw new AccessError('Pembayaran tidak valid.',400);
+      if(!bootstrap&&!prior&&value.status!=='completed')throw new AccessError('Pengembalian harus berasal dari pembayaran yang sudah diterima.',403);
+      if(!bootstrap&&!prior&&['mdRefundAmount','cashRefundAmount','mdRefundMethod','refundShiftId','refundedAt'].some(key=>value[key]!=null))throw new AccessError('Pembayaran baru tidak dapat berisi pengembalian.',400);
+      if(claims.role==='cashier'&&value.paymentMethod!=='Cash'&&value.proofStatus==='terverifikasi'){
+        const proof=value.proofId?await get('paymentProofs',value.proofId):undefined;
+        if(prior?.proofStatus!=='terverifikasi'||!same(prior.proofId,value.proofId)||proof&&proof.status!=='terverifikasi')throw new AccessError('Konfirmasi pembayaran memerlukan akses pemilik.',403);
+      }
       if(prior&&['amount','orderId','shiftId','paymentMethod','paidAt','itemsPaid'].some(field=>!same(prior[field],value[field])))throw new AccessError('Pembayaran yang tersimpan tidak dapat diganti.',409);
       const shift=await get('shifts',value.shiftId),beforeShift=await old('shifts',value.shiftId);
       if(!bootstrap&&!prior&&(!shift||beforeShift?.status==='closed'||shift.mdDeviceId!==claims.deviceId||shift.mdOperatorId!==event.operatorId))throw new AccessError('Mulai shift kasir terlebih dahulu.',409);
@@ -134,7 +143,10 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
       (await index(`shiftCash_${value.shiftId}`)).add(row.id);
     }
     if(row.table==='auditLogs'&&prior)throw new AccessError('Catatan aktivitas tidak dapat ditimpa.');
-    if(row.table==='paymentProofs'&&claims.role==='cashier'&&value.status==='terverifikasi')throw new AccessError('Konfirmasi pembayaran memerlukan akses pemilik.');
+    if(row.table==='paymentProofs'){
+      if(prior&&['orderId','paymentId'].some(field=>!same(prior[field],value[field])))throw new AccessError('Bukti pembayaran tidak dapat dipindahkan.',403);
+      if(claims.role==='cashier'&&(value.status==='terverifikasi'||(await get('payments',value.paymentId))?.proofStatus==='terverifikasi'))throw new AccessError('Konfirmasi pembayaran memerlukan akses pemilik.');
+    }
     if(row.table==='menuItems'&&prior){
       add('pos_menuItems',row.id,{...(stockOnly?prior:value),mdVersion:Number(prior.mdVersion)+1});
     }else add(`pos_${row.table}`,row.id,{...value,...(tableStatusOnly?{mdVersion:Number(prior!.mdVersion)+1}:{})});
@@ -159,17 +171,20 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
     const reserved=new Map<string,number>(),previousOrder=await old('orders',orderId);
     for(const id of itemIds){const item=await get('orderItems',id);if(!item||item.mdDeleted)continue;subtotal+=lineAmount(item.qty,Number(item.hargaSatuan),item.saleUnit==='weight'?Number(item.priceBasis||1000):1);if(!order.isHistorical&&(order.status!=='void'||Number(previousOrder?.paidAmount)>0)&&item.menuItemId)reserved.set(item.menuItemId,(reserved.get(item.menuItemId)||0)+item.qty);}
     const stockBefore=await lookup('pos_reservation',orderId),oldReserved=(stockBefore?.quantities||{}) as Record<string,number>;
-    for(const productId of new Set([...Object.keys(oldReserved),...reserved.keys()])){
-      const product=await get('menuItems',productId);if(!product?.trackStock)continue;
+    for(const productId of new Set([...Object.keys(oldReserved),...reserved.keys(),...rows.filter(row=>row.table==='inventoryMovements'&&row.value.orderId===orderId).map(row=>String(row.value.menuItemId))])){
+      const product=await get('menuItems',productId);
+      const movements=rows.filter(row=>row.table==='inventoryMovements'&&row.value.orderId===orderId&&row.value.menuItemId===productId);
+      if(!bootstrap&&movements.some(row=>!['sale','return'].includes(row.value.type)))throw new AccessError('Penyesuaian stok tidak dapat memakai nota penjualan.',403);
+      if(!product?.trackStock){if(!bootstrap&&movements.length)throw new AccessError('Produk pada nota tidak memakai stok.',409);continue;}
       const expected=Number(oldReserved[productId]||0)-Number(reserved.get(productId)||0);
-      const actual=rows.filter(row=>row.table==='inventoryMovements'&&row.value.orderId===orderId&&row.value.menuItemId===productId).reduce((n,row)=>n+row.value.delta,0);
-      if(!bootstrap&&expected!==actual)throw new AccessError('Perubahan stok tidak sesuai barang pada nota.',409);
+      const actual=movements.reduce((n,row)=>n+row.value.delta,0);
+      if(!bootstrap&&(expected!==actual||movements.some(row=>expected===0||(expected<0?row.value.type!=='sale':row.value.type!=='return'))))throw new AccessError('Perubahan stok tidak sesuai barang pada nota.',409);
     }
     add('pos_reservation',orderId,{quantities:Object.fromEntries(reserved)});
     if(!bootstrap&&(order.subtotal!==subtotal||Number(order.discount||0)>subtotal||order.total!==subtotal-Number(order.discount||0)+Number(order.tax||0)+Number(order.serviceCharge||0)))throw new AccessError('Perhitungan nota tidak sesuai.',409);
-    const paidItems=new Map<string,number>();
+    const paidItems=new Map<string,number>(),nonCash:Record<string,any>[]=[];
     for(const id of paymentIds){const payment=await get('payments',id);if(payment&&payment.status==='completed'){
-      paid+=Number(payment.amount);
+      paid+=Number(payment.amount);if(payment.paymentMethod!=='Cash')nonCash.push(payment);
       if(payment.splitType==='item'&&!bootstrap)for(const item of payment.itemsPaid||[]){
         integer(item.qty,true);integer(item.harga);
         let matched:string|undefined;
@@ -184,7 +199,8 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
     if(paid>order.total)throw new AccessError('Pembayaran melebihi tagihan.',409);
     if(!bootstrap)for(const id of itemIds){const item=await get('orderItems',id);if(!item||item.mdDeleted)continue;const paidQty=paidItems.get(id)||0;if(paidQty>item.qty)throw new AccessError('Jumlah barang sudah dibayar.',409);add('pos_orderItems',id,{...item,paidQty:paid===order.total?item.qty:paidQty});}
     // Billing balances are derived from accepted payments; transmitted aggregates are not authoritative.
-    add('pos_orders',orderId,{...order,paidAmount:paid,remainingBalance:order.total-paid});
+    const verificationStatus=paid===0&&!legacyPaid?'menunggu_bukti':nonCash.every(p=>p.proofStatus==='terverifikasi')?'terverifikasi':nonCash.some(p=>p.proofStatus==='menunggu_verifikasi')?'menunggu_verifikasi':'menunggu_bukti';
+    add('pos_orders',orderId,{...order,paidAmount:paid,remainingBalance:order.total-paid,...(!bootstrap?{verificationStatus}:{})});
   }
   for(const row of rows)if(row.table==='shifts'&&row.value.status==='closed'&&!bootstrap){
     const payments=await Promise.all(Array.from(await index(`shiftPayments_${row.id}`),id=>get('payments',id)));
