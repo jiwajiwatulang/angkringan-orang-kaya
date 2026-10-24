@@ -12,3 +12,9 @@ Validasi: build produksi dan TypeScript lulus; 44 tes multi-device lulus; manife
 Pengujian memakai Chromium lokal dan data demo. Pengujian pada perangkat fisik iOS/Android dan pengaturan ukuran teks sistem berbeda tetap berguna; hasil ini tidak menjamin perilaku identik pada semua versi browser. Screenshot panjang dapat merekam menu fixed pada posisi viewport saat gambar disusun, sehingga posisi menu diuji terhadap viewport saat scroll, bukan hanya dari gambar panjang.
 
 Status rilis: berhasil dipublikasikan ke https://sakunota.my.id. Commit aplikasi `5676f0b`, versi Workers `8c8a1021-1c69-4851-aa84-e242e43b603e`. Aset dashboard, navigasi, CSS, manifest dan service worker produksi cocok dengan build final. Pemeriksaan browser mobile produksi mencakup navigasi saat scroll, rincian sentuh, pergantian filter, serta Lainnya.
+
+## Penyederhanaan mobile berikutnya
+
+Commit `6276f0f`, versi Workers `715800ce-e9ab-4607-bc66-e545d9016576`: mobile memakai satu ringkasan penjualan utama dengan statistik kecil, pemilih periode dan jenis grafik berbentuk select, grafik 180 piksel dengan skala teks di kiri, serta metode pembayaran tanpa progress bar tebal. Nama usaha tetap terlihat. Banner demo mobile ikut bergulir agar tidak menutupi judul. Kartu sambutan, empat kartu ringkasan, tombol jenis grafik dan komposisi pembayaran desktop tetap tersedia pada breakpoint desktop.
+
+Build/TypeScript dan pemeriksaan 164 aset offline lulus. Browser lokal memeriksa sentuhan, pergantian periode, navigasi bawah, menu Lainnya, serta overflow pada 320/390/844/1365 piksel. Aset produksi sesuai build yang diuji; uji demo mobile produksi kembali dilakukan. Perhitungan serta sinkronisasi tidak diubah.
