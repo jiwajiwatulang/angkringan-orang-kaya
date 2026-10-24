@@ -11,4 +11,4 @@ Validasi: build produksi dan TypeScript lulus; 44 tes multi-device lulus; manife
 
 Pengujian memakai Chromium lokal dan data demo. Pengujian pada perangkat fisik iOS/Android dan pengaturan ukuran teks sistem berbeda tetap berguna; hasil ini tidak menjamin perilaku identik pada semua versi browser. Screenshot panjang dapat merekam menu fixed pada posisi viewport saat gambar disusun, sehingga posisi menu diuji terhadap viewport saat scroll, bukan hanya dari gambar panjang.
 
-Status rilis: disiapkan untuk deployment.
+Status rilis: berhasil dipublikasikan ke https://sakunota.my.id. Commit aplikasi `5676f0b`, versi Workers `8c8a1021-1c69-4851-aa84-e242e43b603e`. Aset dashboard, navigasi, CSS, manifest dan service worker produksi cocok dengan build final. Pemeriksaan browser mobile produksi mencakup navigasi saat scroll, rincian sentuh, pergantian filter, serta Lainnya.
