@@ -762,7 +762,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Demo Kasir Top Banner */}
         {isDemo && (
-          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2 shadow-sm sticky top-0 z-40">
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2 shadow-sm sm:sticky sm:top-0 z-40">
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-black text-[10px] tracking-wide uppercase">
                 Demo Kasir

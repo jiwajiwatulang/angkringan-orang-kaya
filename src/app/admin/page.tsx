@@ -137,10 +137,10 @@ function LegacyDashboard(){
 
   // SVG dimensions for smooth bezier curve
   const svgW = chartWidth;
-  const svgH = 220;
-  const paddingX = 40;
+  const svgH = chartWidth < 600 ? 180 : 220;
+  const paddingX = chartWidth < 600 ? 54 : 40;
   const paddingY = 25;
-  const usableW = svgW - paddingX * 2;
+  const usableW = svgW - paddingX - (chartWidth < 600 ? 12 : paddingX);
   const usableH = svgH - paddingY * 2;
 
   const svgCoords = chartPoints.map((p, i) => {
@@ -485,14 +485,17 @@ function LegacyDashboard(){
             </h2>
           </div>
           <p className="text-xs text-muted mt-0.5">
-            {storeSettings.storeName || "SakuNota"} • {ledger ? "Ringkasan pembayaran dan penjualan usaha." : "Transaksi lunas, tren penjualan, dan produk terlaris pada perangkat toko ini."}
+            {storeSettings.storeName || "SakuNota"}<span className="hidden sm:inline"> • {ledger ? "Ringkasan pembayaran dan penjualan usaha." : "Transaksi lunas, tren penjualan, dan produk terlaris pada perangkat toko ini."}</span>
           </p>
         </div>
 
         {/* Controls: Date Range Selector & Quick Buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          <select aria-label="Periode laporan" value={timeRange} onChange={e=>setTimeRange(e.target.value as typeof timeRange)} className="sm:hidden min-h-11 flex-1 rounded-xl border border-line bg-surface px-3 text-sm">
+            <option value="today">Hari ini</option><option value="yesterday">Kemarin</option><option value="7days">7 hari terakhir</option><option value="30days">30 hari terakhir</option><option value="thisMonth">Bulan ini</option>
+          </select>
           {/* Time Filter Pills */}
-          <div className="bg-card border border-line p-1 rounded-2xl flex items-center gap-1 text-xs font-bold shadow-xs">
+          <div className="hidden sm:flex bg-card border border-line p-1 rounded-2xl items-center gap-1 text-xs font-bold shadow-xs">
             {[
               { id: "today", label: "Hari ini" },
               { id: "yesterday", label: "Kemarin" },
@@ -533,7 +536,7 @@ function LegacyDashboard(){
       </div>
 
       {/* Sentrik POS Style: Welcome Banner Card */}
-      <div className="bg-surface border border-line rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="hidden sm:flex bg-surface border border-line rounded-3xl p-5 sm:p-6 shadow-xs flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-black text-fg tracking-tight">
             Selamat Datang, {activeShift?.operatorName || "Kasir"}!
@@ -565,8 +568,17 @@ function LegacyDashboard(){
 
 
 
+      <section aria-label="Ringkasan penjualan" className="sm:hidden rounded-2xl border border-line bg-surface p-5 space-y-4">
+        <div><p className="text-sm text-muted">Total penjualan</p><p className="mt-1 text-3xl font-bold tracking-tight tabular-nums break-words">Rp {currentGrossSales.toLocaleString('id-ID')}</p>
+          <p className="mt-2 text-xs text-muted">{deltaSales >= 0 ? 'Naik' : 'Turun'} {Math.abs(deltaSales)}% dibanding periode sebelumnya</p></div>
+        <div className="grid grid-cols-3 gap-3 border-t border-line pt-4 text-xs">
+          <div><strong className="block text-base tabular-nums">{currentOrderCount}</strong><span className="text-muted">Transaksi</span></div>
+          <div><strong className="block tabular-nums break-words">Rp {currentAov.toLocaleString('id-ID')}</strong><span className="text-muted">Rata-rata nota</span></div>
+          <div><strong className="block text-base tabular-nums">{currentUnitsSold}</strong><span className="text-muted">Unit terjual</span></div>
+        </div>
+      </section>
       {/* 2. Four Shopify-Grade Metric Cards with Delta Growth Badges */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Metric 1: Total Omzet */}
         <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-xs space-y-3">
           <div className="flex items-center justify-between">
@@ -662,7 +674,7 @@ function LegacyDashboard(){
 
       {/* 3. The Core Visual: Shopify-Style Area Trend Graph with Hover Tooltip */}
       <div ref={chartRef} className="dashboard-chart bg-surface rounded-3xl p-4 sm:p-7 border border-line shadow-xs space-y-4" onPointerLeave={event => { if(event.pointerType === 'mouse') setHoveredPoint(null); }}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line">
+        <div className="flex flex-row items-center justify-between gap-2 pb-3 border-b border-line">
           <div>
             <h3 className="text-base font-black text-fg flex items-center gap-2">
               <span>Tren Penjualan</span>
@@ -670,8 +682,9 @@ function LegacyDashboard(){
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <select aria-label="Jenis grafik" value={chartType} onChange={e=>handleSelectChartType(e.target.value as 'line'|'bar')} className="sm:hidden min-h-11 rounded-lg bg-surface border border-line px-2 text-xs"><option value="line">Garis</option><option value="bar">Batang</option></select>
             {/* Chart Type Switcher: Garis vs Batang */}
-            <div className="flex items-center bg-card border border-line p-1 rounded-xl text-xs font-bold shadow-xs">
+            <div className="hidden sm:flex items-center bg-card border border-line p-1 rounded-xl text-xs font-bold shadow-xs">
               <button
                 type="button"
                 onClick={() => handleSelectChartType('line')}
@@ -698,7 +711,7 @@ function LegacyDashboard(){
               </button>
             </div>
 
-            <span className="text-xs font-black text-accent-text bg-accent/10 px-3 py-1.5 rounded-xl border border-accent/20">
+            <span className="hidden sm:inline text-xs font-black text-accent-text bg-accent/10 px-3 py-1.5 rounded-xl border border-accent/20">
               Akumulasi: Rp {currentGrossSales.toLocaleString("id-ID")}
             </span>
           </div>
@@ -707,7 +720,7 @@ function LegacyDashboard(){
         {/* Interactive SVG Area / Bar Chart */}
         <div className="relative pt-4 pb-2 select-none">
           {/* Subtle Horizontal Reference Grid Lines & Y-Axis Scale */}
-          <div className="absolute inset-x-2 top-8 bottom-12 flex flex-col justify-between pointer-events-none">
+          <div style={{display:chartWidth < 600 ? 'none' : undefined}} className="hidden sm:flex absolute inset-x-2 top-8 bottom-12 flex-col justify-between pointer-events-none">
             {[1, 0.75, 0.5, 0.25, 0].map((ratio) => {
               const val = Math.round(chartFloor + chartSpan * ratio);
               return (
@@ -738,6 +751,10 @@ function LegacyDashboard(){
                 if(point)setHoveredPoint(current=>current?.label===point.label&&current?.sublabel===point.sublabel?null:point);
               }}
             >
+              {chartWidth < 600 && [1,0.5,0].map(ratio=>{
+                const y=paddingY+usableH*(1-ratio),value=Math.round(chartFloor+chartSpan*ratio);
+                return <g key={ratio} aria-hidden="true"><line x1={paddingX} x2={svgW-12} y1={y} y2={y} stroke="currentColor" className="text-line" strokeDasharray="3 4"/><text x="0" y={y+3} fontSize="10" className="fill-current text-muted">{compactMoney(value).replace('Rp ','')}</text></g>;
+              })}
               <defs>
                 <linearGradient id="shopifyGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#2563EB" stopOpacity="0.32" />
@@ -881,8 +898,8 @@ function LegacyDashboard(){
           </div>
 
           {/* Bottom X-Axis Labels */}
-          <div className="flex justify-between items-center px-2 pt-2.5 border-t border-line">
-            {chartPoints.filter((_, index) => chartPoints.length <= (chartWidth < 480 ? 4 : 7) || index % Math.ceil((chartPoints.length - 1) / (chartWidth < 480 ? 3 : 5)) === 0 || index === chartPoints.length - 1).map((p, idx) => (
+          <div className="flex justify-between items-center pt-2.5" style={chartWidth < 600 ? {paddingLeft:54,paddingRight:12}:undefined}>
+            {chartPoints.filter((_, index) => chartPoints.length <= (chartWidth < 600 ? 4 : 7) || index % Math.ceil((chartPoints.length - 1) / (chartWidth < 600 ? 3 : 5)) === 0 || index === chartPoints.length - 1).map((p, idx) => (
               <div key={idx} className="text-center flex-1 truncate px-0.5">
                 <span className="block text-xs font-black text-fg truncate">{p.label}</span>
 
@@ -895,11 +912,11 @@ function LegacyDashboard(){
       {/* 4. Two Lower Shopify Analytics Panels: Payment Channels & Top Products */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Panel A: Sales by Payment Method (Shopify Channel Breakdown) */}
-        <div className="bg-surface rounded-3xl p-5 sm:p-6 border border-line shadow-xs space-y-4">
+        <div className="payment-summary bg-surface rounded-3xl p-4 sm:p-6 border border-line shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-line">
             <div>
               <h4 className="text-sm font-black text-fg flex items-center gap-2">
-                <span>Komposisi Metode Pembayaran</span>
+                <span className="sm:hidden">Metode pembayaran</span><span className="hidden sm:inline">Komposisi Metode Pembayaran</span>
               </h4>
             </div>
             <span className="text-[11px] font-bold text-muted">
@@ -921,8 +938,8 @@ function LegacyDashboard(){
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
                       <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
-                      <strong className="text-fg">{item.method}</strong>
-                      <span className="text-[10px] text-muted">({item.count} nota)</span>
+                      <strong className="text-fg">{item.method === 'Cash' ? 'Tunai' : item.method}</strong>
+                      <span className="hidden sm:inline text-[10px] text-muted">({item.count} nota)</span>
                     </div>
                     <div className="text-right">
                       <strong className="text-fg">Rp {item.total.toLocaleString("id-ID")}</strong>
@@ -930,7 +947,7 @@ function LegacyDashboard(){
                     </div>
                   </div>
 
-                  <div className="w-full h-2.5 bg-card rounded-full overflow-hidden border border-line">
+                  <div className="hidden sm:block w-full h-2.5 bg-card rounded-full overflow-hidden border border-line">
                     <div
                       style={{ width: `${Math.max(2, item.percent)}%` }}
                       className={`h-full ${color} rounded-full transition-all duration-500`}

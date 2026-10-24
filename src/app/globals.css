@@ -214,3 +214,8 @@ textarea::placeholder {
 .animate-cosmic-shimmer {
   animation: cosmic-shimmer 4s ease-in-out infinite;
 }
+
+@media (max-width: 639px) {
+ .business-dashboard svg.overflow-visible { height: 180px; }
+ .business-dashboard { gap: 1rem; }
+}
