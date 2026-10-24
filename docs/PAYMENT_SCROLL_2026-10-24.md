@@ -20,3 +20,11 @@ Validation:
 - Browser checks use isolated demo data and open checkout in portrait before resizing. Viewport resizing approximates keyboard space; it does not establish behavior on every physical iOS/Android keyboard.
 
 Browser test command: `node /tmp/sakunota-browser/check-payment-scroll.mjs` (session QA script).
+
+Production release:
+
+- Application commit: `6324b74` on `fix/dashboard-mobile-polish` (pushed; not merged into main).
+- Worker version: `06ea46c3-d8c9-457c-a57f-f8c0352caa0f`, deployed with `--keep-vars`.
+- https://sakunota.my.id: SHA-256 checks matched the deployed offline manifest, service worker, CSS and POS JavaScript to the tested output.
+- The same four viewport touch workflows passed against the live domain using isolated demo data. Browser TLS errors were ignored only in the browser test context because of the environment inspection proxy; application TLS configuration was not changed.
+- No production database migrations or customer-data modifications were performed.
