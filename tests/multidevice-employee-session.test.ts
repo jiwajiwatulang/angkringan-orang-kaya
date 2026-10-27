@@ -30,6 +30,7 @@ test('operator switches revoke the previous local session; only previously valid
   const sessions=new EmployeeSessions(new TestClient(device.access,device.claims),local,id,device.claims.deviceKey,testPublicJwk);
   try{
     assert.deepEqual(await sessions.employees(false),[]);
+    disconnected=true;await assert.rejects(()=>sessions.employees(true),/Sambungkan internet/);disconnected=false;
     await assert.rejects(()=>sessions.login(first,'482953',false),/internet/);
     assert.equal((await sessions.login(first,'482953',true)).claims.employeeId,first);
     assert.equal((await sessions.current())?.claims.employeeId,first);

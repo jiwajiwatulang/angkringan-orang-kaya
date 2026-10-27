@@ -52,6 +52,7 @@ export default function DevicesPanel({client}:{client:DeviceClient}){
       </section>
       <section className="rounded-2xl border border-line bg-surface p-4 sm:p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">Karyawan</h2><button type="button" className={secondary} disabled={busy} onClick={()=>setEditing({id:crypto.randomUUID(),name:'',pin:'',active:true})}>Tambah Karyawan</button></div>
+        {!list.employees.some(employee=>employee.active)&&<p role="status" className="mb-3 text-sm text-muted">Tambahkan karyawan aktif beserta PIN agar perangkat Kasir bisa masuk.</p>}
         <ul className="divide-y divide-line">{list.employees.map(employee=><li key={employee.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
           <div className="min-w-0"><h3 className="break-words font-semibold">{employee.name}</h3><p className="mt-1 text-sm text-muted">{employee.active?'Aktif':'Nonaktif'}</p></div>
           <div className="flex flex-wrap gap-2"><button type="button" disabled={busy} className={secondary} onClick={()=>setEditing({...employee,active:!!employee.active,pin:''})}>Ubah PIN</button><button type="button" disabled={busy} className={secondary} onClick={()=>void perform(()=>client.call('employee.save',{id:employee.id,name:employee.name,active:!employee.active}))}>{employee.active?'Nonaktifkan':'Aktifkan'}</button></div>

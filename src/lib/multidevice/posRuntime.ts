@@ -43,7 +43,7 @@ export async function initializePosRuntime():Promise<PosRuntime>{
     current.employees=new EmployeeSessions(client,db,deviceId,identity);
     const employee=await current.employees.current();
     if(!employee)return current;
-    return enterEmployee(employee);
+    return resumeEmployeeSession(current,()=>enterEmployee(employee));
   }
   current.scope={claims,access,operatorName:'Pemilik'};setPosScope(current.scope);
   if((await db.table('posMeta').get('bootstrapRequired'))?.value){
@@ -63,6 +63,14 @@ export async function initializePosRuntime():Promise<PosRuntime>{
   }
   await syncAvailable(synchronizer);await loadStoreSettingsAsync();return current;
 }
+// An online rejection of a cached operator must return to login, not retry forever.
+export async function resumeEmployeeSession(runtime:PosRuntime,resume:()=>Promise<PosRuntime>){
+  try{return await resume();}catch(error){
+    const status=(error as {status?:number})?.status;
+    if(status!==401&&status!==403)throw error;
+    runtime.scope=undefined;setPosScope(undefined);await runtime.employees?.logout();return runtime;
+  }
+}
 export async function enterEmployee(employee:Awaited<ReturnType<EmployeeSessions['login']>>){
   if(!current?.employees)throw new AccessError();
   const {client}=current;
@@ -70,7 +78,8 @@ export async function enterEmployee(employee:Awaited<ReturnType<EmployeeSessions
   current.scope={claims:employee.claims,access:employee.access,operatorName:employee.name};setPosScope(current.scope);
   current.synchronizer=new PosSynchronizer(db,activeClient);
   await db.table('posMeta').put({key:'cursor',value:0});
-  await syncAvailable(current.synchronizer);await loadStoreSettingsAsync();return current;
+  try{await syncAvailable(current.synchronizer);await loadStoreSettingsAsync();return current;}
+  catch(error){current.scope=undefined;setPosScope(undefined);await current.employees.logout();throw error;}
 }
 export async function leaveEmployee(){
   if(!current)return;await current.employees?.logout();setPosScope(undefined);current.scope=undefined;

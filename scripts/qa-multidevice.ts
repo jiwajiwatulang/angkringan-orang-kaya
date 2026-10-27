@@ -14,7 +14,7 @@ import {createPairing,approvePairing,saveEmployee} from '../src/lib/server/multi
 
 // Memory-only, loopback-only fixtures. Never load .env or contact production.
 async function main(){
-  const env=await environment(),output=path.resolve('../qa-multidevice'),port=4374,licenseKey='SN-LOCAL-BROWSER-ONLY';
+  const env=await environment(),output=path.resolve('../qa-multidevice'),port=Number(process.env.SAKUNOTA_QA_PORT||4374),licenseKey='SN-LOCAL-BROWSER-ONLY';
   const bundleOnly=process.argv.includes('--bundle-only');
   const browserPublicKey=bundleOnly?(await (await fetch(`http://localhost:${port}/fixture/config`)).json() as {publicKey:JsonWebKey}).publicKey:testPublicJwk;
   fs.mkdirSync(output,{recursive:true});
@@ -46,7 +46,7 @@ async function main(){
       if(saved?.id!==data.deviceId||saved.publicKey!==identity)return Response.json({error:'Gunakan halaman pemilik yang sama.'},{status:403});
       owner={version:1,storeId,deviceId:data.deviceId,deviceKey:identity,role:'owner',deviceEpoch:1,issuedAt:Date.now(),expiresAt:Date.now()+OFFLINE_ACCESS_MS};
       const employees=await env.DB.prepare('SELECT id FROM MdEmployees WHERE storeId=?').bind(storeId).all();
-      if(!employees.results.length){await saveEmployee(env,owner,{id:crypto.randomUUID(),name:'Kasir Pagi',pin:'482953',active:true});await saveEmployee(env,owner,{id:crypto.randomUUID(),name:'Kasir Sore',pin:'958274',active:true});}
+      if(!employees.results.length&&!process.argv.includes('--empty-employees')){await saveEmployee(env,owner,{id:crypto.randomUUID(),name:'Kasir Pagi',pin:'482953',active:true});await saveEmployee(env,owner,{id:crypto.randomUUID(),name:'Kasir Sore',pin:'958274',active:true});}
       return Response.json({claims:owner,access:signAccess(owner,JSON.stringify(testSigningJwk))});
     }
     if(url.pathname==='/fixture/pair'&&request.method==='POST'&&owner){activePair=await createPairing(env,owner);return Response.json(activePair);}

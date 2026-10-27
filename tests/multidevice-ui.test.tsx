@@ -8,8 +8,8 @@ import {PathnameContext} from 'next/dist/shared/lib/hooks-client-context.shared-
 
 test('unknown remote state never claims every device has current data',()=>{
   const unknown=renderToStaticMarkup(<StoreDataStatus pending={0} online/>);
-  assert.ok(unknown.includes('Data Terakhir Diterima'));assert.equal(unknown.includes('Semua Data Terbaru'),false);
-  assert.ok(renderToStaticMarkup(<StoreDataStatus pending={0} online allDevicesConfirmed/>).includes('Semua Data Terbaru'));
+  assert.equal(unknown,'');
+  assert.equal(renderToStaticMarkup(<StoreDataStatus pending={0} online allDevicesConfirmed/>),'');
   assert.ok(renderToStaticMarkup(<StoreDataStatus pending={3} online={false}/>).includes('3 Data Belum Terkirim'));
   const review=renderToStaticMarkup(<StoreDataStatus pending={3} online={false} needsReview/>);
   assert.ok(review.includes('Stok Perlu Dicek'));assert.ok(review.includes('Tidak Tersambung'));assert.ok(review.includes('3 Data Belum Terkirim'));

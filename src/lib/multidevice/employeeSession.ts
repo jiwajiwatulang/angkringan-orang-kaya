@@ -24,7 +24,7 @@ export class EmployeeSessions {
       const {employees}=await this.device.list();
       await this.local.table('settings').put({key:'multi_employee_names',value:employees.map(({id,name,active})=>({id,name,active}))});
       return employees;
-      }catch(error){if(!transportUnavailable(error))throw error;return this.employees(false);}
+      }catch(error){if(!transportUnavailable(error))throw error;const cached=await this.employees(false);if(cached.length)return cached;throw new AccessError('Nama karyawan belum dapat dimuat. Sambungkan internet lalu perbarui daftar.',503);}
     }
     const known=await this.replica.db.table('credentials').toArray();
     const allowed:{id:string;name:string;active:number}[]=[];
