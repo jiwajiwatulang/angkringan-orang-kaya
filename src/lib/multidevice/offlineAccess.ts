@@ -20,9 +20,13 @@ export async function verifyOfflinePin(pin:string,verifier:string,claims:AccessC
   if(!claims.employeeId || !/^\d{6,12}$/.test(pin) || await sha256(verifier)!==claims.pinDigest) return false;
   try {
     const value=JSON.parse(verifier);
-    if(value.v!==1||value.iterations!==210000||typeof value.salt!=='string'||value.salt.length>64) return false;
-    const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveBits']);
-    const bits=new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:new TextEncoder().encode(value.salt),iterations:value.iterations},key,256));
+    const rounds=value.v===2&&value.iterations===70000&&value.rounds===3?3:value.v===1&&value.iterations===210000?1:0;
+    if(!rounds||typeof value.salt!=='string'||value.salt.length>64) return false;
+    let bits:Uint8Array<ArrayBuffer>=new TextEncoder().encode(pin);
+    for(let round=0;round<rounds;round++){
+      const key=await crypto.subtle.importKey('raw',bits,'PBKDF2',false,['deriveBits']);
+      bits=new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:new TextEncoder().encode(value.salt),iterations:value.iterations},key,256));
+    }
     const expected=fromBase64Url(value.hash);if(expected.length!==bits.length) return false;
     let difference=0;for(let i=0;i<bits.length;i++) difference|=bits[i]^expected[i];return difference===0;
   } catch {return false;}

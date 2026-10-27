@@ -10,6 +10,7 @@ const input='min-h-11 w-full rounded-xl border border-line bg-surface px-3 py-2.
 export default function DevicesPanel({client}:{client:DeviceClient}){
   const [list,setList]=useState<AccessList|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
   const [pair,setPair]=useState<{image:string;expiresAt:number}|null>(null),[now,setNow]=useState(Date.now());
+  const [formError,setFormError]=useState('');
   const [editing,setEditing]=useState<{id:string;name:string;pin:string;active:boolean}|null>(null);
   const mounted=useRef(true),loading=useRef(false);
   const refresh=async()=>{
@@ -51,15 +52,21 @@ export default function DevicesPanel({client}:{client:DeviceClient}){
         {list.pairings?.map(request=><div key={request.id} className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-3"><span className="break-words font-medium">{request.candidateName}</span><button type="button" className={button} disabled={busy} onClick={()=>void perform(async()=>{await client.call('pair.approve',{id:request.id});setPair(null);})}>Setujui Perangkat</button></div>)}
       </section>
       <section className="rounded-2xl border border-line bg-surface p-4 sm:p-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">Karyawan</h2><button type="button" className={secondary} disabled={busy} onClick={()=>setEditing({id:crypto.randomUUID(),name:'',pin:'',active:true})}>Tambah Karyawan</button></div>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">Karyawan</h2><button type="button" className={secondary} disabled={busy} onClick={()=>{setFormError('');setEditing({id:crypto.randomUUID(),name:'',pin:'',active:true});}}>Tambah Karyawan</button></div>
         {!list.employees.some(employee=>employee.active)&&<p role="status" className="mb-3 text-sm text-muted">Tambahkan karyawan aktif beserta PIN agar perangkat Kasir bisa masuk.</p>}
         <ul className="divide-y divide-line">{list.employees.map(employee=><li key={employee.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
           <div className="min-w-0"><h3 className="break-words font-semibold">{employee.name}</h3><p className="mt-1 text-sm text-muted">{employee.active?'Aktif':'Nonaktif'}</p></div>
-          <div className="flex flex-wrap gap-2"><button type="button" disabled={busy} className={secondary} onClick={()=>setEditing({...employee,active:!!employee.active,pin:''})}>Ubah PIN</button><button type="button" disabled={busy} className={secondary} onClick={()=>void perform(()=>client.call('employee.save',{id:employee.id,name:employee.name,active:!employee.active}))}>{employee.active?'Nonaktifkan':'Aktifkan'}</button></div>
+          <div className="flex flex-wrap gap-2"><button type="button" disabled={busy} className={secondary} onClick={()=>{setFormError('');setEditing({...employee,active:!!employee.active,pin:''});}}>Ubah PIN</button><button type="button" disabled={busy} className={secondary} onClick={()=>void perform(()=>client.call('employee.save',{id:employee.id,name:employee.name,active:!employee.active}))}>{employee.active?'Nonaktifkan':'Aktifkan'}</button></div>
         </li>)}</ul>
-        {editing&&<form className="mt-4 space-y-3 rounded-xl border border-line p-4" onSubmit={event=>{event.preventDefault();void perform(async()=>{await client.call('employee.save',{...editing,pin:editing.pin||undefined});setEditing(null);});}}>
-          <label className="block text-sm font-medium">Nama<input className={`${input} mt-1`} value={editing.name} maxLength={100} required autoComplete="off" onChange={e=>setEditing({...editing,name:e.target.value})}/></label>
-          <label className="block text-sm font-medium">PIN<input className={`${input} mt-1`} type="password" inputMode="numeric" pattern="[0-9]{6,12}" minLength={6} maxLength={12} autoComplete="new-password" required value={editing.pin} onChange={e=>setEditing({...editing,pin:e.target.value.replace(/\D/g,'')})}/></label>
+        {editing&&<form noValidate className="mt-4 space-y-3 rounded-xl border border-line p-4" onSubmit={event=>{
+          event.preventDefault();setFormError('');
+          if(!editing.name.trim()){setFormError('Masukkan nama karyawan.');return;}
+          if(!/^[0-9]{6,12}$/.test(editing.pin)){setFormError('PIN karyawan harus 6–12 angka.');return;}
+          void perform(async()=>{try{await client.call('employee.save',{...editing,name:editing.name.trim(),pin:editing.pin});setEditing(null);}catch(error){setFormError(error instanceof Error?error.message:'Karyawan belum tersimpan. Coba lagi.');throw error;}});
+        }}>
+          <label className="block text-sm font-medium">Nama<input className={`${input} mt-1`} value={editing.name} maxLength={100} required autoComplete="off" disabled={busy} onChange={e=>setEditing({...editing,name:e.target.value})}/></label>
+          <label className="block text-sm font-medium">PIN (6–12 angka)<input className={`${input} mt-1`} type="password" inputMode="numeric" pattern="[0-9]{6,12}" minLength={6} maxLength={12} autoComplete="new-password" required disabled={busy} value={editing.pin} onChange={e=>setEditing({...editing,pin:e.target.value.replace(/\D/g,'')})}/></label>
+          {formError&&<p role="alert" className="text-sm font-medium text-red-700">{formError}</p>}
           <div className="flex gap-2"><button type="submit" disabled={busy} className={button}>Simpan</button><button type="button" disabled={busy} className={secondary} onClick={()=>setEditing(null)}>Batal</button></div>
         </form>}
       </section>
