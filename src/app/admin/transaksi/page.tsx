@@ -1,4 +1,5 @@
 "use client";
+import LoadingState from "@/components/LoadingState";
 import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -1121,7 +1122,7 @@ export default function AdminTransaksiPage() {
 
       {/* --- TABLE / CARD LIST TRANSAKSI --- */}
       {isLoading ? (
-        <div className="p-12 text-center text-muted text-xs">Memuat daftar transaksi...</div>
+        <LoadingState label="Memuat daftar transaksi"/>
       ) : filteredOrders.length === 0 ? (
         <div className=" bg-surface rounded-3xl p-12 text-center border border-line">
           <span className="text-4xl block mb-2"><LineIcon name="info" /></span>

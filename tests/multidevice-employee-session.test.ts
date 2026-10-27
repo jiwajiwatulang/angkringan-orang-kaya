@@ -47,6 +47,15 @@ test('operator switches revoke the previous local session; only previously valid
     await saveEmployee(env,o.claims,{id:second,name:'Sore',active:false});
     await assert.rejects(()=>sessions.login(second,'958274',true));assert.equal(await sessions.current(),null);
     await assert.rejects(()=>sessions.login(second,'958274',false));
+    await sessions.login(first,'482953',true);
+    const offline=(await sessions.employees(false))[0];assert.ok(offline.expiresAt!>Date.now());
+    await sessions.rejectCurrent();
+    assert.equal(await sessions.current(),null);
+    await assert.rejects(()=>sessions.login(first,'482953',false));
+    await sessions.login(first,'482953',true);
+    const priorNow=Date.now;
+    try{Date.now=()=>priorNow()+25*60*60*1000;assert.deepEqual(await sessions.employees(false),[]);await assert.rejects(()=>sessions.login(first,'482953',false));}
+    finally{Date.now=priorNow;}
     const persisted=JSON.stringify(await local.table('settings').toArray());assert.equal(/482953|958274|offlineVerifier/.test(persisted),false);
   }finally{await sessions.replica.db.delete();await local.delete();}
 });

@@ -1,4 +1,5 @@
 "use client";
+import LoadingState from "@/components/LoadingState";
 import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -338,7 +339,7 @@ export default function AdminShiftPage() {
 
       {/* Main Tab Content */}
       {isLoading ? (
-        <div className="py-12 text-center text-muted text-xs">Memuat data shift & keuangan...</div>
+        <LoadingState label="Memuat shift dan kas"/>
       ) : activeTab === "shifts" ? (
         shifts.length === 0 ? (
           <div className="py-12 text-center bg-surface rounded-3xl border border-line p-8">

@@ -1,4 +1,5 @@
 "use client";
+import LoadingState from "@/components/LoadingState";
 import LineIcon from "@/components/LineIcon";
 import ProductPhoto from "@/components/ProductPhoto";
 import { compressPaymentProof } from "@/lib/imageUtils";
@@ -865,7 +866,7 @@ function CatalogPanel() {
 
       {/* Menu Content: Table View or Grid View */}
       {isLoading ? (
-        <div className="py-12 text-center text-muted text-xs">Memuat daftar menu...</div>
+        <LoadingState label="Memuat daftar menu"/>
       ) : sortedMenus.length === 0 ? (
         <div className="py-12 text-center bg-surface rounded-3xl border border-line p-8">
           <div className="text-4xl mb-2"><LineIcon name="cashier" /></div>
@@ -2299,5 +2300,5 @@ function CatalogWorkspace() {
 }
 
 export default function AdminMenuPage() {
-  return <React.Suspense fallback={<p role="status" className="text-sm text-muted">Memuat katalog…</p>}><CatalogWorkspace /></React.Suspense>;
+  return <React.Suspense fallback={<LoadingState label="Memuat katalog"/>}><CatalogWorkspace /></React.Suspense>;
 }

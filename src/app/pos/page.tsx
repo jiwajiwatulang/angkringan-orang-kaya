@@ -1,4 +1,5 @@
 "use client";
+import LoadingState from "@/components/LoadingState";
 import LockIcon from "@/components/LockIcon";
 import {getPosScope} from "@/lib/multidevice/posWire";
 import {orderItemsToCart} from "@/lib/orderCart";
@@ -2695,11 +2696,7 @@ export default function POSPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-screen bg-surface text-fg items-center justify-center p-6 text-center">
-        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mb-4" />
-        <h2 className="text-base font-bold text-fg">Memuat Data Kasir...</h2>
-        <p className="text-xs text-muted mt-1">Menyiapkan kasir Anda</p>
-      </div>
+      <div className="flex min-h-dvh items-center justify-center bg-surface p-6 text-fg"><div className="w-full max-w-md"><LoadingState label="Menyiapkan kasir"/></div></div>
     );
   }
 

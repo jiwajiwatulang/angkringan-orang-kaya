@@ -219,3 +219,23 @@ textarea::placeholder {
  .business-dashboard svg.overflow-visible { height: 180px; }
  .business-dashboard { gap: 1rem; }
 }
+
+.sn-skeleton {
+  background: linear-gradient(100deg, color-mix(in srgb, #2563eb 7%, var(--surface-bg, #fff)) 25%, color-mix(in srgb, #2563eb 16%, var(--surface-bg, #fff)) 45%, color-mix(in srgb, #2563eb 7%, var(--surface-bg, #fff)) 65%);
+  background-size: 220% 100%;
+  animation: sn-shimmer 1.6s ease-in-out infinite;
+}
+.sn-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: sn-spin .8s linear infinite;
+}
+@keyframes sn-shimmer { to { background-position: -220% 0; } }
+@keyframes sn-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .sn-skeleton, .sn-spinner { animation: none; }
+}

@@ -40,9 +40,14 @@ export class DeviceClient {
   pull(cursor:number){return this.call<{cursor:number;entities:Entity[];hasMore:boolean}>('pull',{cursor});}
 }
 async function call<T>(body:unknown):Promise<T>{
-  const response=await fetch('/api/store',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000),cache:'no-store'});
-  const data=await response.json();
-  if(!response.ok)throw new AccessError(typeof data.error==='string'?data.error:'Data belum dapat diperbarui.',response.status);return data as T;
+  try{
+    const response=await fetch('/api/store',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(8000),cache:'no-store'});
+    const data=await response.json();
+    if(!response.ok)throw new AccessError(typeof data.error==='string'?data.error:'Data belum dapat diperbarui.',response.status);return data as T;
+  }catch(error){
+    if(error instanceof AccessError)throw error;
+    throw new AccessError('Koneksi belum tersedia. Coba lagi.',503);
+  }
 }
 export async function enrollOwnerClient(){
   if(isDemoMode()||db.name==='SakuNotaDemoDB')throw new Error('Keluar dari demo terlebih dahulu.');

@@ -20,11 +20,15 @@ function OwnerDevices(){const runtime=currentPosRuntime();return runtime?.scope?
 
 // Fault injection belongs only to this loopback fixture, never to a production route.
 if(new URLSearchParams(location.search).has('faults')){
-  let disconnected=sessionStorage.getItem('qa_disconnected')==='yes',loseAck=false;
+  let denied=sessionStorage.getItem('qa_denied')==='yes';
+  let disconnected=sessionStorage.getItem('qa_disconnected')==='yes',loseAck=false,slow=new URLSearchParams(location.search).has('slow')||sessionStorage.getItem('qa_slow')==='yes';
+  Object.defineProperty(navigator,'onLine',{configurable:true,get:()=>!disconnected});
   const originalFetch=window.fetch.bind(window);
   window.fetch=async(input,options)=>{
     if(String(input).startsWith('/api/store')){
       if(disconnected)throw new TypeError('Local transport disconnected');
+      if(denied)return Response.json({error:'Akses perangkat sudah dicabut.'},{status:403});
+      if(slow)await new Promise<void>((resolve,reject)=>{const signal=options?.signal;const abort=()=>{clearTimeout(timer);reject(new DOMException('Local timeout','TimeoutError'));};const timer=setTimeout(()=>{signal?.removeEventListener('abort',abort);resolve();},12000);if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});});
       const response=await originalFetch(input,options);
       if(loseAck&&JSON.parse(String(options?.body||'{}')).action==='send'&&response.ok){loseAck=false;throw new TypeError('Local response lost');}
       return response;
@@ -33,8 +37,8 @@ if(new URLSearchParams(location.search).has('faults')){
   };
   const controls=document.createElement('div');controls.style.cssText='position:fixed;bottom:70px;right:4px;z-index:99999;display:flex;gap:4px;background:white;border:1px solid #94a3b8;padding:4px;font-size:11px';
   const network=document.createElement('button');network.textContent=disconnected?'Sambung Koneksi Uji':'Putus Koneksi Uji';
-  network.onclick=()=>{disconnected=!disconnected;sessionStorage.setItem('qa_disconnected',disconnected?'yes':'no');network.textContent=disconnected?'Sambung Koneksi Uji':'Putus Koneksi Uji';};
-  const retry=document.createElement('button');retry.textContent='Hilangkan Satu Konfirmasi';retry.onclick=()=>{loseAck=true;};controls.append(network,retry);document.body.append(controls);
+  network.onclick=()=>{disconnected=!disconnected;sessionStorage.setItem('qa_disconnected',disconnected?'yes':'no');network.textContent=disconnected?'Sambung Koneksi Uji':'Putus Koneksi Uji';window.dispatchEvent(new Event(disconnected?'offline':'online'));};
+  const retry=document.createElement('button');retry.textContent='Hilangkan Satu Konfirmasi';retry.onclick=()=>{loseAck=true;};const latency=document.createElement('button');latency.textContent=slow?'Normalkan Koneksi Uji':'Lambatkan Koneksi Uji';latency.onclick=()=>{slow=!slow;sessionStorage.setItem('qa_slow',slow?'yes':'no');latency.textContent=slow?'Normalkan Koneksi Uji':'Lambatkan Koneksi Uji';};const rejection=document.createElement('button');rejection.textContent=denied?'Izinkan Akses Uji':'Tolak Akses Uji';rejection.onclick=()=>{denied=!denied;sessionStorage.setItem('qa_denied',denied?'yes':'no');rejection.textContent=denied?'Izinkan Akses Uji':'Tolak Akses Uji';};controls.append(network,retry,latency,rejection);document.body.append(controls);
 }
 
 function OwnerReport({Page,Provider}:{Page:React.ComponentType;Provider:React.ComponentType<{children:React.ReactNode}>}){

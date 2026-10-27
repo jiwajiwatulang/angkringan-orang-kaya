@@ -17,7 +17,7 @@ export class EmployeeSessions {
     const result=await this.device.renew();
     await this.local.table('settings').put({key:'multi_device_access',value:{access:result.access,storeId:result.claims.storeId,deviceId:this.deviceId}});
   }
-  async employees(online:boolean):Promise<{id:string;name:string;active:number}[]>{
+  async employees(online:boolean):Promise<{id:string;name:string;active:number;expiresAt?:number}[]>{
     if(online){
       try{
       await this.ensureDeviceAccess();
@@ -27,9 +27,9 @@ export class EmployeeSessions {
       }catch(error){if(!transportUnavailable(error))throw error;const cached=await this.employees(false);if(cached.length)return cached;throw new AccessError('Nama karyawan belum dapat dimuat. Sambungkan internet lalu perbarui daftar.',503);}
     }
     const known=await this.replica.db.table('credentials').toArray();
-    const allowed:{id:string;name:string;active:number}[]=[];
+    const allowed:{id:string;name:string;active:number;expiresAt?:number}[]=[];
     for(const row of known){
-      try{const claims=await verifyAccess(row.access,this.deviceId,this.identity,this.publicKey);if(claims.storeId===this.device.claims.storeId&&claims.employeeId===row.id)allowed.push({id:row.id,name:row.name,active:1});}catch{/* Expired offline authorizations are never shown as usable accounts. */}
+      try{const claims=await verifyAccess(row.access,this.deviceId,this.identity,this.publicKey);if(claims.storeId===this.device.claims.storeId&&claims.employeeId===row.id)allowed.push({id:row.id,name:row.name,active:1,expiresAt:claims.expiresAt});}catch{/* Expired offline authorizations are never shown as usable accounts. */}
     }
     return allowed;
   }
@@ -62,4 +62,9 @@ export class EmployeeSessions {
     }catch{await this.logout();return null;}
   }
   async logout(){this.replica.logout();await this.local.table('settings').delete('multi_active_employee');}
+  async rejectCurrent(){
+    const row=(await this.local.table('settings').get('multi_active_employee'))?.value;
+    if(row?.id)await this.replica.db.table('credentials').delete(row.id);
+    await this.logout();
+  }
 }

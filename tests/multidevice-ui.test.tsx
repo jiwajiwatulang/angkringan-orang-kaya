@@ -5,6 +5,14 @@ import assert from 'node:assert/strict';
 import StoreDataStatus from '../src/components/StoreDataStatus';
 import QRCode from 'qrcode';
 import {PathnameContext} from 'next/dist/shared/lib/hooks-client-context.shared-runtime';
+import LoadingState,{BusyLabel} from '../src/components/LoadingState';
+
+test('loading placeholders expose a short accessible status and hide decorative shapes',()=>{
+  const html=renderToStaticMarkup(<LoadingState label="Memuat perangkat"/>);
+  assert.ok(html.includes('role="status"'));assert.ok(html.includes('aria-label="Memuat perangkat"'));
+  assert.ok(html.includes('aria-hidden="true"'));assert.ok(html.includes('sn-skeleton'));
+  assert.ok(renderToStaticMarkup(<BusyLabel>Menyimpan</BusyLabel>).includes('sn-spinner'));
+});
 
 test('unknown remote state never claims every device has current data',()=>{
   const unknown=renderToStaticMarkup(<StoreDataStatus pending={0} online/>);
