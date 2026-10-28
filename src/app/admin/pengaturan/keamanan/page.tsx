@@ -192,6 +192,7 @@ export default function PengaturanKeamananPage() {
           {hasExistingPin ? "Ubah PIN Otorisasi Admin" : "Buat PIN Otorisasi Admin"}
         </h3>
 
+        {storeSettings.adminPin === "1234" && <p className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">PIN Admin awal: <strong>1234</strong>. Gunakan sebagai PIN saat ini, lalu tentukan PIN baru.</p>}
         <form onSubmit={handleUpdatePin} className="space-y-4">
           {hasExistingPin ? (
             <div>

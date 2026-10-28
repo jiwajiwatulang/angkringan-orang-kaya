@@ -7,7 +7,7 @@ const pages = [];
 for (let page = 1; page <= 2; page++) {
   if (args[page - 1]) pages.push(JSON.parse(await fs.readFile(args[page - 1], 'utf8')));
   else {
-    const response = await fetch(base + page, { headers: { 'User-Agent': 'SakuNota/2.6.7 (offline reference; https://sakunota.my.id)' }, signal: AbortSignal.timeout(30000) });
+    const response = await fetch(base + page, { headers: { 'User-Agent': 'SakuNota/2.8.1 (offline reference; https://sakunota.my.id)' }, signal: AbortSignal.timeout(30000) });
     if (!response.ok) throw new Error(`Reference download failed (${response.status}); existing snapshot retained.`);
     pages.push(await response.json());
   }

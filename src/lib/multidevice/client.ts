@@ -58,6 +58,7 @@ export async function enrollOwnerClient(){
   return new DeviceClient(result.access,claims);
 }
 export async function requestPairingClient(code:string,deviceName:string){
+  if(db.name.startsWith('SakuNotaPOS-')&&(await db.table('settings').get('multi_device_access'))?.value?.claims?.role==='owner')throw new Error('Ini perangkat Pemilik. Buka tautan di perangkat Kasir yang lain.');
   if(isDemoMode()||db.name==='SakuNotaDemoDB')throw new Error('Keluar dari demo terlebih dahulu.');
   const deviceId=getLocalDeviceId(),proof=await createDeviceProof('multi.pair',code,deviceId,'');
   const result=await call<{pending:true}|{pending:false;access:string;claims:AccessClaims}>({action:'pair.request',data:{code,deviceId,deviceName},proof});
@@ -67,7 +68,7 @@ export async function requestPairingClient(code:string,deviceName:string){
     await db.table('settings').put({key:'multi_device_access',value:{access:result.access,storeId:claims.storeId,deviceId}});
     if(process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE==='enabled'){
       const {activatePosPartition}=await import('./posActivation');
-      await activatePosPartition(db,result.access,claims);location.assign('/pos');
+      await activatePosPartition(db,result.access,claims);try{sessionStorage.removeItem('sakunota_pairing_intent');}catch{}location.assign('/pos');
     }
   }
   return result;

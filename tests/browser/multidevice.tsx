@@ -47,6 +47,31 @@ function OwnerReport({Page,Provider}:{Page:React.ComponentType;Provider:React.Co
   return ready?<Provider><Page/></Provider>:<p>Memuat laporan…</p>;
 }
 
+// Optional visual fixture uses real POS writes in the isolated local store only.
+function KitchenSample({Page}:{Page:React.ComponentType}){
+  const [ready,setReady]=useState(false),[error,setError]=useState('');
+  React.useEffect(()=>{void (async()=>{
+    try{
+      if(!(await db.table('settings').get('qa_kitchen_visual'))?.value){
+        const api=await import('../../src/lib/api'),{saveOperation}=await import('../../src/lib/operationsApi'),{kitchenSignature}=await import('../../src/lib/operations');
+        if(!await api.getActiveShift())await api.openShift({operatorName:'Pemilik',startingCash:200000});
+        for(const sample of [{nama:'Nasi Goreng Spesial',harga:28000,kategori:'Makanan',customer:'Nabila',qty:2,note:'Tidak pedas',stage:0},{nama:'Es Kopi Susu',harga:18000,kategori:'Minuman',customer:'Arif',qty:3,note:'Es sedikit, tanpa gula',stage:1},{nama:'Ayam Bakar',harga:32000,kategori:'Makanan',customer:'Dina',qty:1,note:'Sambal dipisah',stage:2}]){
+          const product=await api.createMenu({nama:sample.nama,harga:sample.harga,kategori:sample.kategori});
+          const order=await api.createOrder({status:'unpaid',customerName:sample.customer,notes:sample.note,total:sample.harga*sample.qty,items:[{id:Number(product),nama:sample.nama,harga:sample.harga,kategori:sample.kategori,qty:sample.qty}]});
+          const item=await db.table('orderItems').where('orderId').equals(order.id!).first();
+          for(let step=0;step<sample.stage;step++){
+            const previous=(await db.table('operations').where('orderItemId').equals(item.id).toArray()).at(-1);
+            await saveOperation({kind:'kitchen',employeeId:getPosScope()!.claims.deviceId,employeeName:'Pemilik',orderId:order.id,orderItemId:item.id,stage:step===0?'preparing':'ready',previousId:previous?.mdId,lineSignature:kitchenSignature(item)});
+          }
+        }
+        await db.table('settings').put({key:'qa_kitchen_visual',value:true});
+      }
+      setReady(true);
+    }catch(e){setError(e instanceof Error?e.message:'Data uji belum siap');}
+  })();},[]);
+  return ready?<Page/>:<p role="status">{error||'Menyiapkan pesanan'}</p>;
+}
+
 async function post(path:string,data:unknown){const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw new Error(result.error||'Belum dapat dibuka.');return result;}
 function Cashier({sessions}:{sessions:EmployeeSessions}){
   const [name,setName]=useState('');
@@ -54,23 +79,40 @@ function Cashier({sessions}:{sessions:EmployeeSessions}){
 }
 async function main(){
   const root=createRoot(document.getElementById('root')!);
-  (window as any).__QA_POS__={api:await import('../../src/lib/api'),db};
+  (window as any).__QA_POS__={api:await import('../../src/lib/api'),operations:await import('../../src/lib/operationsApi'),db};
   if(new URLSearchParams(location.search).has('portal')){
     const {OwnerDeviceRows}=await import('../../src/components/OwnerDeviceOverview');
     root.render(<main className="mx-auto max-w-3xl p-5 text-fg"><h1 className="mb-5 text-2xl font-bold">Perangkat Toko</h1><OwnerDeviceRows data={{enabled:true,next:null,items:[{licenseKey:'SN-LOCAL-BROWSER-ONLY',devices:[{id:'owner',name:'Laptop Pemilik',role:'owner',lastReceivedAt:Date.now()},{id:'cashier',name:'Kasir Depan',role:'cashier',lastReceivedAt:null}]}]}}/></main>);return;
   }
   try{
+    if(location.pathname==='/hubungkan-perangkat'){const {default:Page}=await import('../../src/app/hubungkan-perangkat/page');root.render(<Page/>);return;}
     if(location.pathname==='/pulihkan-kasir'){const {default:Recovery}=await import('../../src/app/pulihkan-kasir/page');root.render(<Recovery/>);return;}
     if(location.pathname==='/pos'){
       const [{default:POS},{default:Boundary}]=await Promise.all([import('../../src/app/pos/page'),import('../../src/components/PosSessionBoundary')]);
+      if(new URLSearchParams(location.search).has('pinLogin')){
+        const {destroyAdminSession}=await import('../../src/lib/session');await destroyAdminSession();
+        const {default:Layout}=await import('../../src/app/admin/AdminClientLayout');
+        root.render(<Boundary><Layout><p>Kasir siap</p></Layout></Boundary>);return;
+      }
       if(new URLSearchParams(location.search).has('devices')){root.render(<Boundary><OwnerDevices/></Boundary>);return;}
+      for(const [query,load] of [
+        ['operations',()=>import('../../src/app/admin/karyawan/page')],
+        ['reports',()=>import('../../src/app/admin/laporan/page')],
+        ['about',()=>import('../../src/app/admin/pengaturan/tentang/page')],
+        ['kitchen',()=>import('../../src/app/admin/dapur/page')],
+      ] as const){if(new URLSearchParams(location.search).has(query)){
+        const [{default:Page},{AdminProvider}]=await Promise.all([load(),import('../../src/app/admin/AdminContext')]);
+        const Target=query==='kitchen'&&new URLSearchParams(location.search).has('visual')?()=> <KitchenSample Page={Page}/>:Page;
+        root.render(<Boundary><OwnerReport Page={Target} Provider={AdminProvider}/></Boundary>);return;
+      }}
       if(new URLSearchParams(location.search).has('data')){
         const [{default:Page},{AdminProvider}]=await Promise.all([import('../../src/app/admin/pengaturan/data/page'),import('../../src/app/admin/AdminContext')]);
         root.render(<Boundary><OwnerReport Page={Page} Provider={AdminProvider}/></Boundary>);return;
       }
       if(new URLSearchParams(location.search).has('report')){
         const [{default:Page},{AdminProvider}]=await Promise.all([import('../../src/app/admin/page'),import('../../src/app/admin/AdminContext')]);
-        root.render(<Boundary><OwnerReport Page={Page} Provider={AdminProvider}/></Boundary>);return;
+        const Dashboard=()=> <div className="p-4 sm:p-6"><Page/></div>;
+        root.render(<Boundary><OwnerReport Page={Dashboard} Provider={AdminProvider}/></Boundary>);return;
       }
       root.render(<Boundary><POS/></Boundary>);return;
     }
@@ -83,7 +125,15 @@ async function main(){
       if(location.pathname==='/devices'){root.render(<DevicesPanel client={new DeviceClient(session.access,session.claims,config.publicKey)}/>);return;}
       await db.table('settings').put({key:'pos_store_settings',value:{...DEFAULT_SETTINGS,storeName:'Warung Uji',businessType:'warung',serviceMode:'quick',onboardingCompleted:true,enableTax:false,enableService:false}});
       if(!await db.table('menuItems').count())await db.table('menuItems').add({nama:'Kopi Susu',harga:10000,kategori:'Minuman',isSoldOut:false,urutan:0});
-      await activatePosPartition(db,session.access,session.claims);location.assign('/pos');
+      if(new URLSearchParams(location.search).has('dashboardVisual')&&!await db.table('orders').count()){
+        for(const [index,qty] of [8,12,4,19,7,14,9].entries()){
+          const at=new Date();at.setDate(at.getDate()-(6-index));at.setHours(12,0,0,0);
+          const total=qty*10000,id=await db.table('orders').add({tableId:null,status:'paid',total,subtotal:total,discount:0,tax:0,serviceCharge:0,paidAmount:total,remainingBalance:0,customerName:null,customerPhone:null,paymentMethod:'Cash',orderType:'direct',createdAt:at.toISOString(),updatedAt:at.toISOString()});
+          await db.table('orderItems').add({orderId:id,menuItemId:1,namaMenu:'Kopi Susu',kategoriMenu:'Minuman',qty,paidQty:qty,hargaSatuan:10000});
+          await db.table('payments').add({orderId:id,shiftId:null,paymentMethod:'Cash',amount:total,status:'completed',splitType:'full',paidAt:at.toISOString(),operatorName:'Pemilik'});
+        }
+      }
+      await activatePosPartition(db,session.access,session.claims);location.assign(new URLSearchParams(location.search).has('dashboardVisual')?'/pos?report':'/pos');
     }else{
       const pair=await post('/fixture/pair',{}),proof=await createDeviceProof('multi.pair',pair.code,deviceId,'');
       await post('/api/store',{action:'pair.request',data:{code:pair.code,deviceId,deviceName:'Tablet Kasir'},proof});

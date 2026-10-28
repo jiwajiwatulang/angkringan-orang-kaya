@@ -8,6 +8,7 @@ interface BarcodeCameraModalProps {
   onClose: () => void;
   onScan: (barcode: string) => void;
   title?: string;
+  purpose?: "product" | "pairing";
 }
 
 export default function BarcodeCameraModal({
@@ -15,10 +16,13 @@ export default function BarcodeCameraModal({
   onClose,
   onScan,
   title = "Pindai Barcode Produk",
+  purpose = "product",
 }: BarcodeCameraModalProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanLoopRef = useRef<number | null>(null);
+  const callbacks = useRef({onScan,onClose});
+  useEffect(()=>{callbacks.current={onScan,onClose};},[onScan,onClose]);
 
   const [hasCamera, setHasCamera] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -47,6 +51,7 @@ export default function BarcodeCameraModal({
     e.preventDefault();
     const clean = manualCode.trim();
     if (!clean) return;
+    stopCamera();
     playScannerBeep("success");
     onScan(clean);
     setManualCode("");
@@ -75,6 +80,7 @@ export default function BarcodeCameraModal({
 
     let isSubscribed = true;
     setErrorMessage(null);
+    setHasCamera(true);setCanTorch(false);setManualCode('');
 
     const initCamera = async () => {
       if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
@@ -90,6 +96,7 @@ export default function BarcodeCameraModal({
         typeof (window as any).BarcodeDetector === "function";
 
       setIsDetectorSupported(supported);
+      if(!supported){setHasCamera(false);return;}
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -148,14 +155,15 @@ export default function BarcodeCameraModal({
             ) {
               try {
                 const barcodes = await barcodeDetector.detect(videoRef.current);
+                if(!isSubscribed)return;
                 if (barcodes && barcodes.length > 0) {
                   const detectedValue = barcodes[0].rawValue;
                   if (detectedValue) {
                     scanCooldown = true;
                     playScannerBeep("success");
-                    onScan(detectedValue);
+                    callbacks.current.onScan(detectedValue);
                     stopCamera();
-                    onClose();
+                    callbacks.current.onClose();
                     return;
                   }
                 }
@@ -186,7 +194,7 @@ export default function BarcodeCameraModal({
       isSubscribed = false;
       stopCamera();
     };
-  }, [isOpen, onClose, onScan, stopCamera]);
+  }, [isOpen, stopCamera]);
 
   if (!isOpen) return null;
 
@@ -217,7 +225,7 @@ export default function BarcodeCameraModal({
           <div>
             <h3 className="font-black text-sm text-fg">{title}</h3>
             <p className="text-[11px] text-muted">
-              Arahkan kamera ke barcode produk atau ketik SKU manual.
+              {purpose === "pairing" ? "Arahkan kamera ke QR di perangkat Pemilik." : "Arahkan kamera ke barcode produk atau ketik SKU manual."}
             </p>
           </div>
           <button
@@ -273,7 +281,7 @@ export default function BarcodeCameraModal({
                   {errorMessage || "Kamera Tidak Aktif"}
                 </p>
                 <p className="text-[11px] text-muted max-w-xs">
-                  Silakan ketik kode barcode atau SKU produk secara manual pada kolom di bawah.
+                  {purpose === "pairing" ? "Tempel tautan dari perangkat Pemilik pada kolom di bawah." : "Silakan ketik kode barcode atau SKU produk secara manual pada kolom di bawah."}
                 </p>
               </div>
             )}
@@ -294,7 +302,7 @@ export default function BarcodeCameraModal({
               <form onSubmit={handleManualSubmit} className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Ketik / tembak kode barcode..."
+                  placeholder={purpose === "pairing" ? "Tempel tautan penghubung..." : "Ketik / tembak kode barcode..."}
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
                   className="flex-1 bg-surface border border-line rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-fg placeholder:text-muted/60 outline-none focus:border-accent"

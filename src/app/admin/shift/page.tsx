@@ -5,12 +5,14 @@ import LineIcon from "@/components/LineIcon";
 import React, { useState, useEffect, useMemo } from "react";
 import { useAdmin } from "../AdminContext";
 import {
+  getOrders,
   getAllShifts,
   getActiveShift,
   getShiftLiveStats,
   addCashMovement,
   deleteCashMovement,
 } from "@/lib/api";
+import { paymentEntries } from "@/lib/multidevice/posDashboard";
 import { db, ExpenseCategory } from "@/lib/dexie";
 import {
   generateZReportReceipt,
@@ -80,7 +82,7 @@ export default function AdminShiftPage() {
         getAllShifts(),
         getActiveShift(),
         db.table("cashMovements").reverse().toArray(),
-        db.table("orders").where("status").equals("paid").toArray(),
+        getOrders(),
       ]);
 
       setShifts(allShifts);
@@ -88,9 +90,10 @@ export default function AdminShiftPage() {
       setCashMovements(movements);
 
       // Hitung akumulasi omzet dari nota berbayar
-      const sumOmzet = paidOrders.reduce((sum, o: any) => sum + (o.paidAmount || o.total || 0), 0);
+      const entries = paymentEntries(paidOrders);
+      const sumOmzet = entries.reduce((sum, e) => sum + e.amount - e.refund, 0);
       setTotalOmzet(sumOmzet);
-      setPaidOrdersCount(paidOrders.length);
+      setPaidOrdersCount(new Set(entries.filter(e=>e.amount>0).map(e=>e.orderId)).size);
 
       if (currentShift && currentShift.id) {
         const stats = await getShiftLiveStats(currentShift.id);
@@ -144,7 +147,7 @@ export default function AdminShiftPage() {
     };
 
     cashMovements.forEach((m) => {
-      if (m.type === "out") {
+      if (m.type === "out" && m.category !== "kasbon_karyawan") {
         const cat = m.category || "operasional";
         if (categoryBreakdown[cat] !== undefined) {
           categoryBreakdown[cat] += m.amount || 0;
@@ -154,11 +157,13 @@ export default function AdminShiftPage() {
       }
     });
 
-    const netProfit = totalOmzet - totalCashOut;
+    const expenses = cashMovements.filter(m => m.type === 'out' && m.category !== 'kasbon_karyawan').reduce((n,m) => n + (m.amount || 0), 0);
+    const netProfit = totalOmzet - expenses;
 
     return {
       totalCashIn,
       totalCashOut,
+      expenses,
       netProfit,
       categoryBreakdown,
     };
@@ -494,10 +499,10 @@ export default function AdminShiftPage() {
               <div>
                 <h3 className="text-lg font-black text-fg flex items-center gap-2">
                   <LineIcon name="chart" className="w-5 h-5 text-accent" />
-                  <span>Ringkasan Keuangan & Estimasi Laba Bersih Operasional</span>
+                  <span>Ringkasan Kas Usaha</span>
                 </h3>
                 <p className="text-xs text-muted mt-0.5">
-                  Dihitung otomatis dari akumulasi nota lunas dikurangi pengeluaran biaya operasional toko.
+                  Pembayaran setelah pengembalian, dikurangi biaya tercatat.
                 </p>
               </div>
 
@@ -526,9 +531,9 @@ export default function AdminShiftPage() {
               {/* Omzet Penjualan */}
               <div className="p-4 rounded-2xl bg-card/60 border border-line">
                 <div className="flex items-center justify-between text-xs text-muted mb-1">
-                  <span className="font-bold">Total Omzet Penjualan (A)</span>
+                  <span className="font-bold">Pembayaran Bersih</span>
                   <span className="text-[10px] font-semibold bg-surface px-2 py-0.5 rounded-full border border-line">
-                    {paidOrdersCount} Nota Lunas
+                    {paidOrdersCount} Nota
                   </span>
                 </div>
                 <div className="text-2xl font-black text-fg tracking-tight">
@@ -540,13 +545,13 @@ export default function AdminShiftPage() {
               {/* Total Pengeluaran Biaya */}
               <div className="p-4 rounded-2xl bg-card/60 border border-line">
                 <div className="flex items-center justify-between text-xs text-muted mb-1">
-                  <span className="font-bold text-rose-700">Total Kas Keluar / Biaya (B)</span>
+                  <span className="font-bold text-rose-700">Biaya Tercatat</span>
                   <span className="text-[10px] font-semibold bg-rose-50 text-rose-800 px-2 py-0.5 rounded-full border border-rose-200">
                     Pengeluaran
                   </span>
                 </div>
                 <div className="text-2xl font-black text-rose-700 tracking-tight">
-                  Rp {financialSummary.totalCashOut.toLocaleString("id-ID")}
+                  Rp {financialSummary.expenses.toLocaleString("id-ID")}
                 </div>
                 <p className="text-[10px] text-muted mt-1">Bahan baku, utilitas, kemasan & operasional</p>
               </div>
@@ -554,7 +559,7 @@ export default function AdminShiftPage() {
               {/* Estimasi Laba Bersih Operasional */}
               <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border-2 border-emerald-500/40">
                 <div className="flex items-center justify-between text-xs text-muted mb-1">
-                  <span className="font-black text-emerald-800">Estimasi Laba Operasional (A - B)</span>
+                  <span className="font-black text-emerald-800">Sisa Setelah Biaya</span>
                   <span className="text-[10px] font-black bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-full border border-emerald-300">
                     Bersih
                   </span>
@@ -563,7 +568,7 @@ export default function AdminShiftPage() {
                   Rp {financialSummary.netProfit.toLocaleString("id-ID")}
                 </div>
                 <p className="text-[10px] text-muted mt-1">
-                  {financialSummary.netProfit >= 0 ? "Surplus pendapatan operasional" : "Defisit operasional sementara"}
+                  {financialSummary.netProfit >= 0 ? "Belum termasuk modal barang yang terjual" : "Pengeluaran melebihi pembayaran bersih"}
                 </p>
               </div>
             </div>

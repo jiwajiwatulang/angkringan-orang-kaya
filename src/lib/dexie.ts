@@ -145,7 +145,7 @@ export interface Order {
 
 export interface AuditLog {
   id?: number;
-  action: 'VOID' | 'REFUND' | 'DELETE' | 'RESET' | 'OPEN_SHIFT' | 'CLOSE_SHIFT' | 'CASH_IN' | 'CASH_OUT' | 'PARTIAL_PAYMENT' | 'PARTIAL_REFUND' | 'UPLOAD_PROOF' | 'VERIFY_PROOF' | 'DELETE_PROOF' | 'BULK_IMPORT' | 'BULK_UPDATE' | 'BULK_DELETE' | 'MIGRATION';
+  action: 'OPERATION' | 'VOID' | 'REFUND' | 'DELETE' | 'RESET' | 'OPEN_SHIFT' | 'CLOSE_SHIFT' | 'CASH_IN' | 'CASH_OUT' | 'PARTIAL_PAYMENT' | 'PARTIAL_REFUND' | 'UPLOAD_PROOF' | 'VERIFY_PROOF' | 'DELETE_PROOF' | 'BULK_IMPORT' | 'BULK_UPDATE' | 'BULK_DELETE' | 'MIGRATION';
   orderId?: number;
   amount: number;
   reason: string;
@@ -275,7 +275,12 @@ db.version(9).stores({
   inventoryMovements: '++id, menuItemId, orderId, type, timestamp',
 });
 if(partitionName){
+  // Keep the original schema step so upgrading never drops a pending delivery queue.
   db.version(12).stores({posOutbox:'id,ordinal',posMeta:'key',posIds:'key'});
+}
+// Additive only: preserve every existing receipt, shift and pending delivery.
+db.version(14).stores({operations:'++id,kind,employeeId,at,orderId,orderItemId,sessionId'});
+if(partitionName){
   installPosCapture(db,getPosScope);
 }
 

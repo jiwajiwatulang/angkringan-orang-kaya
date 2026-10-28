@@ -53,7 +53,7 @@ async function main(){
     if(url.pathname==='/fixture/approve'&&request.method==='POST'&&owner&&activePair){const data=await request.json() as {id:string};if(data.id!==activePair.id)return new Response('',{status:400});return Response.json(await approvePairing(env,owner,data.id));}
     if(url.pathname==='/app.js')return new Response(fs.readFileSync(path.join(output,'app.js')),{headers:{'Content-Type':'text/javascript'}});
     if(url.pathname==='/style.css')return new Response(styles,{headers:{'Content-Type':'text/css'}});
-    if(!['/','/pos','/devices','/pulihkan-kasir'].includes(url.pathname))return new Response('Not found',{status:404});
+    if(!['/','/pos','/devices','/pulihkan-kasir','/hubungkan-perangkat'].includes(url.pathname))return new Response('Not found',{status:404});
     return new Response('<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SakuNota — Uji Lokal</title><link rel="stylesheet" href="/style.css"></head><body style="background:#F8FAFC;color:#0F172A;padding:20px"><div id="root"></div><script type="module" src="/app.js"></script></body></html>',{headers:{'Content-Type':'text/html'}});
   };
   http.createServer(async(req,res)=>{

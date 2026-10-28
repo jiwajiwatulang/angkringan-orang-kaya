@@ -1,4 +1,5 @@
 "use client";
+import {APP_VERSION} from "@/lib/appVersion";
 import OwnerDeviceOverview from "@/components/OwnerDeviceOverview";
 import LineIcon from "@/components/LineIcon";
 
@@ -2220,7 +2221,7 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
                   activatedAt: null,
                   lastConnectedAt: o.lastSeenAt || null,
                   signature: "",
-                  appVersion: "v2.6.7",
+                  appVersion: null,
                   activeDays: 1,
                   licenseType: "berbayar" as const,
                   revoked: 0,
@@ -2248,7 +2249,7 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
                         <div className="text-xs text-muted flex flex-wrap gap-x-4 gap-y-1">
                           <span>Pesanan: <strong className="font-mono">{l.orderId}</strong></span>
                           <span>Terbit: {l.issuedAt}</span>
-                          <span>Versi Kasir: <strong className="font-mono">{l.appVersion || "v2.6.7"}</strong></span>
+                          <span>Versi Kasir: <strong className="font-mono">{l.appVersion || "Belum diketahui"}</strong></span>
                           <span>Aktivitas: {l.activeDays || 1} Hari Aktif</span>
                           {l.lastConnectedAt && <span>Terakhir Online: {l.lastConnectedAt}</span>}
                         </div>
@@ -2983,7 +2984,7 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="p-3 rounded-xl bg-surface border border-line">
                       <span className="text-[10px] text-muted font-bold block">Versi Rilis</span>
-                      <strong className="font-mono text-fg text-sm">v2.6.7-stable</strong>
+                      <strong className="font-mono text-fg text-sm">v{APP_VERSION}</strong>
                     </div>
                     <div className="p-3 rounded-xl bg-surface border border-line">
                       <span className="text-[10px] text-muted font-bold block">Git Commit</span>

@@ -38,6 +38,14 @@ export default {async fetch(request:Request,env:{DB:D1Database;MIGRATION:string}
     const id=crypto.randomUUID();await call(o,enrolled,'employee.save',{id,name:'Kasir Pagi',pin:'482953',active:true});
     const employee=await call(c,cashier,'employee.login',{id,pin:'482953'});await verifyAccess(employee.access,c.id,c.identity,publicJwk);steps.push('employee PIN login');
     await call(c,employee,'pair.create',{},403);steps.push('cashier owner-action denied');
+    const attendanceId=crypto.randomUUID(),attendanceEventId=crypto.randomUUID();
+    const attendance={id:attendanceEventId,entityId:attendanceEventId,storeId:employee.claims.storeId,deviceId:c.id,operatorId:id,kind:'pos.commit',data:{rows:[{table:'operations',id:attendanceId,expectedVersion:0,value:{kind:'attendance.in',employeeId:id,employeeName:'Kasir Pagi',sessionId:crypto.randomUUID(),at:new Date().toISOString(),mdId:attendanceId,mdStoreId:employee.claims.storeId,mdDeviceId:c.id,mdOperatorId:id,mdVersion:1}}]}};
+    await call(c,employee,'send',{event:attendance});const again=await call(c,employee,'send',{event:attendance});
+    if(!again.duplicate)throw new Error('Repeated attendance was not idempotent');
+    const ownerPull=await call(o,enrolled,'pull',{cursor:0});if(!ownerPull.entities.some((r:any)=>r.kind==='pos_operations'&&r.id===attendanceId))throw new Error('Owner attendance missing');
+    steps.push('attendance delivered exactly once and visible to owner');
+    const forbidden=structuredClone(attendance);forbidden.id=crypto.randomUUID();forbidden.entityId=forbidden.id;forbidden.data.rows[0].id=crypto.randomUUID();Object.assign(forbidden.data.rows[0].value,{mdId:forbidden.data.rows[0].id,kind:'loan',amount:1000,source:'rekening'});
+    await call(c,employee,'send',{event:forbidden},403);steps.push('cashier financial operation denied');
     await call(c,cashier,'refresh');steps.push('cashier grant renewal');
     await call(o,enrolled,'device.revoke',{id:c.id});await call(c,cashier,'list',{},403);steps.push('revoked device denied');
     await env.DB.prepare('UPDATE TesterLicenses SET revoked=1 WHERE licenseKey=?').bind(key).run();
