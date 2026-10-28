@@ -1,21 +1,25 @@
 "use client";
 import React,{useState} from 'react';
-import {EXAMPLE_PRODUCTS,exampleGrams,exampleAmount,type ExampleBusiness,type ExampleProduct} from '@/lib/homepageExample';
+import {exampleReceipt,exampleReceiptDocument,type ExampleLine} from '@/lib/homepageReceipt';
+import {EXAMPLE_PRODUCTS,exampleGrams,exampleAmount,type ExampleBusiness} from '@/lib/homepageExample';
 
 const rupiah=(value:number)=>`Rp${value.toLocaleString('id-ID')}`;
 const button='inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-40';
-type Line={product:ExampleProduct;quantity:number;note:string};
+type Line=ExampleLine;
 export default function HomepageTryout({onBeta,onBuy}:{onBeta:()=>void;onBuy:()=>void}){
   const [business,setBusiness]=useState<ExampleBusiness>('warung');
   const [selected,setSelected]=useState(EXAMPLE_PRODUCTS.warung[0]);
   const [weight,setWeight]=useState('250'),[unit,setUnit]=useState<'g'|'kg'>('g');
   const [quantity,setQuantity]=useState(1),[note,setNote]=useState(''),[lines,setLines]=useState<Line[]>([]);
   const [preview,setPreview]=useState(false),[message,setMessage]=useState('');
+  const [paper,setPaper]=useState<'58mm'|'80mm'>('58mm'),[printing,setPrinting]=useState(false),[receiptAt,setReceiptAt]=useState<Date|null>(null);
+  const receipt=exampleReceipt(lines,business,receiptAt||new Date(0));
+  const printExample=async()=>{if(printing||!lines.length)return;setPrinting(true);try{const document=exampleReceiptDocument(receipt,paper);const {executePrintDocument}=await import('@/lib/receipt');const result=await executePrintDocument({title:'Contoh Nota SakuNota',htmlContent:document.html,escposText:document.text});setMessage(result.success?'Jendela cetak dibuka. Pilih printer atau simpan sebagai PDF.':'Cetak belum dapat dibuka. Coba lagi.');}catch{setMessage('Cetak belum dapat dibuka. Coba lagi.');}finally{setPrinting(false);}};
   const grams=exampleGrams(weight,unit),amount=selected.weighted?grams:quantity;
   const total=lines.reduce((sum,line)=>sum+exampleAmount(line.product,line.quantity),0);
   const changeBusiness=(next:ExampleBusiness)=>{setBusiness(next);setSelected(EXAMPLE_PRODUCTS[next][0]);setWeight('250');setUnit('g');setQuantity(1);setNote('');setLines([]);setPreview(false);setMessage('');};
   const add=()=>{if(!amount||lines.length>=20)return;setLines([...lines,{product:selected,quantity:amount,note:business==='cafe'?note.trim():''}]);setPreview(false);setMessage('Barang ditambahkan');};
-  const description=(line:Line)=>line.product.weighted?`${line.quantity.toLocaleString('id-ID')} g`:`${line.quantity} barang`;
+  const description=(line:Line)=>line.product.weighted?`${line.quantity.toLocaleString('id-ID')} g × ${rupiah(line.product.price)}/kg`:`${line.quantity} × ${rupiah(line.product.price)}/pcs`;
   return <section id="coba-sakunota" aria-labelledby="tryout-title" className="scroll-mt-24 bg-slate-50 px-4 py-10 sm:px-8 sm:py-16">
     <div className="mx-auto max-w-5xl">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><h2 id="tryout-title" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Coba SakuNota</h2><p className="mt-2 text-sm text-slate-600">Pilih usaha, tambah barang, lihat notanya.</p></div><div className="flex rounded-2xl border border-slate-200 bg-white p-1" role="group" aria-label="Contoh jenis usaha">{(['warung','retail','cafe'] as const).map(value=><button key={value} type="button" aria-pressed={business===value} onClick={()=>changeBusiness(value)} className={`${button} ${business===value?'bg-blue-600 text-white shadow-sm':'text-slate-600 hover:bg-slate-50'}`}>{value==='cafe'?'Kafe':value==='retail'?'Retail':'Warung'}</button>)}</div></div>
@@ -31,9 +35,11 @@ export default function HomepageTryout({onBeta,onBuy}:{onBeta:()=>void;onBuy:()=
           </div>
         </div>
         <div className="min-w-0 border-t border-slate-200 bg-slate-50/80 p-5 sm:p-7 lg:border-l lg:border-t-0"><div className="flex items-center justify-between gap-3"><h3 className="text-base font-bold text-slate-900">{preview?'Contoh Nota':'Keranjang'}</h3>{lines.length>0&&<button type="button" onClick={()=>{setLines([]);setPreview(false);setMessage('Keranjang dikosongkan');}} className="min-h-11 text-xs font-semibold text-slate-500 hover:text-blue-700">Kosongkan</button>}</div>
+          {preview&&<div className="my-4 space-y-1 border-y border-dashed border-slate-300 py-3 text-xs text-slate-600"><p className="font-semibold text-slate-800">SakuNota · {receipt.shop}</p><p>No. {receipt.number}</p><p>{receipt.date}</p><p>Kasir: {receipt.cashier}</p></div>}
           <div className="mt-3 max-h-64 min-h-32 space-y-3 overflow-y-auto">{!lines.length?<p className="py-8 text-center text-sm text-slate-500">Belum ada barang. Coba tambahkan satu.</p>:lines.map((line,index)=><div key={index} className="flex items-start justify-between gap-3 border-b border-slate-200 pb-3 text-sm"><div className="min-w-0"><p className="font-semibold text-slate-800">{line.product.name}</p><p className="mt-1 text-xs text-slate-500">{description(line)}</p>{line.note&&<p className="mt-1 break-words text-xs text-slate-600">{line.note}</p>}</div><div className="shrink-0 text-right"><p className="font-semibold">{rupiah(exampleAmount(line.product,line.quantity))}</p>{!preview&&<button type="button" aria-label={`Hapus ${line.product.name} baris ${index+1}`} onClick={()=>{setLines(lines.filter((_,i)=>i!==index));setMessage('Barang dihapus');}} className="min-h-11 text-xs text-slate-500 hover:text-red-700">Hapus</button>}</div></div>)}</div>
           <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4"><span className="text-sm font-semibold">Total</span><output aria-label="Total keranjang" className="text-2xl font-bold tracking-tight text-blue-700">{rupiah(total)}</output></div>
-          <button type="button" disabled={!lines.length} onClick={()=>setPreview(!preview)} className={`${button} mt-4 w-full border border-slate-300 bg-white text-slate-800 hover:border-blue-400`}>{preview?'Ubah Pesanan':'Lihat Nota'}</button>
+          <button type="button" disabled={!lines.length} onClick={()=>{if(!preview)setReceiptAt(new Date());setPreview(!preview);}} className={`${button} mt-4 w-full border border-slate-300 bg-white text-slate-800 hover:border-blue-400`}>{preview?'Ubah Pesanan':'Lihat Nota'}</button>
+          {preview&&<div className="mt-4 space-y-3"><label className="flex min-h-11 items-center justify-between gap-3 text-sm">Lebar kertas<select aria-label="Lebar kertas contoh nota" value={paper} onChange={e=>setPaper(e.target.value as '58mm'|'80mm')} className="min-h-11 rounded-xl border border-slate-300 bg-white px-3"><option value="58mm">58 mm</option><option value="80mm">80 mm</option></select></label><button type="button" disabled={printing} onClick={()=>void printExample()} className={`${button} w-full bg-blue-600 text-white hover:bg-blue-700`}>{printing?'Membuka Cetak…':'Cetak Contoh Nota'}</button></div>}
           {preview&&<div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white p-4"><p className="text-xs text-slate-500">Contoh saja · Tidak ada pembayaran</p>{business==='cafe'&&<div className="mt-3"><h4 className="text-sm font-bold">Contoh Label Gelas</h4><p className="mt-1 text-xs text-slate-500">Cetak label gelas belum tersedia di kasir saat ini.</p>{lines.map((line,i)=><div key={i} className="mt-2 rounded-lg border border-slate-200 p-3 text-sm"><p className="font-semibold">{line.quantity} × {line.product.name}</p><p className="mt-1 break-words text-xs">{line.note||'Tanpa catatan'}</p></div>)}</div>}</div>}
         </div>
       </div>

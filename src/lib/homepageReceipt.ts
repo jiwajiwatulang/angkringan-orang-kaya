@@ -1,0 +1,14 @@
+import {exampleAmount,type ExampleBusiness,type ExampleProduct} from './homepageExample';
+import {escapePrintText,safePrinterText} from './printSafety';
+export type ExampleLine={product:ExampleProduct;quantity:number;note:string};
+const money=(n:number)=>`Rp${n.toLocaleString('id-ID')}`;
+export function exampleReceipt(lines:ExampleLine[],business:ExampleBusiness,at:Date){
+  const items=lines.map(line=>({name:line.product.name,detail:line.product.weighted?`${line.quantity.toLocaleString('id-ID')} g × ${money(line.product.price)}/kg`:`${line.quantity} × ${money(line.product.price)}/pcs`,note:line.note,subtotal:exampleAmount(line.product,line.quantity)}));
+  return {shop:business==='cafe'?'Kafe Contoh':business==='retail'?'Toko Contoh':'Warung Contoh',number:'CONTOH-001',date:at.toLocaleString('id-ID',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}),cashier:'Kasir Contoh',items,total:items.reduce((n,line)=>n+line.subtotal,0)};
+}
+export function exampleReceiptDocument(receipt:ReturnType<typeof exampleReceipt>,width:'58mm'|'80mm'){
+  const e=escapePrintText;
+  const text=safePrinterText(['SAKUNOTA — CONTOH NOTA',receipt.shop,receipt.number,receipt.date,`Kasir: ${receipt.cashier}`,'------------------------------',...receipt.items.flatMap(item=>[item.name,item.detail,...(item.note?[`Catatan: ${item.note}`]:[]),money(item.subtotal)]),'------------------------------',`TOTAL ${money(receipt.total)}`,'SIMULASI — Bukan bukti pembayaran'].join('\n')+'\n\n\n');
+  const html=`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>Contoh Nota SakuNota</title><style>@page{size:auto;margin:0}*{box-sizing:border-box}body{width:${width};margin:0;padding:3mm;font:12px/1.5 monospace;color:#111;background:#fff;overflow-wrap:anywhere}h1{font-size:16px;margin:0}p{margin:3px 0}header,footer{text-align:center}section{border-top:1px dashed #555;padding:8px 0;break-inside:avoid}.row{display:flex;justify-content:space-between;gap:8px}.total{font-size:16px;font-weight:bold;border-top:1px dashed #555;padding-top:8px}footer{margin-top:12px;font-size:10px}</style></head><body><header><h1>CONTOH NOTA</h1><p>SakuNota · ${e(receipt.shop)}</p></header><section><p>No. ${e(receipt.number)}</p><p>${e(receipt.date)}</p><p>Kasir: ${e(receipt.cashier)}</p></section>${receipt.items.map(item=>`<section><strong>${e(item.name)}</strong><p>${e(item.detail)}</p>${item.note?`<p>Catatan: ${e(item.note)}</p>`:''}<p class="row"><span>Subtotal</span><strong>${e(money(item.subtotal))}</strong></p></section>`).join('')}<div class="row total"><span>TOTAL</span><span>${e(money(receipt.total))}</span></div><footer>SIMULASI<br>Bukan bukti pembayaran</footer></body></html>`;
+  return {html,text};
+}

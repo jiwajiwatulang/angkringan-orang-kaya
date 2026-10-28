@@ -85,7 +85,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     badge: 'Persiapan Awal',
     businessTypes: ['all', 'setup'],
     articles: [
-    {title:'Mencoba sebelum mendaftar',summary:'Kenali kasir langsung dari halaman utama.',steps:['Pada halaman utama, pilih Coba SakuNota.','Pilih Warung, Retail, atau Kafe. Isi berat atau jumlah, lalu Tambah ke Keranjang.','Pilih Lihat Nota. Untuk Kafe, tambahkan catatan minuman untuk melihat contoh label gelas.','Pilih Daftar Beta untuk mengajukan uji coba 7 hari, atau Beli Lisensi. Pendaftaran beta diperiksa tim dan lisensi dikirim lewat WhatsApp setelah disetujui.'],targetHref:'/#coba-sakunota',targetLabel:'Coba SakuNota'},
+    {title:'Mencoba sebelum mendaftar',summary:'Kenali kasir langsung dari halaman utama.',steps:['Pada halaman utama, pilih Coba SakuNota.','Pilih Warung, Retail, atau Kafe. Isi berat atau jumlah, lalu Tambah ke Keranjang.','Pilih Lihat Nota untuk melihat rincian barang dan harga. Pilih lebar kertas 58 atau 80 mm, lalu Cetak Contoh Nota. Untuk Kafe, catatan minuman juga muncul pada contoh label gelas.','Pilih Daftar Beta untuk mengajukan uji coba 7 hari, atau Beli Lisensi. Pendaftaran beta diperiksa tim dan lisensi dikirim lewat WhatsApp setelah disetujui.'],targetHref:'/#coba-sakunota',targetLabel:'Coba SakuNota'},
       {
         title: 'Aktivasi lisensi resmi dan trial',
         summary: 'Aktivasi pertama membutuhkan internet; trial dimulai setelah aktivasi perangkat.',
