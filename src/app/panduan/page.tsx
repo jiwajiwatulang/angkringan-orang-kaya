@@ -249,10 +249,10 @@ export default function PanduanPage() {
 
           <div className="flex items-center gap-2">
             <a
-              href="/pos?demo=true"
+              href="/#coba-sakunota"
               className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 border border-slate-200 transition-all"
             >
-              Coba Demo Kasir
+              Coba SakuNota
             </a>
             <Link
               href="/?beli=true"
@@ -275,6 +275,13 @@ export default function PanduanPage() {
             Panduan penggunaan fitur kasir dan alur operasional usaha Anda.
           </p>
 
+          <div className="mt-5 flex flex-wrap gap-2" aria-label="Panduan untuk memulai">{[
+            ['license-security-update','Mulai Berjualan'],
+            ['retail-weight-sales','Coba Hitung Berat'],
+            ['hubungkan-kasir','Hubungkan Kasir'],
+            ['data-backup','Cadangan Data'],
+          ].filter(([id])=>GUIDE_TOPICS.some(topic=>topic.id===id)).map(([id,label])=><button key={id} type="button" onClick={()=>setSelectedTopic(GUIDE_TOPICS.find(topic=>topic.id===id)!)} className="min-h-11 rounded-xl border border-blue-200 bg-white px-4 text-xs font-semibold text-blue-700 hover:bg-blue-50">{label}</button>)}</div>
+
           {/* Search Box */}
           <div className="mt-6 max-w-xl">
             <div className="relative">
@@ -292,7 +299,7 @@ export default function PanduanPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari panduan (contoh: timbang, barcode, printer, shift, kasbon)..."
+                aria-label="Cari panduan" placeholder="Cari timbang, PIN, perangkat, atau laporan"
                 className="w-full bg-white hover:border-slate-300 focus:border-blue-600 border border-slate-200 rounded-2xl pl-11 pr-10 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none shadow-xs transition-all"
               />
               {searchQuery && (
@@ -557,7 +564,7 @@ export default function PanduanPage() {
                 />
               </Link>
               <p className="text-xs text-neutral-300 leading-relaxed max-w-sm">
-                Aplikasi kasir modern untuk UMKM, angkringan, kafe, dan retail. 100% jalan offline tanpa biaya langganan bulanan.
+                Aplikasi kasir modern untuk UMKM, angkringan, kafe, dan retail. Kasir dapat dipakai tanpa internet setelah disiapkan, tanpa biaya langganan bulanan.
               </p>
               <div className="pt-1">
                 <a
@@ -601,8 +608,8 @@ export default function PanduanPage() {
                   </Link>
                 </li>
                 <li>
-                  <a href="/pos?demo=true" className="hover:text-white transition-colors">
-                    Coba Demo Kasir
+                  <a href="/#coba-sakunota" className="hover:text-white transition-colors">
+                    Coba SakuNota
                   </a>
                 </li>
               </ul>
