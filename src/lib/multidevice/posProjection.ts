@@ -2,6 +2,7 @@ import {AccessError,assertId,integer,lineAmount,type AccessClaims} from './proto
 import {POS_TABLES,FOREIGN_KEYS,type PosCommit,type PosRow} from './posWire';
 import type {Entity,Lookup} from './projection';
 import {validateRetailDraft} from '../retailDraft';
+import {validateOperation,kitchenSignature,kitchenStages,earnedCommission,type OperationRecord} from '../operations';
 
 const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 const catalogMaster=(value:Record<string,any>)=>Object.fromEntries(Object.keys(value).sort().filter(key=>!['stockQty',...(value.trackStock?['isSoldOut']:[]),'costPrice','purchasePrice','totalCost','stockNeedsReview','mdVersion','mdCatalogVersion','mdId','mdStoreId','mdDeviceId','mdOperatorId'].includes(key)).map(key=>[key,value[key]]));
@@ -26,6 +27,17 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
   const index=async(key:string)=>{
     if(!indices.has(key))indices.set(key,new Set((await lookup('pos_index',key))?.ids as string[]||[]));return indices.get(key)!;
   };
+  const staffStates=new Map<string,Record<string,any>>();
+  const staff=async(id:string)=>{
+    if(!staffStates.has(id))staffStates.set(id,{loanBalance:0,earned:0,paid:0,...await lookup('pos_employeeState',id)});
+    return staffStates.get(id)!;
+  };
+  const commissionOrders=new Map<string,{entries:{id:string;employeeId:string;amount:number;earned:number}[]}>();
+  const commissions=async(id:string)=>{
+    if(!commissionOrders.has(id))commissionOrders.set(id,{entries:((await lookup('pos_orderCommissions',id))?.entries||[]) as {id:string;employeeId:string;amount:number;earned:number}[]});
+    return commissionOrders.get(id)!;
+  };
+  const sessions=new Map<string,Record<string,any>>();
   for(const row of rows){
     const prior=await old(row.table,row.id),value=row.value;
     if(bootstrap&&prior)throw new AccessError('Data awal sudah tersimpan.',409);
@@ -57,6 +69,61 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
         }
       }
       if(row.table==='payments'&&prior&&prior.status!==value.status)throw new AccessError('Pengembalian memerlukan akses pemilik.');
+    }
+    if(row.table==='operations'){
+      delete value.ignored;delete value.activeSessionId;
+      try{validateOperation(value as OperationRecord);}catch(error){throw new AccessError((error as Error).message,400);}
+      if(prior)throw new AccessError('Catatan yang tersimpan tidak dapat diganti.',409);
+      if(claims.role==='cashier'&&(!value.kind.startsWith('attendance.')||value.employeeId!==claims.employeeId))throw new AccessError('Tindakan ini memerlukan akses pemilik.');
+      const state=await staff(value.employeeId);
+      if(value.kind.startsWith('attendance.')){
+        const key=`${value.employeeId}_${value.sessionId}`,session=sessions.get(key)||await lookup('pos_attendanceSession',key);
+        const active=state.activeSession;
+        if(value.kind==='attendance.in'){
+          if(active||session){value.ignored=true;if(active){value.activeSessionId=active.sessionId;if(Date.parse(value.at)<Date.parse(active.at))active.at=value.at;}}
+          else state.activeSession={sessionId:value.sessionId,at:value.at};
+          if(!session)sessions.set(key,{employeeId:value.employeeId,activeSessionId:active?.sessionId||value.sessionId,at:active?.at||value.at});
+        }else{
+          if(!session)throw new AccessError('Absensi masuk belum tersedia.',409);
+          if(!active)value.ignored=true;
+          else if(session.activeSessionId!==active.sessionId)value.ignored=true;
+          else{
+            if(Date.parse(value.at)<Date.parse(active.at))throw new AccessError('Waktu pulang sebelum waktu masuk.',409);
+            value.sessionId=active.sessionId;state.activeSession=null;
+          }
+        }
+      }
+      if(value.kind==='repayment'&&value.amount>state.loanBalance)throw new AccessError('Pembayaran melebihi sisa kasbon.',409);
+      if(value.kind==='loan')state.loanBalance+=value.amount;
+      if(value.kind==='repayment')state.loanBalance-=value.amount;
+      if(value.kind==='commission'){
+        const order=await get('orders',value.orderId),item=await get('orderItems',value.orderItemId);
+        if(!order||order.status!=='paid'||order.isRefunded||!item||item.orderId!==value.orderId||item.mdDeleted)throw new AccessError('Pilih layanan dari nota lunas.',409);
+        const basis=Math.floor(lineAmount(item.qty,item.hargaSatuan,item.saleUnit==='weight'?item.priceBasis||1000:1)*Math.max(0,order.subtotal-(order.discount||0))/order.subtotal);
+        if(value.basisAmount!==basis||(await index(`commissionItem_${value.orderItemId}`)).size)throw new AccessError('Komisi layanan sudah tercatat atau nilai berubah.',409);
+        (await index(`commissionItem_${value.orderItemId}`)).add(row.id);
+        const earned=earnedCommission(value.amount,order as {status:string});
+        state.earned+=earned;(await commissions(value.orderId)).entries.push({id:row.id,employeeId:value.employeeId,amount:value.amount,earned});
+      }
+      if(value.kind==='commission.paid'){
+        if(value.amount>state.earned-state.paid)throw new AccessError('Pembayaran melebihi komisi tersedia.',409);
+        state.paid+=value.amount;
+      }
+      if(['loan','repayment','commission.paid'].includes(value.kind)&&value.source==='laci'&&!bootstrap){
+        const movement=changed.get(`cashMovements:${value.cashMovementId}`)?.value;
+        const direction=value.kind==='repayment'?'in':'out';
+        if(!movement||movement.amount!==value.amount||movement.type!==direction||movement.category!==(value.kind==='commission.paid'?'komisi':'kasbon_karyawan')||movement.shiftId!==value.shiftId)throw new AccessError('Catatan uang laci tidak sesuai.',409);
+        if(rows.filter(r=>r.table==='operations'&&r.value.cashMovementId===value.cashMovementId).length!==1)throw new AccessError('Catatan uang laci sudah dipakai.',409);
+      }
+      if(value.kind==='kitchen'){
+        const item=await get('orderItems',value.orderItemId),order=await get('orders',value.orderId);
+        if(!item||item.orderId!==value.orderId||item.mdDeleted||!order||order.status==='void')throw new AccessError('Pesanan sudah tidak tersedia.',409);
+        const ids=await index(`kitchenItem_${value.orderItemId}`),last=[...ids].at(-1),previous=last?await get('operations',last):undefined;
+        if((value.previousId||undefined)!==last||kitchenStages.indexOf(value.stage)!==kitchenStages.indexOf(previous?.lineSignature===kitchenSignature(item)?previous.stage:'waiting')+1)throw new AccessError('Status pesanan berubah. Perbarui lalu coba lagi.',409);
+        if(value.lineSignature!==kitchenSignature(item))throw new AccessError('Pesanan berubah. Periksa kembali.',409);
+        ids.add(row.id);
+      }
+
     }
     if(row.table==='shifts'){
       if(prior?.status==='closed')throw new AccessError('Shift yang ditutup tidak dapat diubah.',409);
@@ -140,6 +207,7 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
       integer(value.amount,true);const shift=await get('shifts',value.shiftId);if(!shift||!bootstrap&&shift.status!=='open'||!own(shift))throw new AccessError('Gunakan shift kasir sendiri.');
       if(prior)throw new AccessError('Catatan kas tidak dapat ditimpa.');
       if(!['in','out'].includes(value.type))throw new AccessError('Catatan kas tidak valid.',400);
+      if(!bootstrap&&['kasbon_karyawan','komisi'].includes(value.category)&&!rows.some(r=>r.table==='operations'&&r.value.cashMovementId===row.id&&r.value.source==='laci'))throw new AccessError('Catatan karyawan belum tersedia.',409);
       (await index(`shiftCash_${value.shiftId}`)).add(row.id);
     }
     if(row.table==='auditLogs'&&prior)throw new AccessError('Catatan aktivitas tidak dapat ditimpa.');
@@ -202,6 +270,22 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
     const verificationStatus=paid===0&&!legacyPaid?'menunggu_bukti':nonCash.every(p=>p.proofStatus==='terverifikasi')?'terverifikasi':nonCash.some(p=>p.proofStatus==='menunggu_verifikasi')?'menunggu_verifikasi':'menunggu_bukti';
     add('pos_orders',orderId,{...order,paidAmount:paid,remainingBalance:order.total-paid,...(!bootstrap?{verificationStatus}:{})});
   }
+  // Revalue commission entitlement from accepted collections whenever a receipt changes.
+  // Aggregate state keeps an attendance or payroll write independent of years of history.
+  for(const orderId of affected){
+    const grants=await commissions(orderId),order=result.get(`pos_orders:${orderId}`)?.value||await get('orders',orderId);
+    for(const grant of grants.entries){
+      const earned=earnedCommission(grant.amount,order as {status:string}|undefined);
+      if(earned!==grant.earned){const state=await staff(grant.employeeId);state.earned+=earned-grant.earned;grant.earned=earned;}
+    }
+  }
+  for(const row of rows)if(row.table==='operations'&&row.value.kind==='commission.paid'){
+    const state=await staff(row.value.employeeId);
+    if(state.paid>state.earned)throw new AccessError('Pembayaran melebihi komisi tersedia.',409);
+  }
+  for(const [id,state] of staffStates)add('pos_employeeState',id,state);
+  for(const [id,value] of commissionOrders)if(value.entries.length)add('pos_orderCommissions',id,value);
+  for(const [id,value] of sessions)add('pos_attendanceSession',id,value);
   for(const row of rows)if(row.table==='shifts'&&row.value.status==='closed'&&!bootstrap){
     const payments=await Promise.all(Array.from(await index(`shiftPayments_${row.id}`),id=>get('payments',id)));
     const refunds=await Promise.all(Array.from(await index(`shiftRefunds_${row.id}`),id=>get('payments',id)));
@@ -228,6 +312,8 @@ export function visiblePosEntity(entity:Entity,claims:AccessClaims):Entity|undef
   if(!entity.kind.startsWith('pos_'))return undefined;
   if(claims.role==='owner')return entity;
   if(['pos_index','pos_catalogVersion','pos_reservation'].includes(entity.kind))return undefined;
+  // An owner may record attendance for an employee. That employee must see the same session.
+  if(entity.kind==='pos_operations'&&['attendance.in','attendance.out'].includes(String(entity.value.kind))&&entity.value.employeeId===claims.employeeId)return entity;
   if(!['pos_menuItems','pos_tables'].includes(entity.kind)&&(entity.value.mdDeviceId!==claims.deviceId||entity.value.mdOperatorId!==claims.employeeId))return undefined;
   const {costPrice:_cost,purchasePrice:_purchase,totalCost:_total,...value}=entity.value;return {...entity,value};
 }

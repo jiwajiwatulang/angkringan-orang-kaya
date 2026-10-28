@@ -19,6 +19,8 @@ export default function BarcodeCameraModal({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanLoopRef = useRef<number | null>(null);
+  const callbacks = useRef({onScan,onClose});
+  useEffect(()=>{callbacks.current={onScan,onClose};},[onScan,onClose]);
 
   const [hasCamera, setHasCamera] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -47,6 +49,7 @@ export default function BarcodeCameraModal({
     e.preventDefault();
     const clean = manualCode.trim();
     if (!clean) return;
+    stopCamera();
     playScannerBeep("success");
     onScan(clean);
     setManualCode("");
@@ -75,6 +78,7 @@ export default function BarcodeCameraModal({
 
     let isSubscribed = true;
     setErrorMessage(null);
+    setHasCamera(true);setCanTorch(false);setManualCode('');
 
     const initCamera = async () => {
       if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
@@ -90,6 +94,7 @@ export default function BarcodeCameraModal({
         typeof (window as any).BarcodeDetector === "function";
 
       setIsDetectorSupported(supported);
+      if(!supported){setHasCamera(false);return;}
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -148,14 +153,15 @@ export default function BarcodeCameraModal({
             ) {
               try {
                 const barcodes = await barcodeDetector.detect(videoRef.current);
+                if(!isSubscribed)return;
                 if (barcodes && barcodes.length > 0) {
                   const detectedValue = barcodes[0].rawValue;
                   if (detectedValue) {
                     scanCooldown = true;
                     playScannerBeep("success");
-                    onScan(detectedValue);
+                    callbacks.current.onScan(detectedValue);
                     stopCamera();
-                    onClose();
+                    callbacks.current.onClose();
                     return;
                   }
                 }
@@ -186,7 +192,7 @@ export default function BarcodeCameraModal({
       isSubscribed = false;
       stopCamera();
     };
-  }, [isOpen, onClose, onScan, stopCamera]);
+  }, [isOpen, stopCamera]);
 
   if (!isOpen) return null;
 

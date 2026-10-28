@@ -106,14 +106,14 @@ export function setupHardwareBarcodeScanner(
   const MIN_BARCODE_LENGTH = 3;
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (options?.enabled === false) return;
+    if (options?.enabled === false || e.isComposing || e.repeat) { buffer = ''; lastKeyTime = 0; return; }
 
     const currentTime = Date.now();
     const target = e.target as HTMLElement | null;
     const isInsideInput =
       target &&
       (target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
+        target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.getAttribute?.("role") === "textbox" ||
         target.isContentEditable);
 
     // Form editing must never trigger a sale or intercept its Enter key.
@@ -125,7 +125,7 @@ export function setupHardwareBarcodeScanner(
 
     // If Enter key is pressed, check if buffer contains a barcode
     if (e.key === "Enter") {
-      if (buffer.length >= MIN_BARCODE_LENGTH) {
+      if (buffer.length >= MIN_BARCODE_LENGTH && currentTime - lastKeyTime <= SCANNER_MAX_INTERVAL_MS) {
         // Barcode successfully captured from hardware scanner
         const finalCode = buffer.trim();
         buffer = "";

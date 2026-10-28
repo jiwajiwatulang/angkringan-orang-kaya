@@ -1,6 +1,5 @@
 import {buildSalesSeries,dashboardPeriod,type DashboardRange,localDateKey} from '../dashboardMetrics';
-export function posDashboard(orders:any[],range:DashboardRange,now=new Date()){
-  const period=dashboardPeriod(range,now);
+export function paymentEntries(orders:any[]){
   const entries:{at:string;amount:number;refund:number;orderId:number;method:string}[]=[];
   for(const order of orders){
     const payments=(order.payments||[]).filter((p:any)=>['completed','refunded'].includes(p.status));
@@ -15,6 +14,10 @@ export function posDashboard(orders:any[],range:DashboardRange,now=new Date()){
     }
     if(!payments.length&&order.status==='paid'&&order.total>0)entries.push({at:order.createdAt,amount:order.total,refund:0,orderId:order.id,method:order.paymentMethod});
   }
+  return entries;
+}
+export function posDashboard(orders:any[],range:DashboardRange,now=new Date()){
+  const period=dashboardPeriod(range,now),entries=paymentEntries(orders);
   const between=(start:Date,end:Date)=>entries.filter(entry=>{const t=new Date(entry.at).getTime();return t>=start.getTime()&&t<end.getTime();});
   const summarize=(rows:typeof entries)=>({received:rows.reduce((n,row)=>n+row.amount,0),refunded:rows.reduce((n,row)=>n+row.refund,0),net:rows.reduce((n,row)=>n+row.amount-row.refund,0),count:new Set(rows.filter(row=>row.amount>0).map(row=>row.orderId)).size});
   const rows=between(period.start,period.end),days=[];

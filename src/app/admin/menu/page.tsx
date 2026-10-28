@@ -695,6 +695,7 @@ function CatalogPanel() {
 
         {/* Action Buttons Group */}
         <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => handleExportCatalog("csv")} className="min-h-11 rounded-xl border border-line bg-card px-3 text-xs font-bold text-fg">Ekspor CSV</button>
           {/* Export Button */}
           <button
             type="button"

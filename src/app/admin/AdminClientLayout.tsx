@@ -25,6 +25,9 @@ const navItems = [
   { href: "/admin/shift", label: "Shift & Kas Laci", icon: "shift" },
   { href: "/admin/pelayan", label: "Waiter Floor", icon: "table" },
   { href: "/admin/menu", label: "Katalog & Stok", icon: "catalog" },
+  { href: "/admin/karyawan", label: "Karyawan", icon: "shift" },
+  { href: "/admin/laporan", label: "Laporan Usaha", icon: "chart" },
+  { href: "/admin/dapur", label: "Pesanan Dapur", icon: "food" },
   { href: "/admin/pengaturan", label: "Pengaturan POS", icon: "settings" },
 ];
 
@@ -688,6 +691,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         {/* Navigation Links */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems
+            .filter(item => item.href !== "/admin/dapur" || storeSettings.businessType !== "retail")
             .filter(
               (item) =>
                 !["/admin/meja", "/admin/pelayan"].includes(item.href) ||

@@ -39,6 +39,13 @@ test('two isolated actual POS stores reconcile offline receipts, stock, owner pr
     const own=await b.call('getCashierOrders');assert.equal(own.length,1);assert.equal(own[0].total,10000);
     assert.equal((await b.send('records',{table:'menuItems'}))[0].stockQty,5);
     assert.equal((await env.DB.prepare("SELECT count(*) n FROM MdEntities WHERE kind='pos_payments'").first<number>('n')),2);
+    // Attendance is queued offline, survives reopening and reaches the owner exactly once.
+    await b.call('saveOperation',{kind:'attendance.in',employeeId,employeeName:'Kasir Pagi',sessionId:'local-attendance'});
+    await b.send('reopen');await flush(b,e,true);await flush(b,e);await pull(a,o);
+    assert.equal((await a.send('records',{table:'operations'})).length,1);
+    await assert.rejects(()=>b.call('saveOperation',{kind:'loan',employeeId,employeeName:'Kasir Pagi',amount:1,source:'rekening'}),/pemilik/);
+    await b.call('saveOperation',{kind:'attendance.out',employeeId,employeeName:'Kasir Pagi',sessionId:'local-attendance'});await flush(b,e);await pull(a,o);
+    assert.equal((await a.send('records',{table:'operations'})).length,2);
     await a.call('createOrder',{status:'paid',total:6000,items:[{id:product,nama:'Teh',harga:6000,qty:1}]});
     const pending=await a.send('queue');assert.equal(pending.length,1);
     await submitEvent(env.DB,o.claims,pending[0].event); // Lost response before replacement.

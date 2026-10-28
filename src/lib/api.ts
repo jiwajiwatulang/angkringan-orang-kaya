@@ -11,6 +11,7 @@ import { validateProductPhoto } from './productPhoto';
 import { requireCashierWriteAccess } from './licenseGuard';
 import { resolveRetailProduct, finishRetailOrder } from './retailCatalog';
 import { validateRetailDraft } from './retailDraft';
+import {validateOperation} from './operations';
 import { DEMO_ORDER_LIMIT } from './demoMode';
 import { applyBusinessDemoPreset, BusinessDemoType, BUSINESS_DEMO_PRESETS } from './demoCatalog';
 
@@ -1942,6 +1943,7 @@ export async function addCashMovement(data: {
 }
 
 export async function deleteCashMovement(id: number) {
+  if(await db.table('operations').filter(r=>r.cashMovementId===id).count())throw new Error('Catatan ini terhubung dengan kasbon atau komisi dan tidak dapat dihapus.');
   await requireMerchantAdmin();
   const movement = await db.table('cashMovements').get(id);
   if (!movement) return;
@@ -1957,6 +1959,7 @@ export async function deleteCashMovement(id: number) {
 
 export async function resetAllTransactions() {
   await requireMerchantAdmin();
+  if(db.name!=='SakuNotaDemoDB'&&await db.table('operations').count())throw new Error('Data terhubung dengan catatan karyawan. Gunakan pemulihan cadangan lengkap agar catatan tetap utuh.');
   await db.transaction('rw', ['orders', 'orderItems', 'payments', 'paymentProofs', 'tables', 'auditLogs', 'shifts', 'cashMovements'], async () => {
     await db.table('orderItems').clear();
     await db.table('orders').clear();
@@ -1977,6 +1980,7 @@ export async function resetAllTransactions() {
 export async function resetDemoSandbox(presetType?: BusinessDemoType) {
   if (db.name !== 'SakuNotaDemoDB') throw new Error('Reset demo hanya diizinkan pada database demo.');
   await resetAllTransactions();
+  await db.table('operations').clear();
   await db.table('inventoryMovements').clear();
 
   const type = presetType || (getStoreSettings().businessType as BusinessDemoType) || 'warung';
@@ -2048,6 +2052,7 @@ export async function exportAllData() {
   const shifts = await db.table('shifts').toArray();
   const cashMovements = await db.table('cashMovements').toArray();
   const inventoryMovements = await db.table('inventoryMovements').toArray();
+  const operations = await db.table('operations').toArray();
   
   let settings = null;
   try {
@@ -2101,7 +2106,8 @@ export async function exportAllData() {
     auditLogs,
     shifts,
     cashMovements,
-    inventoryMovements
+    inventoryMovements,
+    operations
   };
   });
 }
@@ -2181,6 +2187,8 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
     throw new Error(validation.error || 'Format file cadangan tidak valid: Data menu tidak ditemukan.');
   }
   if (data.inventoryMovements !== undefined && !Array.isArray(data.inventoryMovements)) throw new Error('Riwayat stok tidak valid.');
+  if (data.operations !== undefined && !Array.isArray(data.operations)) throw new Error('Catatan karyawan tidak valid.');
+  for(const record of data.operations||[])validateOperation(record);
   for (const product of data.menus) {
     validateProductPhoto(product.imageData);
     if (product.trackStock && (!Number.isInteger(product.stockQty) || product.stockQty < 0 || !Number.isInteger(product.minimumStock ?? 0) || (product.minimumStock ?? 0) < 0)) throw new Error('Saldo stok dalam cadangan tidak valid.');
@@ -2210,7 +2218,9 @@ export async function importAllData(data: any, options?: { skipPreBackup?: boole
 
   // Helper pemulihan data ke tabel Dexie - SEMUA tabel DAN pengaturan dieksekusi dalam 1 transaksi ACID
   const restoreToTables = async (payload: any) => {
-    await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems', 'payments', 'paymentProofs', 'auditLogs', 'shifts', 'cashMovements', 'settings', 'inventoryMovements'], async () => {
+    await db.transaction('rw', ['menuItems', 'tables', 'orders', 'orderItems', 'payments', 'paymentProofs', 'auditLogs', 'shifts', 'cashMovements', 'settings', 'inventoryMovements', 'operations'], async () => {
+      await db.table('operations').clear();
+      if (payload.operations?.length) await db.table('operations').bulkAdd(payload.operations);
       await db.table('inventoryMovements').clear();
       if (payload.inventoryMovements?.length) await db.table('inventoryMovements').bulkAdd(payload.inventoryMovements);
       await db.table('auditLogs').clear();

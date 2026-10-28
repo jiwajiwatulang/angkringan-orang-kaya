@@ -1,3 +1,4 @@
+import {csvCell} from './reportExport';
 import * as XLSX from 'xlsx';
 
 /**
@@ -85,7 +86,7 @@ export function downloadMenuTemplate(format: 'xlsx' | 'csv' = 'xlsx') {
   XLSX.utils.book_append_sheet(wb, ws, 'Template Menu');
 
   if (format === 'csv') {
-    const csvOutput = XLSX.utils.sheet_to_csv(ws);
+    const csvOutput = worksheetCsv(ws);
     downloadFile(csvOutput, 'template_menu_sakunota.csv', 'text/csv;charset=utf-8;');
   } else {
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -213,7 +214,7 @@ export function exportMenusToExcel(menus: any[], format: 'xlsx' | 'csv' = 'xlsx'
 
   const dateStr = new Date().toISOString().split('T')[0];
   if (format === 'csv') {
-    const csvOutput = XLSX.utils.sheet_to_csv(ws);
+    const csvOutput = worksheetCsv(ws);
     downloadFile(csvOutput, `katalog_menu_sakunota_${dateStr}.csv`, 'text/csv;charset=utf-8;');
   } else {
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -268,7 +269,7 @@ export function exportOrdersToExcel(orders: any[], format: 'xlsx' | 'csv' = 'xls
 
   const dateStr = new Date().toISOString().split('T')[0];
   if (format === 'csv') {
-    const csvOutput = XLSX.utils.sheet_to_csv(ws);
+    const csvOutput = worksheetCsv(ws);
     downloadFile(csvOutput, `laporan_transaksi_sakunota_${dateStr}.csv`, 'text/csv;charset=utf-8;');
   } else {
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -316,7 +317,7 @@ export function downloadHistoricalTransactionTemplate(format: 'xlsx' | 'csv' = '
   XLSX.utils.book_append_sheet(wb, ws, 'Template Transaksi Historis');
 
   if (format === 'csv') {
-    const csvOutput = XLSX.utils.sheet_to_csv(ws);
+    const csvOutput = worksheetCsv(ws);
     downloadFile(csvOutput, 'template_transaksi_historis.csv', 'text/csv;charset=utf-8;');
   } else {
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -399,4 +400,10 @@ export async function parseHistoricalTransactionsFile(file: File) {
   });
 
   return { validTransactions, invalidRows, totalRows: rawRows.length };
+}
+
+// Export strings as data, even when a product name or note resembles a spreadsheet formula.
+function worksheetCsv(sheet:XLSX.WorkSheet){
+  const rows=XLSX.utils.sheet_to_json<unknown[]>(sheet,{header:1,raw:true,defval:''});
+  return '\uFEFF'+rows.map(row=>row.map(csvCell).join(',')).join('\r\n');
 }

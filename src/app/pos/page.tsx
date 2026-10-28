@@ -1,4 +1,5 @@
 "use client";
+import AttendanceButton from "@/components/operations/AttendanceButton";
 import LoadingState from "@/components/LoadingState";
 import LockIcon from "@/components/LockIcon";
 import {getPosScope} from "@/lib/multidevice/posWire";
@@ -1622,12 +1623,10 @@ export default function POSPage() {
     }
   };
 
+  const scannerBlocked = !!receiptData || !!blindCloseResult || !accessStatus.isValid || isLoading || isAccessChecking || isPaymentModalOpen || isSplitBillModalOpen || isRefundModalOpen || isDiscountModalOpen || isCashMovementModalOpen || isOpenShiftModalOpen || isCloseShiftModalOpen || isRetailAddOpen || isBarcodeScanOpen || isOnboardingOpen || !!activeModItem || isProcessingPayment || isSplitProcessing;
   useEffect(() => {
-    const cleanup = setupHardwareBarcodeScanner((code) => {
-      handleBarcodeScanned(code);
-    });
-    return cleanup;
-  }, [menuData, storeSettings.businessType]);
+    return setupHardwareBarcodeScanner(handleBarcodeScanned, { enabled: !scannerBlocked });
+  }, [menuData, storeSettings.businessType, scannerBlocked, cart]);
 
   const updateQty = (keyOrId: string | number, delta: number) => {
     setCart(prev => prev.map(item => {
@@ -3403,6 +3402,7 @@ export default function POSPage() {
             </button>
           )}
 
+          <AttendanceButton />
           <CashierPrinter settings={storeSettings} />
           {getPosScope()?.claims.role!=='cashier'&&<button type="button" onClick={enterAdmin} className="px-3 py-2 max-lg:landscape:py-1 max-lg:landscape:px-2.5 rounded-xl border border-line bg-card text-fg font-bold text-xs hover:bg-line/80 hover:border-accent/40 cursor-pointer transition-all duration-150 active:scale-95 shadow-xs">Admin</button>}
 
@@ -4281,26 +4281,23 @@ export default function POSPage() {
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-12 h-12 rounded-2xl bg-accent/60 text-accent-text flex items-center justify-center text-2xl font-black"><LineIcon name="chart" /></div>
               <div>
-                <h3 className="text-xl font-black text-fg">Tutup Shift Kasir (Z-Report)</h3>
+                <h3 className="text-xl font-black text-fg">Tutup Shift</h3>
                 <p className="text-xs text-muted">Operator: <strong>{currentShiftStats.operatorName}</strong></p>
               </div>
             </div>
 
-            {/* Petunjuk Blind Close */}
-            <div className=" bg-accent/40 p-4 rounded-2xl border border-accent/40 mb-5">
-              <p className="text-xs font-bold text-accent-text mb-1"><LockIcon /> Prosedur Blind Close:</p>
-              <p className="text-xs text-accent-text leading-relaxed">
-                Silakan hitung seluruh uang fisik (kertas & koin) yang ada di laci kasir saat ini. Angka sistem sengaja disembunyikan agar hasil penghitungan murni objektif.
-              </p>
-            </div>
+            <p className="mb-5 text-sm text-muted">Hitung uang tunai di laci sebelum menutup shift.</p>
             <form onSubmit={handleCloseShiftSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-fg mb-1">
-                  Hitung & Masukkan Uang Fisik di Laci (Rp):
+                  Uang di Laci (Rp)
                 </label>
                 <input 
                   type="number" 
                   autoFocus
+                  min="0"
+                  step="1"
+                  inputMode="numeric"
                   placeholder="0"
                   value={countedPhysicalCash}
                   onChange={(e) => setCountedPhysicalCash(e.target.value)}
@@ -4312,7 +4309,7 @@ export default function POSPage() {
               <p className="text-xs text-muted">Selisih kas ditampilkan setelah penutupan tersimpan.</p>
 
               <div>
-                <label className="block text-xs font-bold text-muted mb-1">Catatan Penutupan (Opsional):</label>
+                <label className="block text-xs font-bold text-muted mb-1">Catatan (Opsional)</label>
                 <input 
                   type="text" 
                   placeholder="Catatan hasil hitung kasir"

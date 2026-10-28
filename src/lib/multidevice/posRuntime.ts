@@ -57,7 +57,7 @@ export async function initializePosRuntime():Promise<PosRuntime>{
         await db.table('orders').put(order);
         for(const table of ['orderItems','payments','paymentProofs'])for(const row of (await db.table(table).where('orderId').equals(order.id).toArray()).filter(row=>!row.mdVersion))await db.table(table).put(row);
       });
-      for(const table of ['inventoryMovements','cashMovements','auditLogs'])for(const row of await pending(table))await db.table(table).put(row);
+      for(const table of ['inventoryMovements','cashMovements','auditLogs','operations'])for(const row of await pending(table))await db.table(table).put(row);
       await db.table('posMeta').put({key:'bootstrapRequired',value:false});
     }finally{setPosScope(current.scope);}
   }

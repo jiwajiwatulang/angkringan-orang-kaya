@@ -684,13 +684,14 @@ export default function AdminTransaksiPage() {
 
           {/* Export & Import Buttons */}
           <div className="flex items-center gap-1.5">
+            <button type="button" onClick={() => handleBulkExport('csv')} className="min-h-11 rounded-xl border border-line bg-card px-3 text-xs font-bold text-fg">Ekspor CSV</button>
             <button
               type="button"
               onClick={() => handleBulkExport('xlsx')}
               className="px-3 py-2 bg-blue-50 text-blue-900 border border-blue-200 hover:bg-blue-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
             >
               <span><LineIcon name="export" /></span>
-              <span>Export Excel</span>
+              <span>Ekspor Excel</span>
             </button>
 
             <button

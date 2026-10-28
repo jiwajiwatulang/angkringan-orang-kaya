@@ -14,14 +14,14 @@ export async function activatePosPartition(source:Dexie,access:string,claims:Acc
     if(result.cursor<=cursor)throw new Error('Data belum dapat diperiksa. Coba lagi.');cursor=result.cursor;
     if(page===999)throw new Error('Data belum dapat diperiksa. Coba lagi.');
   }
-  target.version(12).stores(Object.fromEntries([...POS_TABLES.map(name=>[name,name==='menuItems'?'++id,sku,nama,kategori,isSoldOut,urutan':name==='orders'?'++id,shiftId,idempotencyKey,tableId,status,verificationStatus,createdAt':name==='orderItems'?'++id,orderId,menuItemId':name==='payments'?'++id,orderId,shiftId,paymentMethod,status,proofStatus,paidAt':name==='shifts'?'++id,status,startTime,operatorName':name==='cashMovements'?'++id,shiftId,type,timestamp':name==='paymentProofs'?'++id,paymentId,orderId,status,uploadedAt':name==='inventoryMovements'?'++id,menuItemId,orderId,type,timestamp':name==='auditLogs'?'++id,orderId,action,timestamp':'++id,nomor,status']),['settings','key'],['posOutbox','id,ordinal'],['posMeta','key'],['posIds','key']]));
+  target.version(14).stores(Object.fromEntries([...POS_TABLES.map(name=>[name,name==='operations'?'++id,kind,employeeId,at,orderId,orderItemId,sessionId':name==='menuItems'?'++id,sku,nama,kategori,isSoldOut,urutan':name==='orders'?'++id,shiftId,idempotencyKey,tableId,status,verificationStatus,createdAt':name==='orderItems'?'++id,orderId,menuItemId':name==='payments'?'++id,orderId,shiftId,paymentMethod,status,proofStatus,paidAt':name==='shifts'?'++id,status,startTime,operatorName':name==='cashMovements'?'++id,shiftId,type,timestamp':name==='paymentProofs'?'++id,paymentId,orderId,status,uploadedAt':name==='inventoryMovements'?'++id,menuItemId,orderId,type,timestamp':name==='auditLogs'?'++id,orderId,action,timestamp':'++id,nomor,status']),['settings','key'],['posOutbox','id,ordinal'],['posMeta','key'],['posIds','key']]));
   try{
     const initialized=await target.table('posMeta').get('initialized');
     if(!initialized){
       const keys=(await source.table('settings').get('license_device_keys_v2'))?.value;
       const settings=(await source.table('settings').get('pos_store_settings'))?.value;
       const snapshot:Partial<Record<PosTable,Record<string,any>[]>>={};
-      if(claims.role==='owner'&&!cloudHasPos)for(const table of POS_TABLES)snapshot[table]=await source.table(table).toArray();
+      if(claims.role==='owner'&&!cloudHasPos)for(const table of POS_TABLES)snapshot[table]=source.tables.some(t=>t.name===table)?await source.table(table).toArray():[];
       const mappings=new Map<string,string>();
       for(const table of POS_TABLES)for(const row of snapshot[table]||[])mappings.set(`${table}:${row.id}`,row.mdId||crypto.randomUUID());
       await target.transaction('rw',target.tables,async()=>{

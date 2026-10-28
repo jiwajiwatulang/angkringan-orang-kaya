@@ -57,13 +57,24 @@ export const BUSINESS_TYPE_FILTERS: Array<{ id: GuideBusinessType; label: string
 ];
 
 export const GUIDE_TOPICS: GuideTopic[] = [
+  {
+    id:'karyawan-laporan-dapur',title:'Karyawan, Laporan & Dapur',shortDesc:'Kehadiran, kasbon, komisi, dan kendali usaha.',iconType:'chart',stage:4,stageLabel:'Laporan & Operasional',badge:'Operasional',businessTypes:['all'],articles:[
+      {title:'Absensi dan kasbon karyawan',summary:'Catat kehadiran terpisah dari uang laci.',steps:['Buka Admin → Karyawan → Absensi. Pilih nama, lalu Absen Masuk atau Absen Pulang. Karyawan yang masuk dengan PIN sendiri juga dapat menekan tombol absensi di kasir.','Untuk membuat nama dan PIN baru, pilih Nama & PIN Karyawan.','Buka Kasbon Karyawan, pilih nama dan Berikan Kasbon atau Terima Pembayaran.','Masukkan jumlah dan pilih Laci Kasir atau Rekening Usaha. Uang dari laci memerlukan shift aktif pada perangkat ini.','Simpan. Periksa sisa kasbon dan riwayat pembayaran. Kasbon karyawan terpisah dari utang pelanggan.'],targetHref:'/admin/karyawan',targetLabel:'Buka Karyawan'},
+      {title:'Komisi dan Rapor Kasir',summary:'Periksa layanan, pembayaran, dan selisih kas.',steps:['Buka Admin → Karyawan → Komisi. Pilih karyawan dan layanan dari nota yang sudah lunas.','Masukkan persentase, lalu Catat Komisi. Layanan yang sama hanya dicatat sekali.','Untuk membayar, isi jumlah dan sumber uang pada Bayar Komisi.','Nota yang dikembalikan mengurangi komisi tersedia. Periksa kembali jika komisi sudah terlanjur dibayar.','Buka Rapor Kasir untuk melihat pembayaran, pengembalian, shift dan catatan yang perlu diperiksa. Penanda selisih atau pembatalan bukan kesimpulan kesalahan karyawan.'],targetHref:'/admin/karyawan',targetLabel:'Buka Rapor Kasir'},
+      {title:'Jam Ramai dan Rapor Toko',summary:'Kenali waktu penjualan dan hasil minggu lalu.',steps:['Buka Admin → Laporan Usaha. Pilih Keuangan atau Produk dan periode yang ingin dilihat.','Pilih Jam Ramai untuk melihat jumlah nota menurut waktu pembayaran selama 30 hari terakhir.','Buka Rapor Toko untuk melihat minggu Senin–Minggu yang sudah selesai. Nilai muncul jika data perbandingan dan shift sudah cukup.','Pilih format Excel atau CSV, lalu Ekspor Laporan.','Transaksi perangkat lain muncul setelah terkirim. Sambungkan kedua perangkat sebelum memeriksa laporan lengkap.'],targetHref:'/admin/laporan',targetLabel:'Buka Laporan'},
+      {title:'Lab Harga dan Pojok Pajak',summary:'Coba harga dan periksa perkiraan PPh usaha.',steps:['Buka Laporan Usaha → Lab Harga. Pilih produk, masukkan harga, modal dan perkiraan jumlah terjual.','Periksa perkiraan laba kotor. Centang persetujuan lalu Simpan Harga Produk hanya jika ingin menerapkannya untuk penjualan berikutnya. Nota lama tetap memakai harga semula.','Pada Pojok Pajak, isi tahun, bentuk usaha, dan omzet seluruh usaha tahun tersebut.','Periksa kelayakan PPh Final UMKM melalui ketentuan DJP sebelum mencentang konfirmasi. Perhitungan hanya perkiraan dan tidak ditambahkan pada nota pembeli.'],targetHref:'/admin/laporan',targetLabel:'Buka Laporan Usaha'},
+      {title:'Pesanan Dapur',summary:'Siapkan pesanan makanan dan minuman.',steps:['Untuk usaha makanan atau minuman, buka Admin → Pesanan Dapur pada perangkat Pemilik.','Pilih kategori jika ingin memisahkan pesanan dapur dan bar.','Tekan Mulai Siapkan, Tandai Siap, lalu Sudah Disajikan sesuai keadaan barang. Status lunas ditampilkan terpisah.','Jika isi pesanan berubah, periksa kembali jumlah dan pilihannya sebelum menyiapkan.','Layar ini memakai perangkat yang sudah terdaftar. Pesanan dari perangkat lain diterima setelah tersambung dan terkirim.'],targetHref:'/admin/dapur',targetLabel:'Buka Pesanan Dapur'},
+      {title:'Scanner barcode USB dan Bluetooth',summary:'Pindai barang tanpa mengetik kode.',steps:['Hubungkan scanner ke perangkat kasir sebagai keyboard. Atur akhir pemindaian menjadi Enter.','Simpan kode barcode pada produk melalui Katalog & Stok. Pertahankan angka nol di depan.','Di kasir, tutup pembayaran atau formulir yang terbuka, lalu pindai barang. Satu pemindaian menambah satu barang.','Scanner tidak menambahkan barang ketika Anda mengisi PIN, uang pembayaran, catatan, atau pilihan produk.','Jika kamera tidak mendukung pemindaian, ketik kode barang atau gunakan scanner USB/Bluetooth.'],targetHref:'/pos',targetLabel:'Buka Kasir'}
+    ]
+  },
+
   // ==========================================
   // TAHAP 1: SETUP AWAL & PERSIAPAN USAHA (WAJIB)
   // ==========================================
   {
     id: 'license-security-update',
     title: 'Aktivasi Lisensi & Uji Coba Demo',
-    shortDesc: 'Aktivasi lisensi resmi satu perangkat, aturan trial, dan mode latihan.',
+    shortDesc: 'Aktivasi lisensi, perangkat kasir, dan mode latihan.',
     iconType: 'shield',
     stage: 1,
     stageLabel: 'Tahap 1: Persiapan Awal',
@@ -76,16 +87,16 @@ export const GUIDE_TOPICS: GuideTopic[] = [
         steps: [
           'Buka halaman utama SakuNota dan pilih tombol "Aktivasi Kode".',
           'Masukkan kode lisensi resmi berbayar, tester, atau trial yang sudah disetujui (format: SN-XXXX-XXXX-XXXX).',
-          'Tekan "Aktifkan Lisensi di Perangkat Ini". Lisensi akan langsung terikat secara kriptografis pada hardware ID perangkat kasir Anda.',
+          'Tekan "Aktifkan Lisensi di Perangkat Ini". Lisensi terhubung dengan perangkat kasir Anda.',
           'Setelah aktivasi pertama berhasil, aplikasi 100% dapat digunakan tanpa sambungan internet.',
-          'SakuNota menerapkan aturan ketat 1 lisensi untuk 1 perangkat. Jika ingin memindahkan perangkat di kemudian hari, hubungi dukungan resmi untuk melepas ikatan perangkat lama.'
+          'Satu lisensi digunakan untuk satu toko, maksimal dua perangkat: Pemilik dan Kasir. Kelola melalui Perangkat & Karyawan.'
         ],
         targetHref: '/?aktivasi=true',
         targetLabel: 'Aktivasi lisensi'
       },
       {
         title: 'Mencoba demo kasir dengan aman',
-        summary: 'Data latihan disimpan terpisah dari database toko asli Anda.',
+        summary: 'Data latihan disimpan terpisah dari data toko asli Anda.',
         steps: [
           'Pilih tombol "Coba Demo Kasir" pada halaman utama.',
           'Di kasir demo, Anda bebas mencoba buka shift, scan barcode, tambah pesanan, dan mencetak struk latihan.',
@@ -231,7 +242,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
           'Jika status belum lengkap, sambungkan internet sebentar dan tekan "Perbarui Aset Offline". Tunggu sampai semua komponen tersimpan 100%.',
           'Setelah tersimpan, matikan koneksi internet (mode pesawat) dan coba buka ulang halaman kasir. Kasir tetap bekerja lancar tanpa kendala.'
         ],
-        tips: 'Seluruh database transaksi, menu, dan shift disimpan di IndexedDB perangkat Anda, sehingga toko tetap dapat berjualan di lokasi tanpa sinyal.'
+        tips: 'Transaksi, menu, dan shift disimpan di perangkat Anda agar kasir tetap bisa dipakai tanpa sinyal.'
       }
     ]
   },
@@ -424,7 +435,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
           'Buka Admin → Kelola Menu & Produk, lalu klik tombol Edit pada produk.',
           'Pada bagian Foto Produk, pilih file foto dari galeri HP atau kamera komputer Anda (format JPG, PNG, atau WebP).',
           'Aplikasi otomatis mengompresi ukuran foto agar hemat memori dan cepat dimuat di HP kasir.',
-          'Klik Simpan. Foto tersimpan di database lokal perangkat kasir dan dapat ditampilkan selamanya tanpa internet.'
+          'Klik Simpan. Foto tersimpan di perangkat kasir dan dapat ditampilkan selamanya tanpa internet.'
         ],
         targetHref: '/admin/menu',
         targetLabel: 'Kelola foto produk'
@@ -665,8 +676,8 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   // ==========================================
   {
     id: 'closing-shift',
-    title: 'Tutup Shift & Struk Z-Report',
-    shortDesc: 'Hitung fisik uang laci, verifikasi selisih sistem kasir, dan cetak Z-Report.',
+    title: 'Tutup Shift & Ringkasan Shift',
+    shortDesc: 'Hitung fisik uang laci, verifikasi selisih sistem kasir, dan cetak ringkasan shift.',
     iconType: 'file-text',
     stage: 4,
     stageLabel: 'Tahap 4: Laporan & Tutup Shift',
@@ -683,7 +694,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
           'Klik "Tutup Shift Sekarang".',
           'Sistem akan membandingkan uang fisik dengan catatan penjualan sistem (Kas Seharusnya = Modal Awal + Penjualan Tunai + Kas Masuk - Kas Keluar).',
           'Aplikasi menampilkan status rekonsiliasi: Pas (Cocok Rp 0), Lebih (uang fisik berlebih), atau Kurang (uang laci tekor).',
-          'Cetak struk Z-Report sebagai bukti serah terima shift kasir yang sah.'
+          'Cetak struk ringkasan shift sebagai bukti serah terima shift kasir yang sah.'
         ],
         tips: 'Penjualan QRIS dan transfer bank tidak menambah fisik kas laci uang dan tercatat terpisah di laporan non-tunai.',
         targetHref: '/admin/shift',
@@ -762,7 +773,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
           'Isi alasan penyesuaian (misal: "Barang rusak kemasan", "Kedaluwarsa", atau "Penghitungan akhir bulan").',
           'Klik Simpan Penyesuaian. Sistem otomatis memperbarui saldo stok dan mencatat selisihnya di riwayat pergerakan stok.'
         ],
-        tips: 'Seluruh perhitungan stok tersimpan aman di database lokal IndexedDB tanpa bergantung pada koneksi internet.'
+        tips: 'Catatan stok tersimpan di perangkat dan tetap bisa diperiksa tanpa internet.'
       }
     ]
   },
@@ -805,7 +816,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
         targetLabel: 'Buka Data & Cadangan'
       },
       {
-        title: 'Mengunduh cadangan database toko (.json)',
+        title: 'Mengunduh cadangan data toko (.json)',
         summary: 'Cadangan mencakup seluruh katalog produk, foto, riwayat transaksi, shift kasir, dan stok.',
         steps: [
           'Buka Admin → Pengaturan → Data & Cadangan.',
