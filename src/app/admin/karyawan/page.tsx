@@ -7,7 +7,7 @@ import {getActiveShift} from '@/lib/api';
 import {operationEmployees,saveOperation} from '@/lib/operationsApi';
 import {attendanceSummary,loanBalance,commissionBalance,type OperationKind,type OperationRecord} from '@/lib/operations';
 import {cashierReport} from '@/lib/storeReports';
-import {Card,Stat,Tabs,field,primary,secondary,money,date} from '@/components/operations/Shared';
+import {PageHeading,Card,Stat,Tabs,field,primary,secondary,money,date} from '@/components/operations/Shared';
 import LoadingState,{BusyLabel} from '@/components/LoadingState';
 
 export default function EmployeeOperations(){
@@ -26,8 +26,8 @@ export default function EmployeeOperations(){
   const submitMoney=(event:React.FormEvent)=>{event.preventDefault();void perform(async()=>{const shift=await getActiveShift();await saveOperation({...base(),kind,amount:Number(amount),source,shiftId:source==='laci'?shift?.id:undefined});});};
   const sessions=data?attendanceSummary(data.records):[],active=sessions.find(s=>s.employeeId===employee&&!s.end);
   const services=data?.items.filter(item=>data.orders.some(o=>o.id===item.orderId&&o.status==='paid'&&!o.isRefunded)&&!data.records.some(r=>r.kind==='commission'&&r.orderItemId===item.id))||[];
-  return <main className="mx-auto max-w-6xl space-y-5 p-4 text-fg sm:p-6">
-    <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold">Karyawan &amp; Operasional</h1><Link href="/admin/pengaturan/perangkat" className={secondary}>Nama &amp; PIN Karyawan</Link></div>
+  return <main className="sn-operations mx-auto max-w-6xl space-y-5 p-4 text-fg sm:space-y-6 sm:p-6">
+    <PageHeading title="Karyawan & Operasional"><Link href="/admin/pengaturan/perangkat" className={secondary}>Nama &amp; PIN Karyawan</Link></PageHeading>
     <Tabs value={tab} onChange={id=>{setTab(id);setError('');setMessage('');setKind(id==='commission'?'commission.paid':'loan');}} items={[{id:'attendance',label:'Absensi'},{id:'loans',label:'Kasbon Karyawan'},{id:'commission',label:'Komisi'},{id:'report',label:'Rapor Kasir'}]}/>
     {error&&<p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}{message&&<p role="status" className="text-sm text-blue-700">{message}</p>}
     {!data?<LoadingState label="Menyiapkan catatan karyawan"/>:<>

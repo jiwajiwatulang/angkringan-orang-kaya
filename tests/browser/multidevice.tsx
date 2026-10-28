@@ -47,6 +47,31 @@ function OwnerReport({Page,Provider}:{Page:React.ComponentType;Provider:React.Co
   return ready?<Provider><Page/></Provider>:<p>Memuat laporan…</p>;
 }
 
+// Optional visual fixture uses real POS writes in the isolated local store only.
+function KitchenSample({Page}:{Page:React.ComponentType}){
+  const [ready,setReady]=useState(false),[error,setError]=useState('');
+  React.useEffect(()=>{void (async()=>{
+    try{
+      if(!(await db.table('settings').get('qa_kitchen_visual'))?.value){
+        const api=await import('../../src/lib/api'),{saveOperation}=await import('../../src/lib/operationsApi'),{kitchenSignature}=await import('../../src/lib/operations');
+        if(!await api.getActiveShift())await api.openShift({operatorName:'Pemilik',startingCash:200000});
+        for(const sample of [{nama:'Nasi Goreng Spesial',harga:28000,kategori:'Makanan',customer:'Nabila',qty:2,note:'Tidak pedas',stage:0},{nama:'Es Kopi Susu',harga:18000,kategori:'Minuman',customer:'Arif',qty:3,note:'Es sedikit, tanpa gula',stage:1},{nama:'Ayam Bakar',harga:32000,kategori:'Makanan',customer:'Dina',qty:1,note:'Sambal dipisah',stage:2}]){
+          const product=await api.createMenu({nama:sample.nama,harga:sample.harga,kategori:sample.kategori});
+          const order=await api.createOrder({status:'unpaid',customerName:sample.customer,notes:sample.note,total:sample.harga*sample.qty,items:[{id:Number(product),nama:sample.nama,harga:sample.harga,kategori:sample.kategori,qty:sample.qty}]});
+          const item=await db.table('orderItems').where('orderId').equals(order.id!).first();
+          for(let step=0;step<sample.stage;step++){
+            const previous=(await db.table('operations').where('orderItemId').equals(item.id).toArray()).at(-1);
+            await saveOperation({kind:'kitchen',employeeId:getPosScope()!.claims.deviceId,employeeName:'Pemilik',orderId:order.id,orderItemId:item.id,stage:step===0?'preparing':'ready',previousId:previous?.mdId,lineSignature:kitchenSignature(item)});
+          }
+        }
+        await db.table('settings').put({key:'qa_kitchen_visual',value:true});
+      }
+      setReady(true);
+    }catch(e){setError(e instanceof Error?e.message:'Data uji belum siap');}
+  })();},[]);
+  return ready?<Page/>:<p role="status">{error||'Menyiapkan pesanan'}</p>;
+}
+
 async function post(path:string,data:unknown){const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw new Error(result.error||'Belum dapat dibuka.');return result;}
 function Cashier({sessions}:{sessions:EmployeeSessions}){
   const [name,setName]=useState('');
@@ -70,7 +95,8 @@ async function main(){
         ['kitchen',()=>import('../../src/app/admin/dapur/page')],
       ] as const){if(new URLSearchParams(location.search).has(query)){
         const [{default:Page},{AdminProvider}]=await Promise.all([load(),import('../../src/app/admin/AdminContext')]);
-        root.render(<Boundary><OwnerReport Page={Page} Provider={AdminProvider}/></Boundary>);return;
+        const Target=query==='kitchen'&&new URLSearchParams(location.search).has('visual')?()=> <KitchenSample Page={Page}/>:Page;
+        root.render(<Boundary><OwnerReport Page={Target} Provider={AdminProvider}/></Boundary>);return;
       }}
       if(new URLSearchParams(location.search).has('data')){
         const [{default:Page},{AdminProvider}]=await Promise.all([import('../../src/app/admin/pengaturan/data/page'),import('../../src/app/admin/AdminContext')]);

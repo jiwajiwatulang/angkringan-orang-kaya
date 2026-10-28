@@ -7,7 +7,7 @@ import {posDashboard,paymentEntries} from '@/lib/multidevice/posDashboard';
 import {storeReports} from '@/lib/storeReports';
 import {estimateFinalTax,priceSimulation} from '@/lib/operations';
 import {exportReport} from '@/lib/reportExport';
-import {Card,Stat,Tabs,field,primary,secondary,money} from '@/components/operations/Shared';
+import {PageHeading,Card,Stat,Tabs,field,primary,secondary,money} from '@/components/operations/Shared';
 import LoadingState,{BusyLabel} from '@/components/LoadingState';
 
 export default function Reports(){
@@ -35,8 +35,8 @@ export default function Reports(){
   };
   const maxHour=Math.max(1,...(report?.hours.map(h=>h.count)||[]));
   const weekly=report?.weekly;
-  return <main className="mx-auto max-w-6xl space-y-5 p-4 text-fg sm:p-6">
-    <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold">Laporan &amp; Kendali Usaha</h1>{['summary','products','peak'].includes(tab)&&<div className="flex flex-wrap gap-2"><select aria-label="Format laporan" className={secondary} value={format} onChange={e=>setFormat(e.target.value as typeof format)}><option value="xlsx">Excel</option><option value="csv">CSV</option></select><button className={primary} disabled={busy||!data} onClick={()=>void run(()=>exportReport(exportRows(),format,`sakunota-${tab}-${new Date().toISOString().slice(0,10)}`))}>Ekspor Laporan</button></div>}</div>
+  return <main className="sn-operations mx-auto max-w-6xl space-y-5 p-4 text-fg sm:space-y-6 sm:p-6">
+    <PageHeading title="Laporan & Kendali Usaha">{['summary','products','peak'].includes(tab)&&<div className="flex flex-wrap gap-2"><select aria-label="Format laporan" className={secondary} value={format} onChange={e=>setFormat(e.target.value as typeof format)}><option value="xlsx">Excel</option><option value="csv">CSV</option></select><button className={primary} disabled={busy||!data} onClick={()=>void run(()=>exportReport(exportRows(),format,`sakunota-${tab}-${new Date().toISOString().slice(0,10)}`))}>Ekspor Laporan</button></div>}</PageHeading>
     <Tabs value={tab} onChange={id=>{setTab(id);setError('');setMessage('');}} items={[{id:'summary',label:'Keuangan'},{id:'products',label:'Produk'},{id:'peak',label:'Jam Ramai'},{id:'weekly',label:'Rapor Toko'},{id:'price',label:'Lab Harga'},{id:'tax',label:'Pojok Pajak'}]}/>
     {error&&<p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}{message&&<p role="status" className="text-sm text-blue-700">{message}</p>}
     {!data||!dashboard||!report?<LoadingState label="Menyiapkan laporan"/>:<>
