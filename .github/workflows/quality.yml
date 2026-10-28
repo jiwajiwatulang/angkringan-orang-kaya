@@ -20,6 +20,7 @@ jobs:
       - run: npm test
       - run: npm run test:stability
       - run: npm run test:multidevice
+      - run: npm run test:homepage
       - run: npm run test:operations
       - run: npm run test:multidevice:edge
       - run: npm run build

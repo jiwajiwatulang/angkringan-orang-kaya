@@ -43,7 +43,7 @@ export const STAGE_CONFIG: Record<GuideStage, { title: string; subtitle: string;
   },
   4: {
     stepNumber: '4',
-    title: 'Laporan & Tutup Shift',
+    title: 'Laporan & Operasional',
     subtitle: 'Rekap shift kasir, laporan laba rugi, stok opname, dan cadangan data.'
   }
 };
@@ -52,13 +52,13 @@ export const BUSINESS_TYPE_FILTERS: Array<{ id: GuideBusinessType; label: string
   { id: 'all', label: 'Semua', desc: 'Seluruh topik panduan SakuNota' },
   { id: 'warung', label: 'Warung & UMKM', desc: 'Kasir cepat dan arus kas harian' },
   { id: 'restaurant', label: 'Restoran & Kafe', desc: 'Denah meja, pesanan meja, dan mode pelayan' },
-  { id: 'retail', label: 'Toko & Retail', desc: 'Scan barcode, barang timbang, dan stok barang' },
-  { id: 'setup', label: 'Perangkat & Sistem', desc: 'Lisensi, printer, PIN kasir, dan backup' }
+  { id: 'retail', label: 'Toko & Retail', desc: 'Barcode dan persediaan barang' },
+  { id: 'setup', label: 'Perangkat & Sistem', desc: 'Lisensi, printer, PIN kasir, dan cadangan data' }
 ];
 
 export const GUIDE_TOPICS: GuideTopic[] = [
   {id:'hubungkan-kasir',title:'Hubungkan Perangkat Kasir',shortDesc:'Hubungkan Kasir dan Pemilik dalam satu toko.',iconType:'store',stage:1,stageLabel:'Persiapan Awal',badge:'Perangkat',businessTypes:['all'],articles:[
-    {title:'Menghubungkan perangkat kedua',summary:'Siapkan kode dari perangkat Pemilik.',steps:['Di perangkat Pemilik, buka Admin → Pengaturan POS → Perangkat & Karyawan → Tambah Perangkat.','Pindai QR dengan kamera HP lalu buka tautannya, atau salin tautan dan tempel pada halaman Hubungkan Perangkat di perangkat Kasir.','Beri nama perangkat, misalnya Kasir Depan, lalu tekan Minta Persetujuan Pemilik.','Kembali ke perangkat Pemilik dan tekan Setujui Perangkat untuk nama yang sesuai.','Perangkat Kasir membuka halaman masuk. Pilih nama karyawan dan masukkan PIN yang dibuat Pemilik. PIN karyawan terdiri dari 6–12 angka.'],targetHref:'/hubungkan-perangkat',targetLabel:'Hubungkan Perangkat'},
+    {title:'Menghubungkan perangkat kedua',summary:'Siapkan kode dari perangkat Pemilik.',steps:['Di perangkat Pemilik, buka Admin → Pengaturan POS → Perangkat & Karyawan → Tambah Perangkat.','Di perangkat Kasir, buka Hubungkan Perangkat. Pilih Pindai QR Pemilik, atau tempel tautan dari Pemilik dan tekan Gunakan Tautan. Jika memakai aplikasi layar utama, lakukan langkah ini dari dalam aplikasi tersebut.','Beri nama perangkat, misalnya Kasir Depan, lalu tekan Minta Persetujuan Pemilik.','Kembali ke perangkat Pemilik dan tekan Setujui Perangkat untuk nama yang sesuai.','Perangkat Kasir membuka halaman masuk. Pilih nama karyawan dan masukkan PIN yang dibuat Pemilik. PIN karyawan terdiri dari 6–12 angka.'],targetHref:'/hubungkan-perangkat',targetLabel:'Hubungkan Perangkat'},
     {title:'PIN Admin awal',summary:'PIN Admin awal adalah 1234.',steps:['Saat pertama membuka Admin, masukkan 1234 jika PIN belum pernah diganti.','Ganti PIN melalui Pengaturan → Keamanan & PIN Admin.','Jika PIN pernah diganti, gunakan PIN terbaru. PIN karyawan dibuat terpisah oleh Pemilik dan tidak memakai PIN Admin awal.'],targetHref:'/admin',targetLabel:'Buka Admin'}
   ]},
   {
@@ -77,7 +77,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   // ==========================================
   {
     id: 'license-security-update',
-    title: 'Aktivasi Lisensi & Uji Coba Demo',
+    title: 'Mulai Menggunakan SakuNota',
     shortDesc: 'Aktivasi lisensi, perangkat kasir, dan mode latihan.',
     iconType: 'shield',
     stage: 1,
@@ -85,14 +85,15 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     badge: 'Persiapan Awal',
     businessTypes: ['all', 'setup'],
     articles: [
+    {title:'Mencoba sebelum mendaftar',summary:'Kenali kasir langsung dari halaman utama.',steps:['Pada halaman utama, pilih Coba SakuNota.','Pilih Warung, Retail, atau Kafe. Isi berat atau jumlah, lalu Tambah ke Keranjang.','Pilih Lihat Nota. Untuk Kafe, tambahkan catatan minuman untuk melihat contoh label gelas.','Pilih Daftar Beta untuk mengajukan uji coba 7 hari, atau Beli Lisensi. Pendaftaran beta diperiksa tim dan lisensi dikirim lewat WhatsApp setelah disetujui.'],targetHref:'/#coba-sakunota',targetLabel:'Coba SakuNota'},
       {
         title: 'Aktivasi lisensi resmi dan trial',
         summary: 'Aktivasi pertama membutuhkan internet; trial dimulai setelah aktivasi perangkat.',
         steps: [
-          'Buka halaman utama SakuNota dan pilih tombol "Aktivasi Kode".',
+          'Buka halaman utama SakuNota dan pilih Login.',
           'Masukkan kode lisensi resmi berbayar, tester, atau trial yang sudah disetujui (format: SN-XXXX-XXXX-XXXX).',
           'Tekan "Aktifkan Lisensi di Perangkat Ini". Lisensi terhubung dengan perangkat kasir Anda.',
-          'Setelah aktivasi pertama berhasil, aplikasi 100% dapat digunakan tanpa sambungan internet.',
+          'Siapkan kasir tanpa internet dari Pengaturan POS. Pastikan menu dan data sudah tersedia sebelum mulai berjualan.',
           'Satu lisensi digunakan untuk satu toko, maksimal dua perangkat: Pemilik dan Kasir. Kelola melalui Perangkat & Karyawan.'
         ],
         targetHref: '/?aktivasi=true',
@@ -102,10 +103,10 @@ export const GUIDE_TOPICS: GuideTopic[] = [
         title: 'Mencoba demo kasir dengan aman',
         summary: 'Data latihan disimpan terpisah dari data toko asli Anda.',
         steps: [
-          'Pilih tombol "Coba Demo Kasir" pada halaman utama.',
+          'Buka tautan Demo Kasir Lengkap di bagian bawah halaman utama.',
           'Di kasir demo, Anda bebas mencoba buka shift, scan barcode, tambah pesanan, dan mencetak struk latihan.',
           'Data latihan demo disimpan terpisah dan struk dicetak dengan tanda simulasi agar tidak disalahgunakan.',
-          'Setelah batas latihan selesai (30 menit atau 50 pesanan), tekan "Keluar Demo" untuk kembali ke kasir usaha asli Anda.'
+          'Setelah selesai berlatih, tekan Keluar Demo untuk meninggalkan data latihan.'
         ],
         targetHref: '/pos?demo=true',
         targetLabel: 'Buka demo kasir'
@@ -115,13 +116,13 @@ export const GUIDE_TOPICS: GuideTopic[] = [
         summary: 'Pembeli lama tidak perlu membeli ulang jika terjadi pembaruan sistem.',
         steps: [
           'Buka SakuNota di perangkat kasir dan browser asal yang sebelumnya sudah diaktifkan.',
-          'Sambungkan perangkat ke internet satu kali untuk sinkronisasi bukti verifikasi digital terbaru.',
-          'Setelah verifikasi berhasil, matikan kembali internet. Lisensi tetap aktif selamanya tanpa biaya langganan bulanan.'
+          'Sambungkan perangkat ke internet untuk memeriksa status lisensi terbaru.',
+          'Setelah lisensi aktif dan kasir disiapkan, penjualan dapat dilanjutkan tanpa internet. Masa berlaku mengikuti lisensi Anda.'
         ],
         tips: 'Jangan gunakan fitur "Hapus Data Browser / Clear Cache Total" karena kunci verifikasi tersimpan di penyimpanan lokal perangkat kasir.'
       },
       {
-        title: 'Pasang ke layar utama HP & tablet (PWA)',
+        title: 'Pasang ke layar utama HP & tablet',
         summary: 'Buka kasir layar penuh dari ikon beranda HP tanpa bilah peramban web dan siap dipakai offline.',
         steps: [
           'Di HP Android (Chrome): Buka sakunota.my.id, ketuk menu titik tiga di sudut kanan atas, lalu pilih "Instal aplikasi" atau "Tambahkan ke Layar Utama".',
@@ -190,11 +191,11 @@ export const GUIDE_TOPICS: GuideTopic[] = [
           'Nyalakan printer thermal Bluetooth Anda (ukuran 58 mm atau 80 mm).',
           'Buka Admin → Pengaturan → Printer.',
           'Pilih lebar kertas: 58 mm (standar struk kasir mini) atau 80 mm (struk lebar restoran).',
-          'Pada perangkat Android/Capacitor: Tekan "Cari Printer Bluetooth", pilih nama printer Anda (misal: Panda, Eppos, VSC, Zjiang), lalu lakukan Uji Cetak.',
-          'Pada browser PC/PWA: Cetak struk memanfaatkan dialog cetak sistem bawaan dengan memilih printer thermal yang terpasang.',
+          'Pada aplikasi Android: Tekan "Cari Printer Bluetooth", pilih nama printer Anda (misal: Panda, Eppos, VSC, Zjiang), lalu lakukan Uji Cetak.',
+          'Pada browser atau aplikasi layar utama: Cetak struk memanfaatkan dialog cetak sistem bawaan dengan memilih printer thermal yang terpasang.',
           'Lakukan uji coba cetak beberapa menu untuk memastikan teks tercetak tegas dan tidak terpotong tepi.'
         ],
-        tips: 'SakuNota menggunakan koneksi Direct Bluetooth Serial ESC/POS murni sehingga tidak membutuhkan router Wi-Fi atau kuota internet.',
+        tips: 'Pilihan koneksi printer mengikuti perangkat yang digunakan. Lakukan Uji Cetak sebelum melayani pelanggan.',
         targetHref: '/admin/pengaturan/printer',
         targetLabel: 'Pengaturan printer'
       },
@@ -217,7 +218,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   {
     id: 'data-security',
     title: 'PIN Admin & Proteksi Keamanan',
-    shortDesc: 'Gembok halaman manajemen dengan PIN dan simpan recovery code pemulihan.',
+    shortDesc: 'Lindungi halaman Admin dengan PIN dan simpan kode pemulihan.',
     iconType: 'lock',
     stage: 1,
     stageLabel: 'Tahap 1: Persiapan Awal',
@@ -225,26 +226,26 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     businessTypes: ['all', 'setup'],
     articles: [
       {
-        title: 'Membuat PIN Admin dan menyimpan Recovery Code',
+        title: 'Mengatur PIN Admin dan kode pemulihan',
         summary: 'Mencegah kasir atau pihak yang tidak berwenang mengubah harga dan melihat omzet.',
         steps: [
           'Buka Admin → Pengaturan → Keamanan & Akses.',
           'Buat 6 digit angka PIN Admin pemilik toko.',
-          'Sistem akan menampilkan Kode Pemulihan Rahasia (Recovery Code). Salin dan catat kode ini di buku catatan pribadi Anda di luar perangkat kasir.',
+          'Sistem akan menampilkan Kode Pemulihan. Salin dan catat kode ini di buku catatan pribadi Anda di luar perangkat kasir.',
           'Setelah PIN aktif, setiap tombol Admin di kasir akan meminta PIN tersebut untuk membuka laporan keuangan, kelola menu, dan pengaturan.',
-          'Jika pemilik lupa PIN, gunakan Recovery Code untuk mereset PIN baru seketika tanpa menghapus data usaha.'
+          'Jika pemilik lupa PIN, gunakan kode pemulihan untuk mereset PIN baru seketika tanpa menghapus data usaha.'
         ],
         targetHref: '/admin/pengaturan/keamanan',
         targetLabel: 'Atur keamanan PIN'
       },
       {
         title: 'Menyiapkan mode offline tanpa internet',
-        summary: 'Pastikan seluruh aset aplikasi tersimpan di memori perangkat.',
+        summary: 'Siapkan kasir sebelum dipakai saat sinyal mati.',
         steps: [
           'Buka Admin → Pengaturan → Tentang Aplikasi & Bantuan.',
-          'Periksa status kesiapan offline pada kartu Status Offline PWA.',
-          'Jika status belum lengkap, sambungkan internet sebentar dan tekan "Perbarui Aset Offline". Tunggu sampai semua komponen tersimpan 100%.',
-          'Setelah tersimpan, matikan koneksi internet (mode pesawat) dan coba buka ulang halaman kasir. Kasir tetap bekerja lancar tanpa kendala.'
+          'Sambungkan internet dan buka Kesiapan Tanpa Internet.',
+          'Tekan Siapkan Kasir Tanpa Internet dan tunggu sampai selesai.',
+          'Setelah tersimpan, matikan koneksi internet (mode pesawat) dan coba buka ulang halaman kasir. Pastikan menu dan data kasir dapat dibuka.'
         ],
         tips: 'Transaksi, menu, dan shift disimpan di perangkat Anda agar kasir tetap bisa dipakai tanpa sinyal.'
       }
@@ -295,8 +296,8 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   },
   {
     id: 'barcode',
-    title: 'Scan Barcode & Pindai SKU',
-    shortDesc: 'Pindai barcode produk memakai scanner USB HID, Bluetooth, atau kamera HP.',
+    title: 'Pindai Barcode Barang',
+    shortDesc: 'Pindai barang memakai scanner USB, Bluetooth, atau kamera HP.',
     iconType: 'package',
     stage: 2,
     stageLabel: 'Tahap 2: Katalog & Meja',
@@ -338,48 +339,19 @@ export const GUIDE_TOPICS: GuideTopic[] = [
           'Arahkan kamera ke barcode kemasan barang dalam kondisi pencahayaan cukup.',
           'Setelah barcode terbaca, barang otomatis ditambahkan ke keranjang belanja.'
         ],
-        tips: 'Gunakan koneksi HTTPS atau aplikasi Android terpasang agar fitur kamera diizinkan oleh sistem keamanan browser.'
+        tips: 'Buka sakunota.my.id dan izinkan kamera saat diminta. Jika kamera tidak tersedia, gunakan scanner atau ketik barcode.'
       }
     ]
   },
   {
-    id: 'retail-weight-sales',
-    title: 'Jual Barang Timbang (Kg / 100g)',
-    shortDesc: 'Pengaturan produk komoditas timbangan seperti sayur, buah, telur, atau daging.',
-    iconType: 'layers',
-    stage: 2,
-    stageLabel: 'Tahap 2: Katalog & Meja',
-    badge: 'Khusus Retail & Toko',
-    businessTypes: ['retail'],
-    articles: [
-      {
-        title: 'Mengatur satuan berat pada katalog produk',
-        summary: 'Pilih satuan Kilogram atau 100 Gram untuk produk yang dijual berdasarkan timbangan.',
-        steps: [
-          'Buka Admin → Kelola Menu & Produk, lalu tambah atau edit produk komoditas timbang.',
-          'Pada bagian "Tipe Satuan", pilih "Satuan Berat (Timbangan)".',
-          'Pilih basis perhitungan: per Kilogram (1.000 g) atau per 100 Gram (misal untuk bumbu giling/keju).',
-          'Masukkan harga jual per kg atau per 100 g (contoh: Jeruk Medan Rp 25.000 / kg).',
-          'Klik Simpan Produk.'
-        ],
-        targetHref: '/admin/menu',
-        targetLabel: 'Atur barang timbang'
-      },
-      {
-        title: 'Menimbang dan menghitung harga otomatis di kasir',
-        summary: 'Kasir hanya perlu mengetik berat fisik, sistem menghitung total rupiah seketika.',
-        steps: [
-          'Di layar Kasir POS, pilih atau ketuk produk timbangan yang dibeli pelanggan (misal: Jeruk Medan).',
-          'Kotak dialog timbangan akan muncul secara otomatis.',
-          'Timbang barang pada timbangan digital Anda, lalu ketik angka berat fisiknya di layar (contoh: 1.45 kg atau 1450 gram).',
-          'Sistem otomatis mengalikan berat fisik dengan tarif per kg: 1.45 kg × Rp 25.000 = Rp 36.250.',
-          'Tekan "Tambah ke Keranjang" dan lanjutkan proses pembayaran seperti biasa.',
-          'Pada struk nota belanja, rincian tercetak rapi: "Jeruk Medan (1.45 kg @ Rp 25.000 = Rp 36.250)".'
-        ],
-        targetHref: '/pos',
-        targetLabel: 'Buka kasir'
-      }
-    ]
+    id: 'retail-weight-sales', title: 'Contoh Hitung Berat', shortDesc: 'Coba hitungan gram dan kilogram di halaman utama.',
+    iconType: 'layers', stage: 2, stageLabel: 'Katalog & Meja', badge: 'Warung & Retail', businessTypes: ['warung','retail'],
+    articles: [{title:'Mencoba harga barang timbang',summary:'Penjualan timbang belum tersedia di kasir saat ini.',steps:[
+      'Buka Coba SakuNota pada halaman utama, lalu pilih Warung.',
+      'Pilih Beras Premium. Masukkan 250 dan pilih g. Harga contoh menjadi Rp4.500.',
+      'Pilih kg dan masukkan 0,5. Harga contoh menjadi Rp9.000.',
+      'Tekan Tambah ke Keranjang, lalu Lihat Nota. Contoh ini tidak mencatat penjualan atau mengubah stok toko.'
+    ],targetHref:'/#coba-sakunota',targetLabel:'Coba Hitung Berat'}]
   },
   {
     id: 'retail-add-product',
@@ -411,7 +383,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
         summary: 'Persiapan dilakukan sekali di perangkat kasir saat internet tersedia.',
         steps: [
           'Di formulir Tambah Barang, tekan tombol "Siapkan Pengenalan Foto". Anda juga bisa membukanya melalui Admin → Pengaturan → Foto Produk Retail.',
-          'Sambungkan internet untuk mengunduh paket referensi offline sekitar 10 MB. Tunggu hingga proses selesai 100%.',
+          'Sambungkan internet untuk menyiapkan pengenalan produk. Tunggu sampai selesai.',
           'Setelah persiapan selesai, fitur pengenalan foto dapat digunakan sepenuhnya tanpa internet.',
           'Foto bagian depan kemasan barang dengan pencahayaan cukup dan tulisan nama produk yang jelas.',
           'Sistem akan mencocokkan nama merek, varian, dan ukuran secara cerdas; harga jual tetap Anda tentukan sendiri sesuai harga warung/toko Anda.'
@@ -425,7 +397,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   {
     id: 'product-photos',
     title: 'Foto Produk & Impor Gambar',
-    shortDesc: 'Foto visual pada menu kasir, kompresi offline, dan ekspor produk JSON.',
+    shortDesc: 'Tambahkan foto produk dan bawa katalog ke perangkat lain.',
     iconType: 'package',
     stage: 2,
     stageLabel: 'Tahap 2: Katalog & Meja',
@@ -439,7 +411,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
           'Buka Admin → Kelola Menu & Produk, lalu klik tombol Edit pada produk.',
           'Pada bagian Foto Produk, pilih file foto dari galeri HP atau kamera komputer Anda (format JPG, PNG, atau WebP).',
           'Aplikasi otomatis mengompresi ukuran foto agar hemat memori dan cepat dimuat di HP kasir.',
-          'Klik Simpan. Foto tersimpan di perangkat kasir dan dapat ditampilkan selamanya tanpa internet.'
+          'Klik Simpan. Foto tersimpan di perangkat kasir dan dapat ditampilkan tanpa internet.'
         ],
         targetHref: '/admin/menu',
         targetLabel: 'Kelola foto produk'
@@ -690,7 +662,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     articles: [
       {
         title: 'Tutup shift kasir dengan hitungan fisik',
-        summary: 'Mencegah kecurangan kasir dan memastikan uang tunai fisik cocok 100% dengan catatan sistem.',
+        summary: 'Bandingkan uang di laci dengan catatan penjualan dan periksa selisihnya.',
         steps: [
           'Di akhir jam kerja kasir, pilih menu "Shift Saya" atau tekan tombol "Tutup Shift" di kasir.',
           'Buka laci kasir dan hitung seluruh uang kertas dan koin fisik yang ada di dalam laci.',
@@ -709,7 +681,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   {
     id: 'reports',
     title: 'Dashboard Omzet & Grafik Penjualan',
-    shortDesc: 'Analisis grafik penjualan (Garis vs Batang), produk terlaris, dan laba bersih.',
+    shortDesc: 'Periksa penjualan, pembayaran, pengembalian, dan produk terlaris.',
     iconType: 'bar-chart',
     stage: 4,
     stageLabel: 'Tahap 4: Laporan & Tutup Shift',
@@ -717,15 +689,15 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     businessTypes: ['all', 'warung', 'restaurant', 'retail'],
     articles: [
       {
-        title: 'Membaca grafik penjualan dan laba bersih',
-        summary: 'Pantau pertumbuhan omzet dan estimasi laba bersih toko secara transparan.',
+        title: 'Membaca dashboard penjualan',
+        summary: 'Pilih periode dan periksa ringkasan penjualan toko.',
         steps: [
           'Buka Admin → Dashboard.',
-          'Pilih filter periode laporan: Hari Ini, Kemarin, 7 Hari Terakhir, 30 Hari, atau Bulan Ini.',
+          'Pilih periode yang tersedia pada bagian atas dashboard.',
           'Pilih model tampilan grafik: Tekan tombol [Garis] untuk melihat tren ritme fluktuasi omzet, atau pilih [Batang] untuk membandingkan volume omzet per hari.',
           'Arahkan kursor atau sentuh titik grafik untuk melihat rincian omzet dan jumlah nota transaksi.',
-          'Lihat kartu Ringkasan Finansial: Total Omzet Penjualan, Total Pengeluaran Biaya Toko, dan Estimasi Laba Bersih Toko.',
-          'Lihat daftar 5 Menu Terlaris (Best Seller) untuk mengetahui menu favorit pelanggan Anda.'
+          'Periksa kartu Penjualan Bersih, Pembayaran Diterima, Pengembalian, dan Nota Dibayar.',
+          'Lihat Produk Terlaris untuk mengetahui barang yang paling banyak dibeli.'
         ],
         targetHref: '/admin',
         targetLabel: 'Buka dashboard laporan'
@@ -735,7 +707,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   {
     id: 'inventory-management',
     title: 'Stok Retail, Supplier & Opname',
-    shortDesc: 'Pasokan barang masuk, pencatatan HPP supplier, dan penyesuaian opname fisik.',
+    shortDesc: 'Catat barang masuk, harga beli, dan hasil hitung stok.',
     iconType: 'layers',
     stage: 4,
     stageLabel: 'Tahap 4: Laporan & Tutup Shift',
@@ -783,7 +755,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   },
   {
     id: 'data-backup',
-    title: 'Cadangan Data Toko (Backup JSON)',
+    title: 'Cadangan Data Toko',
     shortDesc: 'Unduh seluruh data produk, transaksi, dan riwayat toko ke file cadangan lokal.',
     iconType: 'shield',
     stage: 4,
