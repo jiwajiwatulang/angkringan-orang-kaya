@@ -455,16 +455,17 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             {authView === "login" && "Login Admin"}
             {authView === "verify_recovery" && "Verifikasi Pemilik Toko"}
             {authView === "reset_pin" && "Buat PIN Admin Baru"}
-            {authView === "setup_initial" && "Konfigurasi PIN Admin"}
+            {authView === "setup_initial" && "Buat PIN Admin"}
           </h2>
 
           <p className="text-xs text-muted mt-1 mb-6">
-            {authView === "login" && "Masukkan PIN Otorisasi untuk membuka Backoffice SakuNota."}
+            {authView === "login" && "Masukkan PIN Admin untuk melanjutkan."}
             {authView === "verify_recovery" && "PIN tidak ditemukan atau lupa. Masukkan Kode Pemulihan Pemilik untuk memverifikasi hak akses."}
             {authView === "reset_pin" && "Pemilik terverifikasi. Silakan tentukan PIN Admin baru untuk perangkat ini."}
-            {authView === "setup_initial" && "Perangkat ini belum memiliki PIN Admin. Buat PIN baru (minimal 4 digit) untuk mengamankan Backoffice."}
+            {authView === "setup_initial" && "Perangkat ini belum memiliki PIN Admin. Buat PIN baru (minimal 4 digit) untuk melindungi pengaturan toko."}
           </p>
 
+          {authView === "login" && storeSettings.adminPin === "1234" && <div role="note" className="mb-5 rounded-xl border border-blue-100 bg-blue-50 p-3 text-left text-sm text-blue-900"><p className="font-semibold">PIN Admin awal: <span className="tracking-widest">1234</span></p><p className="mt-1 text-xs">Ganti melalui Pengaturan → Keamanan &amp; PIN Admin setelah masuk.</p></div>}
           {/* FORM 1: NORMAL LOGIN */}
           {authView === "login" && (
             <form onSubmit={handleLogin} className="space-y-4">
@@ -478,6 +479,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                     setPasswordInput(e.target.value);
                     setPinError("");
                   }}
+                  aria-label="PIN Admin"
                   placeholder="Masukkan PIN..."
                   className="w-full text-center text-2xl tracking-widest font-black border-2 border-line focus:border-accent rounded-2xl py-3 px-4 bg-card text-fg outline-none transition-all"
                   required
@@ -493,7 +495,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 type="submit"
                 className="w-full py-3.5 bg-accent hover:bg-accent-hover active:scale-95 text-white font-black rounded-2xl text-sm shadow-lg shadow-accent/20 transition-all"
               >
-                Masuk Backoffice
+                Masuk Admin
               </button>
 
               <div className="pt-2">

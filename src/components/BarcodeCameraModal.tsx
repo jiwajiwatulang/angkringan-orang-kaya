@@ -8,6 +8,7 @@ interface BarcodeCameraModalProps {
   onClose: () => void;
   onScan: (barcode: string) => void;
   title?: string;
+  purpose?: "product" | "pairing";
 }
 
 export default function BarcodeCameraModal({
@@ -15,6 +16,7 @@ export default function BarcodeCameraModal({
   onClose,
   onScan,
   title = "Pindai Barcode Produk",
+  purpose = "product",
 }: BarcodeCameraModalProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -223,7 +225,7 @@ export default function BarcodeCameraModal({
           <div>
             <h3 className="font-black text-sm text-fg">{title}</h3>
             <p className="text-[11px] text-muted">
-              Arahkan kamera ke barcode produk atau ketik SKU manual.
+              {purpose === "pairing" ? "Arahkan kamera ke QR di perangkat Pemilik." : "Arahkan kamera ke barcode produk atau ketik SKU manual."}
             </p>
           </div>
           <button
@@ -279,7 +281,7 @@ export default function BarcodeCameraModal({
                   {errorMessage || "Kamera Tidak Aktif"}
                 </p>
                 <p className="text-[11px] text-muted max-w-xs">
-                  Silakan ketik kode barcode atau SKU produk secara manual pada kolom di bawah.
+                  {purpose === "pairing" ? "Tempel tautan dari perangkat Pemilik pada kolom di bawah." : "Silakan ketik kode barcode atau SKU produk secara manual pada kolom di bawah."}
                 </p>
               </div>
             )}
@@ -300,7 +302,7 @@ export default function BarcodeCameraModal({
               <form onSubmit={handleManualSubmit} className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Ketik / tembak kode barcode..."
+                  placeholder={purpose === "pairing" ? "Tempel tautan penghubung..." : "Ketik / tembak kode barcode..."}
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
                   className="flex-1 bg-surface border border-line rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-fg placeholder:text-muted/60 outline-none focus:border-accent"

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+const {version: appVersion}=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 const outDir = path.resolve('out');
 const publicDir = path.resolve('public');
 
@@ -71,7 +72,7 @@ const allPrecachableUrls = Array.from(new Set([...routesList, ...staticAssetsLis
 const totalBytes = validFiles.reduce((acc, cur) => acc + cur.size, 0);
 
 const buildTimestamp = Date.now();
-const cacheVersion = `sakunota-pos-v2.6.7-${buildTimestamp}`;
+const cacheVersion = `sakunota-pos-v${appVersion}-${buildTimestamp}`;
 
 const manifestData = {
   version: cacheVersion,

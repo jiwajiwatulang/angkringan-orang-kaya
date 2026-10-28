@@ -58,3 +58,14 @@
 @media (prefers-reduced-motion: reduce) {
   .sn-primary, .sn-secondary, .sn-tab, .sn-field { transition: none; }
 }
+
+.business-dashboard .dashboard-sales-total { background: linear-gradient(120deg,#2563eb,#1d4ed8); border-color:#2563eb; color:white; box-shadow:0 8px 20px rgb(37 99 235 / 18%); }
+.business-dashboard .dashboard-sales-total p { color:rgb(255 255 255 / 86%); }
+.business-dashboard .dashboard-sales-total p:nth-child(2) { color:white; }
+.business-dashboard .dashboard-chart { border-radius:20px; }
+.business-dashboard .dashboard-trend-canvas { touch-action:pan-y; overflow:visible; }
+.business-dashboard .dashboard-chart-detail { border-color:rgb(37 99 235 / 12%); }
+.business-dashboard .dashboard-trend-canvas [role="button"]:focus-visible { outline:2px solid #2563eb; outline-offset:3px; }
+
+.business-dashboard .dashboard-trend-canvas [role="button"] { outline:none; }
+.business-dashboard .dashboard-trend-canvas [role="button"]:focus-visible { outline:2px solid #2563eb; outline-offset:3px; }

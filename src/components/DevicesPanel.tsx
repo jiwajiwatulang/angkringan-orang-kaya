@@ -12,9 +12,9 @@ const secondary='min-h-11 rounded-xl border border-line px-4 py-2.5 text-sm font
 const input='min-h-11 w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-fg';
 export default function DevicesPanel({client}:{client:DeviceClient}){
   const [list,setList]=useState<AccessList|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
-  const [pair,setPair]=useState<{image:string;expiresAt:number}|null>(null),[now,setNow]=useState(Date.now());
+  const [pair,setPair]=useState<{image:string;expiresAt:number;url:string}|null>(null),[now,setNow]=useState(Date.now());
   const [online,setOnline]=useState(true),[stale,setStale]=useState(false),[refreshing,setRefreshing]=useState(false),[savedAt,setSavedAt]=useState(0);
-  const [formError,setFormError]=useState('');
+  const [formError,setFormError]=useState(''),[notice,setNotice]=useState('');
   const [editing,setEditing]=useState<{id:string;name:string;pin:string;active:boolean}|null>(null);
   const mounted=useRef(true),loading=useRef(false),refreshFailed=useRef(false);
   const refresh=async()=>{
@@ -40,6 +40,7 @@ export default function DevicesPanel({client}:{client:DeviceClient}){
   };
   return <div className="mx-auto w-full max-w-3xl space-y-5 text-fg">
     <h1 className="text-2xl font-bold tracking-tight">Perangkat &amp; Karyawan</h1>
+    {notice&&<p role="status" className="rounded-xl bg-blue-50 p-3 text-sm text-blue-800">{notice}</p>}
     {error&&<p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     {(stale||!online)&&<div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3 text-sm"><p>{savedAt?`Data tersimpan · ${new Date(savedAt).toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}`:online?(refreshing?'Menyiapkan daftar perangkat':'Daftar perangkat belum tersedia.'):'Sambungkan internet untuk memuat perangkat.'}</p><button type="button" className={secondary} disabled={refreshing||!online} onClick={()=>{setError('');void refresh();}}>{refreshing?<BusyLabel>Memperbarui</BusyLabel>:'Coba Lagi'}</button></div>}
     {!list?(refreshing?<LoadingState label="Memuat perangkat dan karyawan"/>:null):<>
@@ -52,12 +53,15 @@ export default function DevicesPanel({client}:{client:DeviceClient}){
         {(list.devices?.length||0)<2&&<button type="button" className={button} disabled={busy||stale||!online} onClick={()=>void perform(async()=>{
           const result=await client.call<{code:string;expiresAt:number}>('pair.create');
           const url=new URL('/hubungkan-perangkat',location.origin);url.hash=new URLSearchParams({code:result.code}).toString();
-          const image=await QRCode.toDataURL(url.toString(),{width:240,margin:4,errorCorrectionLevel:'M'});setPair({image,expiresAt:result.expiresAt});
+          const image=await QRCode.toDataURL(url.toString(),{width:240,margin:4,errorCorrectionLevel:'M'});setPair({image,expiresAt:result.expiresAt,url:url.toString()});
         })}>Tambah Perangkat</button>}
         {pair&&pair.expiresAt>now&&(list.devices?.length||0)<2&&<div className="mt-4 flex flex-col items-center rounded-xl border border-line p-3">
+          <h3 className="mt-1 text-base font-bold">Pindai di perangkat Kasir</h3><p className="mt-2 max-w-sm text-center text-sm text-muted">Buka tautannya, beri nama perangkat, lalu setujui permintaan yang muncul di sini.</p>
           {/* Local generated image: no QR contents are sent to an image service. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={pair.image} alt="Hubungkan perangkat kasir" width={240} height={240} className="h-auto max-w-full"/>
+          <button type="button" className={`${secondary} mb-3`} onClick={()=>{if(!navigator.clipboard?.writeText){setError('Gunakan kamera HP untuk memindai QR di atas.');return;}void navigator.clipboard.writeText(pair.url).then(()=>{setError('');setNotice('Tautan disalin. Buka di perangkat Kasir.');}).catch(()=>setError('Tautan belum dapat disalin. Gunakan kamera HP untuk memindai QR.'));}}>Salin Tautan Penghubung</button>
+          <details className="mb-3 w-full max-w-sm"><summary className="flex min-h-11 cursor-pointer items-center justify-center text-sm font-semibold text-blue-700">Salin tautan secara manual</summary><label className="block text-xs font-medium text-muted">Tautan Penghubung<input readOnly className={`${input} mt-2 text-xs`} value={pair.url} onFocus={event=>event.currentTarget.select()}/></label></details>
           <p className="text-sm text-muted">Berlaku sampai {new Date(pair.expiresAt).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</p>
         </div>}
         {list.pairings?.map(request=><div key={request.id} className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-3"><span className="break-words font-medium">{request.candidateName}</span><button type="button" className={button} disabled={busy||stale||!online} onClick={()=>void perform(async()=>{await client.call('pair.approve',{id:request.id});setPair(null);})}>Setujui Perangkat</button></div>)}

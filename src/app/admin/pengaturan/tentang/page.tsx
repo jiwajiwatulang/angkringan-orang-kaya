@@ -1,4 +1,5 @@
 "use client";
+import {APP_VERSION} from "@/lib/appVersion";
 import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
@@ -110,7 +111,7 @@ export default function PengaturanTentangPage() {
             <span className="text-[11px] font-bold text-muted uppercase tracking-wider block">
               Versi Aplikasi
             </span>
-            <strong className="text-base font-black text-fg">v2.6.7</strong>
+            <strong className="text-base font-black text-fg">v{APP_VERSION}</strong>
           </div>
 
           <div className="p-4 rounded-2xl bg-card border border-line space-y-1">
@@ -136,12 +137,12 @@ export default function PengaturanTentangPage() {
 
           <div className="p-4 rounded-2xl bg-card border border-line space-y-1">
             <span className="text-[11px] font-bold text-muted uppercase tracking-wider block">
-              Nomor Lisensi
+              {accessStatus?.isValid && !accessStatus.licenseKey && !accessStatus.isDemo ? "Akses Perangkat" : "Nomor Lisensi"}
             </span>
             <strong className="text-xs font-mono font-black text-blue-600 select-all block truncate">
               {accessStatus?.isDemo
                 ? "DEMO-KASIR-TRIAL"
-                : accessStatus?.licenseKey || "BELUM ADA LISENSI"}
+                : accessStatus?.licenseKey || (accessStatus?.isValid ? "Terhubung dengan toko" : "Belum aktif")}
             </strong>
           </div>
         </div>
@@ -163,7 +164,7 @@ export default function PengaturanTentangPage() {
           </div>
         ) : (
           <p className="text-[11px] text-muted italic">
-            Lisensi resmi terikat pada perangkat fisik kasir ini.
+            {accessStatus?.isValid && !accessStatus.licenseKey ? "Perangkat ini terhubung dengan toko Anda." : "Lisensi resmi terikat pada perangkat fisik kasir ini."}
           </p>
         )}
 

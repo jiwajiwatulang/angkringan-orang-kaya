@@ -1,4 +1,5 @@
 "use client";
+import {PageHeading,OperationIcon,primary,secondary} from "@/components/operations/Shared";
 import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
@@ -137,11 +138,11 @@ function LegacyDashboard(){
 
   // SVG dimensions for smooth bezier curve
   const svgW = chartWidth;
-  const svgH = chartWidth < 600 ? 180 : 220;
-  const paddingX = chartWidth < 600 ? 54 : 40;
+  const svgH = chartWidth < 600 ? 230 : 270;
+  const paddingX = chartWidth < 600 ? 52 : 68;
   const paddingY = 25;
-  const usableW = svgW - paddingX - (chartWidth < 600 ? 12 : paddingX);
-  const usableH = svgH - paddingY * 2;
+  const usableW = svgW - paddingX - 16;
+  const usableH = svgH - paddingY - 36;
 
   const svgCoords = chartPoints.map((p, i) => {
     const x = paddingX + (i / Math.max(1, chartPoints.length - 1)) * usableW;
@@ -209,8 +210,8 @@ function LegacyDashboard(){
 
     currentOrders.forEach((o) => {
       (o.items || []).forEach((item: any) => {
-        const name = item.name || item.nama || item.menuName || "Menu";
-        const cat = item.kategori || item.category || "Umum";
+        const name = item.name || item.nama || item.namaMenu || item.menuName || "Menu";
+        const cat = item.kategori || item.kategoriMenu || item.category || "Umum";
         const price = item.harga ?? item.price ?? item.hargaSatuan ?? 0;
         const qty = item.qty || 1;
 
@@ -475,205 +476,30 @@ function LegacyDashboard(){
   };
 
   return (
-    <div className="business-dashboard space-y-6 animate-in fade-in duration-200">
-      {/* 1. Header with Store Identity, Shopify-style Period Selector, and Quick Actions */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-line">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-black text-fg tracking-tight">
-              Dashboard usaha
-            </h2>
-          </div>
-          <p className="text-xs text-muted mt-0.5">
-            {storeSettings.storeName || "SakuNota"}<span className="hidden sm:inline"> • {ledger ? "Ringkasan pembayaran dan penjualan usaha." : "Transaksi lunas, tren penjualan, dan produk terlaris pada perangkat toko ini."}</span>
-          </p>
-        </div>
-
-        {/* Controls: Date Range Selector & Quick Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
-          <select aria-label="Periode laporan" value={timeRange} onChange={e=>setTimeRange(e.target.value as typeof timeRange)} className="sm:hidden min-h-11 flex-1 rounded-xl border border-line bg-surface px-3 text-sm">
-            <option value="today">Hari ini</option><option value="yesterday">Kemarin</option><option value="7days">7 hari terakhir</option><option value="30days">30 hari terakhir</option><option value="thisMonth">Bulan ini</option>
-          </select>
-          {/* Time Filter Pills */}
-          <div className="hidden sm:flex bg-card border border-line p-1 rounded-2xl items-center gap-1 text-xs font-bold shadow-xs">
-            {[
-              { id: "today", label: "Hari ini" },
-              { id: "yesterday", label: "Kemarin" },
-              { id: "7days", label: "7 Hari" },
-              { id: "30days", label: "30 Hari" },
-              { id: "thisMonth", label: "Bulan Ini" },
-            ].map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTimeRange(t.id as any)}
-                className={`px-3 py-1.5 rounded-xl transition-all ${
-                  timeRange === t.id
-                    ? "bg-accent text-white shadow-sm font-black"
-                    : "text-muted hover:text-fg"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsWaModalOpen(true)}
-            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
-          >
-            <span>Kirim WA</span>
-          </button>
-
-          <Link
-            href="/pos"
-            className="px-3.5 py-2 bg-card hover:bg-line border border-line text-fg rounded-xl text-xs font-bold transition-colors"
-          >
-            Buka Kasir →
-          </Link>
-        </div>
+    <div className="business-dashboard sn-operations space-y-6">
+      <PageHeading title="Dashboard Usaha">
+        <div className="flex flex-wrap items-center gap-2"><button type="button" onClick={()=>setIsWaModalOpen(true)} className={secondary}>Bagikan Ringkasan</button><Link href="/pos" className={primary}>Buka Kasir<OperationIcon name="arrow" className="h-4 w-4"/></Link></div>
+      </PageHeading>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <select aria-label="Periode laporan" value={timeRange} onChange={e=>setTimeRange(e.target.value as typeof timeRange)} className={`${secondary} min-w-44`}>
+          <option value="today">Hari ini</option><option value="yesterday">Kemarin</option><option value="7days">7 hari terakhir</option><option value="30days">30 hari terakhir</option><option value="thisMonth">Bulan ini</option>
+        </select>
+        <span className="inline-flex items-center gap-2 text-sm text-muted"><span className={`h-2 w-2 rounded-full ${activeShift?'bg-emerald-500':'bg-slate-400'}`}/>{activeShift?`Shift ${activeShift.operatorName}`:'Belum ada shift aktif'}</span>
       </div>
-
-      {/* Sentrik POS Style: Welcome Banner Card */}
-      <div className="hidden sm:flex bg-surface border border-line rounded-3xl p-5 sm:p-6 shadow-xs flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-black text-fg tracking-tight">
-            Selamat Datang, {activeShift?.operatorName || "Kasir"}!
-          </h2>
-          <p className="text-xs text-muted mt-0.5">
-            {storeSettings.storeName || "SakuNota"} • Sistem kasir dan pencatatan transaksi 100% offline.
-          </p>
-          <div className="flex flex-wrap items-center gap-2 mt-3 text-xs font-bold">
-            <span className="px-2.5 py-1 bg-card text-fg rounded-xl border border-line">
-              Cabang: {storeSettings.storeName || "Toko Pusat"}
-            </span>
-            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200">
-              Kas Laci: Rp {activeShift ? Number(activeShift.startingCash || 0).toLocaleString("id-ID") : "0"}
-            </span>
-            <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-xl border border-blue-200">
-              {activeShift ? "Shift Aktif" : "Shift Tutup"}
-            </span>
-          </div>
-        </div>
-        <div className="text-left sm:text-right sm:border-l sm:border-line sm:pl-6 shrink-0">
-          <div className="text-2xl font-black text-fg tracking-tight">
-            {new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
-          </div>
-          <div className="text-xs text-muted font-medium mt-0.5">
-            {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}
-          </div>
-        </div>
-      </div>
-
-
-
-      <section aria-label="Ringkasan penjualan" className="sm:hidden rounded-2xl border border-line bg-surface p-5 space-y-4">
-        <div><p className="text-sm text-muted">Total penjualan</p><p className="mt-1 text-3xl font-bold tracking-tight tabular-nums break-words">Rp {currentGrossSales.toLocaleString('id-ID')}</p>
-          <p className="mt-2 text-xs text-muted">{deltaSales >= 0 ? 'Naik' : 'Turun'} {Math.abs(deltaSales)}% dibanding periode sebelumnya</p></div>
-        <div className="grid grid-cols-3 gap-3 border-t border-line pt-4 text-xs">
-          <div><strong className="block text-base tabular-nums">{currentOrderCount}</strong><span className="text-muted">Transaksi</span></div>
-          <div><strong className="block tabular-nums break-words">Rp {currentAov.toLocaleString('id-ID')}</strong><span className="text-muted">Rata-rata nota</span></div>
-          <div><strong className="block text-base tabular-nums">{currentUnitsSold}</strong><span className="text-muted">Unit terjual</span></div>
-        </div>
+      <section className="dashboard-metrics grid grid-cols-6 gap-3 lg:grid-cols-4 lg:gap-4" aria-label="Ringkasan penjualan">
+        {[
+          {label:ledger?'Pembayaran Bersih':'Penjualan',value:`Rp ${currentGrossSales.toLocaleString('id-ID')}`,previous:prevGrossSales,delta:deltaSales},
+          {label:'Nota Dibayar',value:String(currentOrderCount),previous:prevOrderCount,delta:deltaOrders},
+          {label:'Rata-rata Nota',value:`Rp ${currentAov.toLocaleString('id-ID')}`,previous:prevAov,delta:deltaAov},
+          {label:'Unit Terjual',value:String(currentUnitsSold),previous:prevUnitsSold,delta:deltaUnits}
+        ].map((metric,index)=><div key={metric.label} className={`sn-stat rounded-2xl border border-line p-4 sm:p-5 ${index===0?'dashboard-sales-total col-span-6 lg:col-span-1':'col-span-2 bg-surface lg:col-span-1'}`}>
+          <p className="text-xs font-medium text-muted sm:text-sm">{metric.label}</p><p className={`mt-3 break-words font-bold tracking-tight tabular-nums ${index===0?'text-3xl':index===2?'text-sm sm:text-2xl':'text-xl sm:text-2xl'}`}>{metric.value}</p>
+          <p className={`mt-3 text-[11px] ${metric.previous===0?'text-muted':metric.delta>=0?'text-emerald-700':'text-rose-700'}`}>{metric.previous===0?(index===0?'Belum ada perbandingan':'—'):`${metric.delta>0?'+':''}${metric.delta}% dari periode lalu`}</p>
+        </div>)}
       </section>
-      {/* 2. Four Shopify-Grade Metric Cards with Delta Growth Badges */}
-      <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Metric 1: Total Omzet */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted">Total Penjualan</span>
-            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 ${
-              deltaSales >= 0
-                ? "bg-emerald-100 text-emerald-800"
-                : "bg-rose-100 text-rose-800"
-            }`}>
-              {deltaSales >= 0 ? "▲ +" : "▼ "}
-              {deltaSales}%
-            </span>
-          </div>
-          <div>
-            <div className="text-lg sm:text-2xl font-black text-fg break-words tabular-nums">
-              Rp {currentGrossSales.toLocaleString("id-ID")}
-            </div>
-            <span className="text-[10px] text-muted block mt-0.5">
-              vs Rp {prevGrossSales.toLocaleString("id-ID")} periode lalu
-            </span>
-          </div>
-        </div>
-
-        {/* Metric 2: Total Orders */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted">Total Pesanan</span>
-            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 ${
-              deltaOrders >= 0
-                ? "bg-emerald-100 text-emerald-800"
-                : "bg-rose-100 text-rose-800"
-            }`}>
-              {deltaOrders >= 0 ? "▲ +" : "▼ "}
-              {deltaOrders}%
-            </span>
-          </div>
-          <div>
-            <div className="text-lg sm:text-2xl font-black text-fg break-words tabular-nums">
-              {currentOrderCount} <span className="text-xs font-semibold text-muted">transaksi</span>
-            </div>
-            <span className="text-[10px] text-muted block mt-0.5">
-              vs {prevOrderCount} transaksi lalu
-            </span>
-          </div>
-        </div>
-
-        {/* Metric 3: AOV (Average Order Value) */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted">Rata-rata per Nota</span>
-            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 ${
-              deltaAov >= 0
-                ? "bg-emerald-100 text-emerald-800"
-                : "bg-rose-100 text-rose-800"
-            }`}>
-              {deltaAov >= 0 ? "▲ +" : "▼ "}
-              {deltaAov}%
-            </span>
-          </div>
-          <div>
-            <div className="text-lg sm:text-2xl font-black text-fg break-words tabular-nums">
-              Rp {currentAov.toLocaleString("id-ID")}
-            </div>
-            <span className="text-[10px] text-muted block mt-0.5">
-              vs Rp {prevAov.toLocaleString("id-ID")} lalu
-            </span>
-          </div>
-        </div>
-
-        {/* Metric 4: Total Units Sold */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-surface border border-line shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted">Unit terjual</span>
-            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 ${
-              deltaUnits >= 0
-                ? "bg-emerald-100 text-emerald-800"
-                : "bg-rose-100 text-rose-800"
-            }`}>
-              {deltaUnits >= 0 ? "▲ +" : "▼ "}
-              {deltaUnits}%
-            </span>
-          </div>
-          <div>
-            <div className="text-xl sm:text-2xl font-black text-fg truncate">
-              {currentUnitsSold} <span className="text-xs font-semibold text-muted">unit</span>
-            </div>
-            <span className="text-[10px] text-muted block mt-0.5">
-              vs {prevUnitsSold} unit lalu
-            </span>
-          </div>
-        </div>
-      </div>
 
       {/* 3. The Core Visual: Shopify-Style Area Trend Graph with Hover Tooltip */}
-      <div ref={chartRef} className="dashboard-chart bg-surface rounded-3xl p-4 sm:p-7 border border-line shadow-xs space-y-4" onPointerLeave={event => { if(event.pointerType === 'mouse') setHoveredPoint(null); }}>
+      <div ref={chartRef} className="sn-card dashboard-chart bg-surface rounded-3xl p-4 sm:p-7 border border-line shadow-xs space-y-4" onPointerLeave={event => { if(event.pointerType === 'mouse') setHoveredPoint(null); }}>
         <div className="flex flex-row items-center justify-between gap-2 pb-3 border-b border-line">
           <div>
             <h3 className="text-base font-black text-fg flex items-center gap-2">
@@ -711,33 +537,19 @@ function LegacyDashboard(){
               </button>
             </div>
 
-            <span className="hidden sm:inline text-xs font-black text-accent-text bg-accent/10 px-3 py-1.5 rounded-xl border border-accent/20">
-              Akumulasi: Rp {currentGrossSales.toLocaleString("id-ID")}
-            </span>
+
           </div>
         </div>
 
         {/* Interactive SVG Area / Bar Chart */}
         <div className="relative pt-4 pb-2 select-none">
-          {/* Subtle Horizontal Reference Grid Lines & Y-Axis Scale */}
-          <div style={{display:chartWidth < 600 ? 'none' : undefined}} className="hidden sm:flex absolute inset-x-2 top-8 bottom-12 flex-col justify-between pointer-events-none">
-            {[1, 0.75, 0.5, 0.25, 0].map((ratio) => {
-              const val = Math.round(chartFloor + chartSpan * ratio);
-              return (
-                <div key={ratio} className="border-b border-dashed border-line/60 w-full flex justify-end">
-                  <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 bg-surface px-2 py-0.5 -mt-3 rounded border border-line/50 shadow-xs">
-                    {compactMoney(val)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
           {/* SVG Canvas */}
           <div className="w-full overflow-visible relative">
             <svg
               viewBox={`0 0 ${svgW} ${svgH}`}
-              className="w-full h-56 sm:h-64 overflow-visible"
+              className="dashboard-trend-canvas w-full"
+              style={{height:svgH,display:'block'}}
+              aria-label="Grafik tren penjualan"
               onPointerMove={event => {
                 if(event.pointerType !== 'mouse')return;
                 const rect=event.currentTarget.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width*svgW;
@@ -751,10 +563,12 @@ function LegacyDashboard(){
                 if(point)setHoveredPoint(current=>current?.label===point.label&&current?.sublabel===point.sublabel?null:point);
               }}
             >
-              {chartWidth < 600 && [1,0.5,0].map(ratio=>{
+              {(chartWidth < 600 ? [1,0.5,0] : [1,0.75,0.5,0.25,0]).map(ratio=>{
                 const y=paddingY+usableH*(1-ratio),value=Math.round(chartFloor+chartSpan*ratio);
-                return <g key={ratio} aria-hidden="true"><line x1={paddingX} x2={svgW-12} y1={y} y2={y} stroke="currentColor" className="text-line" strokeDasharray="3 4"/><text x="0" y={y+3} fontSize="10" className="fill-current text-muted">{compactMoney(value).replace('Rp ','')}</text></g>;
+                return <g key={ratio} aria-hidden="true"><line x1={paddingX} x2={svgW-16} y1={y} y2={y} stroke="currentColor" className="text-line" strokeDasharray="3 4"/><text x="0" y={y+3} fontSize="10" className="fill-current text-muted">{compactMoney(value).replace('Rp ','')}</text></g>;
               })}
+              {hoveredPoint&&<line x1={hoveredPoint.x} x2={hoveredPoint.x} y1={paddingY} y2={paddingY+usableH} stroke="#93b4fa" strokeDasharray="4 4" pointerEvents="none"/>}
+              {svgCoords.filter((_,index)=>svgCoords.length<=(chartWidth<600?4:7)||index%Math.ceil((svgCoords.length-1)/(chartWidth<600?3:5))===0||index===svgCoords.length-1).map(point=><text key={point.sublabel} x={point.x} y={svgH-8} textAnchor={point.x===paddingX?'start':point.x===svgCoords.at(-1)?.x?'end':'middle'} fontSize="11" className="fill-current text-muted">{point.label}</text>)}
               <defs>
                 <linearGradient id="shopifyGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#2563EB" stopOpacity="0.32" />
@@ -889,30 +703,18 @@ function LegacyDashboard(){
               )}
             </svg>
 
-            {/* Detail stays inside the card and can be dismissed explicitly. */}
-            {hoveredPoint && <div className="chart-detail absolute inset-x-0 top-0 z-10 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-card px-3 py-2 text-sm" role="status">
-              <div><span className="block text-xs text-muted">{hoveredPoint.sublabel}</span><strong>Rp {hoveredPoint.omzet.toLocaleString('id-ID')}</strong><span className="ml-2 text-xs text-muted">{hoveredPoint.count} transaksi</span></div>
-              <button type="button" aria-label="Tutup rincian grafik" className="min-h-11 min-w-11 rounded-lg text-muted" onClick={() => setHoveredPoint(null)}>×</button>
-            </div>}
-
+          </div>
+          <div className="dashboard-chart-detail mt-2 flex min-h-[68px] items-center justify-between gap-3 rounded-xl border border-line bg-app px-4 py-3" aria-live="polite">
+            {hoveredPoint?<><div className="min-w-0"><span className="block text-xs text-muted">{hoveredPoint.sublabel}</span><div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1"><strong className="text-base font-bold tabular-nums text-fg">Rp {hoveredPoint.omzet.toLocaleString('id-ID')}</strong><span className="text-xs text-muted">{hoveredPoint.count} transaksi</span></div></div><button type="button" aria-label="Tutup rincian grafik" className="min-h-11 min-w-11 rounded-lg text-muted hover:bg-line" onClick={()=>setHoveredPoint(null)}>×</button></>:<p className="flex items-center gap-2 text-sm text-muted"><span className="h-2 w-2 rounded-full bg-blue-600"/>Pilih titik untuk melihat rincian</p>}
           </div>
 
-          {/* Bottom X-Axis Labels */}
-          <div className="flex justify-between items-center pt-2.5" style={chartWidth < 600 ? {paddingLeft:54,paddingRight:12}:undefined}>
-            {chartPoints.filter((_, index) => chartPoints.length <= (chartWidth < 600 ? 4 : 7) || index % Math.ceil((chartPoints.length - 1) / (chartWidth < 600 ? 3 : 5)) === 0 || index === chartPoints.length - 1).map((p, idx) => (
-              <div key={idx} className="text-center flex-1 truncate px-0.5">
-                <span className="block text-xs font-black text-fg truncate">{p.label}</span>
-
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
       {/* 4. Two Lower Shopify Analytics Panels: Payment Channels & Top Products */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Panel A: Sales by Payment Method (Shopify Channel Breakdown) */}
-        <div className="payment-summary bg-surface rounded-3xl p-4 sm:p-6 border border-line shadow-xs space-y-4">
+        <div className="sn-card payment-summary bg-surface rounded-3xl p-4 sm:p-6 border border-line shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-line">
             <div>
               <h4 className="text-sm font-black text-fg flex items-center gap-2">
@@ -960,7 +762,7 @@ function LegacyDashboard(){
         </div>
 
         {/* Panel B: Top 5 Menu Paling Laris (Shopify Top Products) */}
-        <div className="bg-surface rounded-3xl p-5 sm:p-6 border border-line shadow-xs space-y-4">
+        <div className="sn-card bg-surface rounded-3xl p-5 sm:p-6 border border-line shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-line">
             <div>
               <h4 className="text-sm font-black text-fg flex items-center gap-2">
