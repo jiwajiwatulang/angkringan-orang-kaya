@@ -12,7 +12,7 @@
     "lint": "eslint",
     "test": "tsx test_suite.ts",
     "test:stability": "tsx --test tests/stability.test.ts tests/offline-worker.test.ts tests/waiter.test.ts tests/products-cashier.test.ts tests/security.test.ts tests/promo.test.ts tests/retail-add.test.ts",
-    "test:homepage": "tsx --test tests/homepage-example.test.ts",
+    "test:homepage": "tsx --test tests/homepage-*.test.ts",
     "test:operations": "tsx --test tests/operations*.test.ts",
     "test:offline": "tsx test_offline_readiness.ts",
     "typecheck": "tsc --noEmit",

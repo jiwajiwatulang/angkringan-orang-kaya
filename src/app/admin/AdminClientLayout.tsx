@@ -14,6 +14,7 @@ import { saveStoreSettingsAsync, isTableManagementEnabled } from "@/lib/settings
 import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "@/lib/recovery";
 import { createAdminSession, verifyAdminSession, destroyAdminSession } from "@/lib/session";
 import { db } from "@/lib/dexie";
+import {adminNavigationHref} from "@/lib/adminNavigation";
 import { verifyMerchantPin } from "@/lib/merchantAccess";
 import { checkCashierAccess, CashierAccessStatus } from "@/lib/licenseGuard";
 
@@ -41,6 +42,10 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const [isLainnyaOpen, setIsLainnyaOpen] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const navigationHref=(href:string)=>adminNavigationHref(href,isDemo);
+  const keepDashboard=(event:React.MouseEvent<HTMLAnchorElement>)=>{
+    if(pathname==='/admin'&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){event.preventDefault();preserveDemoUrl();}
+  };
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [licenseStatus, setLicenseStatus] = useState<CashierAccessStatus | null>(null);
 
@@ -113,7 +118,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         if (isLainnyaOpen) {
           setIsLainnyaOpen(false);
         } else if (pathname !== '/admin') {
-          router.push('/admin');
+          router.push(adminNavigationHref('/admin',isDemo));
         } else if (canGoBack) {
           window.history.back();
         } else {
@@ -129,7 +134,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         removeListener.remove();
       }
     };
-  }, [isLainnyaOpen, pathname, router]);
+  }, [isLainnyaOpen, pathname, router, isDemo]);
 
   const [authView, setAuthView] = useState<"login" | "verify_recovery" | "reset_pin" | "setup_initial">("login");
   const [recoveryCodeInput, setRecoveryCodeInput] = useState("");
@@ -347,7 +352,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
           <div className="pt-2 space-y-2">
             <Link
-              href="/pos"
+              href={navigationHref("/pos")}
               className="w-full py-3.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span>Aktivasi Kode Lisensi di Kasir</span>
@@ -617,7 +622,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
           <div className="mt-6 pt-4 border-t border-line">
             <Link
-              href="/pos"
+              href={navigationHref("/pos")}
               className="text-xs font-bold text-muted hover:text-accent-text inline-flex items-center gap-1.5 transition-colors"
             >
               <span>← Kembali ke Kasir</span>
@@ -650,7 +655,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           }`}
         >
           <Link
-            href="/admin"
+            href={navigationHref("/admin")} onClick={keepDashboard}
             className="flex items-center gap-2.5 overflow-hidden"
             title="SakuNota - Admin Backoffice"
           >
@@ -704,11 +709,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               return (
                 <Link
                   key={item.href}
-                  href={
-                    isDemo
-                      ? `${item.href}${item.href.includes("?") ? "&" : "?"}demo=true`
-                      : item.href
-                  }
+                  href={navigationHref(item.href)}
+                  onClick={item.href==='/admin'?keepDashboard:undefined}
                   title={isSidebarCollapsed ? item.label : undefined}
                   className={`flex items-center rounded-2xl font-bold transition-all ${
                     isSidebarCollapsed
@@ -839,7 +841,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </span>
             </div>
             <Link
-              href="/admin/pengaturan/keamanan"
+              href={navigationHref("/admin/pengaturan/keamanan")}
               className="px-2.5 py-1 bg-accent hover:bg-accent-hover text-white font-bold rounded-lg shrink-0 transition-colors"
             >
               Ganti PIN
@@ -856,7 +858,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       {/* --- MOBILE BOTTOM NAVIGATION (HP < 768px) --- */}
       {typeof document !== "undefined" && createPortal(<nav aria-label="Navigasi Admin" className="admin-bottom-nav md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-line z-40 px-1 pt-1.5 grid grid-cols-4 items-center" style={{paddingBottom:"calc(0.375rem + env(safe-area-inset-bottom))"}}>
         <Link
-          href="/admin"
+          href={navigationHref("/admin")} onClick={keepDashboard}
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
             pathname === "/admin"
               ? " text-accent-text font-black"
@@ -868,7 +870,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         </Link>
 
         <Link
-          href="/admin/menu"
+          href={navigationHref("/admin/menu")}
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
             pathname.startsWith("/admin/menu")
               ? " text-accent-text font-black"
@@ -880,7 +882,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         </Link>
 
         <Link
-          href="/admin/transaksi"
+          href={navigationHref("/admin/transaksi")}
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
             pathname.startsWith("/admin/transaksi")
               ? " text-accent-text font-black"
@@ -919,12 +921,12 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <h3 className="text-base font-black text-fg mb-3">Menu Lainnya</h3>
 
             <div className="grid grid-cols-1 gap-2 mb-4">
-              <Link href="/admin/menu?tab=stock" onClick={() => setIsLainnyaOpen(false)} className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-line text-fg">
+              <Link href={navigationHref("/admin/menu?tab=stock")} onClick={() => setIsLainnyaOpen(false)} className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-line text-fg">
                 <span className="text-xl"><LineIcon name="catalog" /></span><div><div className="font-bold text-sm">Katalog &amp; Stok</div><div className="text-xs text-muted">Produk, persediaan, dan opname</div></div>
               </Link>
               {isTableManagementEnabled(storeSettings) && (
                 <Link
-                  href="/admin/meja"
+                  href={navigationHref("/admin/meja")}
                   onClick={() => setIsLainnyaOpen(false)}
                   className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
                 >
@@ -938,7 +940,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               )}
 
               <Link
-                href="/admin/shift"
+                href={navigationHref("/admin/shift")}
                 onClick={() => setIsLainnyaOpen(false)}
                 className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
@@ -951,7 +953,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </Link>
 
               <Link
-                href="/admin/pengaturan"
+                href={navigationHref("/admin/pengaturan")}
                 onClick={() => setIsLainnyaOpen(false)}
                 className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
