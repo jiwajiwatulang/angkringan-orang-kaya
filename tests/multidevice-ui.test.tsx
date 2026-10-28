@@ -36,7 +36,7 @@ test('public renewal/help pages remain accessible while POS and Admin wait for v
   try{
     const {default:Boundary}=await import('../src/components/PosSessionBoundary');
     const render=(path:string)=>renderToStaticMarkup(<PathnameContext.Provider value={path}><Boundary><p>Page content</p></Boundary></PathnameContext.Provider>);
-    for(const path of ['/','/checkout','/panduan','/privacy'])assert.ok(render(path).includes('Page content'));
+    for(const path of ['/','/checkout','/panduan','/privacy','/pulihkan-kasir','/hubungkan-perangkat'])assert.ok(render(path).includes('Page content'));
     for(const path of ['/pos','/admin','/admin/pengaturan']){const html=render(path);assert.equal(html.includes('Page content'),false);assert.ok(html.includes('Memuat data'));}
   }finally{delete process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE;if(prior)Object.defineProperty(globalThis,'localStorage',prior);else delete (globalThis as any).localStorage;}
 });

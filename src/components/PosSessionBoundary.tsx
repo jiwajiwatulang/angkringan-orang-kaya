@@ -22,7 +22,7 @@ export default function PosSessionBoundary({children}:{children:React.ReactNode}
   useEffect(()=>{
     if(!enabled||!runtime?.scope)return;
     let stopped=false,running=false;
-    const update=async()=>{if(stopped||running)return;running=true;try{setOnline(navigator.onLine);if(navigator.onLine)await runtime.synchronizer.synchronize();if(!stopped){setFailed(false);setPending(await db.table('posOutbox').count());}}catch(e){if(!stopped){setFailed(true);setPending(await db.table('posOutbox').count());if((e as {status?:number}).status===401||(e as {status?:number}).status===403){await rejectRuntimeAccess(runtime);setRuntime({...runtime});setError(e instanceof Error?e.message:'Silakan masuk lagi.');setReady(!!runtime.employees);}}}finally{running=false;}};
+    const update=async()=>{if(stopped||running)return;running=true;try{setOnline(navigator.onLine);if(navigator.onLine)await runtime.synchronizer.synchronize();if(!stopped){setFailed(false);setPending(await db.table('posOutbox').count());}}catch(e){if(!stopped){setFailed(true);setPending(await db.table('posOutbox').count());if((e as {status?:number}).status===401||(e as {status?:number}).status===403){setReady(false);await rejectRuntimeAccess(runtime,e);setRuntime({...runtime});setError(e instanceof Error?e.message:'Silakan masuk lagi.');setReady(!!runtime.employees);}}}finally{running=false;}};
     const timer=setInterval(()=>void update(),3000);window.addEventListener('online',update);window.addEventListener('offline',update);void update();
     return()=>{stopped=true;clearInterval(timer);window.removeEventListener('online',update);window.removeEventListener('offline',update);};
   },[enabled,runtime]);

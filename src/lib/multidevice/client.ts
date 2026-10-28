@@ -9,7 +9,7 @@ import {isDemoMode} from '../demoMode';
 import {LocalReplica,replicaDatabase} from './replica';
 import {LICENSE_PUBLIC_KEY} from '../licenseProtocol';
 
-export interface AccessList {devices?:{id:string;name:string;role:string;revoked:number}[];employees:{id:string;name:string;active:number}[];pairings?:{id:string;candidateName:string;expiresAt:number}[]}
+export interface AccessList {devices?:{id:string;name:string;role:string;revoked:number}[];employees:{id:string;name:string;active:number;epoch?:number}[];pairings?:{id:string;candidateName:string;expiresAt:number}[]}
 export class DeviceClient {
   private currentClaims:AccessClaims;
   constructor(private access:string,claims:AccessClaims,private publicKey:JsonWebKey=LICENSE_PUBLIC_KEY){this.currentClaims=claims;}
@@ -43,7 +43,7 @@ async function call<T>(body:unknown):Promise<T>{
   try{
     const response=await fetch('/api/store',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(8000),cache:'no-store'});
     const data=await response.json();
-    if(!response.ok)throw new AccessError(typeof data.error==='string'?data.error:'Data belum dapat diperbarui.',response.status);return data as T;
+    if(!response.ok)throw new AccessError(typeof data.error==='string'?data.error:'Data belum dapat diperbarui.',response.status,typeof data.code==='string'?data.code:undefined,Number.isSafeInteger(data.retryAt)?data.retryAt:undefined);return data as T;
   }catch(error){
     if(error instanceof AccessError)throw error;
     throw new AccessError('Koneksi belum tersedia. Coba lagi.',503);

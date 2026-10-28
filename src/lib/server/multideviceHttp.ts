@@ -21,12 +21,12 @@ export async function handleMultiDevice(request:Request,env:MultiDeviceHttpEnv):
     signingKey(env);
     if(request.method!=='POST') return response({error:'Permintaan tidak sesuai.'},405);
     const ingress=env.MULTI_DEVICE_RATE_LIMITER||env.PUBLIC_RATE_LIMITER;
-    if(ingress){const limit=await ingress.limit({key:`multi:${request.headers.get('CF-Connecting-IP')||'local'}`});if(!limit.success)return response({error:'Terlalu banyak percobaan. Coba lagi nanti.'},429);}
+    if(ingress){const limit=await ingress.limit({key:`multi:${request.headers.get('CF-Connecting-IP')||'local'}`});if(!limit.success)return response({error:'Terlalu banyak percobaan. Coba lagi nanti.',code:'rate_limited',retryAt:Date.now()+60000},429);}
     const body=await boundedBody(request);
     if(!body||typeof body!=='object'||typeof body.action!=='string'||!body.data||typeof body.data!=='object'||Array.isArray(body.data)||!body.proof)throw new AccessError('Permintaan tidak sesuai.',400);
     const action=body.action as string,data=body.data as Record<string,unknown>,proof=body.proof as DeviceProof;
     if(env.MULTI_DEVICE_RATE_LIMITER&&env.PUBLIC_RATE_LIMITER&&!['send','pull','recover'].includes(action)){
-      const limit=await env.PUBLIC_RATE_LIMITER.limit({key:`multi-auth:${request.headers.get('CF-Connecting-IP')||'local'}`});if(!limit.success)return response({error:'Terlalu banyak percobaan. Coba lagi nanti.'},429);
+      const limit=await env.PUBLIC_RATE_LIMITER.limit({key:`multi-auth:${request.headers.get('CF-Connecting-IP')||'local'}`});if(!limit.success)return response({error:'Terlalu banyak percobaan. Coba lagi nanti.',code:'rate_limited',retryAt:Date.now()+60000},429);
     }
     if(action==='enroll')return response(await enrollOwner(env,{activation:String(data.activation||''),deviceName:String(data.deviceName||''),proof}));
     if(action==='pair.request')return response(await requestPairing(env,{code:String(data.code||''),deviceId:String(data.deviceId||''),deviceName:String(data.deviceName||''),proof}));
@@ -45,7 +45,7 @@ export async function handleMultiDevice(request:Request,env:MultiDeviceHttpEnv):
     if(action==='employee.save')return response(await saveEmployee(env,claims,{id:String(data.id||''),name:String(data.name||''),pin:data.pin===undefined?undefined:String(data.pin),active:data.active as boolean}));
     return response({error:'Halaman tidak tersedia.'},404);
   }catch(error){
-    if(error instanceof AccessError)return response({error:error.message},error.status);
+    if(error instanceof AccessError)return response({error:error.message,...(error.code?{code:error.code}:{}),...(error.retryAt?{retryAt:error.retryAt}:{})},error.status);
     // Never expose SQL, submitted PINs, key material or error stacks.
     return response({error:'Data belum dapat diproses. Coba lagi.'},503);
   }

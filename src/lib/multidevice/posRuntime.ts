@@ -84,8 +84,8 @@ export async function enterEmployee(employee:Awaited<ReturnType<EmployeeSessions
 export async function leaveEmployee(){
   if(!current)return;await current.employees?.logout();setPosScope(undefined);current.scope=undefined;
 }
-export async function rejectRuntimeAccess(runtime:PosRuntime){
-  if(runtime.employees)await runtime.employees.rejectCurrent();
+export async function rejectRuntimeAccess(runtime:PosRuntime,error:unknown=new AccessError()){
+  if(runtime.employees)await runtime.employees.handleRejection(error);
   else if(runtime.scope)await rememberAccessRejection(db,runtime.scope.access);
   runtime.scope=undefined;setPosScope(undefined);
 }

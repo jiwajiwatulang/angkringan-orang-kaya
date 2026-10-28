@@ -4,7 +4,7 @@ import type {EmployeeSessions} from '@/lib/multidevice/employeeSession';
 import LoadingState,{BusyLabel} from './LoadingState';
 
 export default function EmployeeLogin({sessions,onSuccess}:{sessions:EmployeeSessions;onSuccess:(session:Awaited<ReturnType<EmployeeSessions['login']>>)=>Promise<void>}){
-  const [employees,setEmployees]=useState<{id:string;name:string;active:number;expiresAt?:number}[]>([]),[selected,setSelected]=useState(''),[pin,setPin]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[loaded,setLoaded]=useState(false),[refreshing,setRefreshing]=useState(false),[listError,setListError]=useState('');
+  const [employees,setEmployees]=useState<{id:string;name:string;active:number;expiresAt?:number}[]>([]),[selected,setSelected]=useState(''),[pin,setPin]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[loaded,setLoaded]=useState(false),[refreshing,setRefreshing]=useState(false),[listError,setListError]=useState(''),[needsPairing,setNeedsPairing]=useState(false);
   const shown=useRef(false),loading=useRef(false),[online,setOnline]=useState(true);
   const reload=useRef<()=>void>(()=>{});
   useEffect(()=>{
@@ -14,12 +14,13 @@ export default function EmployeeLogin({sessions,onSuccess}:{sessions:EmployeeSes
       if(loading.current)return;loading.current=true;setRefreshing(true);
       const display=(rows:typeof employees)=>{if(!cancelled){setEmployees(rows);setSelected(current=>rows.some(row=>row.id===current)?current:'');setLoaded(true);shown.current=true;}};
       try{
-        const cached=await sessions.employees(false);
+        let cached:typeof employees=[];
+        try{cached=await sessions.employees(false);}catch(error){if(!connected)throw error;}
         if(!connected||cached.length&&!shown.current)display(cached);
         if(connected)display((await sessions.employees(true)).filter(row=>row.active));
-        if(!cancelled)setListError('');
+        if(!cancelled){setListError('');setNeedsPairing(false);}
       }
-      catch(e){if(!cancelled){const status=(e as {status?:number}).status;if(status===401||status===403)display([]);setLoaded(true);setListError(e instanceof Error?e.message:'Nama karyawan belum dapat dimuat.');}}
+      catch(e){if(!cancelled){const status=(e as {status?:number}).status;if(status===401||status===403)display([]);setLoaded(true);setNeedsPairing((e as {code?:string}).code==='device_revoked');setListError(e instanceof Error?e.message:'Nama karyawan belum dapat dimuat.');}}
       finally{loading.current=false;if(!cancelled)setRefreshing(false);}
     };
     reload.current=()=>void load();void load();
@@ -30,6 +31,7 @@ export default function EmployeeLogin({sessions,onSuccess}:{sessions:EmployeeSes
   return <section className="mx-auto w-full max-w-sm space-y-5 rounded-2xl border border-line bg-surface p-5 text-fg">
     <h1 className="text-xl font-bold">Masuk Kasir</h1>
     {(error||listError)&&<p role="alert" className="text-sm text-red-700">{error||listError}</p>}
+    {needsPairing&&<a href="/hubungkan-perangkat" className="inline-flex min-h-11 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white">Hubungkan Kembali</a>}
     {!loaded?<LoadingState compact label="Memuat nama karyawan"/>:employees.length===0?<div className="space-y-3">
       {!error&&!listError&&<><p className="text-sm font-semibold">{online?'Belum ada karyawan aktif':'Belum ada akun yang bisa masuk tanpa internet'}</p><p className="text-sm text-muted">{online?'Tambahkan nama dan PIN melalui Perangkat & Karyawan di perangkat Pemilik.':'Sambungkan internet untuk masuk pertama kali.'}</p></>}
       <button type="button" disabled={refreshing} className="min-h-11 rounded-xl border border-line px-4 text-sm font-semibold disabled:opacity-50" onClick={()=>{setListError('');reload.current();}}>{refreshing?<BusyLabel>Memperbarui</BusyLabel>:'Perbarui Daftar'}</button>

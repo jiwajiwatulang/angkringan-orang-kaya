@@ -7,7 +7,7 @@ export interface AccessClaims {
   issuedAt: number; expiresAt: number;
 }
 export class AccessError extends Error {
-  constructor(message = 'Akses tidak diizinkan.', public status = 403) { super(message); }
+  constructor(message = 'Akses tidak diizinkan.', public status = 403, public code?:string, public retryAt?:number) { super(message); }
 }
 export function requireOwner(claims: AccessClaims) {
   if (claims.role !== 'owner' || claims.employeeId) throw new AccessError('Tindakan ini memerlukan akses pemilik.');

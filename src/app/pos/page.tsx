@@ -2607,6 +2607,7 @@ export default function POSPage() {
             </form>
           </div>
 
+          <div className="mb-5 rounded-2xl border border-blue-200 bg-white p-4 text-left"><h2 className="text-sm font-bold">Data dari browser belum muncul?</h2><p className="mt-1 text-sm text-slate-600">Buka toko tersimpan atau bawa cadangan dari browser sebelumnya.</p><a href="/pulihkan-kasir" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-blue-600">Bawa Data Lama</a></div>
           {/* Quick Demo Access Box */}
           <div className="bg-blue-50/80 border border-blue-200 rounded-2xl p-4 sm:p-5 mb-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
             <div className="flex items-center gap-3.5 text-left">

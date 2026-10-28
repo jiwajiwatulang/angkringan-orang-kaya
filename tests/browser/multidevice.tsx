@@ -60,6 +60,7 @@ async function main(){
     root.render(<main className="mx-auto max-w-3xl p-5 text-fg"><h1 className="mb-5 text-2xl font-bold">Perangkat Toko</h1><OwnerDeviceRows data={{enabled:true,next:null,items:[{licenseKey:'SN-LOCAL-BROWSER-ONLY',devices:[{id:'owner',name:'Laptop Pemilik',role:'owner',lastReceivedAt:Date.now()},{id:'cashier',name:'Kasir Depan',role:'cashier',lastReceivedAt:null}]}]}}/></main>);return;
   }
   try{
+    if(location.pathname==='/pulihkan-kasir'){const {default:Recovery}=await import('../../src/app/pulihkan-kasir/page');root.render(<Recovery/>);return;}
     if(location.pathname==='/pos'){
       const [{default:POS},{default:Boundary}]=await Promise.all([import('../../src/app/pos/page'),import('../../src/components/PosSessionBoundary')]);
       if(new URLSearchParams(location.search).has('devices')){root.render(<Boundary><OwnerDevices/></Boundary>);return;}
