@@ -5,5 +5,5 @@ export default function StoreDataStatus({pending,online,failed,needsReview,allDe
   if(!online)return <p role="status" className="text-sm text-amber-800">Tidak Tersambung{pending>0?` · ${pending} Data Belum Terkirim`:''}</p>;
   if(failed)return <p role="status" className="text-sm text-red-700">Pengiriman Belum Berhasil</p>;
   if(pending>0)return <p role="status" className="text-sm text-amber-800">{pending} Data Belum Terkirim</p>;
-  return <p role="status" className="text-sm text-muted">{allDevicesConfirmed?'Semua Data Terbaru':'Data Terakhir Diterima'}</p>;
+  return null;
 }

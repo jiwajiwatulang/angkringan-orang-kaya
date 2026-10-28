@@ -6,14 +6,20 @@ export const randomCode = () => crypto.randomBytes(32).toString('base64url');
 export function pinVerifier(pin: string): string {
   if (!/^\d{6,12}$/.test(pin)) throw new AccessError('Gunakan PIN 6–12 angka.', 400);
   const salt = crypto.randomBytes(24).toString('base64url');
-  return JSON.stringify({v:1,salt,iterations:210000,hash:crypto.pbkdf2Sync(pin,salt,210000,32,'sha256').toString('base64url')});
+  // Hosted Workers cap each PBKDF2 call at 100k; local workerd does not.
+  // Sequential rounds keep 210k total work without exceeding that platform cap.
+  let hash:Buffer=Buffer.from(pin);
+  for(let round=0;round<3;round++)hash=crypto.pbkdf2Sync(hash,salt,70000,32,'sha256');
+  return JSON.stringify({v:2,salt,iterations:70000,rounds:3,hash:hash.toString('base64url')});
 }
 export function verifyPin(pin: string, verifier: string): boolean {
   if (!/^\d{6,12}$/.test(pin)) return false;
   try {
     const saved = JSON.parse(verifier);
-    if (saved.v !== 1 || saved.iterations !== 210000 || typeof saved.salt !== 'string') return false;
-    const actual = crypto.pbkdf2Sync(pin,saved.salt,saved.iterations,32,'sha256');
+    const rounds=saved.v===2&&saved.iterations===70000&&saved.rounds===3?3:saved.v===1&&saved.iterations===210000?1:0;
+    if (!rounds || typeof saved.salt !== 'string' || saved.salt.length>64) return false;
+    let actual:Buffer=Buffer.from(pin);
+    for(let round=0;round<rounds;round++)actual=crypto.pbkdf2Sync(actual,saved.salt,saved.iterations,32,'sha256');
     const expected = Buffer.from(saved.hash,'base64url');
     return expected.length === actual.length && crypto.timingSafeEqual(expected,actual);
   } catch { return false; }

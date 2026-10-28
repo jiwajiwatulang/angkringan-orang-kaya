@@ -3,6 +3,9 @@ import React,{useEffect,useRef,useState} from 'react';
 import QRCode from 'qrcode';
 import type {DeviceClient,AccessList} from '@/lib/multidevice/client';
 import DeviceRecovery from './DeviceRecovery';
+import LoadingState,{BusyLabel} from './LoadingState';
+import {db} from '@/lib/dexie';
+import {readDeviceList,rememberDeviceList} from '@/lib/multidevice/deviceListCache';
 
 const button='min-h-11 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50';
 const secondary='min-h-11 rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-fg disabled:opacity-50';
@@ -10,34 +13,43 @@ const input='min-h-11 w-full rounded-xl border border-line bg-surface px-3 py-2.
 export default function DevicesPanel({client}:{client:DeviceClient}){
   const [list,setList]=useState<AccessList|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
   const [pair,setPair]=useState<{image:string;expiresAt:number}|null>(null),[now,setNow]=useState(Date.now());
+  const [online,setOnline]=useState(true),[stale,setStale]=useState(false),[refreshing,setRefreshing]=useState(false),[savedAt,setSavedAt]=useState(0);
+  const [formError,setFormError]=useState('');
   const [editing,setEditing]=useState<{id:string;name:string;pin:string;active:boolean}|null>(null);
-  const mounted=useRef(true),loading=useRef(false);
+  const mounted=useRef(true),loading=useRef(false),refreshFailed=useRef(false);
   const refresh=async()=>{
-    if(loading.current)return;loading.current=true;
-    try{const next=await client.list();if(mounted.current){setList(next);setError('');}}
-    catch(e){if(mounted.current)setError(e instanceof Error?e.message:'Data belum dapat diperbarui.');}
-    finally{loading.current=false;}
+    const connected=navigator.onLine;setOnline(connected);
+    if(!connected){setStale(true);return;}
+    if(loading.current)return;loading.current=true;setRefreshing(true);
+    try{const next=await client.list();const cached=await rememberDeviceList(db,client.claims,next);if(mounted.current){setList(next);setSavedAt(cached.savedAt);setStale(false);setError('');refreshFailed.current=false;}}
+    catch(e){refreshFailed.current=true;if(mounted.current){setStale(true);if([401,403].includes((e as {status:number}).status)){setList(null);await db.table('settings').delete(`device_list:${client.claims.storeId}:${client.claims.deviceId}:${client.claims.deviceEpoch}`);}setError(e instanceof Error?e.message:'Data belum dapat diperbarui.');}}
+    finally{loading.current=false;if(mounted.current)setRefreshing(false);}
   };
   useEffect(()=>{
-    mounted.current=true;void refresh();const interval=setInterval(()=>{setNow(Date.now());void refresh();},5000);
-    return()=>{mounted.current=false;clearInterval(interval);};
+    mounted.current=true;setList(null);setStale(true);
+    void (async()=>{try{const cached=await readDeviceList(db,client.claims);if(mounted.current&&cached){setList(cached.list);setSavedAt(cached.savedAt);}}catch{/* A missing local copy must not block a fresh request. */}if(mounted.current)void refresh();})();
+    const interval=setInterval(()=>{setNow(Date.now());if(document.visibilityState==='visible'&&!refreshFailed.current)void refresh();},5000);
+    window.addEventListener('online',refresh);window.addEventListener('offline',refresh);
+    return()=>{mounted.current=false;clearInterval(interval);window.removeEventListener('online',refresh);window.removeEventListener('offline',refresh);};
   // The client instance is stable for the enrolled owner session.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[client]);
   const perform=async(work:()=>Promise<unknown>)=>{
+    if(stale||!navigator.onLine){setError('Sambungkan internet untuk mengubah perangkat atau karyawan.');return;}
     setBusy(true);setError('');try{await work();await refresh();}catch(e){setError(e instanceof Error?e.message:'Perubahan belum tersimpan.');}finally{setBusy(false);}
   };
   return <div className="mx-auto w-full max-w-3xl space-y-5 text-fg">
     <h1 className="text-2xl font-bold tracking-tight">Perangkat &amp; Karyawan</h1>
     {error&&<p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
-    {!list?<p role="status" className="py-6 text-sm text-muted">Memuat perangkat…</p>:<>
+    {(stale||!online)&&<div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3 text-sm"><p>{savedAt?`Data tersimpan · ${new Date(savedAt).toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}`:online?(refreshing?'Menyiapkan daftar perangkat':'Daftar perangkat belum tersedia.'):'Sambungkan internet untuk memuat perangkat.'}</p><button type="button" className={secondary} disabled={refreshing||!online} onClick={()=>{setError('');void refresh();}}>{refreshing?<BusyLabel>Memperbarui</BusyLabel>:'Coba Lagi'}</button></div>}
+    {!list?(refreshing?<LoadingState label="Memuat perangkat dan karyawan"/>:null):<>
       <section className="rounded-2xl border border-line bg-surface p-4 sm:p-5">
         <div className="mb-4 flex items-center justify-between gap-3"><h2 className="text-lg font-bold">Perangkat</h2><span className="text-sm tabular-nums text-muted">{list.devices?.length||0} / 2</span></div>
         <ul className="divide-y divide-line">{list.devices?.map(device=><li key={device.id} className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0">
           <div className="min-w-0"><h3 className="break-words font-semibold">{device.name}</h3><p className="mt-1 text-sm text-muted">{device.role==='owner'?'Akses penuh':'Kasir'}</p></div>
-          <div className="flex flex-wrap items-center gap-3"><span className="text-sm text-blue-700">{device.role==='owner'?'Aktif':'Terhubung'}</span>{device.role==='cashier'&&<button type="button" className={secondary} disabled={busy} onClick={()=>void perform(()=>client.call('device.revoke',{id:device.id}))}>Lepas Perangkat</button>}</div>
+          <div className="flex flex-wrap items-center gap-3"><span className="text-sm text-blue-700">{stale||!online?'Terdaftar':device.role==='owner'?'Aktif':'Terhubung'}</span>{device.role==='cashier'&&<button type="button" className={secondary} disabled={busy||stale||!online} onClick={()=>void perform(()=>client.call('device.revoke',{id:device.id}))}>Lepas Perangkat</button>}</div>
         </li>)}</ul>
-        {(list.devices?.length||0)<2&&<button type="button" className={button} disabled={busy} onClick={()=>void perform(async()=>{
+        {(list.devices?.length||0)<2&&<button type="button" className={button} disabled={busy||stale||!online} onClick={()=>void perform(async()=>{
           const result=await client.call<{code:string;expiresAt:number}>('pair.create');
           const url=new URL('/hubungkan-perangkat',location.origin);url.hash=new URLSearchParams({code:result.code}).toString();
           const image=await QRCode.toDataURL(url.toString(),{width:240,margin:4,errorCorrectionLevel:'M'});setPair({image,expiresAt:result.expiresAt});
@@ -48,21 +60,28 @@ export default function DevicesPanel({client}:{client:DeviceClient}){
           <img src={pair.image} alt="Hubungkan perangkat kasir" width={240} height={240} className="h-auto max-w-full"/>
           <p className="text-sm text-muted">Berlaku sampai {new Date(pair.expiresAt).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</p>
         </div>}
-        {list.pairings?.map(request=><div key={request.id} className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-3"><span className="break-words font-medium">{request.candidateName}</span><button type="button" className={button} disabled={busy} onClick={()=>void perform(async()=>{await client.call('pair.approve',{id:request.id});setPair(null);})}>Setujui Perangkat</button></div>)}
+        {list.pairings?.map(request=><div key={request.id} className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-3"><span className="break-words font-medium">{request.candidateName}</span><button type="button" className={button} disabled={busy||stale||!online} onClick={()=>void perform(async()=>{await client.call('pair.approve',{id:request.id});setPair(null);})}>Setujui Perangkat</button></div>)}
       </section>
       <section className="rounded-2xl border border-line bg-surface p-4 sm:p-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">Karyawan</h2><button type="button" className={secondary} disabled={busy} onClick={()=>setEditing({id:crypto.randomUUID(),name:'',pin:'',active:true})}>Tambah Karyawan</button></div>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">Karyawan</h2><button type="button" className={secondary} disabled={busy||stale||!online} onClick={()=>{setFormError('');setEditing({id:crypto.randomUUID(),name:'',pin:'',active:true});}}>Tambah Karyawan</button></div>
+        {!list.employees.some(employee=>employee.active)&&<p role="status" className="mb-3 text-sm text-muted">Tambahkan karyawan aktif beserta PIN agar perangkat Kasir bisa masuk.</p>}
         <ul className="divide-y divide-line">{list.employees.map(employee=><li key={employee.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
           <div className="min-w-0"><h3 className="break-words font-semibold">{employee.name}</h3><p className="mt-1 text-sm text-muted">{employee.active?'Aktif':'Nonaktif'}</p></div>
-          <div className="flex flex-wrap gap-2"><button type="button" disabled={busy} className={secondary} onClick={()=>setEditing({...employee,active:!!employee.active,pin:''})}>Ubah PIN</button><button type="button" disabled={busy} className={secondary} onClick={()=>void perform(()=>client.call('employee.save',{id:employee.id,name:employee.name,active:!employee.active}))}>{employee.active?'Nonaktifkan':'Aktifkan'}</button></div>
+          <div className="flex flex-wrap gap-2"><button type="button" disabled={busy||stale||!online} className={secondary} onClick={()=>{setFormError('');setEditing({...employee,active:!!employee.active,pin:''});}}>Ubah PIN</button><button type="button" disabled={busy||stale||!online} className={secondary} onClick={()=>void perform(()=>client.call('employee.save',{id:employee.id,name:employee.name,active:!employee.active}))}>{employee.active?'Nonaktifkan':'Aktifkan'}</button></div>
         </li>)}</ul>
-        {editing&&<form className="mt-4 space-y-3 rounded-xl border border-line p-4" onSubmit={event=>{event.preventDefault();void perform(async()=>{await client.call('employee.save',{...editing,pin:editing.pin||undefined});setEditing(null);});}}>
-          <label className="block text-sm font-medium">Nama<input className={`${input} mt-1`} value={editing.name} maxLength={100} required autoComplete="off" onChange={e=>setEditing({...editing,name:e.target.value})}/></label>
-          <label className="block text-sm font-medium">PIN<input className={`${input} mt-1`} type="password" inputMode="numeric" pattern="[0-9]{6,12}" minLength={6} maxLength={12} autoComplete="new-password" required value={editing.pin} onChange={e=>setEditing({...editing,pin:e.target.value.replace(/\D/g,'')})}/></label>
-          <div className="flex gap-2"><button type="submit" disabled={busy} className={button}>Simpan</button><button type="button" disabled={busy} className={secondary} onClick={()=>setEditing(null)}>Batal</button></div>
+        {editing&&<form noValidate className="mt-4 space-y-3 rounded-xl border border-line p-4" onSubmit={event=>{
+          event.preventDefault();setFormError('');
+          if(!editing.name.trim()){setFormError('Masukkan nama karyawan.');return;}
+          if(!/^[0-9]{6,12}$/.test(editing.pin)){setFormError('PIN karyawan harus 6–12 angka.');return;}
+          void perform(async()=>{try{await client.call('employee.save',{...editing,name:editing.name.trim(),pin:editing.pin});setEditing(null);}catch(error){setFormError(error instanceof Error?error.message:'Karyawan belum tersimpan. Coba lagi.');throw error;}});
+        }}>
+          <label className="block text-sm font-medium">Nama<input className={`${input} mt-1`} value={editing.name} maxLength={100} required autoComplete="off" disabled={busy||stale||!online} onChange={e=>setEditing({...editing,name:e.target.value})}/></label>
+          <label className="block text-sm font-medium">PIN (6–12 angka)<input className={`${input} mt-1`} type="password" inputMode="numeric" pattern="[0-9]{6,12}" minLength={6} maxLength={12} autoComplete="new-password" required disabled={busy||stale||!online} value={editing.pin} onChange={e=>setEditing({...editing,pin:e.target.value.replace(/\D/g,'')})}/></label>
+          {formError&&<p role="alert" className="text-sm font-medium text-red-700">{formError}</p>}
+          <div className="flex gap-2"><button type="submit" disabled={busy||stale||!online} className={button}>{busy?<BusyLabel>Menyimpan</BusyLabel>:'Simpan'}</button><button type="button" disabled={busy||stale||!online} className={secondary} onClick={()=>setEditing(null)}>Batal</button></div>
         </form>}
       </section>
-      <DeviceRecovery client={client}/>
+      {!stale&&online&&<DeviceRecovery client={client}/>}
     </>}
   </div>;
 }

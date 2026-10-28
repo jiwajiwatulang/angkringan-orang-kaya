@@ -1,4 +1,5 @@
 "use client";
+import LoadingState from "@/components/LoadingState";
 import LineIcon from "@/components/LineIcon";
 import TableShapeIcon from "@/components/TableShapeIcon";
 import React, { useState, useEffect, useMemo } from "react";
@@ -487,7 +488,7 @@ export default function AdminMejaPage() {
 
       {/* --- CONTENT AREA --- */}
       {isLoading ? (
-        <div className="py-12 text-center text-muted text-xs">Memuat daftar meja...</div>
+        <LoadingState label="Memuat daftar meja"/>
       ) : tables.length === 0 ? (
         <div className="py-12 text-center bg-surface rounded-3xl border border-line p-8">
           <div className="w-12 h-12 mx-auto mb-3 text-muted flex items-center justify-center">

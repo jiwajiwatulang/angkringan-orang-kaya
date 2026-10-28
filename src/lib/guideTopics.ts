@@ -112,9 +112,11 @@ export const GUIDE_TOPICS: GuideTopic[] = [
           'Di HP Android (Chrome): Buka sakunota.my.id, ketuk menu titik tiga di sudut kanan atas, lalu pilih "Instal aplikasi" atau "Tambahkan ke Layar Utama".',
           'Di iPhone / iPad (Safari): Buka sakunota.my.id, ketuk tombol Bagikan (ikon kotak panah ke atas) di menu bawah, lalu pilih "Tambahkan ke Layar Utama" (Add to Home Screen).',
           'Di Komputer / Laptop (Chrome atau Edge): Klik ikon instalasi kecil di sisi kanan kolom alamat URL (address bar), lalu pilih "Instal".',
-          'Ikon SakuNota akan muncul di layar beranda perangkat Anda. Saat dibuka, aplikasi langsung tampil bersih satu layar penuh tanpa bilah browser dan siap digunakan jualan secara offline.'
+          'Buka ikon SakuNota saat internet tersedia. Pastikan lisensi, menu, dan nota sudah tampil, lalu siapkan kasir tanpa internet dari Pengaturan POS.'
         ],
-        tips: 'Setelah terpasang di layar utama, Anda tidak perlu lagi mengetik alamat web. Cukup ketuk ikon SakuNota untuk langsung membuka kasir.'
+        tips: 'Gunakan browser, profil, dan alamat situs yang sama. Di iPhone/iPad, data Safari tidak otomatis ikut ke aplikasi layar utama. Jangan hapus data browser asal.',
+        targetHref: '/pulihkan-kasir',
+        targetLabel: 'Bawa data dari browser'
       }
     ]
   },

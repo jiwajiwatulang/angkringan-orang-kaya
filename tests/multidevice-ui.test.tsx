@@ -5,11 +5,19 @@ import assert from 'node:assert/strict';
 import StoreDataStatus from '../src/components/StoreDataStatus';
 import QRCode from 'qrcode';
 import {PathnameContext} from 'next/dist/shared/lib/hooks-client-context.shared-runtime';
+import LoadingState,{BusyLabel} from '../src/components/LoadingState';
+
+test('loading placeholders expose a short accessible status and hide decorative shapes',()=>{
+  const html=renderToStaticMarkup(<LoadingState label="Memuat perangkat"/>);
+  assert.ok(html.includes('role="status"'));assert.ok(html.includes('aria-label="Memuat perangkat"'));
+  assert.ok(html.includes('aria-hidden="true"'));assert.ok(html.includes('sn-skeleton'));
+  assert.ok(renderToStaticMarkup(<BusyLabel>Menyimpan</BusyLabel>).includes('sn-spinner'));
+});
 
 test('unknown remote state never claims every device has current data',()=>{
   const unknown=renderToStaticMarkup(<StoreDataStatus pending={0} online/>);
-  assert.ok(unknown.includes('Data Terakhir Diterima'));assert.equal(unknown.includes('Semua Data Terbaru'),false);
-  assert.ok(renderToStaticMarkup(<StoreDataStatus pending={0} online allDevicesConfirmed/>).includes('Semua Data Terbaru'));
+  assert.equal(unknown,'');
+  assert.equal(renderToStaticMarkup(<StoreDataStatus pending={0} online allDevicesConfirmed/>),'');
   assert.ok(renderToStaticMarkup(<StoreDataStatus pending={3} online={false}/>).includes('3 Data Belum Terkirim'));
   const review=renderToStaticMarkup(<StoreDataStatus pending={3} online={false} needsReview/>);
   assert.ok(review.includes('Stok Perlu Dicek'));assert.ok(review.includes('Tidak Tersambung'));assert.ok(review.includes('3 Data Belum Terkirim'));
@@ -28,7 +36,7 @@ test('public renewal/help pages remain accessible while POS and Admin wait for v
   try{
     const {default:Boundary}=await import('../src/components/PosSessionBoundary');
     const render=(path:string)=>renderToStaticMarkup(<PathnameContext.Provider value={path}><Boundary><p>Page content</p></Boundary></PathnameContext.Provider>);
-    for(const path of ['/','/checkout','/panduan','/privacy'])assert.ok(render(path).includes('Page content'));
+    for(const path of ['/','/checkout','/panduan','/privacy','/pulihkan-kasir','/hubungkan-perangkat'])assert.ok(render(path).includes('Page content'));
     for(const path of ['/pos','/admin','/admin/pengaturan']){const html=render(path);assert.equal(html.includes('Page content'),false);assert.ok(html.includes('Memuat data'));}
   }finally{delete process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE;if(prior)Object.defineProperty(globalThis,'localStorage',prior);else delete (globalThis as any).localStorage;}
 });

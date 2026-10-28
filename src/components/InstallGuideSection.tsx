@@ -125,6 +125,7 @@ export default function InstallGuideSection({
         </p>
       </div>
 
+      <div className="mx-auto mb-4 max-w-xl rounded-2xl border border-line bg-surface p-4 text-sm text-left"><p className="font-semibold text-fg">Sudah berjualan dari browser?</p><p className="mt-1 text-muted">Simpan cadangan sebelum beralih. Data Safari tidak otomatis ikut ke aplikasi layar utama.</p><Link href="/pulihkan-kasir" className="mt-2 inline-flex min-h-11 items-center font-semibold text-blue-600">Bawa Data Lama</Link></div>
       {/* Direct Install Button or Status Banner */}
       <div className="max-w-xl mx-auto">
         {isInstalled ? (

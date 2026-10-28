@@ -16,8 +16,8 @@ export function signingKey(env: MultiDeviceEnv) {
 }
 export async function activeLicense(db:D1Database, licenseKey:string) {
   const record = await getLicenseD1(db,licenseKey) || await getTesterLicenseD1(db,licenseKey) || await getBetaRegistrationByLicenseKeyD1(db,licenseKey);
-  if (!record || ('revoked' in record && record.revoked) || ('status' in record && !['disetujui','dikonversi_berbayar'].includes(record.status))) throw new AccessError('Lisensi tidak aktif.');
-  if ('expiresAt' in record && record.expiresAt && (!Number.isFinite(Date.parse(record.expiresAt)) || Date.now() >= Date.parse(record.expiresAt))) throw new AccessError('Masa akses berakhir.');
+  if (!record || ('revoked' in record && record.revoked) || ('status' in record && !['disetujui','dikonversi_berbayar'].includes(record.status))) throw new AccessError('Lisensi tidak aktif.',403,'license_revoked');
+  if ('expiresAt' in record && record.expiresAt && (!Number.isFinite(Date.parse(record.expiresAt)) || Date.now() >= Date.parse(record.expiresAt))) throw new AccessError('Masa akses berakhir.',403,'license_revoked');
   return record;
 }
 function originalClaims(token:string, key:string):LicenseClaims {
@@ -71,16 +71,16 @@ export async function authorize(env:MultiDeviceEnv,access:string,action:string,b
   const identity=verifyDeviceProof(`multi.${action}.${digest(JSON.stringify(body))}`,claims.storeId,claims.deviceId,access,proof);
   if(identity!==claims.deviceKey) throw new AccessError('Silakan masuk lagi.',401);
   const device=await env.DB.prepare('SELECT * FROM MdDevices WHERE storeId=? AND id=? AND revoked=0').bind(claims.storeId,claims.deviceId).first<DeviceRow>();
-  if(!device || device.epoch!==claims.deviceEpoch || device.publicKey!==identity || device.role!==claims.role) throw new AccessError('Perangkat sudah dilepas.');
+  if(!device || device.epoch!==claims.deviceEpoch || device.publicKey!==identity || device.role!==claims.role) throw new AccessError('Perangkat sudah dilepas.',403,'device_revoked');
   const store=await env.DB.prepare('SELECT licenseKey FROM MdStores WHERE id=?').bind(claims.storeId).first<{licenseKey:string}>();
   if(!store) throw new AccessError();
   await activeLicense(env.DB,store.licenseKey);
   const ownerBinding=await env.DB.prepare(`SELECT d.id FROM MdDevices d JOIN LicenseDeviceKeys k ON k.deviceId=d.id AND k.publicKey=d.publicKey
     WHERE d.storeId=? AND d.role='owner' AND d.revoked=0 AND k.licenseKey=?`).bind(claims.storeId,store.licenseKey).first();
-  if(!ownerBinding) throw new AccessError('Perangkat toko perlu dihubungkan kembali.');
+  if(!ownerBinding) throw new AccessError('Perangkat toko perlu dihubungkan kembali.',403,'device_revoked');
   if(claims.employeeId){
     const employee=await env.DB.prepare('SELECT epoch,active FROM MdEmployees WHERE storeId=? AND id=?').bind(claims.storeId,claims.employeeId).first<{epoch:number;active:number}>();
-    if(!employee?.active || employee.epoch!==claims.employeeEpoch) throw new AccessError('Akses karyawan berakhir.');
+    if(!employee?.active || employee.epoch!==claims.employeeEpoch) throw new AccessError('Akses karyawan berakhir.',403,'employee_revoked');
   }
   // Proofs bind method + payload + access + nonce. A retry uses a fresh proof and the same event ID.
   try {
@@ -112,7 +112,7 @@ export async function requestPairing(env:MultiDeviceEnv,data:{code:string;device
   if(current?.candidateId!==data.deviceId || current.candidateKey!==identity) throw new AccessError('Kode penghubung sudah digunakan.',409);
   if(!current.approved) return {pending:true as const};
   const device=await env.DB.prepare("SELECT * FROM MdDevices WHERE storeId=? AND id=? AND role='cashier' AND revoked=0").bind(pair.storeId,data.deviceId).first<DeviceRow>();
-  if(!device || device.publicKey!==identity) throw new AccessError('Perangkat sudah dilepas.');
+  if(!device || device.publicKey!==identity) throw new AccessError('Perangkat sudah dilepas.',403,'device_revoked');
   return {pending:false as const,...await grant(env,device)};
 }
 export async function approvePairing(env:MultiDeviceEnv,owner:AccessClaims,id:string) {
@@ -154,18 +154,19 @@ export async function employeeLogin(env:MultiDeviceEnv,deviceClaims:AccessClaims
   // Reserve an attempt in SQL before hashing, including concurrent requests.
   await env.DB.prepare('UPDATE MdEmployees SET attempts=CASE WHEN lockedUntil>0 AND lockedUntil<=? THEN 1 ELSE attempts+1 END, lockedUntil=CASE WHEN lockedUntil<=? THEN 0 ELSE lockedUntil END WHERE storeId=? AND id=? AND active=1 AND lockedUntil<=? AND (attempts<5 OR lockedUntil>0)').bind(Date.now(),Date.now(),deviceClaims.storeId,data.id,Date.now()).run();
   const employee=await env.DB.prepare('SELECT * FROM MdEmployees WHERE storeId=? AND id=? AND active=1').bind(deviceClaims.storeId,data.id).first<EmployeeRow>();
-  if(!employee || employee.lockedUntil>Date.now() || employee.attempts>5) throw new AccessError('Coba lagi dalam 5 menit.',429);
+  if(!employee)throw new AccessError('Akun karyawan tidak aktif.',403,'employee_revoked');
+  if(employee.lockedUntil>Date.now() || employee.attempts>5)throw new AccessError('Coba lagi dalam 5 menit.',429,'account_locked',employee.lockedUntil>Date.now()?employee.lockedUntil:Date.now()+300000);
   if(employee.attempts>=5 || !verifyPin(data.pin,employee.verifier)) {
     await env.DB.prepare('UPDATE MdEmployees SET lockedUntil=CASE WHEN attempts>=5 THEN ? ELSE lockedUntil END WHERE storeId=? AND id=?').bind(Date.now()+300000,deviceClaims.storeId,data.id).run();
-    throw new AccessError('PIN tidak sesuai.',401);
+    throw new AccessError(employee.attempts>=5?'Coba lagi dalam 5 menit.':'PIN tidak sesuai.',employee.attempts>=5?429:401,employee.attempts>=5?'account_locked':'pin_invalid',employee.attempts>=5?Date.now()+300000:undefined);
   }
   await env.DB.prepare('UPDATE MdEmployees SET attempts=0,lockedUntil=0 WHERE storeId=? AND id=? AND epoch=? AND active=1').bind(deviceClaims.storeId,data.id,employee.epoch).run();
   const device=await env.DB.prepare('SELECT * FROM MdDevices WHERE storeId=? AND id=? AND revoked=0 AND epoch=?').bind(deviceClaims.storeId,deviceClaims.deviceId,deviceClaims.deviceEpoch).first<DeviceRow>();
-  if(!device) throw new AccessError('Perangkat sudah dilepas.');
+  if(!device) throw new AccessError('Perangkat sudah dilepas.',403,'device_revoked');
   return {...await grant(env,device,employee),offlineVerifier:employee.verifier,name:employee.name};
 }
 export async function listAccess(env:MultiDeviceEnv,claims:AccessClaims) {
-  const employees=await env.DB.prepare(`SELECT id,name,active FROM MdEmployees WHERE storeId=? ${claims.role==='cashier'?'AND active=1':''} ORDER BY name`).bind(claims.storeId).all();
+  const employees=await env.DB.prepare(`SELECT id,name,active,epoch FROM MdEmployees WHERE storeId=? ${claims.role==='cashier'?'AND active=1':''} ORDER BY name`).bind(claims.storeId).all();
   if(claims.role==='cashier') return {employees:employees.results};
   const devices=await env.DB.prepare('SELECT id,name,role,revoked FROM MdDevices WHERE storeId=? AND revoked=0 ORDER BY role DESC').bind(claims.storeId).all();
   const pairings=await env.DB.prepare('SELECT id,candidateName,expiresAt FROM MdPairings WHERE storeId=? AND candidateId IS NOT NULL AND consumed=0 AND expiresAt>?').bind(claims.storeId,Date.now()).all();
@@ -174,6 +175,6 @@ export async function listAccess(env:MultiDeviceEnv,claims:AccessClaims) {
 export async function renewCashierDevice(env:MultiDeviceEnv,claims:AccessClaims) {
   if(claims.role!=='cashier'||claims.employeeId) throw new AccessError();
   const device=await env.DB.prepare('SELECT * FROM MdDevices WHERE storeId=? AND id=? AND epoch=? AND revoked=0').bind(claims.storeId,claims.deviceId,claims.deviceEpoch).first<DeviceRow>();
-  if(!device) throw new AccessError('Perangkat sudah dilepas.');
+  if(!device) throw new AccessError('Perangkat sudah dilepas.',403,'device_revoked');
   return grant(env,device);
 }

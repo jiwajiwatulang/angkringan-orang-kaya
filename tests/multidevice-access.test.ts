@@ -57,7 +57,7 @@ test('expired device authorization can renew online without reviving an expired 
   const env=await environment(),primary=await owner(env),pair=await createPairing(env,primary.claims),id=crypto.randomUUID();
   const data=()=>({code:pair.code,deviceId:id,deviceName:'Tablet',proof:testDeviceProof('multi.pair',pair.code,id)});
   await requestPairing(env,data());await approvePairing(env,primary.claims,pair.id);const device=await requestPairing(env,data());if(device.pending)throw new Error();
-  const expired={...device.claims,issuedAt:Date.now()-OFFLINE_ACCESS_MS*2,expiresAt:Date.now()-OFFLINE_ACCESS_MS},access=signAccess(expired,JSON.stringify(testSigningJwk));
+  const now=Date.now(),expired={...device.claims,issuedAt:now-OFFLINE_ACCESS_MS*2,expiresAt:now-OFFLINE_ACCESS_MS},access=signAccess(expired,JSON.stringify(testSigningJwk));
   await assert.rejects(()=>authorize(env,access,'list',{},requestProof('list',expired,access,{})));
   const authorized=await authorize(env,access,'refresh',{},requestProof('refresh',expired,access,{}));
   const renewed=await renewCashierDevice(env,authorized);assert.ok(readAccess(renewed.access,JSON.stringify(testSigningJwk)).expiresAt>Date.now());

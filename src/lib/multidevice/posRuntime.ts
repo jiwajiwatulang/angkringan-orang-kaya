@@ -8,17 +8,10 @@ import {EmployeeSessions,transportUnavailable} from './employeeSession';
 import {POS_TABLES,setPosScope,type PosScope} from './posWire';
 import {DEFAULT_SETTINGS,loadStoreSettingsAsync} from '../settings';
 import {AccessError} from './protocol';
+import {prepareLocalSession,rememberAccessRejection,wasAccessRejected} from './localReadiness';
 export interface PosRuntime {client:DeviceClient;synchronizer:PosSynchronizer;scope?:PosScope;employees?:EmployeeSessions}
 let current:PosRuntime|undefined;
 export function currentPosRuntime(){return current;}
-async function syncAvailable(synchronizer:PosSynchronizer){
-  if(!navigator.onLine)return;
-  try{await synchronizer.synchronize();}catch(error){
-    const status=(error as {status?:number}).status;
-    if(status&&status<500)throw error;
-    // A transport failure must not lock a valid offline session.
-  }
-}
 export async function initializePosRuntime():Promise<PosRuntime>{
   const saved=(await db.table('settings').get('multi_device_access'))?.value;
   if(!saved?.access)throw new AccessError('Hubungkan perangkat terlebih dahulu.',401);
@@ -37,13 +30,20 @@ export async function initializePosRuntime():Promise<PosRuntime>{
     await db.table('settings').put({key:'multi_device_access',value:{access,claims}});
     }
   }
+  // Once the server rejects an owner grant, cached data cannot reopen it, even offline.
+  if(claims.role==='owner'&&await wasAccessRejected(db,access)){
+    if(!navigator.onLine)throw new AccessError('Sambungkan internet untuk memperbarui akses perangkat.',401);
+    const {enrollOwnerClient}=await import('./client');const renewed=(await enrollOwnerClient()).snapshot();
+    access=renewed.access;claims=renewed.claims;
+    await db.table('settings').put({key:'multi_device_access',value:{access,claims}});
+  }
   const client=new DeviceClient(access,claims),synchronizer=new PosSynchronizer(db,client);
   current={client,synchronizer};
   if(claims.role==='cashier'){
     current.employees=new EmployeeSessions(client,db,deviceId,identity);
     const employee=await current.employees.current();
     if(!employee)return current;
-    return enterEmployee(employee);
+    return resumeEmployeeSession(current,()=>enterEmployee(employee));
   }
   current.scope={claims,access,operatorName:'Pemilik'};setPosScope(current.scope);
   if((await db.table('posMeta').get('bootstrapRequired'))?.value){
@@ -61,7 +61,15 @@ export async function initializePosRuntime():Promise<PosRuntime>{
       await db.table('posMeta').put({key:'bootstrapRequired',value:false});
     }finally{setPosScope(current.scope);}
   }
-  await syncAvailable(synchronizer);await loadStoreSettingsAsync();return current;
+  await prepareLocalSession(db,()=>synchronizer.synchronize(),loadStoreSettingsAsync);return current;
+}
+// An online rejection of a cached operator must return to login, not retry forever.
+export async function resumeEmployeeSession(runtime:PosRuntime,resume:()=>Promise<PosRuntime>){
+  try{return await resume();}catch(error){
+    const status=(error as {status?:number})?.status;
+    if(status!==401&&status!==403)throw error;
+    runtime.scope=undefined;setPosScope(undefined);await runtime.employees?.logout();return runtime;
+  }
 }
 export async function enterEmployee(employee:Awaited<ReturnType<EmployeeSessions['login']>>){
   if(!current?.employees)throw new AccessError();
@@ -70,8 +78,14 @@ export async function enterEmployee(employee:Awaited<ReturnType<EmployeeSessions
   current.scope={claims:employee.claims,access:employee.access,operatorName:employee.name};setPosScope(current.scope);
   current.synchronizer=new PosSynchronizer(db,activeClient);
   await db.table('posMeta').put({key:'cursor',value:0});
-  await syncAvailable(current.synchronizer);await loadStoreSettingsAsync();return current;
+  try{await prepareLocalSession(db,()=>current!.synchronizer.synchronize(),loadStoreSettingsAsync);return current;}
+  catch(error){current.scope=undefined;setPosScope(undefined);await current.employees.logout();throw error;}
 }
 export async function leaveEmployee(){
   if(!current)return;await current.employees?.logout();setPosScope(undefined);current.scope=undefined;
+}
+export async function rejectRuntimeAccess(runtime:PosRuntime,error:unknown=new AccessError()){
+  if(runtime.employees)await runtime.employees.handleRejection(error);
+  else if(runtime.scope)await rememberAccessRejection(db,runtime.scope.access);
+  runtime.scope=undefined;setPosScope(undefined);
 }

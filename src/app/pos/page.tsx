@@ -1,4 +1,5 @@
 "use client";
+import LoadingState from "@/components/LoadingState";
 import LockIcon from "@/components/LockIcon";
 import {getPosScope} from "@/lib/multidevice/posWire";
 import {orderItemsToCart} from "@/lib/orderCart";
@@ -2606,6 +2607,7 @@ export default function POSPage() {
             </form>
           </div>
 
+          <div className="mb-5 rounded-2xl border border-blue-200 bg-white p-4 text-left"><h2 className="text-sm font-bold">Data dari browser belum muncul?</h2><p className="mt-1 text-sm text-slate-600">Buka toko tersimpan atau bawa cadangan dari browser sebelumnya.</p><a href="/pulihkan-kasir" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-blue-600">Bawa Data Lama</a></div>
           {/* Quick Demo Access Box */}
           <div className="bg-blue-50/80 border border-blue-200 rounded-2xl p-4 sm:p-5 mb-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
             <div className="flex items-center gap-3.5 text-left">
@@ -2695,11 +2697,7 @@ export default function POSPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-screen bg-surface text-fg items-center justify-center p-6 text-center">
-        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mb-4" />
-        <h2 className="text-base font-bold text-fg">Memuat Data Kasir...</h2>
-        <p className="text-xs text-muted mt-1">Menyiapkan kasir Anda</p>
-      </div>
+      <div className="flex min-h-dvh items-center justify-center bg-surface p-6 text-fg"><div className="w-full max-w-md"><LoadingState label="Menyiapkan kasir"/></div></div>
     );
   }
 
