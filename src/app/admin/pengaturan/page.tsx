@@ -1,6 +1,8 @@
 "use client";
 
-import React from "react";
+import React, {useEffect,useState} from "react";
+import {isDemoMode} from "@/lib/demoMode";
+import {adminNavigationHref} from "@/lib/adminNavigation";
 import Link from "next/link";
 import RetailPhotoSettings from "@/components/RetailPhotoSettings";
 import LineIcon from "@/components/LineIcon";
@@ -8,6 +10,8 @@ import { useAdmin } from "../AdminContext";
 
 export default function AdminPengaturanHubPage() {
   const { storeSettings } = useAdmin();
+  const [demo,setDemo]=useState(false);
+  useEffect(()=>setDemo(isDemoMode()),[]);
 
   const settingsCategories = [
     ...(process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE==='enabled'?[{href:'/admin/pengaturan/perangkat',icon:'lock',title:'Perangkat Kasir',badge:'Akses Kasir'}]:[]),
@@ -71,7 +75,7 @@ export default function AdminPengaturanHubPage() {
         {settingsCategories.map((cat) => (
           <Link
             key={cat.href}
-            href={cat.href}
+            href={adminNavigationHref(cat.href,demo)}
             className="p-5 rounded-3xl bg-surface border border-line hover:border-accent/50 hover:shadow-md transition-all flex flex-col justify-between group"
           >
             <div>
@@ -97,29 +101,6 @@ export default function AdminPengaturanHubPage() {
         ))}
       </div>
 
-      {/* Customer-Facing About & Support Banner */}
-      <div className="p-5 rounded-3xl bg-surface border border-line space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="w-10 h-10 rounded-2xl bg-accent/20 text-accent-text flex items-center justify-center text-xl">
-              <LineIcon name="store" />
-            </span>
-            <div>
-              <h3 className="font-black text-sm text-fg">SakuNota - Kasir Jalan Tanpa Internet</h3>
-
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/admin/pengaturan/tentang"
-              className="px-3.5 py-1.5 rounded-xl bg-card hover:bg-line text-xs font-bold text-accent-text border border-line transition-colors"
-            >
-              Lihat Detail & Bantuan →
-            </Link>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
