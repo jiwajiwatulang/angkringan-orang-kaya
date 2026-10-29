@@ -23,10 +23,9 @@ const navItems = [
   { href: "/pos", label: "Kasir & Menu", icon: "cashier" },
   { href: "/admin/meja", label: "Kelola Meja", icon: "tables" },
   { href: "/admin/transaksi", label: "Riwayat Transaksi", icon: "receipt" },
-  { href: "/admin/shift", label: "Shift & Kas Laci", icon: "shift" },
+  { href: "/admin/karyawan", label: "Karyawan & Shift", icon: "shift" },
   { href: "/admin/pelayan", label: "Waiter Floor", icon: "table" },
   { href: "/admin/menu", label: "Katalog & Stok", icon: "catalog" },
-  { href: "/admin/karyawan", label: "Karyawan", icon: "shift" },
   { href: "/admin/laporan", label: "Laporan Usaha", icon: "chart" },
   { href: "/admin/dapur", label: "Pesanan Dapur", icon: "food" },
   { href: "/admin/pengaturan", label: "Pengaturan POS", icon: "settings" },
@@ -637,6 +636,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   const isActiveLink = (href: string) => {
     if (href === "/admin") return pathname === "/admin";
+    if (href === "/admin/karyawan") return pathname.startsWith("/admin/karyawan") || pathname.startsWith("/admin/shift");
     return pathname.startsWith(href);
   };
 
@@ -897,7 +897,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           type="button"
           onClick={() => setIsLainnyaOpen(true)}
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
-            isLainnyaOpen || pathname.startsWith("/admin/meja") || pathname.startsWith("/admin/shift") || pathname.startsWith("/admin/pengaturan")
+            isLainnyaOpen || pathname.startsWith("/admin/karyawan") || pathname.startsWith("/admin/meja") || pathname.startsWith("/admin/shift") || pathname.startsWith("/admin/pengaturan")
               ? " text-accent-text font-black"
               : " text-muted"
           }`}
@@ -940,14 +940,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               )}
 
               <Link
-                href={navigationHref("/admin/shift")}
+                href={navigationHref("/admin/karyawan")}
                 onClick={() => setIsLainnyaOpen(false)}
                 className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
                 <span className="text-xl"><LineIcon name="shift" /></span>
                 <div className="flex-1">
-                  <div className="font-bold text-sm">Shift & Kas Laci</div>
-                  <div className="text-[10px] text-muted">Laporan Z-Report, uang fisik, dan kas operasional</div>
+                  <div className="font-bold text-sm">Karyawan &amp; Shift</div>
+                  <div className="text-[10px] text-muted">Karyawan, shift kasir, dan kas usaha</div>
                 </div>
                 <span>→</span>
               </Link>
