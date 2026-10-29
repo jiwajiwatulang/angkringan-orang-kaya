@@ -58,3 +58,6 @@ data/*.db*
 
 # Wrangler local runtime artifacts
 /.wrangler/
+
+# Generated offline spreadsheet reader
+/public/spreadsheet-import-worker.js

@@ -1,4 +1,5 @@
 "use client";
+import { getPosScope } from "@/lib/multidevice/posWire";
 import LoadingState from "@/components/LoadingState";
 import LineIcon from "@/components/LineIcon";
 
@@ -72,6 +73,9 @@ export default function AdminTransaksiPage() {
 
   // Modal: Import Transaksi Historis
   const [isHistoricalModalOpen, setIsHistoricalModalOpen] = useState(false);
+  const historicalRead=useRef<AbortController|null>(null);
+  const [isReadingHistorical,setIsReadingHistorical]=useState(false);
+  useEffect(()=>{if(!isHistoricalModalOpen){historicalRead.current?.abort();historicalRead.current=null;setParsedHistorical(null);setHistoricalFile(null);setIsReadingHistorical(false);}return()=>{historicalRead.current?.abort();};},[isHistoricalModalOpen]);
   const [historicalFile, setHistoricalFile] = useState<File | null>(null);
   const [parsedHistorical, setParsedHistorical] = useState<any>(null);
   const [isImportingHistorical, setIsImportingHistorical] = useState(false);
@@ -385,25 +389,29 @@ export default function AdminTransaksiPage() {
   const handleHistoricalFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    historicalRead.current?.abort();
+    const controller=new AbortController();historicalRead.current=controller;
+    setParsedHistorical(null);setIsReadingHistorical(true);
     setHistoricalFile(file);
 
     try {
-      const parsed = await parseHistoricalTransactionsFile(file);
-      setParsedHistorical(parsed);
+      const parsed = await parseHistoricalTransactionsFile(file,controller.signal);
+      if(historicalRead.current===controller&&!controller.signal.aborted)setParsedHistorical(parsed);
     } catch (err: any) {
+      if(historicalRead.current!==controller||controller.signal.aborted)return;
       alert("Format file transaksi historis tidak valid: " + err.message);
       setHistoricalFile(null);
       setParsedHistorical(null);
-    }
+    }finally{if(historicalRead.current===controller)setIsReadingHistorical(false);}
   };
 
   const handleConfirmHistoricalImport = async () => {
-    if (!parsedHistorical || !parsedHistorical.validTransactions.length) return;
+    if (isReadingHistorical || !parsedHistorical || !parsedHistorical.validTransactions.length || parsedHistorical.invalidRows.length) return;
     setIsImportingHistorical(true);
 
     try {
       const res = await importHistoricalTransactions(parsedHistorical.validTransactions);
-      showToast(`Berhasil mengimpor ${res.importedCount} transaksi historis`);
+      showToast(`${res.importedCount} transaksi diimpor${res.skippedCount ? `, ${res.skippedCount} sudah tercatat` : ""}.`);
       setIsHistoricalModalOpen(false);
       setHistoricalFile(null);
       setParsedHistorical(null);
@@ -696,7 +704,7 @@ export default function AdminTransaksiPage() {
 
             <button
               type="button"
-              onClick={() => setIsHistoricalModalOpen(true)}
+              onClick={() => getPosScope() ? showToast('Impor nota lama belum tersedia saat dua perangkat terhubung. Data tidak diubah.', 'error') : setIsHistoricalModalOpen(true)}
               className="px-3 py-2 bg-blue-50 text-blue-900 border border-blue-200 hover:bg-blue-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
             >
               <span><LineIcon name="import" /></span>
@@ -1765,7 +1773,7 @@ export default function AdminTransaksiPage() {
       {isHistoricalModalOpen && (
         <div
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setIsHistoricalModalOpen(false)}
+          onClick={() => !isImportingHistorical && setIsHistoricalModalOpen(false)}
         >
           <div
             className=" bg-surface rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-line max-h-[90vh] flex flex-col"
@@ -1778,7 +1786,7 @@ export default function AdminTransaksiPage() {
               </h3>
               <button
                 type="button"
-                onClick={() => setIsHistoricalModalOpen(false)}
+                onClick={() => !isImportingHistorical && setIsHistoricalModalOpen(false)}
                 className="w-7 h-7 rounded-full bg-card text-muted hover:text-fg text-xs font-bold"
               >
                 ×
@@ -1820,12 +1828,13 @@ export default function AdminTransaksiPage() {
                 </label>
                 <input
                   type="file"
-                  accept=".xlsx, .xls, .csv"
+                  disabled={isImportingHistorical} accept=".xlsx, .xls, .csv"
                   onChange={handleHistoricalFileChange}
                   className="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold hover:file:opacity-90 file:bg-accent file:text-white"
                 />
               </div>
 
+              {isReadingHistorical&&<LoadingState label="Membaca file"/>}<p className="text-xs text-muted">Maksimal 10 MB dan 5.000 baris. Rincian tanpa harga satuan disimpan sebagai keterangan nota.</p>
               {/* Preview Hasil Parsing */}
               {parsedHistorical && (
                 <div className="p-3.5 bg-card/60 rounded-2xl border border-line space-y-2">
@@ -1834,6 +1843,7 @@ export default function AdminTransaksiPage() {
                     <span>Gagal: <strong className="text-rose-700">{parsedHistorical.invalidRows.length}</strong></span>
                   </div>
 
+                  {parsedHistorical.invalidRows.length>0&&<ul className="text-xs text-red-700">{parsedHistorical.invalidRows.slice(0,5).map((row:any)=><li key={row.row}>Baris {row.row}: {row.reason}</li>)}</ul>}
                   {parsedHistorical.validTransactions.length > 0 && (
                     <div className="max-h-40 overflow-y-auto text-[11px] space-y-1 bg-surface p-2 rounded-xl">
                       {parsedHistorical.validTransactions.slice(0, 5).map((t: any, idx: number) => (
@@ -1856,7 +1866,7 @@ export default function AdminTransaksiPage() {
             <div className="pt-3 border-t border-line flex gap-2">
               <button
                 type="button"
-                onClick={() => setIsHistoricalModalOpen(false)}
+                onClick={() => !isImportingHistorical && setIsHistoricalModalOpen(false)}
                 className="flex-1 py-2.5 bg-card text-fg border border-line rounded-xl text-xs font-bold"
               >
                 Batal
@@ -1864,7 +1874,7 @@ export default function AdminTransaksiPage() {
               <button
                 type="button"
                 onClick={handleConfirmHistoricalImport}
-                disabled={!parsedHistorical || !parsedHistorical.validTransactions.length || isImportingHistorical}
+                disabled={isReadingHistorical || !parsedHistorical || !parsedHistorical.validTransactions.length || parsedHistorical.invalidRows.length > 0 || isImportingHistorical}
                 className="flex-[2] py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-accent/20"
               >
                 {isImportingHistorical ? "Mengimpor..." : `Impor ${parsedHistorical?.validTransactions?.length || 0} Transaksi`}

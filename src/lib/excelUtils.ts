@@ -1,5 +1,7 @@
 import {csvCell} from './reportExport';
 import * as XLSX from 'xlsx';
+import {readImportRows} from './spreadsheetImport';
+import {importRupiah,importDate} from './importLimits';
 
 /**
  * Utilitas Parser & Generator Excel (.xlsx) / CSV SakuNota POS
@@ -97,16 +99,8 @@ export function downloadMenuTemplate(format: 'xlsx' | 'csv' = 'xlsx') {
 /**
  * 2. Parse File Excel/CSV Menu yang diunggah
  */
-export async function parseMenuFile(file: File): Promise<MenuImportValidationResult> {
-  const data = await file.arrayBuffer();
-  const wb = XLSX.read(data, { type: 'array' });
-  const firstSheetName = wb.SheetNames[0];
-  if (!firstSheetName) {
-    throw new Error('File tidak memiliki lembar kerja (sheet).');
-  }
-
-  const ws = wb.Sheets[firstSheetName];
-  const rawRows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+export async function parseMenuFile(file: File, signal?:AbortSignal): Promise<MenuImportValidationResult> {
+  const rawRows=await readImportRows(file,signal);
 
   if (rawRows.length === 0) {
     throw new Error('Lembar kerja kosong, tidak ada baris data yang ditemukan.');
@@ -123,7 +117,7 @@ export async function parseMenuFile(file: File): Promise<MenuImportValidationRes
     // Normalisasi nama kolom fleksibel (case-insensitive & whitespace tolerant)
     let sku = '';
     let nama = '';
-    let hargaRaw = '';
+    let hargaRaw:unknown = '';
     let kategori = 'Umum';
     let statusStokRaw = 'Tersedia';
 
@@ -132,28 +126,27 @@ export async function parseMenuFile(file: File): Promise<MenuImportValidationRes
       const val = row[key];
 
       if (cleanKey.includes('sku') || cleanKey.includes('kode')) {
-        sku = String(val).trim();
+        sku = String(val??'').trim();
       } else if (cleanKey.includes('nama') || cleanKey.includes('produk') || cleanKey.includes('item') || cleanKey.includes('menu')) {
-        nama = String(val).trim();
+        nama = String(val??'').trim();
       } else if (cleanKey.includes('harga') || cleanKey.includes('price')) {
-        hargaRaw = String(val).trim();
+        hargaRaw = val;
       } else if (cleanKey.includes('kategori') || cleanKey.includes('category')) {
-        kategori = String(val).trim() || 'Umum';
+        kategori = String(val??'').trim() || 'Umum';
       } else if (cleanKey.includes('stok') || cleanKey.includes('status') || cleanKey.includes('sold')) {
-        statusStokRaw = String(val).trim();
+        statusStokRaw = String(val??'').trim();
       }
     }
 
-    if (!nama) {
-      invalidRows.push({ row: rowNum, raw: row, reason: 'Nama menu wajib diisi' });
+    if (!nama || nama.length > 120) {
+      invalidRows.push({ row: rowNum, raw: row, reason: 'Nama produk wajib diisi, maksimal 120 karakter.' });
       return;
     }
 
     // Pembersihan harga dari simbol seperti "Rp", titik, atau koma
-    const cleanHargaStr = hargaRaw.replace(/[^0-9.-]/g, '');
-    const harga = Number(cleanHargaStr);
+    const harga = importRupiah(hargaRaw);
 
-    if (isNaN(harga) || harga < 0) {
+    if (harga === undefined) {
       invalidRows.push({ row: rowNum, raw: row, reason: `Harga tidak valid: "${hargaRaw}" (harus angka >= 0)` });
       return;
     }
@@ -325,81 +318,41 @@ export function downloadHistoricalTransactionTemplate(format: 'xlsx' | 'csv' = '
   }
 }
 
-export async function parseHistoricalTransactionsFile(file: File) {
-  const data = await file.arrayBuffer();
-  const wb = XLSX.read(data, { type: 'array' });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const rawRows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
-
-  const validTransactions: any[] = [];
-  const invalidRows: { row: number; raw: any; reason: string }[] = [];
-
-  rawRows.forEach((row, idx) => {
-    const rowNum = idx + 2;
-    let receiptNumber = '';
-    let createdAt = '';
-    let customerName = 'Pelanggan Migrasi';
-    let orderType = 'Takeaway';
-    let paymentMethod: 'Cash' | 'QRIS' | 'Transfer' = 'Cash';
-    let totalRaw = '';
-    let itemsRaw = '';
-
-    for (const key of Object.keys(row)) {
-      const k = key.toLowerCase();
-      const val = row[key];
-      if (k.includes('nota') || k.includes('referensi') || k.includes('invoice')) receiptNumber = String(val).trim();
-      else if (k.includes('tanggal') || k.includes('waktu') || k.includes('date')) createdAt = String(val).trim();
-      else if (k.includes('pelanggan') || k.includes('customer')) customerName = String(val).trim() || customerName;
-      else if (k.includes('tipe') || k.includes('pesanan')) orderType = String(val).trim() || orderType;
-      else if (k.includes('metode') || k.includes('bayar') || k.includes('payment')) {
-        const pm = String(val).trim().toUpperCase();
-        if (pm.includes('QRIS')) paymentMethod = 'QRIS';
-        else if (pm.includes('TRANSFER') || pm.includes('BANK')) paymentMethod = 'Transfer';
-        else paymentMethod = 'Cash';
-      }
-      else if (k.includes('total') || k.includes('nominal') || k.includes('amount')) totalRaw = String(val).trim();
-      else if (k.includes('item') || k.includes('menu') || k.includes('daftar')) itemsRaw = String(val).trim();
+export async function parseHistoricalTransactionsFile(file: File, signal?:AbortSignal) {
+  const rawRows=await readImportRows(file,signal);
+  const validTransactions: any[] = [],invalidRows: {row:number;raw:any;reason:string}[]=[];
+  const seen=new Set<string>();
+  rawRows.forEach((row,idx)=>{
+    const rowNum=idx+2;
+    let receiptNumber='',createdAt:unknown='',customerName='Pelanggan Migrasi',orderType='Takeaway',method='Cash',totalRaw:unknown='',itemsRaw='';
+    for(const [key,value] of Object.entries(row)){
+      const k=key.trim().toLowerCase(),text=String(value??'').trim();
+      if(k.includes('nota')||k.includes('referensi')||k.includes('invoice'))receiptNumber=text;
+      else if(k.includes('tanggal')||k.includes('waktu')||k.includes('date'))createdAt=value;
+      else if(k.includes('pelanggan')||k.includes('customer'))customerName=text||customerName;
+      else if(k.includes('tipe')||k.includes('pesanan'))orderType=text||orderType;
+      else if(k.includes('metode')||k.includes('bayar')||k.includes('payment'))method=text||method;
+      else if(k.includes('total')||k.includes('nominal')||k.includes('amount'))totalRaw=value;
+      else if(k.includes('item')||k.includes('menu')||k.includes('daftar'))itemsRaw=text;
     }
-
-    const total = Number(totalRaw.replace(/[^0-9.-]/g, ''));
-    if (isNaN(total) || total <= 0) {
-      invalidRows.push({ row: rowNum, raw: row, reason: `Total nominal tidak valid: "${totalRaw}"` });
-      return;
-    }
-
-    // Parsing item sederhana
-    const items = itemsRaw ? itemsRaw.split(',').map(part => {
-      const sub = part.trim();
-      const qtyMatch = sub.match(/(\d+)\s*x/i) || sub.match(/x\s*(\d+)/i);
-      const qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
-      const cleanName = sub.replace(/(\d+)\s*x/i, '').replace(/x\s*(\d+)/i, '').trim() || sub;
-      return {
-        nama: cleanName,
-        qty: qty,
-        harga: Math.round(total / (qty || 1))
-      };
-    }) : [{ nama: 'Transaksi Historis', qty: 1, harga: total }];
-
-    let validDate = new Date().toISOString();
-    if (createdAt) {
-      const parsedD = new Date(createdAt);
-      if (!isNaN(parsedD.getTime())) {
-        validDate = parsedD.toISOString();
-      }
-    }
-
-    validTransactions.push({
-      receiptNumber: receiptNumber || `HIST-${rowNum}`,
-      customerName,
-      orderType,
-      createdAt: validDate,
-      total,
-      paymentMethod,
-      items
-    });
+    const total=importRupiah(totalRaw),date=importDate(createdAt);
+    const methods:Record<string,'Cash'|'QRIS'|'Transfer'>={cash:'Cash',tunai:'Cash',qris:'QRIS',transfer:'Transfer',bank:'Transfer'};
+    const paymentMethod=methods[method.toLowerCase()];
+    const fail=(reason:string)=>invalidRows.push({row:rowNum,raw:row,reason});
+    if(itemsRaw.length>3991)return fail('Rincian nota terlalu panjang. Maksimal 3.991 karakter.');
+    if(!receiptNumber||receiptNumber.length>128)return fail('Nomor nota wajib diisi, maksimal 128 karakter.');
+    if(total===undefined||total<=0)return fail('Total harus berupa rupiah utuh lebih dari 0.');
+    if(!date)return fail('Tanggal tidak valid. Gunakan YYYY-MM-DD HH:mm.');
+    if(!paymentMethod)return fail('Metode bayar harus Cash, QRIS, atau Transfer.');
+    const identity=receiptNumber+'|'+date;
+    if(seen.has(identity))return fail('Nomor nota dan tanggal berulang dalam file.');
+    seen.add(identity);
+    // The old template contains no item prices. Preserve its description without
+    // inventing unit prices that multiply the receipt total for each product.
+    const items=[{nama:itemsRaw?'Rincian: '+itemsRaw:'Transaksi Historis',qty:1,harga:total}];
+    validTransactions.push({receiptNumber,customerName,orderType,createdAt:date,total,paymentMethod,items});
   });
-
-  return { validTransactions, invalidRows, totalRows: rawRows.length };
+  return {validTransactions,invalidRows,totalRows:rawRows.length};
 }
 
 // Export strings as data, even when a product name or note resembles a spreadsheet formula.

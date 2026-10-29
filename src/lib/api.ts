@@ -1,3 +1,4 @@
+import {importDate} from './importLimits';
 import {posPartition} from './multidevice/posPartition';
 import Dexie from 'dexie';
 import {getPosScope} from './multidevice/posWire';
@@ -1344,19 +1345,27 @@ export async function bulkImportMenus(items: {
   stockUnit?: string;
 }[], options: { mode: 'create_only' | 'update_existing' | 'upsert' }) {
   await requireMerchantAdmin();
-  for (const item of items) {
+  if(!Array.isArray(items)||!items.length||items.length>10000)throw new Error('Jumlah produk tidak valid. Maksimal 10.000 produk.');
+  const seen=new Set<string>();
+  for (const [index,item] of items.entries()) {
+    if(!item||typeof item.nama!=='string'||!item.nama.trim()||item.nama.length>120||!Number.isSafeInteger(item.harga)||item.harga<0||item.harga>1e12)throw new Error(`Produk baris ${index+1} tidak valid. Periksa nama dan harga rupiah utuh.`);
+    const key=item.sku?'sku:'+String(item.sku).trim().toLowerCase():'nama:'+item.nama.trim().toLowerCase();
+    if(seen.has(key))throw new Error(`Produk berulang pada baris ${index+1}. Periksa SKU dan nama.`);
+    seen.add(key);
     if (item.imageData !== undefined) validateProductPhoto(item.imageData);
     if (item.trackStock && (!Number.isInteger(item.stockQty) || item.stockQty! < 0 || !Number.isInteger(item.minimumStock ?? 0) || (item.minimumStock ?? 0) < 0)) throw new Error('Stok impor tidak valid.');
   }
-  const existing = await db.table('menuItems').toArray();
+  let existing:any[]=[];
   let createdCount = 0;
   let updatedCount = 0;
   let skippedCount = 0;
   const errors: { row: number, item: any, reason: string }[] = [];
 
-  let maxUrutan = existing.reduce((max, m) => Math.max(max, m.urutan || 0), 0);
+
 
   await db.transaction('rw', ['menuItems', 'auditLogs', 'inventoryMovements'], async () => {
+    existing=await db.table('menuItems').toArray();
+    let maxUrutan=existing.reduce((max,m)=>Math.max(max,m.urutan||0),0);
     for (let i = 0; i < items.length; i++) {
       const raw = items[i];
       const rowNum = i + 1;
@@ -1646,13 +1655,35 @@ export async function importHistoricalTransactions(transactions: {
   items?: { nama: string; qty: number; harga: number }[];
 }[]) {
   await requireMerchantAdmin();
+  if(getPosScope())throw new Error('Impor nota lama belum tersedia saat dua perangkat terhubung. Data tidak diubah.');
+  if(!Array.isArray(transactions)||!transactions.length||transactions.length>5000)throw new Error('Jumlah transaksi tidak valid. Maksimal 5.000 transaksi.');
+  const seen=new Set<string>();
+  const normalized=await Promise.all(transactions.map(async(t,index)=>{
+    const date=importDate(t?.createdAt),ref=t?.receiptNumber?.trim();
+    if(!date||!ref||ref.length>128||!Number.isSafeInteger(t.total)||t.total<=0||t.total>1e12||!['Cash','QRIS','Transfer'].includes(t.paymentMethod))throw new Error(`Transaksi baris ${index+1} tidak valid. Periksa nomor, tanggal, total, dan metode bayar.`);
+    const identity=JSON.stringify([ref,date]);
+    if(seen.has(identity))throw new Error(`Nomor nota dan tanggal berulang pada baris ${index+1}.`);
+    seen.add(identity);
+    const items=t.items?.length?t.items:[{nama:'Transaksi Historis',qty:1,harga:t.total}];
+    if(items.length>100||items.some(i=>!i||typeof i.nama!=='string'||!i.nama.trim()||i.nama.length>4000||!Number.isSafeInteger(i.qty)||i.qty<=0||!Number.isSafeInteger(i.harga)||i.harga<0||!Number.isSafeInteger(i.harga*i.qty)))throw new Error(`Rincian transaksi baris ${index+1} tidak valid.`);
+    const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(identity));
+    const key='HIST-'+Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
+    return {...t,receiptNumber:ref,createdAt:date,items,key};
+  }));
   return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'auditLogs'], async () => {
-    let importedCount = 0;
-    for (const t of transactions) {
+    let importedCount = 0,skippedCount=0;
+    for (const t of normalized) {
+      const prior=await db.table('orders').where('idempotencyKey').equals(t.key).first()||await db.table('orders').where('createdAt').equals(t.createdAt).filter(o=>o.isHistorical&&o.receiptNumber===t.receiptNumber).first();
+      if(prior){
+        const items=await db.table('orderItems').where('orderId').equals(prior.id).toArray();
+        const sameItems=JSON.stringify(items.map(i=>[i.namaMenu,i.qty,i.hargaSatuan]))===JSON.stringify(t.items.map(i=>[i.nama,i.qty,i.harga]));
+        if(Number(prior.total)!==t.total||prior.paymentMethod!==t.paymentMethod||!sameItems)throw new Error(`Nota ${t.receiptNumber} sudah ada dengan isi berbeda. Data tidak diubah.`);
+        skippedCount++;continue;
+      }
       const total = Number(t.total) || 0;
       const orderId = await db.table('orders').add({
         shiftId: null,
-        idempotencyKey: `HIST-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        idempotencyKey: t.key,
         tableId: null,
         receiptNumber: t.receiptNumber || null,
         subtotal: total,
@@ -1678,7 +1709,7 @@ export async function importHistoricalTransactions(transactions: {
           kategoriMenu: 'Historis',
           qty: i.qty || 1,
           paidQty: i.qty || 1,
-          hargaSatuan: i.harga || total,
+          hargaSatuan: i.harga,
           selectedModifiers: []
         }));
         await db.table('orderItems').bulkAdd(itemsToInsert);
@@ -1721,7 +1752,7 @@ export async function importHistoricalTransactions(transactions: {
       timestamp: new Date().toISOString()
     });
 
-    return { importedCount };
+    return { importedCount, skippedCount };
   });
 }
 
