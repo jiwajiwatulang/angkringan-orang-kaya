@@ -191,8 +191,25 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
         closedByOperator: closedByOperator.trim() || "Pemilik",
         notes: closureNotes.trim(),
       });
+
+      let syncedToServer = false;
+      try {
+        const { currentPosRuntime } = await import("@/lib/multidevice/posRuntime");
+        const runtime = currentPosRuntime();
+        if (runtime) {
+          await runtime.synchronizer.synchronize();
+          syncedToServer = true;
+        }
+      } catch {
+        syncedToServer = false;
+      }
+
       setClosedSuccessResult(closed);
-      showToast(`Shift #${closingShiftTarget.id} berhasil ditutup aman oleh pemilik.`, "success");
+      if (syncedToServer) {
+        showToast(`Shift #${closingShiftTarget.id} berhasil ditutup dan diselaraskan ke server.`, "success");
+      } else {
+        showToast(`Shift #${closingShiftTarget.id} berhasil ditutup di perangkat ini dan akan disinkronkan ke server.`, "success");
+      }
       await loadData();
     } catch (err: any) {
       showToast("Gagal menutup shift: " + (err.message || err), "error");
@@ -1094,7 +1111,7 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
                     Shift #{closedSuccessResult.id} Berhasil Ditutup
                   </h4>
                   <p className="text-xs text-muted mt-1">
-                    Rekonsiliasi kas dan audit penutupan shift telah tersimpan aman di sistem.
+                    Rekonsiliasi kas dan audit penutupan shift telah tersimpan aman di sistem. Transaksi kasir offline yang menyusul akan otomatis diselaraskan ke dalam laporan shift ini.
                   </p>
                 </div>
 
@@ -1178,6 +1195,19 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
                     <div>
                       <span className="text-[10px] text-muted block">Estimasi Kas Fisik:</span>
                       <span className="font-black text-fg">Rp {(closingShiftStats.expectedCash || 0).toLocaleString("id-ID")}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Notifikasi Shift Kasir & Perlindungan Offline */}
+                {closingShiftTarget && closingShiftTarget.operatorName !== "Pemilik" && (
+                  <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-2xl text-xs text-indigo-950 flex items-start gap-2">
+                    <LineIcon name="info" className="w-5 h-5 flex-shrink-0 text-indigo-700 mt-0.5" />
+                    <div>
+                      <span className="font-bold block">Shift Kasir: {closingShiftTarget.operatorName}</span>
+                      <p className="text-[11px] text-indigo-900 mt-0.5 leading-relaxed">
+                        Jika kasir sedang offline, pastikan kasir menghubungkan perangkatnya ke internet. Transaksi kasir offline yang terkirim menyusul setelah penutupan ini akan otomatis diselaraskan ke dalam shift tanpa penolakan.
+                      </p>
                     </div>
                   </div>
                 )}

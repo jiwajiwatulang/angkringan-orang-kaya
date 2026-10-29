@@ -11,7 +11,7 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
   const bootstrap=event.data.bootstrap===true;
   if(bootstrap&&claims.role!=='owner')throw new AccessError();
   if(!Array.isArray(rows)||!rows.length||rows.length>600)throw new AccessError('Transaksi tidak valid.',400);
-  const changed=new Map<string,PosRow>(),result=new Map<string,Entity>();
+  const changed=new Map<string,PosRow>(),result=new Map<string,Entity>(),lateClosedShiftIds=new Set<string>();
   for(const row of rows){
     assertId(row.id);integer(row.expectedVersion);
     if(!POS_TABLES.includes(row.table)||!row.value||typeof row.value!=='object'||changed.has(`${row.table}:${row.id}`))throw new AccessError('Transaksi tidak valid.',400);
@@ -189,7 +189,10 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
       const paymentOrder=await get('orders',value.orderId);
       const isHistoricalPayment=!!paymentOrder?.isHistorical;
       const shift=value.shiftId?await get('shifts',value.shiftId):null,beforeShift=value.shiftId?await old('shifts',value.shiftId):null;
-      if(!bootstrap&&!prior&&!isHistoricalPayment&&(!shift||beforeShift?.status==='closed'||shift.mdDeviceId!==claims.deviceId||shift.mdOperatorId!==event.operatorId))throw new AccessError('Mulai shift kasir terlebih dahulu.',409);
+      const isLateCashierPayment=beforeShift?.status==='closed'&&beforeShift?.closedBy==='owner'&&shift?.mdDeviceId===claims.deviceId&&shift?.mdOperatorId===event.operatorId;
+      if(isLateCashierPayment&&value.shiftId)lateClosedShiftIds.add(value.shiftId);
+      const shiftClosedRejection=beforeShift?.status==='closed'&&!isLateCashierPayment;
+      if(!bootstrap&&!prior&&!isHistoricalPayment&&(!shift||shiftClosedRejection||shift.mdDeviceId!==claims.deviceId||shift.mdOperatorId!==event.operatorId))throw new AccessError('Mulai shift kasir terlebih dahulu.',409);
       if(isHistoricalPayment&&claims.role==='cashier')throw new AccessError('Riwayat lama hanya dapat dimasukkan pemilik.',403);
       if(prior?.status==='refunded'&&value.status!=='refunded')throw new AccessError('Pengembalian tidak dapat dibatalkan.',409);
       if(prior?.status==='refunded'&&['mdRefundAmount','cashRefundAmount','mdRefundMethod','refundShiftId','refundedAt'].some(key=>!same(prior[key],value[key])))throw new AccessError('Pengembalian yang tersimpan tidak dapat diganti.',409);
@@ -212,7 +215,10 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
       if(['sale','return'].includes(value.type)&&!value.orderId)throw new AccessError('Nota stok tidak tersedia.',400);
     }
     if(row.table==='cashMovements'){
-      integer(value.amount,true);const shift=await get('shifts',value.shiftId);if(!shift||!bootstrap&&shift.status!=='open'||!own(shift))throw new AccessError('Gunakan shift kasir sendiri.');
+      integer(value.amount,true);const shift=await get('shifts',value.shiftId);
+      const isLateCashierMovement=shift?.status==='closed'&&shift?.closedBy==='owner'&&own(shift);
+      if(isLateCashierMovement&&value.shiftId)lateClosedShiftIds.add(value.shiftId);
+      if(!shift||!bootstrap&&shift.status!=='open'&&!isLateCashierMovement||!own(shift))throw new AccessError('Gunakan shift kasir sendiri.');
       if(prior)throw new AccessError('Catatan kas tidak dapat ditimpa.');
       if(!['in','out'].includes(value.type))throw new AccessError('Catatan kas tidak valid.',400);
       if(!bootstrap&&['kasbon_karyawan','komisi'].includes(value.category)&&!rows.some(r=>r.table==='operations'&&r.value.cashMovementId===row.id&&r.value.source==='laci'))throw new AccessError('Catatan karyawan belum tersedia.',409);
@@ -295,16 +301,23 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
   for(const [id,value] of commissionOrders)if(value.entries.length)add('pos_orderCommissions',id,value);
   for(const [id,value] of sessions)add('pos_attendanceSession',id,value);
   for(const row of rows)if(row.table==='shifts'&&row.value.status==='closed'&&!bootstrap){
-    const payments=await Promise.all(Array.from(await index(`shiftPayments_${row.id}`),id=>get('payments',id)));
-    const refunds=await Promise.all(Array.from(await index(`shiftRefunds_${row.id}`),id=>get('payments',id)));
-    const movements=await Promise.all(Array.from(await index(`shiftCash_${row.id}`),id=>get('cashMovements',id)));
+    lateClosedShiftIds.add(row.id);
+  }
+  for(const shiftId of lateClosedShiftIds){
+    const shiftRow=result.get(`pos_shifts:${shiftId}`)?.value||await get('shifts',shiftId);
+    if(!shiftRow||shiftRow.status!=='closed')continue;
+    const payments=await Promise.all(Array.from(await index(`shiftPayments_${shiftId}`),id=>get('payments',id)));
+    const refunds=await Promise.all(Array.from(await index(`shiftRefunds_${shiftId}`),id=>get('payments',id)));
+    const movements=await Promise.all(Array.from(await index(`shiftCash_${shiftId}`),id=>get('cashMovements',id)));
     const sum=(items:(Record<string,any>|undefined)[],filter:(v:Record<string,any>)=>boolean,field='amount')=>items.reduce((n,v)=>n+(v&&filter(v)?Number(v[field]||0):0),0);
     const cashSales=sum(payments,p=>p.paymentMethod==='Cash'),nonCashSales=sum(payments,p=>p.paymentMethod!=='Cash'&&p.status==='completed');
     const verifiedNonCashSales=sum(payments,p=>p.paymentMethod!=='Cash'&&p.status==='completed'&&p.proofStatus==='terverifikasi');
     const cashRefunds=sum(refunds,p=>p.status==='refunded','cashRefundAmount'),cashIn=sum(movements,m=>m.type==='in'),cashOut=sum(movements,m=>m.type==='out');
-    const expectedCash=row.value.startingCash+cashSales-cashRefunds+cashIn-cashOut;
+    const expectedCash=shiftRow.startingCash+cashSales-cashRefunds+cashIn-cashOut;
     const stats={cashSales,nonCashSales,verifiedNonCashSales,unverifiedNonCashSales:nonCashSales-verifiedNonCashSales,cashRefunds,cashIn,cashOut,expectedCash,totalTransactions:payments.filter(p=>p?.status==='completed').length,movements:[]};
-    add('pos_shifts',row.id,{...row.value,...stats,cashDifference:row.value.actualCash-expectedCash,mdClosedStats:stats});
+    const isDirectShiftCommit=rows.some(r=>r.table==='shifts'&&r.id===shiftId);
+    const nextVersion=isDirectShiftCommit?shiftRow.mdVersion:Number(shiftRow.mdVersion||0)+1;
+    add('pos_shifts',shiftId,{...shiftRow,...stats,cashDifference:shiftRow.actualCash-expectedCash,mdClosedStats:stats,...(isDirectShiftCommit?{}:{mdVersion:nextVersion})});
   }
   for(const [id,ids] of indices)add('pos_index',id,{ids:Array.from(ids)});
   const stockChanges=new Map<string,number>();
