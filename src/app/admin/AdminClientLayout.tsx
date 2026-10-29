@@ -26,7 +26,6 @@ const navItems = [
   { href: "/admin/karyawan", label: "Karyawan & Shift", icon: "shift" },
   { href: "/admin/pelayan", label: "Waiter Floor", icon: "table" },
   { href: "/admin/menu", label: "Katalog & Stok", icon: "catalog" },
-  { href: "/admin/laporan", label: "Laporan Usaha", icon: "chart" },
   { href: "/admin/dapur", label: "Pesanan Dapur", icon: "food" },
   { href: "/admin/pengaturan", label: "Pengaturan POS", icon: "settings" },
 ];
@@ -43,7 +42,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const navigationHref=(href:string)=>adminNavigationHref(href,isDemo);
   const keepDashboard=(event:React.MouseEvent<HTMLAnchorElement>)=>{
-    if(pathname==='/admin'&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){event.preventDefault();preserveDemoUrl();}
+    if(pathname==='/admin'&&new URL(window.location.href).searchParams.get('view')!=='reports'&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){event.preventDefault();preserveDemoUrl();}
   };
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [licenseStatus, setLicenseStatus] = useState<CashierAccessStatus | null>(null);
@@ -635,7 +634,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const isDefaultPin = storeSettings.adminPin === "1234";
 
   const isActiveLink = (href: string) => {
-    if (href === "/admin") return pathname === "/admin";
+    if (href === "/admin") return pathname === "/admin" || pathname === "/admin/laporan";
     if (href === "/admin/karyawan") return pathname.startsWith("/admin/karyawan") || pathname.startsWith("/admin/shift");
     return pathname.startsWith(href);
   };
@@ -860,7 +859,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         <Link
           href={navigationHref("/admin")} onClick={keepDashboard}
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
-            pathname === "/admin"
+            (pathname === "/admin" || pathname === "/admin/laporan")
               ? " text-accent-text font-black"
               : " text-muted"
           }`}

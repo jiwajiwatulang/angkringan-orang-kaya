@@ -10,8 +10,7 @@ export default function AdminPengaturanHubPage() {
   const { storeSettings } = useAdmin();
 
   const settingsCategories = [
-    ...(process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE==='enabled'?[{href:'/admin/pengaturan/perangkat',icon:'lock',title:'Perangkat & Karyawan',badge:'Akses Kasir'}]:[]),
-    ...(storeSettings.serviceMode === 'resto' ? [{ href: '/admin/pelayan', icon: 'tables', title: 'Waiter Floor', badge: 'Pelayan & Meja' }] : []),
+    ...(process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE==='enabled'?[{href:'/admin/pengaturan/perangkat',icon:'lock',title:'Perangkat Kasir',badge:'Akses Kasir'}]:[]),
     {
       href: "/admin/pengaturan/profil",
       icon: "store",
