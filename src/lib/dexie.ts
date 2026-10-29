@@ -145,7 +145,7 @@ export interface Order {
 
 export interface AuditLog {
   id?: number;
-  action: 'OPERATION' | 'VOID' | 'REFUND' | 'DELETE' | 'RESET' | 'OPEN_SHIFT' | 'CLOSE_SHIFT' | 'CASH_IN' | 'CASH_OUT' | 'PARTIAL_PAYMENT' | 'PARTIAL_REFUND' | 'UPLOAD_PROOF' | 'VERIFY_PROOF' | 'DELETE_PROOF' | 'BULK_IMPORT' | 'BULK_UPDATE' | 'BULK_DELETE' | 'MIGRATION';
+  action: 'OPERATION' | 'VOID' | 'REFUND' | 'DELETE' | 'RESET' | 'OPEN_SHIFT' | 'CLOSE_SHIFT' | 'CLOSE_SHIFT_OWNER' | 'CASH_IN' | 'CASH_OUT' | 'PARTIAL_PAYMENT' | 'PARTIAL_REFUND' | 'UPLOAD_PROOF' | 'VERIFY_PROOF' | 'DELETE_PROOF' | 'BULK_IMPORT' | 'BULK_UPDATE' | 'BULK_DELETE' | 'MIGRATION';
   orderId?: number;
   amount: number;
   reason: string;
@@ -169,6 +169,9 @@ export interface Shift {
   actualCash?: number;        // Uang fisik yang dihitung kasir saat tutup shift (Blind Close)
   cashDifference?: number;    // actualCash - expectedCash (0 = pas, minus = tekor, plus = lebih)
   status: 'open' | 'closed';
+  closedBy?: 'owner' | 'cashier';
+  closedByOperator?: string;
+  closureReason?: string;
   notes?: string;
 }
 

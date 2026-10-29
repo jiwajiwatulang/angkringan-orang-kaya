@@ -398,6 +398,12 @@ export function generateZReportReceipt(stats: any, settings?: StoreSettings): st
 
   txt += lineTwoCols("Shift ID:", `#${stats.id || '-'}`);
   txt += lineTwoCols("Kasir/Operator:", stats.operatorName || "Kasir");
+  if (stats.closedBy === 'owner') {
+    txt += lineTwoCols("Ditutup Oleh:", `${stats.closedByOperator || 'Pemilik'} (Pemilik)`);
+    if (stats.closureReason) {
+      txt += lineTwoCols("Alasan Tutup:", stats.closureReason);
+    }
+  }
   txt += lineTwoCols("Waktu Buka:", stats.startTime ? new Date(stats.startTime).toLocaleString('id-ID') : "-");
   txt += lineTwoCols("Waktu Tutup:", stats.endTime ? new Date(stats.endTime).toLocaleString('id-ID') : new Date().toLocaleString('id-ID'));
   txt += divider;
@@ -853,6 +859,10 @@ export function generateZReportHtml(stats: any, settings?: StoreSettings): strin
 
       <div class="row"><span>Shift ID:</span><span>#${stats.id || '-'}</span></div>
       <div class="row"><span>Kasir:</span><span>${stats.operatorName || 'Kasir'}</span></div>
+      ${stats.closedBy === 'owner' ? `
+      <div class="row"><span>Ditutup Oleh:</span><span>${stats.closedByOperator || 'Pemilik'} (Pemilik)</span></div>
+      ${stats.closureReason ? `<div class="row"><span>Alasan Tutup:</span><span>${stats.closureReason}</span></div>` : ''}
+      ` : ''}
       <div class="row"><span>Buka:</span><span>${stats.startTime ? new Date(stats.startTime).toLocaleString('id-ID') : '-'}</span></div>
       <div class="row"><span>Tutup:</span><span>${stats.endTime ? new Date(stats.endTime).toLocaleString('id-ID') : new Date().toLocaleString('id-ID')}</span></div>
       

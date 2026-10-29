@@ -1934,6 +1934,66 @@ export async function closeShift(shiftId: number, data: { actualCash: number, no
   });
 }
 
+export async function closeShiftByOwner(shiftId: number, data: {
+  actualCash: number;
+  closureReason: string;
+  closedByOperator?: string;
+  notes?: string;
+}) {
+  await requireMerchantAdmin();
+  if (!Number.isFinite(data.actualCash) || data.actualCash < 0) {
+    throw new Error('Jumlah uang fisik tidak valid.');
+  }
+  const reason = (data.closureReason || '').trim();
+  if (!reason) {
+    throw new Error('Alasan penutupan shift oleh pemilik wajib diisi.');
+  }
+  const closedBy = (data.closedByOperator || 'Pemilik').trim() || 'Pemilik';
+
+  return db.transaction('rw', ['shifts', 'orders', 'payments', 'cashMovements', 'auditLogs'], async () => {
+    const shift = await db.table('shifts').get(shiftId);
+    if (!shift) throw new Error('Shift tidak ditemukan.');
+    if (shift.status !== 'open') throw new Error('Shift sudah ditutup.');
+
+    const stats = await getShiftLiveStats(shiftId);
+    const actual = Math.round(Number(data.actualCash) || 0);
+    const difference = actual - stats.expectedCash;
+
+    const ownerNote = `[Ditutup Pemilik: ${closedBy}] Alasan: ${reason}${data.notes?.trim() ? ` | Catatan: ${data.notes.trim()}` : ''}`;
+    const finalNotes = shift.notes ? `${shift.notes}\n${ownerNote}` : ownerNote;
+
+    const updatePayload = {
+      ...(getPosScope() ? { mdClosedStats: stats } : {}),
+      endTime: new Date().toISOString(),
+      actualCash: actual,
+      cashDifference: difference,
+      cashSales: stats.cashSales,
+      nonCashSales: stats.nonCashSales,
+      cashRefunds: stats.cashRefunds,
+      cashIn: stats.cashIn,
+      cashOut: stats.cashOut,
+      expectedCash: stats.expectedCash,
+      status: 'closed' as const,
+      closedBy: 'owner' as const,
+      closedByOperator: closedBy,
+      closureReason: reason,
+      notes: finalNotes
+    };
+
+    await db.table('shifts').update(shiftId, updatePayload);
+
+    await db.table('auditLogs').add({
+      action: 'CLOSE_SHIFT_OWNER',
+      amount: actual,
+      reason: `Tutup Shift oleh Pemilik (${closedBy}): ${reason} (Selisih: Rp ${difference.toLocaleString('id-ID')})`,
+      operator: closedBy,
+      timestamp: new Date().toISOString()
+    });
+
+    return { id: shiftId, ...stats, ...updatePayload };
+  });
+}
+
 export async function addCashMovement(data: {
   shiftId?: number;
   type: 'in' | 'out';

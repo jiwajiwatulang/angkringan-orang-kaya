@@ -9,6 +9,7 @@ import {
   getAllShifts,
   getActiveShift,
   getShiftLiveStats,
+  closeShiftByOwner,
   addCashMovement,
   deleteCashMovement,
 } from "@/lib/api";
@@ -75,6 +76,20 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Owner Close Shift Modal states
+  const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+  const [closingShiftTarget, setClosingShiftTarget] = useState<any | null>(null);
+  const [closingShiftStats, setClosingShiftStats] = useState<any | null>(null);
+  const [actualCashInput, setActualCashInput] = useState("");
+  const [closureReason, setClosureReason] = useState("Tutup shift harian oleh pemilik");
+  const [closedByOperator, setClosedByOperator] = useState("Pemilik");
+  const [closureNotes, setClosureNotes] = useState("");
+  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [unpaidOrdersCount, setUnpaidOrdersCount] = useState(0);
+  const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
+  const [isSubmittingClose, setIsSubmittingClose] = useState(false);
+  const [closedSuccessResult, setClosedSuccessResult] = useState<any | null>(null);
+
   const loadData = async () => {
     try {
       const [allShifts, currentShift, movements, paidOrders] = await Promise.all([
@@ -124,6 +139,65 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
       }
     } catch (e: any) {
       alert("Gagal mencetak Z-Report: " + (e.message || e));
+    }
+  };
+
+  const openOwnerCloseModal = async (shift: any, knownStats?: any) => {
+    try {
+      const stats = knownStats || (await getShiftLiveStats(shift.id));
+      const unpaid = await db.table("orders").where("status").equals("unpaid").count();
+      let pending = 0;
+      if (db.tables.some((t) => t.name === "posOutbox")) {
+        pending = await db.table("posOutbox").count();
+      }
+      setClosingShiftTarget(shift);
+      setClosingShiftStats(stats);
+      setActualCashInput("");
+      setClosureReason("Tutup shift harian oleh pemilik");
+      setClosedByOperator("Pemilik");
+      setClosureNotes("");
+      setIsConfirmed(false);
+      setUnpaidOrdersCount(unpaid);
+      setPendingOutboxCount(pending);
+      setClosedSuccessResult(null);
+      setIsCloseModalOpen(true);
+    } catch (err: any) {
+      showToast("Gagal memuat data shift: " + (err.message || err), "error");
+    }
+  };
+
+  const handleOwnerCloseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!closingShiftTarget) return;
+    const physical = Number(actualCashInput);
+    if (!Number.isFinite(physical) || physical < 0) {
+      showToast("Jumlah uang fisik tidak valid.", "error");
+      return;
+    }
+    if (!closureReason.trim()) {
+      showToast("Alasan penutupan shift wajib diisi.", "error");
+      return;
+    }
+    if (!isConfirmed) {
+      showToast("Harap konfirmasi penutupan shift terlebih dahulu.", "error");
+      return;
+    }
+
+    setIsSubmittingClose(true);
+    try {
+      const closed = await closeShiftByOwner(closingShiftTarget.id, {
+        actualCash: physical,
+        closureReason: closureReason.trim(),
+        closedByOperator: closedByOperator.trim() || "Pemilik",
+        notes: closureNotes.trim(),
+      });
+      setClosedSuccessResult(closed);
+      showToast(`Shift #${closingShiftTarget.id} berhasil ditutup aman oleh pemilik.`, "success");
+      await loadData();
+    } catch (err: any) {
+      showToast("Gagal menutup shift: " + (err.message || err), "error");
+    } finally {
+      setIsSubmittingClose(false);
     }
   };
 
@@ -267,9 +341,19 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
                 Shift Sedang Aktif di Kasir
               </h3>
             </div>
-            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-accent text-white">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-accent text-white">
               Shift #{activeShift.id}
             </span>
+            <button
+              type="button"
+              onClick={() => openOwnerCloseModal(activeShift, activeShiftStats)}
+              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5"
+            >
+              <LineIcon name="clock" className="w-4 h-4" />
+              <span>Akhiri Shift</span>
+            </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
@@ -297,7 +381,7 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
             </div>
           </div>
           <p className="text-[11px] text-muted leading-relaxed">
-            Hitung uang fisik, lalu akhiri shift melalui halaman Kasir.
+            Hitung uang fisik di laci kas, lalu gunakan tombol Akhiri Shift untuk menutup shift secara aman.
           </p>
         </div>
       )}
@@ -989,6 +1073,272 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
           </div>
         </div>
       )}
+
+      {/* Modal Akhiri Shift oleh Pemilik */}
+      {isCloseModalOpen && closingShiftTarget && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200 overflow-y-auto"
+          onClick={() => !isSubmittingClose && setIsCloseModalOpen(false)}
+        >
+          <div
+            className="bg-surface rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-line space-y-4 my-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {closedSuccessResult ? (
+              <div className="space-y-4 text-center py-2">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+                  <LineIcon name="check" className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-base font-black text-fg">
+                    Shift #{closedSuccessResult.id} Berhasil Ditutup
+                  </h4>
+                  <p className="text-xs text-muted mt-1">
+                    Rekonsiliasi kas dan audit penutupan shift telah tersimpan aman di sistem.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-card/60 border border-line text-xs space-y-2 text-left">
+                  <div className="flex justify-between">
+                    <span className="text-muted">Kasir Bertugas:</span>
+                    <span className="font-bold text-fg">{closedSuccessResult.operatorName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted">Ditutup Oleh:</span>
+                    <span className="font-bold text-fg">{closedSuccessResult.closedByOperator} (Pemilik)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted">Alasan Penutupan:</span>
+                    <span className="font-bold text-fg">{closedSuccessResult.closureReason}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-line/60 pt-2">
+                    <span className="text-muted">Uang Fisik Dihitung:</span>
+                    <span className="font-bold text-fg">Rp {(closedSuccessResult.actualCash || 0).toLocaleString("id-ID")}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted">Status Selisih:</span>
+                    <span className="font-black text-fg">
+                      {closedSuccessResult.cashDifference === 0
+                        ? "PAS / COCOK (Rp 0)"
+                        : closedSuccessResult.cashDifference > 0
+                        ? `+Rp ${closedSuccessResult.cashDifference.toLocaleString("id-ID")} (LEBIH)`
+                        : `-Rp ${Math.abs(closedSuccessResult.cashDifference).toLocaleString("id-ID")} (KURANG)`}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handlePrintZReport(closedSuccessResult)}
+                    className="flex-1 py-2.5 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <LineIcon name="printer" className="w-4 h-4" />
+                    <span>Cetak Z-Report</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsCloseModalOpen(false)}
+                    className="flex-1 py-2.5 bg-accent hover:bg-accent/90 text-white rounded-xl text-xs font-bold transition-all shadow-md"
+                  >
+                    Selesai
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleOwnerCloseSubmit} className="space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-line">
+                  <div>
+                    <h4 className="text-base font-black text-fg">Akhiri Shift Kasir</h4>
+                    <p className="text-xs text-muted">
+                      Shift #{closingShiftTarget.id} • Kasir: <strong className="text-fg">{closingShiftTarget.operatorName}</strong>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsCloseModalOpen(false)}
+                    disabled={isSubmittingClose}
+                    className="w-8 h-8 rounded-full bg-card hover:bg-line text-muted flex items-center justify-center text-xs"
+                  >
+                    X
+                  </button>
+                </div>
+
+                {/* Ringkasan Estimasi Kas Sistem */}
+                {closingShiftStats && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs p-3 rounded-2xl bg-card/50 border border-line">
+                    <div>
+                      <span className="text-[10px] text-muted block">Modal Awal:</span>
+                      <span className="font-bold text-fg">Rp {(closingShiftStats.startingCash || 0).toLocaleString("id-ID")}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted block">Penjualan Tunai:</span>
+                      <span className="font-bold text-accent-text">+Rp {(closingShiftStats.cashSales || 0).toLocaleString("id-ID")}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted block">Estimasi Kas Fisik:</span>
+                      <span className="font-black text-fg">Rp {(closingShiftStats.expectedCash || 0).toLocaleString("id-ID")}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Notifikasi Transaksi Tertunda / Belum Lunas */}
+                {unpaidOrdersCount > 0 && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-start gap-2">
+                    <LineIcon name="info" className="w-5 h-5 flex-shrink-0 text-amber-700 mt-0.5" />
+                    <div>
+                      <span className="font-bold block">Ada {unpaidOrdersCount} transaksi belum lunas di kasir/meja.</span>
+                      <p className="text-[11px] text-amber-800 mt-0.5">
+                        Transaksi belum lunas tidak akan hilang atau terhapus. Transaksi tetap tersimpan aman dan dapat diselesaikan pada shift berikutnya.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Notifikasi Antrean Offline Perangkat */}
+                {pendingOutboxCount > 0 && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-900 flex items-start gap-2">
+                    <LineIcon name="refresh" className="w-5 h-5 flex-shrink-0 text-blue-700 mt-0.5" />
+                    <div>
+                      <span className="font-bold block">Ada {pendingOutboxCount} data antrean pengiriman lokal.</span>
+                      <p className="text-[11px] text-blue-800 mt-0.5">
+                        Penutupan shift akan disimpan di laci lokal dan disinkronkan saat jaringan terhubung.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Input Uang Fisik & Selisih */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-fg">
+                      Uang Fisik di Laci Kas (Rp) <span className="text-rose-500">*</span>
+                    </label>
+                    {closingShiftStats && (
+                      <button
+                        type="button"
+                        onClick={() => setActualCashInput(String(closingShiftStats.expectedCash || 0))}
+                        className="text-[11px] font-bold text-accent hover:underline"
+                      >
+                        Sesuai Estimasi
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    required
+                    value={actualCashInput}
+                    onChange={(e) => setActualCashInput(e.target.value)}
+                    placeholder="Contoh: 350000"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-line bg-card text-fg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                  {actualCashInput.trim() !== "" && closingShiftStats && (() => {
+                    const diff = (Number(actualCashInput) || 0) - closingShiftStats.expectedCash;
+                    return (
+                      <div className="pt-1">
+                        <span
+                          className={`text-xs font-black px-2.5 py-1 rounded-lg inline-block ${
+                            diff === 0
+                              ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                              : diff > 0
+                              ? "bg-amber-100 text-amber-900 border border-amber-300"
+                              : "bg-rose-100 text-rose-900 border border-rose-300"
+                          }`}
+                        >
+                          {diff === 0
+                            ? "PAS / COCOK (Rp 0)"
+                            : diff > 0
+                            ? `+Rp ${diff.toLocaleString("id-ID")} (LEBIH)`
+                            : `-Rp ${Math.abs(diff).toLocaleString("id-ID")} (KURANG)`}
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Input Identitas Penutup & Alasan */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="space-y-1">
+                    <label className="font-bold text-fg">Ditutup Oleh (Otorisator)</label>
+                    <input
+                      type="text"
+                      value={closedByOperator}
+                      onChange={(e) => setClosedByOperator(e.target.value)}
+                      placeholder="Nama pemilik / penutup"
+                      className="w-full px-3 py-2 rounded-xl border border-line bg-card text-fg focus:outline-none focus:ring-2 focus:ring-accent"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-fg">
+                      Alasan Penutupan <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={closureReason}
+                      onChange={(e) => setClosureReason(e.target.value)}
+                      placeholder="Alasan penutupan shift"
+                      className="w-full px-3 py-2 rounded-xl border border-line bg-card text-fg focus:outline-none focus:ring-2 focus:ring-accent"
+                    />
+                  </div>
+                </div>
+
+                {/* Catatan Tambahan */}
+                <div className="space-y-1 text-xs">
+                  <label className="font-bold text-fg">Catatan Tambahan (Opsional)</label>
+                  <input
+                    type="text"
+                    value={closureNotes}
+                    onChange={(e) => setClosureNotes(e.target.value)}
+                    placeholder="Contoh: Titip uang kas ke kasir malam"
+                    className="w-full px-3 py-2 rounded-xl border border-line bg-card text-fg focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                </div>
+
+                {/* Konfirmasi Checkbox */}
+                <label className="flex items-start gap-2.5 p-3 rounded-2xl bg-card border border-line cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isConfirmed}
+                    onChange={(e) => setIsConfirmed(e.target.checked)}
+                    className="mt-1 w-4 h-4 rounded border-line text-accent"
+                  />
+                  <span className="text-xs text-fg leading-relaxed">
+                    Saya telah memeriksa uang fisik laci dan mengonfirmasi penutupan shift #{closingShiftTarget.id} atas wewenang pemilik.
+                  </span>
+                </label>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2 pt-2 border-t border-line">
+                  <button
+                    type="button"
+                    disabled={isSubmittingClose}
+                    onClick={() => setIsCloseModalOpen(false)}
+                    className="flex-1 py-2.5 bg-card hover:bg-line text-fg rounded-xl text-xs font-bold transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={
+                      isSubmittingClose ||
+                      !isConfirmed ||
+                      actualCashInput.trim() === "" ||
+                      !closureReason.trim()
+                    }
+                    className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-rose-600/20 transition-all active:scale-95"
+                  >
+                    {isSubmittingClose ? "Menutup Shift..." : "Konfirmasi & Akhiri Shift"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
