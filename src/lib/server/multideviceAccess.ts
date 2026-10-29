@@ -17,7 +17,7 @@ export function signingKey(env: MultiDeviceEnv) {
 export async function activeLicense(db:D1Database, licenseKey:string) {
   const record = await getLicenseD1(db,licenseKey) || await getTesterLicenseD1(db,licenseKey) || await getBetaRegistrationByLicenseKeyD1(db,licenseKey);
   if (!record || ('revoked' in record && record.revoked) || ('status' in record && !['disetujui','dikonversi_berbayar'].includes(record.status))) throw new AccessError('Lisensi tidak aktif.',403,'license_revoked');
-  if ('expiresAt' in record && record.expiresAt && (!Number.isFinite(Date.parse(record.expiresAt)) || Date.now() >= Date.parse(record.expiresAt))) throw new AccessError('Masa akses berakhir.',403,'license_revoked');
+  if ('expiresAt' in record && record.expiresAt && (!('status' in record) || record.status !== 'dikonversi_berbayar') && (!Number.isFinite(Date.parse(record.expiresAt)) || Date.now() >= Date.parse(record.expiresAt))) throw new AccessError('Masa akses berakhir.',403,'license_revoked');
   return record;
 }
 function originalClaims(token:string, key:string):LicenseClaims {
@@ -37,7 +37,7 @@ async function grant(env:MultiDeviceEnv, device:DeviceRow, employee?:EmployeeRow
   const license=await activeLicense(env.DB,store.licenseKey);
   const issuedAt=Date.now();
   const claims:AccessClaims={version:1,storeId:device.storeId,deviceId:device.id,deviceKey:device.publicKey,role:device.role,deviceEpoch:device.epoch,issuedAt,expiresAt:issuedAt+OFFLINE_ACCESS_MS};
-  if ('expiresAt' in license && license.expiresAt) claims.expiresAt=Math.min(claims.expiresAt,Date.parse(license.expiresAt));
+  if ('expiresAt' in license && license.expiresAt && (!('status' in license) || (license as any).status !== 'dikonversi_berbayar')) claims.expiresAt=Math.min(claims.expiresAt,Date.parse(license.expiresAt));
   if(employee){claims.employeeId=employee.id;claims.employeeEpoch=employee.epoch;claims.pinDigest=digest(employee.verifier);}
   return {access:signAccess(claims,signingKey(env)),claims};
 }
@@ -49,7 +49,13 @@ export async function enrollOwner(env:MultiDeviceEnv,data:{activation:string;dev
   const binding=await env.DB.prepare('SELECT deviceId,publicKey FROM LicenseDeviceKeys WHERE licenseKey=?').bind(claims.licenseKey).first<{deviceId:string;publicKey:string}>();
   if(binding?.deviceId!==claims.deviceId || binding.publicKey!==identity) throw new AccessError('Gunakan perangkat pemilik yang sudah aktif.');
   assertId(claims.deviceId);
-  const storeId=digest(`SakuNota/store/v1/${claims.licenseKey}`);
+  let storeId=digest(`SakuNota/store/v1/${claims.licenseKey}`);
+  const convertedBeta = await env.DB.prepare(`SELECT b.trialLicenseKey FROM BetaRegistrations b JOIN Licenses l ON l.orderId = b.registrationId WHERE l.licenseKey = ? AND b.status = 'dikonversi_berbayar'`).bind(claims.licenseKey).first<{trialLicenseKey:string}>();
+  if (convertedBeta?.trialLicenseKey) {
+    const originalStoreId = digest(`SakuNota/store/v1/${convertedBeta.trialLicenseKey}`);
+    const existingStore = await env.DB.prepare('SELECT id FROM MdStores WHERE id=?').bind(originalStoreId).first<{id:string}>();
+    if (existingStore) storeId = originalStoreId;
+  }
   const currentBinding='EXISTS(SELECT 1 FROM LicenseDeviceKeys k WHERE k.licenseKey=? AND k.deviceId=? AND k.publicKey=?)';
   const bindingValues=[claims.licenseKey,claims.deviceId,identity];
   await env.DB.batch([

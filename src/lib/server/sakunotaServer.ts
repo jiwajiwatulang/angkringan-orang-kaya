@@ -1313,6 +1313,9 @@ export async function convertBetaTrialToPaid(
   if (!reg) return { success: false, error: "Pendaftaran beta tidak ditemukan." };
 
   const commercialKey = generateGenuineLicenseKey(regId);
+  if (reg.status === 'dikonversi_berbayar') {
+    return { success: true, status: "dikonversi_berbayar", licenseKey: commercialKey, commercialLicenseKey: commercialKey };
+  }
   const verifiedAt = new Date().toISOString();
 
   const auditNote = `Dikonversi ke berbayar lisensi ${commercialKey} pada ${verifiedAt} oleh Owner`;
@@ -1320,7 +1323,7 @@ export async function convertBetaTrialToPaid(
   // Atomic batch: Update BetaRegistration status + insert commercial License in Licenses table
   const stmtBeta = db.prepare(`
     UPDATE BetaRegistrations 
-    SET status = 'dikonversi_berbayar', auditLog = ?
+    SET status = 'dikonversi_berbayar', auditLog = ?, expiresAt = NULL
     WHERE registrationId = ?
   `).bind(auditNote, regId);
 
@@ -1449,7 +1452,8 @@ export async function verifyDeviceLicense(
     }
     if (beta.status === "dikonversi_berbayar") {
       const paid = await getLicenseD1(db, generateGenuineLicenseKey(beta.registrationId));
-      if (!paid || paid.revoked === 1 || !devId || paid.boundDeviceId !== devId) return {valid:false,status:'revoked',error:'Lisensi hasil konversi tidak aktif pada perangkat ini.'};
+      if (!paid || paid.revoked === 1) return {valid:false,status:'revoked',error:'Lisensi resmi hasil konversi telah dicabut oleh Owner SakuNota.'};
+      if (devId && paid.boundDeviceId && paid.boundDeviceId !== devId) return {valid:false,status:'revoked',error:`Lisensi resmi ini terikat pada perangkat lain (${paid.deviceName || "Perangkat Utama"}).`};
       return {
         valid: true,
         status: "paid_active",
