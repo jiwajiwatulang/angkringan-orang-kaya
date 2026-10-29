@@ -26,7 +26,6 @@ const navItems = [
   { href: "/admin/karyawan", label: "Karyawan & Shift", icon: "shift" },
   { href: "/admin/pelayan", label: "Waiter Floor", icon: "table" },
   { href: "/admin/menu", label: "Katalog & Stok", icon: "catalog" },
-  { href: "/admin/laporan", label: "Laporan Usaha", icon: "chart" },
   { href: "/admin/dapur", label: "Pesanan Dapur", icon: "food" },
   { href: "/admin/pengaturan", label: "Pengaturan POS", icon: "settings" },
 ];
@@ -43,7 +42,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const navigationHref=(href:string)=>adminNavigationHref(href,isDemo);
   const keepDashboard=(event:React.MouseEvent<HTMLAnchorElement>)=>{
-    if(pathname==='/admin'&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){event.preventDefault();preserveDemoUrl();}
+    if(pathname==='/admin'&&new URL(window.location.href).searchParams.get('view')!=='reports'&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){event.preventDefault();preserveDemoUrl();}
   };
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [licenseStatus, setLicenseStatus] = useState<CashierAccessStatus | null>(null);
@@ -635,7 +634,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const isDefaultPin = storeSettings.adminPin === "1234";
 
   const isActiveLink = (href: string) => {
-    if (href === "/admin") return pathname === "/admin";
+    if (href === "/admin") return pathname === "/admin" || pathname === "/admin/laporan";
     if (href === "/admin/karyawan") return pathname.startsWith("/admin/karyawan") || pathname.startsWith("/admin/shift");
     return pathname.startsWith(href);
   };
@@ -860,7 +859,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         <Link
           href={navigationHref("/admin")} onClick={keepDashboard}
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
-            pathname === "/admin"
+            (pathname === "/admin" || pathname === "/admin/laporan")
               ? " text-accent-text font-black"
               : " text-muted"
           }`}
@@ -877,8 +876,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               : " text-muted"
           }`}
         >
-          <span className="text-lg"><LineIcon name="food" /></span>
-          <span className="truncate w-full text-center">Menu</span>
+          <span className="text-lg"><LineIcon name="catalog" /></span>
+          <span className="truncate w-full text-center">Katalog</span>
         </Link>
 
         <Link
@@ -897,7 +896,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           type="button"
           onClick={() => setIsLainnyaOpen(true)}
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
-            isLainnyaOpen || pathname.startsWith("/admin/karyawan") || pathname.startsWith("/admin/meja") || pathname.startsWith("/admin/shift") || pathname.startsWith("/admin/pengaturan")
+            isLainnyaOpen || pathname.startsWith("/admin/pelayan") || pathname.startsWith("/admin/dapur") || pathname.startsWith("/admin/karyawan") || pathname.startsWith("/admin/meja") || pathname.startsWith("/admin/shift") || pathname.startsWith("/admin/pengaturan")
               ? " text-accent-text font-black"
               : " text-muted"
           }`}
@@ -921,9 +920,12 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <h3 className="text-base font-black text-fg mb-3">Menu Lainnya</h3>
 
             <div className="grid grid-cols-1 gap-2 mb-4">
-              <Link href={navigationHref("/admin/menu?tab=stock")} onClick={() => setIsLainnyaOpen(false)} className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-line text-fg">
-                <span className="text-xl"><LineIcon name="catalog" /></span><div><div className="font-bold text-sm">Katalog &amp; Stok</div><div className="text-xs text-muted">Produk, persediaan, dan opname</div></div>
-              </Link>
+              {navItems.filter(item =>
+                item.href === '/admin/pelayan' && isTableManagementEnabled(storeSettings) ||
+                item.href === '/admin/dapur' && storeSettings.businessType !== 'retail'
+              ).map(item => <Link key={item.href} href={navigationHref(item.href)} onClick={() => setIsLainnyaOpen(false)} className="flex items-center gap-3 rounded-2xl border border-line bg-card p-3.5 text-fg">
+                <LineIcon name={item.icon}/><span className="text-sm font-bold">{item.label}</span>
+              </Link>)}
               {isTableManagementEnabled(storeSettings) && (
                 <Link
                   href={navigationHref("/admin/meja")}
