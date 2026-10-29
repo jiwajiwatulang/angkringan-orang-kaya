@@ -4,14 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
-    "predev": "node scripts/prepare-retail-photo.mjs",
-    "prebuild": "node scripts/prepare-retail-photo.mjs",
-    "postinstall": "node scripts/prepare-retail-photo.mjs",
+    "predev": "node scripts/prepare-retail-photo.mjs && node scripts/prepare-spreadsheet-worker.mjs",
+    "prebuild": "node scripts/prepare-retail-photo.mjs && node scripts/prepare-spreadsheet-worker.mjs",
+    "postinstall": "node scripts/prepare-retail-photo.mjs && node scripts/prepare-spreadsheet-worker.mjs",
     "build": "next build && node scripts/generate_offline_manifest.mjs",
     "start": "next start -H 0.0.0.0",
     "lint": "eslint",
     "test": "tsx test_suite.ts",
     "test:stability": "tsx --test tests/stability.test.ts tests/offline-worker.test.ts tests/waiter.test.ts tests/products-cashier.test.ts tests/security.test.ts tests/promo.test.ts tests/retail-add.test.ts",
+    "test:imports": "tsx --test tests/import-*.test.ts",
     "test:homepage": "tsx --test tests/homepage-*.test.ts",
     "test:operations": "tsx --test tests/operations*.test.ts",
     "test:offline": "tsx test_offline_readiness.ts",
@@ -25,7 +26,6 @@
     "@ascentio-it/capacitor-bluetooth-serial": "^8.0.1",
     "@capacitor/android": "^8.5.2",
     "@capacitor/app": "^8.1.2",
-    "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
     "@capacitor/keyboard": "^8.0.6",
     "@capgo/capacitor-printer": "^8.1.4",
@@ -33,15 +33,16 @@
     "@tesseract.js-data/eng": "^1.0.0",
     "dexie": "^4.4.6",
     "dexie-react-hooks": "^4.4.0",
-    "next": "16.3.8",
+    "next": "16.4.3",
     "pngjs": "^7.0.0",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tesseract.js": "^7.0.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "file:vendor/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.6.0",
     "@prisma/client": "^5.22.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
@@ -50,13 +51,13 @@
     "@types/react-dom": "^19",
     "esbuild": "^0.28.2",
     "eslint": "^9",
-    "eslint-config-next": "16.3.8",
+    "eslint-config-next": "16.4.3",
     "fake-indexeddb": "^6.2.5",
     "prisma": "^5.22.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
-    "wrangler": "^4.147.0"
+    "wrangler": "4.155.0"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

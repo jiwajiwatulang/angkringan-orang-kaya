@@ -15,6 +15,7 @@ for (const url of manifest.allUrls) {
   const candidates = [relative, relative+'.html', relative+'/index.html'].map(p => path.resolve(root, '.'+p));
   assert.ok(candidates.some(p => p.startsWith(root+path.sep) && fs.existsSync(p) && fs.statSync(p).isFile()), `Missing offline build file: ${url}`);
 }
+assert.ok(manifest.assets.includes('/spreadsheet-import-worker.js'), 'spreadsheet reader must be prepared for offline imports');
 const worker = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
 assert.ok(worker.includes(manifest.version), 'service worker and manifest build versions must match');
 console.log(`PASS: ${manifest.totalFiles} offline URLs resolve to real build files; POS, inventory, backup, and guide included. API and private files excluded.`);

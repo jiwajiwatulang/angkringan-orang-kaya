@@ -6,7 +6,7 @@ import { compressPaymentProof } from "@/lib/imageUtils";
 import { validateProductPhoto, MAX_PRODUCT_PHOTO_BYTES } from "@/lib/productPhoto";
 import { makeProductExport, parseProductImport } from "@/lib/productTransfer";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from 'next/navigation';
 import { useAdmin } from "../AdminContext";
 import {
@@ -82,6 +82,8 @@ function CatalogPanel() {
 
   // Import Modal State
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const importRead=useRef<AbortController|null>(null);
+  useEffect(()=>{if(!isImportOpen){importRead.current?.abort();importRead.current=null;setImportResult(null);setImportFile(null);setIsParsing(false);}return()=>{importRead.current?.abort();};},[isImportOpen]);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<MenuImportValidationResult | null>(null);
   const [importMode, setImportMode] = useState<"upsert" | "create_only" | "update_existing">("upsert");
@@ -628,19 +630,23 @@ function CatalogPanel() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    importRead.current?.abort();
+    const controller=new AbortController();importRead.current=controller;
+    setImportResult(null);
     setImportFile(file);
     setIsParsing(true);
     try {
       if (file.size > 50 * 1024 * 1024) throw new Error("File maksimal 50 MB. Pisahkan produk menjadi beberapa file bila lebih besar.");
       const products = file.name.toLowerCase().endsWith(".json") ? parseProductImport(JSON.parse(await file.text())) : null;
-      const result = products ? { validRows: products, invalidRows: [], duplicateSkus: [], totalRows: products.length } : await parseMenuFile(file);
-      setImportResult(result);
+      const result = products ? { validRows: products, invalidRows: [], duplicateSkus: [], totalRows: products.length } : await parseMenuFile(file,controller.signal);
+      if(importRead.current===controller&&!controller.signal.aborted)setImportResult(result);
     } catch (err: any) {
-      alert("Gagal membaca file: " + err.message);
+      if(importRead.current!==controller||controller.signal.aborted)return;
+      alert(err instanceof SyntaxError ? "File Produk + Foto tidak valid. Gunakan file produk SakuNota." : "Gagal membaca file: " + err.message);
       setImportFile(null);
       setImportResult(null);
     } finally {
-      setIsParsing(false);
+      if(importRead.current===controller)setIsParsing(false);
     }
   };
 
@@ -650,6 +656,7 @@ function CatalogPanel() {
       return;
     }
 
+    if(importResult.invalidRows.length||importResult.duplicateSkus.length){showToast('Perbaiki baris yang bermasalah atau SKU berulang sebelum impor.','error');return;}
     setIsImporting(true);
     try {
       // 1. Auto Backup jika diaktifkan
@@ -1478,13 +1485,13 @@ function CatalogPanel() {
                   <span>Import Menu Massal (Excel / CSV)</span>
                 </h3>
                 <p className="text-xs text-muted mt-0.5">
-                  100% Offline tanpa internet. Mendukung format .xlsx, .xls, dan .csv.
+                  Excel/CSV maksimal 10 MB dan 5.000 baris. Produk + Foto maksimal 50 MB.
                 </p>
               </div>
               <button
                 type="button"
                 disabled={isImporting}
-                onClick={() => setIsImportOpen(false)}
+                onClick={() => !isImporting && setIsImportOpen(false)}
                 className="w-8 h-8 rounded-full bg-card text-muted hover:text-fg flex items-center justify-center text-sm font-bold"
               >
                 ×
@@ -1642,7 +1649,7 @@ function CatalogPanel() {
                         <div>
                           <strong className=" text-fg">Hanya Update Menu Lama</strong>
                           <p className="text-[11px] text-muted">
-                            Perbarui harga & stok menu yang cocok, abaikan menu baru di file.
+                            Perbarui harga dan rincian produk yang cocok. Stok berjalan tetap dipertahankan.
                           </p>
                         </div>
                       </label>
@@ -1657,7 +1664,7 @@ function CatalogPanel() {
                       onChange={(e) => setImportAutoBackup(e.target.checked)}
                       className="w-4 h-4 rounded text-accent-text focus:ring-accent"
                     />
-                    <span> Buat file backup database otomatis sebelum proses import dimulai</span>
+                    <span> Simpan cadangan toko sebelum impor</span>
                   </label>
                 </div>
               )}
@@ -1667,14 +1674,14 @@ function CatalogPanel() {
                 <button
                   type="button"
                   disabled={isImporting}
-                  onClick={() => setIsImportOpen(false)}
+                  onClick={() => !isImporting && setIsImportOpen(false)}
                   className="flex-1 py-3 bg-card text-fg border border-line rounded-xl text-xs font-bold hover:bg-line transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="button"
-                  disabled={!importResult || importResult.validRows.length === 0 || isImporting}
+                  disabled={isParsing || !importResult || importResult.validRows.length === 0 || importResult.invalidRows.length > 0 || importResult.duplicateSkus.length > 0 || isImporting}
                   onClick={handleExecuteImport}
                   className="flex-[2] py-3 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white rounded-xl text-xs font-black shadow-lg shadow-accent/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                 >

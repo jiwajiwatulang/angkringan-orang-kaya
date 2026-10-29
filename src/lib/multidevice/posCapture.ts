@@ -93,7 +93,7 @@ export function installPosCapture(db:Dexie,getScope:()=>PosScope|undefined){
           const saved=await outbox.get({trans:request.trans,key:event.id});
           const ordinal=saved?.ordinal||Number((await meta.get({trans:request.trans,key:'ordinal'}))?.value||0)+1;
           const size=new TextEncoder().encode(JSON.stringify(event)).length;if(size>8*1024*1024)throw new AccessError('Ukuran transaksi terlalu besar. Perkecil foto bukti.');
-          if(event.data.rows.length>600)throw new AccessError('Terlalu banyak barang. Pisahkan menjadi beberapa nota.',413);
+          if(event.data.rows.length>600)throw new AccessError('Terlalu banyak data untuk sekali simpan. Pisahkan file atau pilihan menjadi beberapa bagian.',413);
           await meta.mutate({type:'put',trans:request.trans,values:[{key:'ordinal',value:ordinal}]});
           await outbox.mutate({type:'put',trans:request.trans,values:[{id:event.id,event,ordinal,attempts:0,access:current.access,claims:current.claims}]});
         };
