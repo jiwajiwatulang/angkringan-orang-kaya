@@ -10,10 +10,10 @@ test('admin navigation retains demo alongside existing filters and anchors witho
   assert.equal(adminNavigationHref('/admin',false),'/admin');
 });
 test('printed examples carry the same unit prices, amounts, notes and total as the cart',()=>{
-  const receipt=exampleReceipt([{product:EXAMPLE_PRODUCTS.warung[0],quantity:250,note:'Pisahkan kantong'},{product:EXAMPLE_PRODUCTS.warung[1],quantity:500,note:''}],'warung',new Date('2026-10-28T07:00:00Z'));
-  assert.equal(receipt.total,13000);
-  assert.equal(receipt.items[0].detail,'250 g × Rp18.000/kg');
-  for(const width of ['58mm','80mm'] as const){const doc=exampleReceiptDocument(receipt,width);assert.ok(doc.html.includes(`body{width:${width}`));for(const text of ['CONTOH-001','Kasir Contoh','Pisahkan kantong','Rp4.500','Rp8.500','Rp13.000','Bukan bukti pembayaran']){assert.ok(doc.html.includes(text),text);assert.ok(doc.text.includes(text),text);}}
+  const receipt=exampleReceipt([{product:EXAMPLE_PRODUCTS.warung[0],quantity:2,note:'Pisahkan kantong'},{product:EXAMPLE_PRODUCTS.warung[1],quantity:1,note:''}],'warung',new Date('2026-10-28T07:00:00Z'));
+  assert.equal(receipt.total,168000);
+  assert.equal(receipt.items[0].detail,'2 × Rp75.000/pcs');
+  for(const width of ['58mm','80mm'] as const){const doc=exampleReceiptDocument(receipt,width);assert.ok(doc.html.includes(`body{width:${width}`));for(const text of ['CONTOH-001','Kasir Contoh','Pisahkan kantong','Rp150.000','Rp18.000','Rp168.000','Bukan bukti pembayaran']){assert.ok(doc.html.includes(text),text);assert.ok(doc.text.includes(text),text);}}
 });
 test('print content escapes malicious notes and product names and removes printer control characters',()=>{
   const receipt=exampleReceipt([{product:{id:'bad',name:'<img src=x onerror=alert(1)>',price:1000},quantity:1,note:'<script>bad()</script>\x1bCUT'}],'cafe',new Date());

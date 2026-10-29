@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-export const siteDescription = 'Kasir offline untuk retail, warung, kafe, dan restoran. Scan barcode, kelola stok, dan catat penjualan. Sekali bayar Rp50.000 per perangkat, tanpa biaya bulanan.';
+export const siteDescription = 'Kasir offline untuk retail, warung, kafe, dan restoran. Scan barcode, kelola stok, dan catat penjualan. Sekali bayar Rp50.000 untuk satu toko (maksimal dua perangkat), tanpa biaya bulanan.';
 
 export function publicPageMetadata(title: string, description: string, path: string): Metadata {
   return {

@@ -301,7 +301,7 @@ export default function TentangSakuNotaPage() {
             <Link href="/" className="hover:text-blue-600">Beranda</Link>
             <Link href="/panduan" className="hover:text-blue-600">Panduan</Link>
             <Link href="/privacy" className="hover:text-blue-600">Privasi</Link>
-            <Link href="/terms" className="hover:text-blue-600">Terms</Link>
+            <Link href="/terms" className="hover:text-blue-600">Syarat & Ketentuan</Link>
           </div>
         </div>
       </footer>

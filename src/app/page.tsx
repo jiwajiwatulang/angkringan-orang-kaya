@@ -295,7 +295,7 @@ export default function SakuNotaLandingPage() {
 
     const key = directLicenseInput.trim().toUpperCase();
     if (!key) {
-      setDirectActivateError("Mohon masukkan Kode Lisensi SakuNota atau Lisensi Tester Anda.");
+      setDirectActivateError("Mohon masukkan Kode Lisensi SakuNota atau kode lisensi uji coba Anda.");
       return;
     }
 
@@ -689,7 +689,7 @@ export default function SakuNotaLandingPage() {
               aria-label="Toggle menu"
             >
               <span>Menu</span>
-              <span>{mobileMenuOpen ? "×" : "☰"}</span>
+              <span>{mobileMenuOpen ? "x" : "="}</span>
             </button>
           </div>
         </div>
@@ -754,7 +754,7 @@ export default function SakuNotaLandingPage() {
               Kasir Jalan Tanpa Internet
             </h1>
             <p className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-blue-600 tracking-tight">
-              Dimana aja, Sambil jalan dan melayani
+              Di mana saja, sambil jalan dan melayani.
             </p>
           </div>
 
@@ -891,7 +891,7 @@ export default function SakuNotaLandingPage() {
       <section id="harga" className="scroll-mt-24 border-t border-slate-200 bg-white px-4 py-16 sm:px-8">
         <div className="mx-auto max-w-5xl"><h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Pilih cara mulai</h2><div className="mt-7 grid gap-5 md:grid-cols-2">
           <div className="flex flex-col rounded-3xl border border-blue-200 bg-blue-50/50 p-6 sm:p-8"><h3 className="text-lg font-bold">Lisensi SakuNota</h3><p className="mt-3 text-4xl font-bold tracking-tight text-blue-700">Rp50.000</p><p className="mt-2 text-sm text-slate-600">Sekali bayar, tanpa langganan bulanan.</p><ul className="my-6 space-y-3 text-sm text-slate-700"><li>Satu toko, maksimal dua perangkat: Pemilik dan Kasir.</li><li>Kasir, stok, karyawan, dan laporan usaha.</li><li>Penjualan tanpa internet setelah kasir disiapkan.</li></ul><button type="button" onClick={handleOpenBuyModal} className="mt-auto min-h-12 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700">Beli Lisensi</button></div>
-          <div className="flex flex-col rounded-3xl border border-slate-200 bg-slate-50 p-6 sm:p-8"><h3 className="text-lg font-bold">Ikut Beta</h3><p className="mt-3 text-4xl font-bold tracking-tight text-slate-900">7 hari</p><p className="mt-2 text-sm text-slate-600">Uji coba gratis setelah pendaftaran disetujui.</p><ol className="my-6 list-inside list-decimal space-y-3 text-sm text-slate-700"><li>Daftarkan nama usaha dan WhatsApp.</li><li>Tim SakuNota memeriksa pendaftaran.</li><li>Aktifkan lisensi uji coba yang dikirim lewat WhatsApp.</li></ol><button type="button" onClick={()=>setIsBetaModalOpen(true)} className="mt-auto min-h-12 rounded-xl border border-blue-200 bg-white px-5 text-sm font-semibold text-blue-700 hover:bg-blue-50">Daftar Beta</button></div>
+          <div className="flex flex-col rounded-3xl border border-slate-200 bg-slate-50 p-6 sm:p-8"><h3 className="text-lg font-bold">Uji Coba Beta</h3><p className="mt-3 text-4xl font-bold tracking-tight text-slate-900">7 hari</p><p className="mt-2 text-sm text-slate-600">Uji coba gratis setelah pendaftaran disetujui.</p><ol className="my-6 list-inside list-decimal space-y-3 text-sm text-slate-700"><li>Daftarkan nama usaha dan WhatsApp.</li><li>Tim SakuNota memeriksa pendaftaran.</li><li>Aktifkan lisensi uji coba yang dikirim lewat WhatsApp.</li></ol><button type="button" onClick={()=>setIsBetaModalOpen(true)} className="mt-auto min-h-12 rounded-xl border border-blue-200 bg-white px-5 text-sm font-semibold text-blue-700 hover:bg-blue-50">Daftar Beta</button></div>
         </div></div>
       </section>
 
@@ -994,8 +994,8 @@ export default function SakuNotaLandingPage() {
                 a: "Kasir bisa melayani tanpa internet setelah persiapan dan aktivasi. Pada usaha beberapa perangkat, pengiriman data, pemasangan perangkat, dan pembaruan akses tetap memerlukan internet.",
               },
               {
-                q: "Bagaimana cara mengaktifkan Lisensi SakuNota atau Lisensi Tester?",
-                a: "Sangat mudah! Anda tidak perlu memasukkan Nomor Pesanan atau Kode Akses jika sudah memegang Kode Lisensi (misal SN-XXXX-XXXX-XXXX atau SN-TEST-XXXX). Cukup klik tombol ' Aktivasi Lisensi' di bagian atas halaman ini atau langsung buka halaman Kasir (/pos), tempel kode lisensi Anda, lalu klik Aktifkan.",
+                q: "Bagaimana cara mengaktifkan Lisensi SakuNota atau lisensi uji coba?",
+                a: "Sangat mudah! Anda tidak perlu memasukkan Nomor Pesanan atau Kode Akses jika sudah memegang Kode Lisensi resmi (misal SN-XXXX-XXXX-XXXX) atau kode uji coba beta (SN-TRIAL-XXXX). Cukup klik tombol 'Aktivasi Lisensi' di bagian atas halaman ini atau langsung buka halaman Kasir (/pos), tempel kode lisensi Anda, lalu klik Aktifkan.",
               },
               {
                 q: "Berapa harga SakuNota?",
@@ -1203,7 +1203,7 @@ export default function SakuNotaLandingPage() {
           <div className="flex items-center gap-6 font-semibold">
             <Link href="/tentang" className="hover:text-blue-600 transition-colors">Tentang Kami</Link>
             <Link href="/privacy" className="hover:text-blue-600 transition-colors">Kebijakan Privasi</Link>
-            <Link href="/terms" className="hover:text-blue-600 transition-colors">Terms</Link>
+            <Link href="/terms" className="hover:text-blue-600 transition-colors">Syarat & Ketentuan</Link>
           </div>
         </div>
       </footer>
@@ -1413,7 +1413,7 @@ export default function SakuNotaLandingPage() {
                 className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-base flex items-center justify-center transition-colors font-bold"
                 aria-label="Tutup"
               >
-                ✕
+                X
               </button>
             </div>
 
@@ -2192,7 +2192,7 @@ export default function SakuNotaLandingPage() {
                 <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-base shadow-sm"><LineIcon name="pin" /></div>
                 <div>
                   <h3 className="font-black text-sm text-slate-900">Aktivasi Lisensi &amp; Cek Pesanan</h3>
-                  <span className="text-[10px] text-slate-600 block">Aktifkan Kode Lisensi / Tester atau cek status transfer</span>
+                  <span className="text-[10px] text-slate-600 block">Aktifkan Kode Lisensi resmi / uji coba atau cek status transfer</span>
                 </div>
               </div>
               <button
@@ -2234,14 +2234,14 @@ export default function SakuNotaLandingPage() {
             {statusModalTab === "direct_license" && (
               <div className="space-y-4">
                 <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-[11px] text-blue-900 leading-relaxed">
-                  <strong>Punya Lisensi Tester atau Kode Lisensi Resmi?</strong><br />
+                  <strong>Punya Kode Lisensi Resmi atau Uji Coba?</strong><br />
                   Masukkan langsung kode lisensi Anda di bawah ini (tidak perlu Nomor Pesanan dan tidak perlu Kode Akses Rahasia).
                 </div>
 
                 <form onSubmit={handleDirectActivateLicense} className="space-y-3">
                   <div>
                     <label className="block text-[11px] font-extrabold text-slate-800 mb-1">
-                      Kode Lisensi SakuNota / Tester <span className="text-rose-500">*</span>
+                      Kode Lisensi SakuNota / Uji Coba <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"

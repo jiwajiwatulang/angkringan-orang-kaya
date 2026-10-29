@@ -344,14 +344,14 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     ]
   },
   {
-    id: 'retail-weight-sales', title: 'Contoh Hitung Berat', shortDesc: 'Coba hitungan gram dan kilogram di halaman utama.',
+    id: 'retail-weight-sales', title: 'Coba Simulasi Transaksi', shortDesc: 'Coba simulasi belanja dan cetak nota di halaman utama.',
     iconType: 'layers', stage: 2, stageLabel: 'Katalog & Meja', badge: 'Warung & Retail', businessTypes: ['warung','retail'],
-    articles: [{title:'Mencoba harga barang timbang',summary:'Penjualan timbang belum tersedia di kasir saat ini.',steps:[
-      'Buka Coba SakuNota pada halaman utama, lalu pilih Warung.',
-      'Pilih Beras Premium. Masukkan 250 dan pilih g. Harga contoh menjadi Rp4.500.',
-      'Pilih kg dan masukkan 0,5. Harga contoh menjadi Rp9.000.',
-      'Tekan Tambah ke Keranjang, lalu Lihat Nota. Contoh ini tidak mencatat penjualan atau mengubah stok toko.'
-    ],targetHref:'/#coba-sakunota',targetLabel:'Coba Hitung Berat'}]
+    articles: [{title:'Mencoba simulasi nota di beranda',summary:'Coba alur tambah barang dan lihat nota langsung di halaman utama.',steps:[
+      'Buka Coba SakuNota pada halaman utama, lalu pilih jenis usaha (Warung, Retail, atau Kafe).',
+      'Pilih produk contoh, tentukan jumlah barang, lalu tekan Tambah ke Keranjang.',
+      'Tekan Lihat Nota untuk melihat format struk belanja.',
+      'Contoh ini berjalan langsung di browser tanpa mencatat penjualan atau mengubah stok toko Anda.'
+    ],targetHref:'/#coba-sakunota',targetLabel:'Coba Simulasi Nota'}]
   },
   {
     id: 'retail-add-product',

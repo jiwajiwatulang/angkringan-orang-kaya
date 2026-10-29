@@ -277,7 +277,7 @@ export default function PanduanPage() {
 
           <div className="mt-5 flex flex-wrap gap-2" aria-label="Panduan untuk memulai">{[
             ['license-security-update','Mulai Berjualan'],
-            ['retail-weight-sales','Coba Hitung Berat'],
+            ['retail-weight-sales','Coba Simulasi Transaksi'],
             ['hubungkan-kasir','Hubungkan Kasir'],
             ['data-backup','Cadangan Data'],
           ].filter(([id])=>GUIDE_TOPICS.some(topic=>topic.id===id)).map(([id,label])=><button key={id} type="button" onClick={()=>setSelectedTopic(GUIDE_TOPICS.find(topic=>topic.id===id)!)} className="min-h-11 rounded-xl border border-blue-200 bg-white px-4 text-xs font-semibold text-blue-700 hover:bg-blue-50">{label}</button>)}</div>
@@ -658,7 +658,7 @@ export default function PanduanPage() {
                 Privasi
               </Link>
               <Link href="/terms" className="text-neutral-400 hover:text-white transition-colors">
-                Terms
+                Syarat & Ketentuan
               </Link>
             </div>
           </div>

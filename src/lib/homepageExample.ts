@@ -1,7 +1,7 @@
 export type ExampleBusiness = 'warung' | 'retail' | 'cafe';
 export interface ExampleProduct { id: string; name: string; price: number; weighted?: boolean }
 export const EXAMPLE_PRODUCTS: Record<ExampleBusiness, ExampleProduct[]> = {
-  warung: [{id:'beras',name:'Beras Premium',price:18000,weighted:true},{id:'gula',name:'Gula Pasir',price:17000,weighted:true}],
+  warung: [{id:'beras',name:'Beras Premium 5 kg',price:75000},{id:'minyak',name:'Minyak Goreng 1 L',price:18000}],
   retail: [{id:'susu',name:'Susu Kotak',price:6500},{id:'roti',name:'Roti Cokelat',price:8000}],
   cafe: [{id:'kopi',name:'Kopi Susu',price:18000},{id:'matcha',name:'Matcha Latte',price:24000}],
 };

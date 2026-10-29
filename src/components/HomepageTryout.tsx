@@ -31,7 +31,7 @@ export default function HomepageTryout({onBeta,onBuy}:{onBeta:()=>void;onBuy:()=
             <div className="flex items-center justify-between gap-3"><span className="text-sm text-slate-600">Harga</span><output aria-label="Harga barang" className="text-2xl font-bold tracking-tight text-slate-900">{amount?rupiah(exampleAmount(selected,amount)):'—'}</output></div>
             <button type="button" onClick={add} disabled={!amount||lines.length>=20} className={`${button} w-full bg-blue-600 text-white hover:bg-blue-700`}>Tambah ke Keranjang</button>
             <p role="status" className="min-h-5 text-xs text-slate-500">{lines.length>=20?'Keranjang contoh penuh. Hapus barang untuk mencoba lagi.':message||'Data contoh, terpisah dari toko Anda.'}</p>
-            {business==='warung'&&<p className="text-xs leading-relaxed text-slate-500">Contoh hitung berat. Penjualan timbang belum tersedia di kasir saat ini.</p>}
+            
           </div>
         </div>
         <div className="min-w-0 border-t border-slate-200 bg-slate-50/80 p-5 sm:p-7 lg:border-l lg:border-t-0"><div className="flex items-center justify-between gap-3"><h3 className="text-base font-bold text-slate-900">{preview?'Contoh Nota':'Keranjang'}</h3>{lines.length>0&&<button type="button" onClick={()=>{setLines([]);setPreview(false);setMessage('Keranjang dikosongkan');}} className="min-h-11 text-xs font-semibold text-slate-500 hover:text-blue-700">Kosongkan</button>}</div>

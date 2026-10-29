@@ -32,7 +32,7 @@ export default function TermsOfServicePage() {
             Perjanjian Penggunaan
           </span>
           <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            Terms
+            Syarat & Ketentuan
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
             Terakhir diperbarui: 18 Oktober 2026 • Lisensi Sekali Bayar Selamanya Tanpa Biaya Berlangganan

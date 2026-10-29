@@ -128,7 +128,7 @@ export default function PrivacyPolicyPage() {
           </div>
           <div className="flex gap-4 font-semibold">
             <Link href="/tentang" className="hover:text-blue-600">Tentang Kami</Link>
-            <Link href="/terms" className="hover:text-blue-600">Terms</Link>
+            <Link href="/terms" className="hover:text-blue-600">Syarat & Ketentuan</Link>
             <Link href="/panduan" className="hover:text-blue-600">Panduan</Link>
           </div>
         </div>
