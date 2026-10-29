@@ -11,9 +11,9 @@ function only(data:Record<string,unknown>,keys:string[]) {
 function id(value:unknown):string {assertId(value);return value;}
 function amount(value:unknown):number {return integer(value);}
 function sum(a:number,b:number) {const result=a+b;if(!Number.isSafeInteger(result)) throw new AccessError('Jumlah terlalu besar.',400);return result;}
-export async function project(event:StoreEvent,claims:AccessClaims,lookup:Lookup):Promise<Entity[]> {
+export async function project(event:StoreEvent,claims:AccessClaims,lookup:Lookup,authorization:{ownerRecovery?:boolean}={}):Promise<Entity[]> {
   validateEnvelope(event,claims);
-  if(event.kind==='pos.commit')return projectPosCommit(event as PosCommit,claims,lookup);
+  if(event.kind==='pos.commit')return projectPosCommit(event as PosCommit,claims,lookup,authorization);
   const d=event.data, entityId=event.entityId;
   const existing=await lookup(event.kind.split('.')[0],entityId);
   const owned=(row:Record<string,unknown>)=>{

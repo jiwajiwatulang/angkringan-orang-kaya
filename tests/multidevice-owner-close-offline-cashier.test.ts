@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import { environment, owner } from './multideviceFixtures';
 import { createPairing, requestPairing, approvePairing, saveEmployee, employeeLogin } from '../src/lib/server/multideviceAccess';
 import { testDeviceProof } from './securityFixtures';
-import { submitEvent, pullEntities } from '../src/lib/server/multideviceSync';
+import { submitEvent, pullEntities, recoverEvent } from '../src/lib/server/multideviceSync';
 import type { PosCommit, PosTable } from '../src/lib/multidevice/posWire';
 import type { AccessClaims } from '../src/lib/multidevice/protocol';
 
@@ -258,6 +258,7 @@ test('owner closing cashier shift preserves offline cashier sales and cash movem
       }
     }
   ]);
+  ownerCloseCommit.data.rows[0].value.mdOwnerClosedAt=1; // never trust client closure stamps
   await submitEvent(env.DB, primary.claims, ownerCloseCommit);
 
   // Verifikasi shift telah ditutup di server oleh pemilik
@@ -268,6 +269,17 @@ test('owner closing cashier shift preserves offline cashier sales and cash movem
   assert.equal(closedShiftOnServer.value.closedBy, 'owner');
   // Pada saat pemilik menutup, transaksi offline kasir belum sampai
   assert.equal(closedShiftOnServer.value.expectedCash, 100000); // baru modal awal
+
+  const cutoff=Number(closedShiftOnServer.value.mdOwnerClosedAt);
+  assert.ok(Number.isSafeInteger(cutoff)&&cutoff>1);
+  const renewed={...cashierClaims,issuedAt:cutoff+1};
+  await assert.rejects(submitEvent(env.DB,renewed,cashierOfflineSale1),/shift/);
+  await assert.rejects(submitEvent(env.DB,{...cashierClaims,expiresAt:Date.now()-1},cashierOfflineSale1),/masuk lagi/);
+  const forged=structuredClone(cashierOfflineSale2);(forged.data as any).ownerRecovery=true;
+  await assert.rejects(submitEvent(env.DB,renewed,forged),/shift/);
+  const movement=makeCommit(renewed,[{table:'cashMovements',id:crypto.randomUUID(),expectedVersion:0,value:{shiftId:shiftGlobalId,type:'out',amount:1,category:'operasional',reason:'Pemulihan pemilik'}}]);
+  await assert.rejects(submitEvent(env.DB,renewed,movement),/shift/);
+  await assert.rejects(recoverEvent(env.DB,cashierClaims,movement),/pemilik/);
 
   // 6. Kasir KEMBALI ONLINE dan mengirimkan transaksi offline yang tersimpan di outbox
   // Sebelumnya baris ini melempar 409 Conflict ("Mulai shift kasir terlebih dahulu.")
@@ -305,4 +317,14 @@ test('owner closing cashier shift preserves offline cashier sales and cash movem
   assert.ok(cashierSeenShift, 'Kasir dapat melihat shift yang ditutup pemilik');
   assert.equal(cashierSeenShift.value.status, 'closed');
   assert.equal(cashierSeenShift.value.expectedCash, 115000);
+  await recoverEvent(env.DB,{...primary.claims,issuedAt:cutoff+1},movement);
+  const recovered=(await pullEntities(env.DB,primary.claims,0)).entities.find(e=>e.kind==='pos_shifts'&&e.id===shiftGlobalId)!;
+  assert.equal(recovered.value.expectedCash,114999);
+  assert.equal(recovered.value.mdOwnerClosedAt,cutoff,'reconciliation never extends the original closure window');
+  assert.equal(await env.DB.prepare('SELECT count(*) n FROM MdRecoveries WHERE eventId=?').bind(movement.id).first<number>('n'),1);
+  const spoofId=crypto.randomUUID();
+  const spoof=makeCommit(cashierClaims,[{table:'shifts',id:spoofId,expectedVersion:0,value:{status:'closed',startingCash:0,actualCash:0,operatorName:'Kasir',startTime:new Date().toISOString(),endTime:new Date().toISOString(),closedBy:'owner',mdOwnerClosedAt:Date.now()+999999}}]);
+  await submitEvent(env.DB,cashierClaims,spoof);
+  const sanitized=(await pullEntities(env.DB,primary.claims,0)).entities.find(e=>e.kind==='pos_shifts'&&e.id===spoofId)!;
+  assert.equal(sanitized.value.closedBy,'cashier');assert.equal(sanitized.value.mdOwnerClosedAt,undefined);
 });

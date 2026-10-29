@@ -170,6 +170,7 @@ export interface Shift {
   cashDifference?: number;    // actualCash - expectedCash (0 = pas, minus = tekor, plus = lebih)
   status: 'open' | 'closed';
   closedBy?: 'owner' | 'cashier';
+  mdOwnerClosedAt?: number; // Server-assigned acceptance time; never a client-authorized cutoff.
   closedByOperator?: string;
   closureReason?: string;
   notes?: string;

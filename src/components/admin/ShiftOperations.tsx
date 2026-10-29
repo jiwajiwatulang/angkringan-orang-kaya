@@ -198,17 +198,17 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
         const runtime = currentPosRuntime();
         if (runtime) {
           await runtime.synchronizer.synchronize();
-          syncedToServer = true;
+          syncedToServer = (await db.table("posOutbox").count()) === 0;
         }
       } catch {
         syncedToServer = false;
       }
 
-      setClosedSuccessResult(closed);
+      setClosedSuccessResult({...closed,...await getShiftLiveStats(closingShiftTarget.id)});
       if (syncedToServer) {
-        showToast(`Shift #${closingShiftTarget.id} berhasil ditutup dan diselaraskan ke server.`, "success");
+        showToast(`Shift #${closingShiftTarget.id} ditutup. Nilai kas diperbarui saat kiriman kasir diterima.`, "success");
       } else {
-        showToast(`Shift #${closingShiftTarget.id} berhasil ditutup di perangkat ini dan akan disinkronkan ke server.`, "success");
+        showToast(`Shift #${closingShiftTarget.id} tersimpan di perangkat ini. Menunggu koneksi untuk dikirim.`, "success");
       }
       await loadData();
     } catch (err: any) {
@@ -466,6 +466,7 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
                       </span>
                     </div>
 
+                    {isOpen && <button type="button" onClick={()=>void openOwnerCloseModal(shift)} className="min-h-11 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700">Akhiri Shift</button>}
                     {!isOpen && (
                       <div className="flex items-center gap-2">
                         <span
@@ -1111,7 +1112,7 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
                     Shift #{closedSuccessResult.id} Berhasil Ditutup
                   </h4>
                   <p className="text-xs text-muted mt-1">
-                    Rekonsiliasi kas dan audit penutupan shift telah tersimpan aman di sistem. Transaksi kasir offline yang menyusul akan otomatis diselaraskan ke dalam laporan shift ini.
+                    Penutupan tersimpan. Nilai kas dapat berubah saat kiriman kasir diterima. Transaksi kasir offline yang menyusul akan otomatis diselaraskan ke dalam laporan shift ini.
                   </p>
                 </div>
 
@@ -1206,7 +1207,7 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
                     <div>
                       <span className="font-bold block">Shift Kasir: {closingShiftTarget.operatorName}</span>
                       <p className="text-[11px] text-indigo-900 mt-0.5 leading-relaxed">
-                        Jika kasir sedang offline, pastikan kasir menghubungkan perangkatnya ke internet. Transaksi kasir offline yang terkirim menyusul setelah penutupan ini akan otomatis diselaraskan ke dalam shift tanpa penolakan.
+                        Hubungkan perangkat kasir secepatnya. Kiriman dengan izin yang masih berlaku diterima otomatis; kiriman lama perlu dipulihkan oleh pemilik.
                       </p>
                     </div>
                   </div>
