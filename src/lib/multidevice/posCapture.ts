@@ -67,7 +67,7 @@ export function installPosCapture(db:Dexie,getScope:()=>PosScope|undefined){
         for(let index=0;index<values.length;index++){
           const value:Record<string,any>={...values[index],id:result.results?.[index]??values[index].id},wire:Record<string,any>={...value};delete wire.id;
           for(const [field,parent] of Object.entries(FOREIGN_KEYS[name as PosTable]||{})){
-            if(!wire[field])continue;const record=await down.table(parent).get({trans:request.trans,key:wire[field]});
+            if(!wire[field]){if(name==='orderItems'&&field==='menuItemId')wire[field]=null;continue;}const record=await down.table(parent).get({trans:request.trans,key:wire[field]});
             if(!record?.mdId){if(name==='orderItems'&&field==='menuItemId'&&(wire.pendingRetailProduct||current.importingLegacy)){wire[field]=null;continue;}throw new AccessError('Perbarui data sebelum melanjutkan.');}wire[field]=record.mdId;
           }
           if(name==='payments'&&Array.isArray(wire.itemsPaid)){

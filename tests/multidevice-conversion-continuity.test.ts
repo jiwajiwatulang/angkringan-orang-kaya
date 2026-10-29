@@ -69,8 +69,7 @@ test('beta to paid conversion retains store identity, both devices, employees, t
   const activateResult = await activateLicenseOnDevice(env.DB, {
     licenseKey: trialKey,
     deviceId: ownerDeviceId,
-    deviceName: 'Samsung S23 (Pemilik)',
-    deviceModel: 'Samsung S23'
+    deviceName: 'Samsung S23 (Pemilik)'
   });
   assert.ok(activateResult.success);
 

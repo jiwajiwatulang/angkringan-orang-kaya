@@ -819,7 +819,7 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
                 onClick={() => setIsModalOpen(false)}
                 className="text-muted hover:text-fg text-lg font-bold p-1"
               >
-                ✕
+                X
               </button>
             </div>
 

@@ -704,7 +704,14 @@ export default function AdminTransaksiPage() {
 
             <button
               type="button"
-              onClick={() => getPosScope() ? showToast('Impor nota lama belum tersedia saat dua perangkat terhubung. Data tidak diubah.', 'error') : setIsHistoricalModalOpen(true)}
+              onClick={() => {
+                const scope = getPosScope();
+                if (scope && scope.claims.role === 'cashier') {
+                  showToast('Impor riwayat transaksi hanya dapat dilakukan oleh pemilik toko.', 'error');
+                  return;
+                }
+                setIsHistoricalModalOpen(true);
+              }}
               className="px-3 py-2 bg-blue-50 text-blue-900 border border-blue-200 hover:bg-blue-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
             >
               <span><LineIcon name="import" /></span>
@@ -2115,7 +2122,7 @@ export default function AdminTransaksiPage() {
                 onClick={() => setKasbonTargetOrder(null)}
                 className="text-muted hover:text-fg font-bold text-sm p-1"
               >
-                ✕
+                X
               </button>
             </div>
 

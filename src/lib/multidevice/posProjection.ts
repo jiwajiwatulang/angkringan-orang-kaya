@@ -143,17 +143,22 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
       if(!order)throw new AccessError('Nota tidak tersedia.',409);
       if(!value.mdDeleted){
         integer(value.qty,true);integer(value.hargaSatuan);
-        const product=await get('menuItems',value.menuItemId);
-        const version=Number(value.mdCatalogVersion||0);
-        const historical=product?.mdCatalogVersion===version?product:await lookup('pos_catalogVersion',`${value.menuItemId}_${version}`);
-        if(resolvingDraft&&(historical?.harga!==prior!.hargaSatuan||historical?.nama!==prior!.pendingRetailProduct.nama))throw new AccessError('Barang berbeda dari nota semula.',409);
-        const draft=value.pendingRetailProduct&&!value.menuItemId?validateRetailDraft(value.pendingRetailProduct):undefined;
-        if(draft&&(draft.harga!==value.hargaSatuan||value.selectedModifiers?.length))throw new AccessError('Harga barang tidak sesuai.',409);
-        if(!bootstrap&&!draft&&(!historical||Number(historical.harga)+(value.selectedModifiers||[]).reduce((sum:number,item:any)=>sum+Number(item.harga),0)!==value.hargaSatuan))throw new AccessError('Harga barang tidak sesuai.',409);
-        for(const modifier of value.selectedModifiers||[]){
-          if(!bootstrap&&(!Array.isArray(historical?.modifiers)||!historical.modifiers.some((group:any)=>group.nama===modifier.groupName&&group.options?.some((option:any)=>option.nama===modifier.optionName&&option.harga===modifier.harga))))throw new AccessError('Pilihan barang tidak sesuai.',409);
+        if(order.isHistorical){
+          if(claims.role==='cashier')throw new AccessError('Riwayat lama hanya dapat dimasukkan pemilik.',403);
+          value.costPrice=null;
+        }else{
+          const product=await get('menuItems',value.menuItemId);
+          const version=Number(value.mdCatalogVersion||0);
+          const historical=product?.mdCatalogVersion===version?product:await lookup('pos_catalogVersion',`${value.menuItemId}_${version}`);
+          if(resolvingDraft&&(historical?.harga!==prior!.hargaSatuan||historical?.nama!==prior!.pendingRetailProduct.nama))throw new AccessError('Barang berbeda dari nota semula.',409);
+          const draft=value.pendingRetailProduct&&!value.menuItemId?validateRetailDraft(value.pendingRetailProduct):undefined;
+          if(draft&&(draft.harga!==value.hargaSatuan||value.selectedModifiers?.length))throw new AccessError('Harga barang tidak sesuai.',409);
+          if(!bootstrap&&!draft&&(!historical||Number(historical.harga)+(value.selectedModifiers||[]).reduce((sum:number,item:any)=>sum+Number(item.harga),0)!==value.hargaSatuan))throw new AccessError('Harga barang tidak sesuai.',409);
+          for(const modifier of value.selectedModifiers||[]){
+            if(!bootstrap&&(!Array.isArray(historical?.modifiers)||!historical.modifiers.some((group:any)=>group.nama===modifier.groupName&&group.options?.some((option:any)=>option.nama===modifier.optionName&&option.harga===modifier.harga))))throw new AccessError('Pilihan barang tidak sesuai.',409);
+          }
+          if(!bootstrap)value.costPrice=historical?.costPrice??null;
         }
-        if(!bootstrap)value.costPrice=historical?.costPrice??null;
       }
       (await index(`orderItems_${value.orderId}`)).add(row.id);
     }
@@ -163,7 +168,7 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
       for(const field of ['subtotal','discount','tax','serviceCharge','total'])if(value[field]!=null)integer(value[field]);
       if(prior&&Number(prior.paidAmount)>0&&['total','subtotal','discount','tax','serviceCharge','shiftId'].some(field=>!same(prior[field],value[field])))throw new AccessError('Nilai nota yang dibayar tidak dapat diganti.',409);
       if(value.status==='void'&&claims.role!=='owner')throw new AccessError('Pembatalan memerlukan akses pemilik.');
-      if(!bootstrap&&!prior){
+      if(!bootstrap&&!prior&&!value.isHistorical){
         const settings=await lookup('settingsVersion',`${claims.storeId}_${value.mdSettingsVersion}`),profile=settings?.profile as Record<string,any>|undefined;
         const net=Number(value.subtotal)-Number(value.discount||0),service=profile?.enableService?Math.round(net*Number(profile.servicePercent||0)/100):0;
         const tax=profile?.enableTax?Math.round((net+(profile.taxAppliesToService?service:0))*Number(profile.taxPercent||0)/100):0;
@@ -181,8 +186,11 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
         if(prior?.proofStatus!=='terverifikasi'||!same(prior.proofId,value.proofId)||proof&&proof.status!=='terverifikasi')throw new AccessError('Konfirmasi pembayaran memerlukan akses pemilik.',403);
       }
       if(prior&&['amount','orderId','shiftId','paymentMethod','paidAt','itemsPaid'].some(field=>!same(prior[field],value[field])))throw new AccessError('Pembayaran yang tersimpan tidak dapat diganti.',409);
-      const shift=await get('shifts',value.shiftId),beforeShift=await old('shifts',value.shiftId);
-      if(!bootstrap&&!prior&&(!shift||beforeShift?.status==='closed'||shift.mdDeviceId!==claims.deviceId||shift.mdOperatorId!==event.operatorId))throw new AccessError('Mulai shift kasir terlebih dahulu.',409);
+      const paymentOrder=await get('orders',value.orderId);
+      const isHistoricalPayment=!!paymentOrder?.isHistorical;
+      const shift=value.shiftId?await get('shifts',value.shiftId):null,beforeShift=value.shiftId?await old('shifts',value.shiftId):null;
+      if(!bootstrap&&!prior&&!isHistoricalPayment&&(!shift||beforeShift?.status==='closed'||shift.mdDeviceId!==claims.deviceId||shift.mdOperatorId!==event.operatorId))throw new AccessError('Mulai shift kasir terlebih dahulu.',409);
+      if(isHistoricalPayment&&claims.role==='cashier')throw new AccessError('Riwayat lama hanya dapat dimasukkan pemilik.',403);
       if(prior?.status==='refunded'&&value.status!=='refunded')throw new AccessError('Pengembalian tidak dapat dibatalkan.',409);
       if(prior?.status==='refunded'&&['mdRefundAmount','cashRefundAmount','mdRefundMethod','refundShiftId','refundedAt'].some(key=>!same(prior[key],value[key])))throw new AccessError('Pengembalian yang tersimpan tidak dapat diganti.',409);
       if(prior&&prior.status!==value.status){
@@ -191,7 +199,7 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
         integer(value.cashRefundAmount);integer(value.mdRefundAmount);if(value.cashRefundAmount>value.mdRefundAmount||value.mdRefundAmount>value.amount)throw new AccessError('Pengembalian tidak sesuai pembayaran.',400);
       }
       (await index(`payments_${value.orderId}`)).add(row.id);
-      (await index(`shiftPayments_${value.shiftId}`)).add(row.id);
+      if(value.shiftId)(await index(`shiftPayments_${value.shiftId}`)).add(row.id);
       if(value.refundShiftId)(await index(`shiftRefunds_${value.refundShiftId}`)).add(row.id);
     }
     if(row.table==='inventoryMovements'){
