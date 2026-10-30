@@ -4,10 +4,11 @@ import { createRoot } from 'react-dom/client';
 import QRCode from 'qrcode';
 import BarcodeCameraModal from '../../src/components/BarcodeCameraModal';
 
-let mode: 'qr' | 'ean' | 'retry' | 'resume' = 'qr', calls = 0, stopped = 0;
+let mode: 'qr' | 'ean' | 'retry' | 'resume' | 'timeout' = 'qr', calls = 0, stopped = 0;
 Object.defineProperty(window, 'BarcodeDetector', { configurable: true, value: undefined });
 Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { configurable: true, value: async () => {
   calls++;
+  if(mode === 'timeout' && calls === 1) await new Promise(resolve=>setTimeout(resolve,22000));
   if (mode === 'retry' && calls === 1) throw new DOMException('Test permission denied', 'NotAllowedError');
   const canvas=document.createElement('canvas');canvas.width=640;canvas.height=480;
   const context=canvas.getContext('2d')!;
@@ -34,7 +35,7 @@ function App(){
     <button onClick={()=>launch('qr')}>Uji QR</button>{' · '}
     <button onClick={()=>launch('ean')}>Uji Barcode</button>{' · '}
     <button onClick={()=>launch('retry')}>Uji Izin Kamera</button>
-    <button onClick={()=>launch('resume')}>Uji Kembali ke Aplikasi</button><p>F8: sembunyikan atau buka kembali aplikasi uji</p><p role="status">{result}</p><p>{stats}</p>
+    <button onClick={()=>launch('resume')}>Uji Kembali ke Aplikasi</button><button onClick={()=>launch('timeout')}>Uji Kamera Tidak Merespons</button><p>F8: sembunyikan atau buka kembali aplikasi uji</p><p role="status">{result}</p><p>{stats}</p>
     <BarcodeCameraModal isOpen={open} onScan={value=>setResult('Kode terbaca: '+value)} onClose={()=>{setOpen(false);setStats('Kamera dihentikan: '+stopped);}} />
   </main>;
 }

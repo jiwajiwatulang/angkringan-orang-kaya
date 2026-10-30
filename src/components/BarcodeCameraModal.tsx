@@ -59,6 +59,7 @@ function CameraScanner({ onClose, onScan, title = 'Pindai Barcode Produk' }: Bar
     if (!visible) return;
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let startupTimer: ReturnType<typeof setTimeout> | undefined;
     let acquired: MediaStream | null = null;
     let track: MediaStreamTrack | undefined;
     const disconnected = () => {
@@ -66,6 +67,7 @@ function CameraScanner({ onClose, onScan, title = 'Pindai Barcode Produk' }: Bar
     };
     const stop = () => {
       if (timer) clearTimeout(timer);
+      if (startupTimer) clearTimeout(startupTimer);
       track?.removeEventListener('ended', disconnected);
       acquired?.getTracks().forEach(item => item.stop());
       if (stream.current === acquired) stream.current = null;
@@ -86,6 +88,7 @@ function CameraScanner({ onClose, onScan, title = 'Pindai Barcode Produk' }: Bar
         if (!active) { stop(); return; }
         const read = await createCameraBarcodeReader();
         if (!active) { stop(); return; }
+        if (startupTimer) clearTimeout(startupTimer);
         setReady(true);
         const scan = async () => {
           if (!active || completed.current) return;
@@ -108,6 +111,12 @@ function CameraScanner({ onClose, onScan, title = 'Pindai Barcode Produk' }: Bar
         if (active && !completed.current) { setReady(false); setError(cameraErrorMessage(cause)); }
       }
     };
+    startupTimer = setTimeout(() => {
+      if (!active) return;
+      active = false;
+      stop(); setReady(false);
+      setError('Kamera belum merespons. Periksa izin kamera untuk SakuNota, lalu coba lagi.');
+    }, 20000);
     void start();
     return () => { active = false; stop(); };
   }, [visible, attempt]);
