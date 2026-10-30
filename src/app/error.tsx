@@ -42,10 +42,10 @@ export default function GlobalError({
           </button>
 
           <Link
-            href="/pos?demo=true"
-            className="block w-full py-3.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm transition-all shadow-md active:scale-95 text-center"
+            href="/pos"
+            className="block w-full py-3.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm transition-all text-center"
           >
-            Buka Demo Kasir
+            Buka Layar Kasir
           </Link>
 
           <Link

@@ -802,7 +802,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
           'Pemilik dapat memulihkan file transaksi yang belum terkirim melalui "Pilih Cadangan Pengiriman" saat internet tersedia.',
           'Jangan hapus data browser atau perangkat lama sebelum transaksi selesai diterima. Perangkat pemilik tidak dapat mencadangkan transaksi offline yang masih berada di perangkat kasir lain.'
         ],
-        tips: 'Demo memakai data latihan terpisah, termasuk saat perangkat sudah terhubung ke usaha.',
+        tips: 'Data simulasi contoh terpisah dari data asli toko Anda.',
         targetHref: '/admin/pengaturan/data',
         targetLabel: 'Buka Data & Cadangan'
       },
