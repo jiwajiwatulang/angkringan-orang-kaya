@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {environment,owner,requestProof} from './multideviceFixtures';
@@ -27,4 +28,14 @@ test('two-device polling has a separate budget while account entry keeps its str
   assert.equal(authCalls,0);
   for(let i=0;i<30;i++)assert.equal((await call('list',{})).status,200);
   assert.equal((await call('list',{})).status,429);assert.equal(authCalls,31);
+});
+
+
+test('deployed configuration enables employee access without changing the authentication guard',async()=>{
+  const config=JSON.parse(readFileSync('wrangler.jsonc','utf8').replace(/^\s*\/\/.*$/gm,''));
+  const env=await environment();env.SAKUNOTA_MULTI_DEVICE=config.vars?.SAKUNOTA_MULTI_DEVICE;
+  const result=await handleMultiDevice(new Request('https://test/api/store'),env);
+  assert.equal(result.status,405,'configured production route must be available without authorizing GET or reading business data');
+  const denied=await handleMultiDevice(new Request('https://test/api/store',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}),env);
+  assert.equal(denied.status,400,'missing signed device proof remains rejected');
 });
