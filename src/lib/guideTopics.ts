@@ -90,11 +90,11 @@ export const GUIDE_TOPICS: GuideTopic[] = [
         title: 'Aktivasi lisensi resmi dan trial',
         summary: 'Aktivasi pertama membutuhkan internet; trial dimulai setelah aktivasi perangkat.',
         steps: [
-          'Buka halaman utama SakuNota dan pilih Login.',
+          'Buka halaman utama SakuNota dan pilih "Aktivasi Lisensi" (di samping Daftar Beta) atau buka layar Kasir (/pos).',
           'Masukkan kode lisensi resmi berbayar, tester, atau trial yang sudah disetujui (format: SN-XXXX-XXXX-XXXX).',
           'Tekan "Aktifkan Lisensi di Perangkat Ini". Lisensi terhubung dengan perangkat kasir Anda.',
           'Siapkan kasir tanpa internet dari Pengaturan POS. Pastikan menu dan data sudah tersedia sebelum mulai berjualan.',
-          'Satu lisensi digunakan untuk satu toko, maksimal dua perangkat: Pemilik dan Kasir. Kelola melalui Pengaturan POS → Perangkat Kasir.'
+          'Satu lisensi digunakan untuk satu toko, maksimal dua perangkat: Pemilik dan Kasir. Kelola melalui Admin → Karyawan & Shift → Karyawan → Perangkat Kasir.'
         ],
         targetHref: '/?aktivasi=true',
         targetLabel: 'Aktivasi lisensi'
@@ -229,10 +229,11 @@ export const GUIDE_TOPICS: GuideTopic[] = [
         title: 'Mengatur PIN Admin dan kode pemulihan',
         summary: 'Mencegah kasir atau pihak yang tidak berwenang mengubah harga dan melihat omzet.',
         steps: [
-          'Buka Admin → Pengaturan → Keamanan & Akses.',
-          'Buat 6 digit angka PIN Admin pemilik toko.',
+          'Buka Admin → Pengaturan → Keamanan & PIN Admin.',
+          'Tentukan 4–6 digit angka PIN Admin pemilik toko (PIN awal bawaan adalah 1234).',
+          'Tersedia papan tombol angka (keypad) virtual di layar yang nyaman untuk layar sentuh HP dan tablet.',
           'Sistem akan menampilkan Kode Pemulihan. Salin dan catat kode ini di buku catatan pribadi Anda di luar perangkat kasir.',
-          'Setelah PIN aktif, setiap tombol Admin di kasir akan meminta PIN tersebut untuk membuka laporan keuangan, kelola menu, dan pengaturan.',
+          'Setelah masuk, sesi Admin aktif tersimpan selama 1 jam sehingga Anda tidak perlu mengetik PIN berulang-ulang saat mengelola toko.',
           'Jika pemilik lupa PIN, gunakan kode pemulihan untuk mereset PIN baru seketika tanpa menghapus data usaha.'
         ],
         targetHref: '/admin/pengaturan/keamanan',
@@ -582,7 +583,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
         summary: 'Pelayan mencatat pesanan tamu; pembayaran tetap diselesaikan di meja kasir.',
         steps: [
           'Pastikan profil usaha Anda adalah Restoran atau Kafe, dan meja makan sudah terdaftar.',
-          'Buka Admin → Pengaturan POS → Waiter Floor.',
+          'Buka Admin → Pelayan Meja (Waiter Floor).',
           'Isi nama pelayan yang bertugas dan pilih nomor/area meja tugas.',
           'Tekan tombol "Mulai Mode Pelayan". Layar akan terkunci khusus untuk operasional pelayan.',
           'Pelayan mendatangi meja tamu, memilih menu pesanan tamu beserta catatan khusus (contoh: "jangan pedas, es dipisah"), lalu menekan tombol "Kirim Pesanan ke Kasir".',
@@ -701,6 +702,20 @@ export const GUIDE_TOPICS: GuideTopic[] = [
         ],
         targetHref: '/admin',
         targetLabel: 'Buka dashboard laporan'
+      },
+      {
+        title: 'Impor nota penjualan historis (Excel / CSV)',
+        summary: 'Bawa riwayat penjualan masa lalu dari kasir lama ke SakuNota tanpa mengubah stok atau laci kas.',
+        steps: [
+          'Masuk sebagai Pemilik, buka Admin → Riwayat Transaksi.',
+          'Tekan tombol "Impor Nota Historis".',
+          'Unduh template file Excel (.xlsx) atau CSV yang disediakan, lalu masukkan data tanggal, nomor nota, nama barang, harga satuan, dan total bayar.',
+          'Pilih file spreadsheet Anda (maksimal 10 MB atau 5.000 baris; pada multi-device disarankan hingga 100 nota per file).',
+          'Periksa pratinjau validasi data, lalu tekan "Konfirmasi Impor". Nota historis tersimpan aman ke laporan omzet tanpa memotong stok aktif atau mengganggu shift kasir saat ini.'
+        ],
+        tips: 'Proses impor bersifat atomik: jika terjadi kegagalan file di tengah jalan, seluruh transaksi pada file tersebut dibatalkan otomatis dan database tetap bersih.',
+        targetHref: '/admin/transaksi',
+        targetLabel: 'Buka Riwayat Transaksi'
       }
     ]
   },
