@@ -7,7 +7,7 @@
     "predev": "node scripts/prepare-retail-photo.mjs && node scripts/prepare-spreadsheet-worker.mjs",
     "prebuild": "node scripts/prepare-retail-photo.mjs && node scripts/prepare-spreadsheet-worker.mjs",
     "postinstall": "node scripts/prepare-retail-photo.mjs && node scripts/prepare-spreadsheet-worker.mjs",
-    "build": "next build && node scripts/generate_offline_manifest.mjs",
+    "build": "node scripts/build-release.mjs",
     "start": "next start -H 0.0.0.0",
     "lint": "eslint",
     "test": "tsx test_suite.ts",

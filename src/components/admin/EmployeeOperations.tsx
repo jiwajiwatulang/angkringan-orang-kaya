@@ -7,10 +7,11 @@ import {operationEmployees,saveOperation} from '@/lib/operationsApi';
 import {attendanceSummary,loanBalance,commissionBalance,type OperationKind,type OperationRecord} from '@/lib/operations';
 import {cashierReport} from '@/lib/storeReports';
 import {Card,Stat,Tabs,field,primary,secondary,money,date} from '@/components/operations/Shared';
+import OwnerAccessSettings from '@/components/OwnerAccessSettings';
 import LoadingState,{BusyLabel} from '@/components/LoadingState';
 
 export default function EmployeeOperations(){
-  const [tab,setTab]=useState('attendance'),[employees,setEmployees]=useState<{id:string;name:string}[]>([]),[employee,setEmployee]=useState('');
+  const [tab,setTab]=useState('access'),[employees,setEmployees]=useState<{id:string;name:string}[]>([]),[employee,setEmployee]=useState('');
   const [amount,setAmount]=useState(''),[note,setNote]=useState(''),[source,setSource]=useState<'laci'|'rekening'>('laci'),[kind,setKind]=useState<OperationKind>('loan');
   const [lineId,setLineId]=useState(''),[rate,setRate]=useState('10'),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
   const data=useLiveQuery(async()=>{
@@ -18,7 +19,7 @@ export default function EmployeeOperations(){
     return {records:records as OperationRecord[],orders:orders.map(o=>({...o,payments:payments.filter(p=>p.orderId===o.id)})),items,shifts,audits};
   },[]);
   const reloadEmployees=async()=>{try{const rows=await operationEmployees();setEmployees(rows);setError('');}catch{setError('Daftar karyawan belum tersedia. Coba lagi.');}};
-  useEffect(()=>{void reloadEmployees();},[]);
+  useEffect(()=>{if(tab!=='access')void reloadEmployees();},[tab]);
   const person=employees.find(e=>e.id===employee);
   const perform=async(work:()=>Promise<unknown>)=>{if(busy)return;setBusy(true);setError('');setMessage('');try{await work();setAmount('');setNote('');setMessage('Catatan tersimpan');}catch(e){setError(e instanceof Error?e.message:'Catatan belum tersimpan');}finally{setBusy(false);}};
   const base=()=>{if(!person)throw new Error('Pilih karyawan');return {employeeId:person.id,employeeName:person.name,note};};
@@ -26,10 +27,11 @@ export default function EmployeeOperations(){
   const sessions=data?attendanceSummary(data.records):[],active=sessions.find(s=>s.employeeId===employee&&!s.end);
   const services=data?.items.filter(item=>data.orders.some(o=>o.id===item.orderId&&o.status==='paid'&&!o.isRefunded)&&!data.records.some(r=>r.kind==='commission'&&r.orderItemId===item.id))||[];
   return <div className="space-y-5 sm:space-y-6">
-    <Tabs value={tab} onChange={id=>{setTab(id);setError('');setMessage('');setKind(id==='commission'?'commission.paid':'loan');}} items={[{id:'attendance',label:'Absensi'},{id:'loans',label:'Kasbon Karyawan'},{id:'commission',label:'Komisi'},{id:'report',label:'Rapor Kasir'}]}/>
+    <Tabs value={tab} onChange={id=>{setTab(id);setError('');setMessage('');setKind(id==='commission'?'commission.paid':'loan');}} items={[{id:'access',label:'Nama & PIN'},{id:'attendance',label:'Absensi'},{id:'loans',label:'Kasbon Karyawan'},{id:'commission',label:'Komisi'},{id:'report',label:'Rapor Kasir'}]}/>
+    {tab==='access'?<OwnerAccessSettings view="employees"/>:<>
     {error&&<p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}{message&&<p role="status" className="text-sm text-blue-700">{message}</p>}
     {!data?<LoadingState label="Menyiapkan catatan karyawan"/>:<>
-      {tab!=='report'&&<Card title="Karyawan"><label className="block text-sm font-medium">Nama<select className={field} value={employee} onChange={e=>setEmployee(e.target.value)}><option value="">Pilih Nama</option>{employees.map(e=><option key={e.id} value={e.id}>{e.name}</option>)}</select></label>{!employees.length&&<div className="flex flex-wrap items-center gap-3"><p className="text-sm text-muted">Tambahkan karyawan melalui Nama &amp; PIN Karyawan. Untuk satu perangkat, buka shift dengan nama kasir terlebih dahulu.</p><button className={secondary} onClick={()=>void reloadEmployees()}>Perbarui Daftar</button></div>}</Card>}
+      {tab!=='report'&&<Card title="Karyawan"><label className="block text-sm font-medium">Nama<select className={field} value={employee} onChange={e=>setEmployee(e.target.value)}><option value="">Pilih Nama</option>{employees.map(e=><option key={e.id} value={e.id}>{e.name}</option>)}</select></label>{!employees.length&&<div className="flex flex-wrap items-center gap-3"><p className="text-sm text-muted">Belum ada nama karyawan. Pilih Nama &amp; PIN untuk menambahkan.</p><button className={secondary} onClick={()=>setTab('access')}>Tambah Karyawan</button><button className={secondary} onClick={()=>void reloadEmployees()}>Perbarui Daftar</button></div>}</Card>}
       {tab==='attendance'&&<>
         <Card title={active?'Sedang Bekerja':'Catat Kehadiran'}>{active&&<p className="text-sm text-muted">Masuk {date(active.start)}</p>}<button className={primary} disabled={busy||!person} onClick={()=>void perform(()=>saveOperation({...base(),kind:active?'attendance.out':'attendance.in',sessionId:active?.id}))}>{busy?<BusyLabel>Menyimpan</BusyLabel>:active?'Absen Pulang':'Absen Masuk'}</button></Card>
         <Card title="Riwayat Kehadiran"><div className="divide-y divide-line">{sessions.filter(s=>!employee||s.employeeId===employee).reverse().map(s=><div key={s.id} className="flex flex-wrap justify-between gap-3 py-3"><div><p className="font-semibold">{s.name}</p><p className="text-sm text-muted">{date(s.start)}{s.end?` — ${date(s.end)}`:''}</p></div><span className="text-sm">{s.minutes===null?'Sedang bekerja':`${Math.floor(s.minutes/60)} jam ${s.minutes%60} menit`}</span></div>)}{!sessions.length&&<p className="text-sm text-muted">Belum ada absensi.</p>}</div></Card>
@@ -45,6 +47,7 @@ export default function EmployeeOperations(){
       </>}
       {(tab==='loans'||tab==='commission')&&<Card title="Riwayat"><div className="divide-y divide-line">{data.records.filter(r=>(!employee||r.employeeId===employee)&&(tab==='loans'?['loan','repayment']:['commission','commission.paid']).includes(r.kind)).reverse().map(r=><div key={r.id} className="flex flex-wrap justify-between gap-3 py-3"><div><p className="font-semibold">{r.employeeName}</p><p className="text-sm text-muted">{{loan:'Kasbon',repayment:'Pembayaran Kasbon',commission:'Komisi', 'commission.paid':'Pembayaran Komisi'}[r.kind as 'loan']} · {date(r.at)}</p>{r.note&&<p className="text-sm">{r.note}</p>}</div><strong className="tabular-nums">{money(r.amount||0)}</strong></div>)}</div></Card>}
       {tab==='report'&&<><Card title="Rapor Kasir"><p className="text-sm text-muted">Seluruh catatan tersimpan</p><div className="grid gap-4 md:grid-cols-2">{cashierReport(data.orders,data.shifts,data.audits).map(r=><article key={r.id} className="space-y-3 rounded-xl border border-line p-4"><h3 className="font-bold">{r.name}</h3><dl className="grid grid-cols-2 gap-3 text-sm"><div><dt className="text-muted">Pembayaran</dt><dd className="font-semibold">{money(r.received)}</dd></div><div><dt className="text-muted">Pengembalian</dt><dd>{money(r.refunds)}</dd></div><div><dt className="text-muted">Nota</dt><dd>{r.receipts}</dd></div><div><dt className="text-muted">Shift</dt><dd>{r.shifts}</dd></div></dl>{r.difference>0&&<p className="text-sm text-amber-800">Periksa selisih kas: {money(r.difference)}</p>}{r.voids>0&&<p className="text-sm text-amber-800">Periksa {r.voids} pembatalan nota.</p>}</article>)}</div></Card><Card title="Riwayat Tindakan"><div className="max-h-96 divide-y divide-line overflow-y-auto">{data.audits.slice(-100).reverse().map(a=><div className="py-3 text-sm" key={a.id}><p className="font-semibold">{a.operator} · {money(a.amount||0)}</p><p className="text-muted">{date(a.timestamp)}</p><p>{({OPERATION:'Catatan karyawan',VOID:'Pembatalan nota',REFUND:'Pengembalian',PARTIAL_REFUND:'Pengembalian pembayaran',OPEN_SHIFT:'Buka shift',CLOSE_SHIFT:'Tutup shift',CASH_IN:'Kas masuk',CASH_OUT:'Kas keluar',DELETE:'Penghapusan',RESET:'Pengosongan data',PARTIAL_PAYMENT:'Pembayaran sebagian',UPLOAD_PROOF:'Bukti pembayaran ditambahkan',VERIFY_PROOF:'Bukti pembayaran diperiksa',DELETE_PROOF:'Bukti pembayaran dihapus',BULK_IMPORT:'Data ditambahkan',BULK_UPDATE:'Data diperbarui',BULK_DELETE:'Data dihapus',MIGRATION:'Pemindahan data'} as Record<string,string>)[a.action]||'Perubahan data'}</p></div>)}</div></Card></>}
+    </>}
     </>}
   </div>;
 }
