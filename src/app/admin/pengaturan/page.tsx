@@ -14,7 +14,7 @@ export default function AdminPengaturanHubPage() {
   useEffect(()=>setDemo(isDemoMode()),[]);
 
   const settingsCategories = [
-    ...(process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE==='enabled'?[{href:'/admin/pengaturan/perangkat',icon:'lock',title:'Perangkat Kasir',badge:'Akses Kasir'}]:[]),
+    ...(process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE==='enabled'?[{href:'/admin/pengaturan/perangkat',icon:'devices',title:'Perangkat Kasir',badge:'Akses Kasir'}]:[]),
     {
       href: "/admin/pengaturan/profil",
       icon: "store",

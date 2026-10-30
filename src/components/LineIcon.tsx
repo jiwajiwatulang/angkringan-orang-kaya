@@ -1,7 +1,7 @@
 import React from 'react';
 
 const names: Record<string, string> = {
-  cashier: 'icon-kasir-pos', tables: 'icon-kelola-meja', table: 'icon-meja',
+  cashier: 'icon-kasir-pos', devices: 'icon-kasir-pos', tables: 'icon-kelola-meja', table: 'icon-meja',
   receipt: 'icon-transaksi', shift: 'icon-shift-kas', catalog: 'icon-katalog-stok',
   stock: 'icon-katalog-stok', settings: 'icon-pengaturan', chart: 'icon-dashboard',
   store: 'icon-toko', home: 'icon-home', printer: 'icon-printer', bluetooth: 'icon-bluetooth',
