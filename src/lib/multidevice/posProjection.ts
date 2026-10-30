@@ -1,4 +1,4 @@
-import {AccessError,assertId,integer,lineAmount,type AccessClaims} from './protocol';
+import {AccessError,assertId,integer,lineAmount,OFFLINE_ACCESS_MS,type AccessClaims} from './protocol';
 import {POS_TABLES,FOREIGN_KEYS,type PosCommit,type PosRow} from './posWire';
 import type {Entity,Lookup} from './projection';
 import {validateRetailDraft} from '../retailDraft';
@@ -6,7 +6,7 @@ import {validateOperation,kitchenSignature,kitchenStages,earnedCommission,type O
 
 const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 const catalogMaster=(value:Record<string,any>)=>Object.fromEntries(Object.keys(value).sort().filter(key=>!['stockQty',...(value.trackStock?['isSoldOut']:[]),'costPrice','purchasePrice','totalCost','stockNeedsReview','mdVersion','mdCatalogVersion','mdId','mdStoreId','mdDeviceId','mdOperatorId'].includes(key)).map(key=>[key,value[key]]));
-export async function projectPosCommit(event:PosCommit,claims:AccessClaims,lookup:Lookup):Promise<Entity[]>{
+export async function projectPosCommit(event:PosCommit,claims:AccessClaims,lookup:Lookup,authorization:{ownerRecovery?:boolean}={}):Promise<Entity[]>{
   const rows=event.data.rows?.map(row=>({...row,value:structuredClone(row.value)}));
   const bootstrap=event.data.bootstrap===true;
   if(bootstrap&&claims.role!=='owner')throw new AccessError();
@@ -23,6 +23,15 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
   const get=async(table:string,id:string)=>changed.get(`${table}:${id}`)?.value||await old(table,id);
   const add=(kind:string,id:string,value:Record<string,any>)=>result.set(`${kind}:${id}`,{kind,id,value});
   const own=(value:Record<string,any>)=>value.mdDeviceId===claims.deviceId&&value.mdOperatorId===(claims.employeeId||claims.deviceId);
+  // Only a grant issued before the server accepted closure can carry late
+  // offline work. Client dates and event flags never extend that permission.
+  const acceptsLate=(shift:Record<string,any>|null|undefined)=>{
+    if(!shift||shift.status!=='closed'||shift.closedBy!=='owner'||!own(shift)||claims.role!=='cashier')return false;
+    if(authorization.ownerRecovery)return true; // authenticated, separately audited owner recovery
+    const closedAt=shift.mdOwnerClosedAt;
+    return Number.isSafeInteger(closedAt)&&closedAt>0&&Number.isSafeInteger(claims.issuedAt)&&
+      claims.issuedAt<closedAt&&claims.expiresAt<=closedAt+OFFLINE_ACCESS_MS&&Date.now()<claims.expiresAt;
+  };
   const indices=new Map<string,Set<string>>();
   const index=async(key:string)=>{
     if(!indices.has(key))indices.set(key,new Set((await lookup('pos_index',key))?.ids as string[]||[]));return indices.get(key)!;
@@ -130,7 +139,11 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
       if(prior&&['startingCash','startTime','operatorName'].some(key=>!same(prior[key],value[key])))throw new AccessError('Modal dan kasir shift tidak dapat diganti.',409);
       if(!['open','closed'].includes(value.status))throw new AccessError('Shift tidak valid.',400);
       integer(value.startingCash);
-      if(value.status==='closed'){integer(value.actualCash);if(!value.endTime)throw new AccessError('Waktu tutup belum tersedia.',400);}
+      delete value.mdOwnerClosedAt;
+      if(value.status==='closed'){
+        integer(value.actualCash);if(!value.endTime)throw new AccessError('Waktu tutup belum tersedia.',400);
+        if(!bootstrap){value.closedBy=claims.role;if(claims.role==='owner')value.mdOwnerClosedAt=Date.now();}
+      }
     }
     if(row.table==='menuItems'){
       integer(value.harga);if(typeof value.nama!=='string'||!value.nama.trim()||value.nama.length>120)throw new AccessError('Nama barang tidak valid.',400);
@@ -189,7 +202,7 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
       const paymentOrder=await get('orders',value.orderId);
       const isHistoricalPayment=!!paymentOrder?.isHistorical;
       const shift=value.shiftId?await get('shifts',value.shiftId):null,beforeShift=value.shiftId?await old('shifts',value.shiftId):null;
-      const isLateCashierPayment=beforeShift?.status==='closed'&&beforeShift?.closedBy==='owner'&&shift?.mdDeviceId===claims.deviceId&&shift?.mdOperatorId===event.operatorId;
+      const isLateCashierPayment=acceptsLate(beforeShift);
       if(isLateCashierPayment&&value.shiftId)lateClosedShiftIds.add(value.shiftId);
       const shiftClosedRejection=beforeShift?.status==='closed'&&!isLateCashierPayment;
       if(!bootstrap&&!prior&&!isHistoricalPayment&&(!shift||shiftClosedRejection||shift.mdDeviceId!==claims.deviceId||shift.mdOperatorId!==event.operatorId))throw new AccessError('Mulai shift kasir terlebih dahulu.',409);
@@ -216,7 +229,7 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
     }
     if(row.table==='cashMovements'){
       integer(value.amount,true);const shift=await get('shifts',value.shiftId);
-      const isLateCashierMovement=shift?.status==='closed'&&shift?.closedBy==='owner'&&own(shift);
+      const isLateCashierMovement=acceptsLate(shift);
       if(isLateCashierMovement&&value.shiftId)lateClosedShiftIds.add(value.shiftId);
       if(!shift||!bootstrap&&shift.status!=='open'&&!isLateCashierMovement||!own(shift))throw new AccessError('Gunakan shift kasir sendiri.');
       if(prior)throw new AccessError('Catatan kas tidak dapat ditimpa.');

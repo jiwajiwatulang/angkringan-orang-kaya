@@ -1841,7 +1841,7 @@ export default function AdminTransaksiPage() {
                 />
               </div>
 
-              {isReadingHistorical&&<LoadingState label="Membaca file"/>}<p className="text-xs text-muted">Maksimal 10 MB dan 5.000 baris. Rincian tanpa harga satuan disimpan sebagai keterangan nota.</p>
+              {isReadingHistorical&&<LoadingState label="Membaca file"/>}<p className="text-xs text-muted">Maksimal 10 MB dan 5.000 baris. Untuk dua perangkat, gunakan paling banyak 100 nota per file. Rincian tanpa harga satuan disimpan sebagai keterangan nota.</p>
               {/* Preview Hasil Parsing */}
               {parsedHistorical && (
                 <div className="p-3.5 bg-card/60 rounded-2xl border border-line space-y-2">

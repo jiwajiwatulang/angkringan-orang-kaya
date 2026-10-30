@@ -2,7 +2,6 @@ import {importDate} from './importLimits';
 import {posPartition} from './multidevice/posPartition';
 import Dexie from 'dexie';
 import {getPosScope} from './multidevice/posWire';
-import {markPosImport} from './multidevice/posCapture';
 import { db, MenuItem, Order, OrderItem, Payment, SelectedModifier, PaymentProof, ModifierGroup, TableShape } from './dexie';
 import initialData from './initialData.json';
 import { getStoreSettings, SETTINGS_STORAGE_KEY } from './settings';
@@ -1656,214 +1655,114 @@ export async function importHistoricalTransactions(transactions: {
   items?: { nama: string; qty: number; harga: number }[];
 }[]) {
   await requireMerchantAdmin();
-  const scope = getPosScope();
-  if (scope && scope.claims.role !== 'owner') {
-    throw new Error('Impor riwayat transaksi hanya dapat dilakukan oleh pemilik toko.');
-  }
-  if (!Array.isArray(transactions) || !transactions.length || transactions.length > 5000) {
-    throw new Error('Jumlah transaksi tidak valid. Maksimal 5.000 transaksi.');
-  }
-  const seen = new Set<string>();
-  const normalized = await Promise.all(transactions.map(async (t, index) => {
-    const date = importDate(t?.createdAt), ref = t?.receiptNumber?.trim();
-    if (!date || !ref || ref.length > 128 || !Number.isSafeInteger(t.total) || t.total <= 0 || t.total > 1e12 || !['Cash', 'QRIS', 'Transfer'].includes(t.paymentMethod)) {
-      throw new Error(`Transaksi baris ${index + 1} tidak valid. Periksa nomor, tanggal, total, dan metode bayar.`);
-    }
-    const identity = JSON.stringify([ref, date]);
-    if (seen.has(identity)) {
-      throw new Error(`Nomor nota dan tanggal berulang pada baris ${index + 1}.`);
-    }
+  const scope=getPosScope();
+  if(scope&&scope.claims.role!=='owner')throw new Error('Impor nota lama memerlukan akses pemilik.');
+  if(!Array.isArray(transactions)||!transactions.length||transactions.length>5000)throw new Error('Jumlah transaksi tidak valid. Maksimal 5.000 transaksi.');
+  const seen=new Set<string>();
+  const normalized=await Promise.all(transactions.map(async(t,index)=>{
+    const date=importDate(t?.createdAt),ref=t?.receiptNumber?.trim();
+    if(!date||!ref||ref.length>128||!Number.isSafeInteger(t.total)||t.total<=0||t.total>1e12||!['Cash','QRIS','Transfer'].includes(t.paymentMethod))throw new Error(`Transaksi baris ${index+1} tidak valid. Periksa nomor, tanggal, total, dan metode bayar.`);
+    const identity=JSON.stringify([ref,date]);
+    if(seen.has(identity))throw new Error(`Nomor nota dan tanggal berulang pada baris ${index+1}.`);
     seen.add(identity);
-    const items = t.items?.length ? t.items : [{ nama: 'Transaksi Historis', qty: 1, harga: t.total }];
-    if (items.length > 100 || items.some(i => !i || typeof i.nama !== 'string' || !i.nama.trim() || i.nama.length > 4000 || !Number.isSafeInteger(i.qty) || i.qty <= 0 || !Number.isSafeInteger(i.harga) || i.harga < 0 || !Number.isSafeInteger(i.harga * i.qty))) {
-      throw new Error(`Rincian transaksi baris ${index + 1} tidak valid.`);
-    }
-    const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(identity));
-    const key = 'HIST-' + Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('');
-    return { ...t, receiptNumber: ref, createdAt: date, items, key };
+    const items=t.items?.length?t.items:[{nama:'Transaksi Historis',qty:1,harga:t.total}];
+    if(items.length>100||items.some(i=>!i||typeof i.nama!=='string'||!i.nama.trim()||i.nama.length>4000||!Number.isSafeInteger(i.qty)||i.qty<=0||!Number.isSafeInteger(i.harga)||i.harga<0||!Number.isSafeInteger(i.harga*i.qty)))throw new Error(`Rincian transaksi baris ${index+1} tidak valid.`);
+    const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(identity));
+    const key='HIST-'+Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
+    return {...t,receiptNumber:ref,createdAt:date,items,key};
   }));
-
-  // Pre-validate conflicts against existing orders before writing any batch
-  for (const t of normalized) {
-    const prior = await db.table('orders').where('idempotencyKey').equals(t.key).first()
-      || await db.table('orders').where('createdAt').equals(t.createdAt).filter(o => o.isHistorical && o.receiptNumber === t.receiptNumber).first();
-    if (prior) {
-      const items = await db.table('orderItems').where('orderId').equals(prior.id).toArray();
-      const sameItems = JSON.stringify(items.map(it => [it.namaMenu, it.qty, it.hargaSatuan])) === JSON.stringify(t.items.map(it => [it.nama, it.qty, it.harga]));
-      if (Number(prior.total) !== t.total || prior.paymentMethod !== t.paymentMethod || !sameItems) {
-        throw new Error(`Nota ${t.receiptNumber} sudah ada dengan isi berbeda. Data tidak diubah.`);
+  return await db.transaction('rw', ['orders', 'orderItems', 'payments', 'auditLogs'], async () => {
+    let importedCount = 0,skippedCount=0;
+    const pending:typeof normalized=[];
+    for (const t of normalized) {
+      const prior=await db.table('orders').where('idempotencyKey').equals(t.key).first()||await db.table('orders').where('createdAt').equals(t.createdAt).filter(o=>o.isHistorical&&o.receiptNumber===t.receiptNumber).first();
+      if(prior){
+        const items=await db.table('orderItems').where('orderId').equals(prior.id).toArray();
+        const sameItems=JSON.stringify(items.map(i=>[i.namaMenu,i.qty,i.hargaSatuan]))===JSON.stringify(t.items.map(i=>[i.nama,i.qty,i.harga]));
+        if(Number(prior.total)!==t.total||prior.paymentMethod!==t.paymentMethod||!sameItems)throw new Error(`Nota ${t.receiptNumber} sudah ada dengan isi berbeda. Data tidak diubah.`);
+        skippedCount++;continue;
       }
+      pending.push(t);
     }
-  }
+    // One file is one IDB transaction and one durable server event. Nothing can
+    // reach the synchronizer until every receipt, payment and audit row commits.
+    if(scope&&pending.reduce((count,t)=>count+2+t.items.length,1)>400)
+      throw new Error('File berisi terlalu banyak rincian untuk sekali impor. Pisahkan nota ke beberapa file. Data tidak diubah.');
+    for (const t of pending) {
+      const total = Number(t.total) || 0;
+      const orderId = await db.table('orders').add({
+        shiftId: null,
+        idempotencyKey: t.key,
+        tableId: null,
+        receiptNumber: t.receiptNumber || null,
+        subtotal: total,
+        total: total,
+        paidAmount: total,
+        remainingBalance: 0,
+        status: 'paid',
+        verificationStatus: 'terverifikasi',
+        isHistorical: true,
+        customerName: t.customerName || 'Pelanggan Migrasi',
+        paymentMethod: t.paymentMethod || 'Cash',
+        orderType: t.orderType || 'Takeaway',
+        notes: `Import Riwayat Historis (${t.receiptNumber || 'Tanpa No'})`,
+        createdAt: t.createdAt || new Date().toISOString(),
+        updatedAt: t.createdAt || new Date().toISOString(),
+      }) as number;
 
-  // Row budget per transaction: 1 order + (items.length || 1) orderItems + 1 payment
-  const getRowCost = (tx: (typeof normalized)[0]) => 1 + (tx.items?.length || 1) + 1;
-  const MAX_ROWS_PER_CHUNK = 400;
-
-  const chunks: (typeof normalized)[] = [];
-  if (!scope) {
-    chunks.push(normalized);
-  } else {
-    let currentChunk: typeof normalized = [];
-    let currentChunkRows = 0;
-    for (const tx of normalized) {
-      const cost = getRowCost(tx);
-      if (currentChunk.length > 0 && currentChunkRows + cost > MAX_ROWS_PER_CHUNK) {
-        chunks.push(currentChunk);
-        currentChunk = [tx];
-        currentChunkRows = cost;
+      if (t.items && t.items.length > 0) {
+        const itemsToInsert = t.items.map(i => ({
+          orderId,
+          menuItemId: 0,
+          namaMenu: i.nama,
+          kategoriMenu: 'Historis',
+          qty: i.qty || 1,
+          paidQty: i.qty || 1,
+          hargaSatuan: i.harga,
+          selectedModifiers: []
+        }));
+        await db.table('orderItems').bulkAdd(itemsToInsert);
       } else {
-        currentChunk.push(tx);
-        currentChunkRows += cost;
-      }
-    }
-    if (currentChunk.length > 0) {
-      chunks.push(currentChunk);
-    }
-  }
-
-  const createdOrderIds: number[] = [];
-  const createdOutboxIds: string[] = [];
-  let importedCount = 0;
-  let skippedCount = 0;
-
-  try {
-    for (const chunk of chunks) {
-      const outboxBefore = scope ? new Set(await db.table('posOutbox').toCollection().primaryKeys()) : new Set();
-      const chunkCreatedOrderIds: number[] = [];
-
-      const chunkResult = await db.transaction('rw', ['orders', 'orderItems', 'payments', ...(scope ? ['posOutbox', 'posMeta', 'posIds'] : [])], async () => {
-        let chunkImported = 0;
-        let chunkSkipped = 0;
-        for (const t of chunk) {
-          const prior = await db.table('orders').where('idempotencyKey').equals(t.key).first()
-            || await db.table('orders').where('createdAt').equals(t.createdAt).filter(o => o.isHistorical && o.receiptNumber === t.receiptNumber).first();
-          if (prior) {
-            chunkSkipped++;
-            continue;
-          }
-
-          const total = Number(t.total) || 0;
-          const orderId = await db.table('orders').add({
-            shiftId: null,
-            idempotencyKey: t.key,
-            tableId: null,
-            receiptNumber: t.receiptNumber || null,
-            subtotal: total,
-            total: total,
-            paidAmount: total,
-            remainingBalance: 0,
-            status: 'paid',
-            verificationStatus: 'terverifikasi',
-            isHistorical: true,
-            customerName: t.customerName || 'Pelanggan Migrasi',
-            paymentMethod: t.paymentMethod || 'Cash',
-            orderType: t.orderType || 'Takeaway',
-            notes: `Import Riwayat Historis (${t.receiptNumber || 'Tanpa No'})`,
-            createdAt: t.createdAt || new Date().toISOString(),
-            updatedAt: t.createdAt || new Date().toISOString(),
-          }) as number;
-
-          chunkCreatedOrderIds.push(orderId);
-
-          if (t.items && t.items.length > 0) {
-            const itemsToInsert = t.items.map(it => ({
-              orderId,
-              menuItemId: 0,
-              namaMenu: it.nama,
-              kategoriMenu: 'Historis',
-              qty: it.qty || 1,
-              paidQty: it.qty || 1,
-              hargaSatuan: it.harga,
-              selectedModifiers: []
-            }));
-            await db.table('orderItems').bulkAdd(itemsToInsert);
-          } else {
-            await db.table('orderItems').add({
-              orderId,
-              menuItemId: 0,
-              namaMenu: 'Transaksi Historis',
-              kategoriMenu: 'Historis',
-              qty: 1,
-              paidQty: 1,
-              hargaSatuan: total,
-              selectedModifiers: []
-            });
-          }
-
-          await db.table('payments').add({
-            orderId,
-            shiftId: null,
-            paymentMethod: t.paymentMethod || 'Cash',
-            amount: total,
-            cashTendered: total,
-            change: 0,
-            splitType: 'full',
-            paidAt: t.createdAt || new Date().toISOString(),
-            operatorName: 'Migrasi',
-            notes: 'Import Riwayat Historis',
-            status: 'completed',
-            proofStatus: t.paymentMethod === 'Cash' ? 'terverifikasi' : 'menunggu_verifikasi'
-          });
-
-          chunkImported++;
-        }
-        return { chunkImported, chunkSkipped };
-      });
-
-      createdOrderIds.push(...chunkCreatedOrderIds);
-      if (scope) {
-        const outboxAfter = await db.table('posOutbox').toCollection().primaryKeys();
-        for (const id of outboxAfter) {
-          if (!outboxBefore.has(id)) {
-            createdOutboxIds.push(String(id));
-          }
-        }
+        await db.table('orderItems').add({
+          orderId,
+          menuItemId: 0,
+          namaMenu: 'Transaksi Historis',
+          kategoriMenu: 'Historis',
+          qty: 1,
+          paidQty: 1,
+          hargaSatuan: total,
+          selectedModifiers: []
+        });
       }
 
-      importedCount += chunkResult.chunkImported;
-      skippedCount += chunkResult.chunkSkipped;
+      await db.table('payments').add({
+        orderId,
+        shiftId: null,
+        paymentMethod: t.paymentMethod || 'Cash',
+        amount: total,
+        cashTendered: total,
+        change: 0,
+        splitType: 'full',
+        paidAt: t.createdAt || new Date().toISOString(),
+        operatorName: 'Migrasi',
+        notes: 'Import Riwayat Historis',
+        status: 'completed',
+        proofStatus: t.paymentMethod === 'Cash' ? 'terverifikasi' : 'menunggu_verifikasi'
+      });
+
+      importedCount++;
     }
 
-    if (importedCount > 0) {
-      await db.table('auditLogs').add({
-        action: 'MIGRATION',
-        amount: 0,
-        reason: `Import ${importedCount} transaksi historis migrasi`,
-        operator: 'Admin',
-        timestamp: new Date().toISOString()
-      });
-    }
+    if(importedCount>0)await db.table('auditLogs').add({
+      action: 'MIGRATION',
+      amount: 0,
+      reason: `Import ${importedCount} transaksi historis migrasi`,
+      operator: 'Admin',
+      timestamp: new Date().toISOString()
+    });
 
     return { importedCount, skippedCount };
-  } catch (error) {
-    if (createdOrderIds.length > 0) {
-      await db.transaction('rw', ['orders', 'orderItems', 'payments', ...(scope ? ['posOutbox', 'posIds', 'posMeta'] : [])], async () => {
-        if (Dexie.currentTransaction) {
-          markPosImport(Dexie.currentTransaction.idbtrans);
-        }
-        if (scope) {
-          const ordersToDelete = await db.table('orders').where('id').anyOf(createdOrderIds).toArray();
-          const orderItemsToDelete = await db.table('orderItems').where('orderId').anyOf(createdOrderIds).toArray();
-          const paymentsToDelete = await db.table('payments').where('orderId').anyOf(createdOrderIds).toArray();
-          const posIdKeys: string[] = [];
-          for (const o of ordersToDelete) if (o.mdId) posIdKeys.push(`orders:${o.mdId}`);
-          for (const it of orderItemsToDelete) if (it.mdId) posIdKeys.push(`orderItems:${it.mdId}`);
-          for (const p of paymentsToDelete) if (p.mdId) posIdKeys.push(`payments:${p.mdId}`);
-          if (posIdKeys.length > 0) {
-            await db.table('posIds').bulkDelete(posIdKeys);
-          }
-        }
-        await db.table('payments').where('orderId').anyOf(createdOrderIds).delete();
-        await db.table('orderItems').where('orderId').anyOf(createdOrderIds).delete();
-        await db.table('orders').bulkDelete(createdOrderIds);
-        if (scope && createdOutboxIds.length > 0) {
-          await db.table('posOutbox').bulkDelete(createdOutboxIds);
-        }
-      });
-    }
-    throw error;
-  }
+  });
 }
 
 // --- MANAJEMEN SHIFT & REKONSILIASI KAS PRESISI TINGGI ---
@@ -2051,7 +1950,7 @@ export async function closeShiftByOwner(shiftId: number, data: {
   notes?: string;
 }) {
   await requireMerchantAdmin();
-  if (!Number.isFinite(data.actualCash) || data.actualCash < 0) {
+  if (!Number.isSafeInteger(data.actualCash) || data.actualCash < 0 || data.actualCash > 1e12) {
     throw new Error('Jumlah uang fisik tidak valid.');
   }
   const reason = (data.closureReason || '').trim();
@@ -2066,7 +1965,7 @@ export async function closeShiftByOwner(shiftId: number, data: {
     if (shift.status !== 'open') throw new Error('Shift sudah ditutup.');
 
     const stats = await getShiftLiveStats(shiftId);
-    const actual = Math.round(Number(data.actualCash) || 0);
+    const actual = data.actualCash;
     const difference = actual - stats.expectedCash;
 
     const ownerNote = `[Ditutup Pemilik: ${closedBy}] Alasan: ${reason}${data.notes?.trim() ? ` | Catatan: ${data.notes.trim()}` : ''}`;

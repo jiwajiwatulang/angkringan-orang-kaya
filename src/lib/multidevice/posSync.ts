@@ -52,7 +52,10 @@ export class PosSynchronizer {
       const actor=`${row.claims.deviceId}:${row.claims.employeeId||''}`;
       if(blocked.has(actor))continue;
       const current=row.claims.deviceId===this.client.claims.deviceId&&row.claims.employeeId===this.client.claims.employeeId;
-      const client=current?this.client:new DeviceClient(row.access,row.claims);
+      // Keep the original still-valid signed cashier grant on immutable offline
+      // work. A renewed grant cannot prove permission predating owner closure.
+      const retained=current&&row.claims.role==='cashier'&&row.claims.expiresAt>Date.now()&&row.claims.issuedAt<this.client.claims.issuedAt;
+      const client=current&&!retained?this.client:new DeviceClient(row.access,row.claims);
       try{
         const ack=await client.send(row.event as PosCommit);
         if(ack.id!==row.id)throw new AccessError('Pengiriman belum dikonfirmasi.',409);

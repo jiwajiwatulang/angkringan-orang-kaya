@@ -43,7 +43,7 @@ async function writeEvent(db:D1Database,actor:AccessClaims,claims:AccessClaims,e
       changes=await project(event,claims,async(kind,id)=>{
         const row=await db.prepare('SELECT payload FROM MdEntities WHERE storeId=? AND kind=? AND id=?').bind(claims.storeId,kind,id).first<{payload:string}>();
         return row?readPayload(db,claims.storeId,kind,id,row.payload):undefined;
-      });
+      },{ownerRecovery:recovering});
     } catch(error){
       const latest=await db.prepare('SELECT revision FROM MdStores WHERE id=?').bind(claims.storeId).first<{revision:number}>();
       if(latest?.revision!==state.revision) continue;

@@ -1,5 +1,6 @@
 "use client";
 import LoadingState from "@/components/LoadingState";
+import {getPosScope} from "@/lib/multidevice/posWire";
 import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -198,17 +199,19 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
         const runtime = currentPosRuntime();
         if (runtime) {
           await runtime.synchronizer.synchronize();
-          syncedToServer = true;
+          syncedToServer = (await db.table("posOutbox").count()) === 0;
         }
       } catch {
         syncedToServer = false;
       }
 
-      setClosedSuccessResult(closed);
-      if (syncedToServer) {
-        showToast(`Shift #${closingShiftTarget.id} berhasil ditutup dan diselaraskan ke server.`, "success");
+      setClosedSuccessResult({...closed,...await getShiftLiveStats(closingShiftTarget.id),closurePending:!!getPosScope()&&!syncedToServer});
+      if (!getPosScope()) {
+        showToast(`Shift #${closingShiftTarget.id} berhasil ditutup.`, "success");
+      } else if (syncedToServer) {
+        showToast(`Shift #${closingShiftTarget.id} ditutup. Nilai kas diperbarui saat kiriman kasir diterima.`, "success");
       } else {
-        showToast(`Shift #${closingShiftTarget.id} berhasil ditutup di perangkat ini dan akan disinkronkan ke server.`, "success");
+        showToast(`Shift #${closingShiftTarget.id} tersimpan di perangkat ini. Menunggu koneksi untuk dikirim.`, "success");
       }
       await loadData();
     } catch (err: any) {
@@ -466,6 +469,7 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
                       </span>
                     </div>
 
+                    {isOpen && <button type="button" onClick={()=>void openOwnerCloseModal(shift)} className="min-h-11 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700">Akhiri Shift</button>}
                     {!isOpen && (
                       <div className="flex items-center gap-2">
                         <span
@@ -1108,10 +1112,10 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
                 </div>
                 <div>
                   <h4 className="text-base font-black text-fg">
-                    Shift #{closedSuccessResult.id} Berhasil Ditutup
+                    Shift #{closedSuccessResult.id} {closedSuccessResult.closurePending ? "Menunggu Pengiriman" : "Berhasil Ditutup"}
                   </h4>
                   <p className="text-xs text-muted mt-1">
-                    Rekonsiliasi kas dan audit penutupan shift telah tersimpan aman di sistem. Transaksi kasir offline yang menyusul akan otomatis diselaraskan ke dalam laporan shift ini.
+                    {getPosScope() ? "Penutupan tersimpan. Nilai kas dapat berubah saat kiriman dengan izin yang masih berlaku diterima." : "Penutupan shift dan hasil hitung kas tersimpan."}
                   </p>
                 </div>
 
@@ -1200,13 +1204,13 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
                 )}
 
                 {/* Notifikasi Shift Kasir & Perlindungan Offline */}
-                {closingShiftTarget && closingShiftTarget.operatorName !== "Pemilik" && (
+                {getPosScope() && closingShiftTarget && closingShiftTarget.operatorName !== "Pemilik" && (
                   <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-2xl text-xs text-indigo-950 flex items-start gap-2">
                     <LineIcon name="info" className="w-5 h-5 flex-shrink-0 text-indigo-700 mt-0.5" />
                     <div>
                       <span className="font-bold block">Shift Kasir: {closingShiftTarget.operatorName}</span>
                       <p className="text-[11px] text-indigo-900 mt-0.5 leading-relaxed">
-                        Jika kasir sedang offline, pastikan kasir menghubungkan perangkatnya ke internet. Transaksi kasir offline yang terkirim menyusul setelah penutupan ini akan otomatis diselaraskan ke dalam shift tanpa penolakan.
+                        Hubungkan perangkat kasir secepatnya. Kiriman dengan izin yang masih berlaku diterima otomatis; kiriman lama perlu dipulihkan oleh pemilik.
                       </p>
                     </div>
                   </div>
