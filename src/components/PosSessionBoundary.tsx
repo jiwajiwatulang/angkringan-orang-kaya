@@ -10,11 +10,14 @@ import StoreDataStatus from './StoreDataStatus';
 import EmployeeLogin from './EmployeeLogin';
 import {db} from '@/lib/dexie';
 import LoadingState from './LoadingState';
+import {SyncScheduler,watchPosCommits} from '@/lib/multidevice/syncScheduler';
 export default function PosSessionBoundary({children}:{children:React.ReactNode}){
   const pathname=usePathname(),workspace=pathname==='/pos'||pathname.startsWith('/admin');
   const [enabled,setEnabled]=useState(false),[ready,setReady]=useState(false),[runtime,setRuntime]=useState<PosRuntime>(),[error,setError]=useState(''),[pending,setPending]=useState(0),[online,setOnline]=useState(true),[failed,setFailed]=useState(false);
   const [failure,setFailure]=useState<{phase:SyncPhase;message:string}>(),[busy,setBusy]=useState(false);
   const retry=useRef<()=>Promise<void>>(async()=>{});
+  const scheduler=useRef<SyncScheduler|null>(null);
+  useEffect(()=>{scheduler.current?.activity();},[pathname]);
   const review=useLiveQuery(async()=>{
     if(!enabled)return;
     const [products,queued]=await Promise.all([db.table('menuItems').toArray(),db.table('posOutbox').toArray()]);
@@ -29,11 +32,29 @@ export default function PosSessionBoundary({children}:{children:React.ReactNode}
   useEffect(()=>{const selected=workspace&&!!posPartition();setEnabled(selected);setReady(!selected);if(selected)void initialize();},[workspace]);
   useEffect(()=>{
     if(!enabled||!runtime?.scope)return;
-    let stopped=false,running=false;
-    const update=async()=>{if(stopped||running)return;running=true;setBusy(true);try{setOnline(navigator.onLine);if(navigator.onLine)await runtime.synchronizer.synchronize();if(!stopped){setFailed(false);setFailure(undefined);setPending(await db.table('posOutbox').count());}}catch(e){if(!stopped){setFailed(true);const phase=e instanceof PosSyncFailure?e.phase:'pull';setFailure({phase,message:syncFailureMessage(e,phase)});setPending(await db.table('posOutbox').count());if((e as {status?:number}).status===401||(e as {status?:number}).status===403){setReady(false);await rejectRuntimeAccess(runtime,e);setRuntime({...runtime});setError(e instanceof Error?e.message:'Silakan masuk lagi.');setReady(!!runtime.employees);}}}finally{running=false;if(!stopped)setBusy(false);}};
-    retry.current=update;
-    const timer=setInterval(()=>void update(),3000);window.addEventListener('online',update);window.addEventListener('offline',update);void update();
-    return()=>{stopped=true;clearInterval(timer);window.removeEventListener('online',update);window.removeEventListener('offline',update);};
+    let stopped=false,hasPending=false;
+    const update=async()=>{
+      setBusy(true);
+      try{
+        const before=Number((await db.table('posMeta').get('cursor'))?.value||0);
+        await runtime.synchronizer.synchronize();
+        const remaining=await db.table('posOutbox').count(),after=Number((await db.table('posMeta').get('cursor'))?.value||0);
+        if(!stopped){setFailed(false);setFailure(undefined);setPending(remaining);}
+        return {changed:before!==after,pending:remaining>0};
+      }catch(e){
+        if(!stopped){setFailed(true);const phase=e instanceof PosSyncFailure?e.phase:'pull';setFailure({phase,message:syncFailureMessage(e,phase)});setPending(await db.table('posOutbox').count());if((e as {status?:number}).status===401||(e as {status?:number}).status===403){setReady(false);await rejectRuntimeAccess(runtime,e);setRuntime({...runtime});setError(e instanceof Error?e.message:'Silakan masuk lagi.');setReady(!!runtime.employees);}}
+        throw e;
+      }finally{if(!stopped)setBusy(false);}
+    };
+    const loop=new SyncScheduler({sync:update,online:()=>navigator.onLine,visible:()=>document.visibilityState==='visible',mode:()=>location.pathname==='/admin/dapur'?'kitchen':runtime.scope?.claims.role==='owner'?'owner':'cashier'});
+    scheduler.current=loop;retry.current=async()=>{loop.wake();};
+    const subscription=watchPosCommits(db,(pending,changed)=>{hasPending=pending;if(changed)loop.localChange();});
+    const connectivity=()=>{setOnline(navigator.onLine);if(navigator.onLine&&hasPending)loop.localChange();else loop.wake();};
+    const visibility=()=>loop.visibilityChanged(),activity=()=>loop.activity();
+    setOnline(navigator.onLine);loop.start();
+    window.addEventListener('online',connectivity);window.addEventListener('offline',connectivity);
+    document.addEventListener('visibilitychange',visibility);window.addEventListener('pointerdown',activity,{passive:true});window.addEventListener('keydown',activity);
+    return()=>{stopped=true;subscription.unsubscribe();loop.stop();if(scheduler.current===loop)scheduler.current=null;window.removeEventListener('online',connectivity);window.removeEventListener('offline',connectivity);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pointerdown',activity);window.removeEventListener('keydown',activity);};
   },[enabled,runtime]);
   if(process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE!=='enabled')return <>{children}</>;
   if(!workspace||!posPartition())return <>{children}</>;
