@@ -22,7 +22,7 @@ export default function EmployeeShiftWorkspace({defaultTab}:{defaultTab:Section}
   };
   const deviceQuery=new URLSearchParams(search.toString());deviceQuery.delete('tab');
   return <div className="sn-operations mx-auto max-w-6xl space-y-5 text-fg sm:space-y-6">
-    <PageHeading title="Karyawan & Shift" icon="shift">
+    <PageHeading title="Karyawan & Shift">
       {active==='employees'&&<Link href={'/admin/pengaturan/perangkat'+(deviceQuery.size?'?'+deviceQuery.toString():'')} className={secondary}>Nama &amp; PIN Karyawan</Link>}
     </PageHeading>
     <nav aria-label="Bagian Karyawan dan Shift" className="sn-tabs flex gap-1 overflow-x-auto">

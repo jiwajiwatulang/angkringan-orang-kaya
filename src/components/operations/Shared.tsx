@@ -15,8 +15,8 @@ export function OperationIcon({name, className="h-5 w-5"}: {name:"clock"|"arrow"
     {name==="clock"?<><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></>:name==="arrow"?<path d="M5 12h14m-5-5 5 5-5 5"/>:name==="check"?<path d="m5 12 4 4L19 6"/>:name==="devices"?<><rect x="3" y="4" width="12" height="10" rx="2"/><path d="M7 18h4m-2-4v4"/><rect x="16" y="9" width="5" height="11" rx="1.5"/></>:name==="chart"?<><path d="M4 4v16h16M8 15v-4m5 4V7m5 8v-6"/></>:<><path d="M4 3v5a3 3 0 0 0 6 0V3M7 3v18M17 13V3c-3 2-3 7-3 10h6M20 3v18"/></>}
   </svg>;
 }
-export function PageHeading({title,icon="chart",children}:{title:string;icon?:"food"|"chart"|"shift";children?:React.ReactNode}) {
-  return <header className="sn-page-heading flex flex-wrap items-center justify-between gap-4"><div className="flex min-w-0 items-center gap-3"><span className="sn-heading-icon"><OperationIcon name={icon} className="h-6 w-6"/></span><h1 className="text-2xl font-bold tracking-tight sm:text-[28px]">{title}</h1></div>{children}</header>;
+export function PageHeading({title,icon,children}:{title:string;icon?:"food"|"chart"|"shift"|"none";children?:React.ReactNode}) {
+  return <header className="sn-page-heading flex flex-wrap items-center justify-between gap-4"><div className="flex min-w-0 items-center gap-3">{icon && icon !== "none" ? <span className="sn-heading-icon"><OperationIcon name={icon} className="h-6 w-6"/></span> : null}<h1 className="text-2xl font-bold tracking-tight sm:text-[28px]">{title}</h1></div>{children}</header>;
 }
 export function Card({title,children}:{title:string;children:React.ReactNode}) {
   return <section className="sn-card space-y-4 rounded-2xl border border-line bg-surface p-4 sm:p-6"><h2 className="sn-card-title text-base font-bold sm:text-lg">{title}</h2>{children}</section>;
