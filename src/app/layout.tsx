@@ -1,7 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { siteDescription } from "@/lib/publicMetadata";
+import { siteDescription, siteJsonLd, jsonLdHtml } from "@/lib/publicMetadata";
+
+// Kode verifikasi Google Search Console. Diisi lewat variabel build, bukan disimpan di Git.
+const googleSiteVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
 import PosSessionBoundary from '@/components/PosSessionBoundary';
 
 const inter = Inter({
@@ -82,6 +85,7 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  ...(googleSiteVerification ? { verification: { google: googleSiteVerification } } : {}),
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -111,24 +115,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "SoftwareApplication",
-              "name": "SakuNota",
-              "operatingSystem": "Web, Android, iOS",
-              "applicationCategory": "BusinessApplication",
-              "description": siteDescription,
-              "url": "https://sakunota.my.id",
-              "image": "https://sakunota.my.id/logo-sakunota.png",
-              "offers": {
-                "@type": "Offer",
-                "price": "50000",
-                "priceCurrency": "IDR",
-                "availability": "https://schema.org/InStock",
-              },
-            }),
-          }}
+          dangerouslySetInnerHTML={{ __html: jsonLdHtml(siteJsonLd()) }}
         />
         <script
           dangerouslySetInnerHTML={{

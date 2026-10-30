@@ -1,4 +1,4 @@
-import { publicPageMetadata } from '@/lib/publicMetadata';
+import { publicPageMetadata, breadcrumbJsonLd, jsonLdHtml } from '@/lib/publicMetadata';
 
 export const metadata = publicPageMetadata(
   'Kebijakan Privasi',
@@ -7,5 +7,13 @@ export const metadata = publicPageMetadata(
 );
 
 export default function PrivacyLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdHtml(breadcrumbJsonLd('Kebijakan Privasi', '/privacy')) }}
+      />
+      {children}
+    </>
+  );
 }
