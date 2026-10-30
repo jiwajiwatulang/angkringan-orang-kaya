@@ -13,7 +13,7 @@
 1. **100% Jalan Tanpa Internet (*Offline-First*)**
    Seluruh proses pencatatan pesanan, pengelolaan meja, pembagian tagihan (*split bill*), hingga pencetakan struk Bluetooth berjalan langsung di memori perangkat HP/tablet menggunakan penyimpanan lokal (*IndexedDB / Dexie*). Saat sinyal hilang atau mati lampu, operasional kasir tidak berhenti.
 2. **Sekali Bayar untuk Selamanya (Tanpa Biaya Bulanan)**
-   Harga promo peluncuran **Rp50.000** untuk 1 perangkat kasir aktif selamanya. Tanpa biaya langganan bulanan dan 0% potongan komisi penjualan.
+   Harga promo peluncuran **Rp50.000** untuk satu toko (maksimal dua perangkat) aktif selamanya. Tanpa biaya langganan bulanan dan 0% potongan komisi penjualan.
 3. **Mode Kasir Fleksibel & Denah Meja**
    Mendukung mode transaksi cepat (*Takeaway* / bayar langsung) maupun sistem nomor meja (*Dine-in*), simpan tagihan berjalan (*Open Bill*), varian rasa, level pedas, dan *split bill*.
 4. **Cetak Struk Bluetooth Thermal (58mm & 80mm)**

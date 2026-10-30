@@ -35,7 +35,7 @@ export default function TermsOfServicePage() {
             Syarat & Ketentuan
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
-            Terakhir diperbarui: 18 Oktober 2026 • Lisensi Sekali Bayar Selamanya Tanpa Biaya Berlangganan
+            Terakhir diperbarui: 30 Oktober 2026 • Lisensi Sekali Bayar Selamanya Tanpa Biaya Berlangganan
           </p>
         </div>
 
@@ -43,7 +43,7 @@ export default function TermsOfServicePage() {
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h2 className="text-base font-black text-slate-900">1. Lisensi Sekali Bayar Selamanya</h2>
             <p className="text-slate-600">
-              SakuNota menyediakan lisensi aplikasi kasir dengan model <strong>sekali bayar seharga Rp50.000</strong> untuk satu perangkat kasir aktif seumur hidup.
+              SakuNota menyediakan lisensi aplikasi kasir dengan model <strong>sekali bayar seharga Rp50.000</strong> untuk satu toko (maksimal dua perangkat: Pemilik dan Kasir) aktif seumur hidup.
             </p>
             <p className="text-slate-600">
               Pengguna <strong>tidak dikenakan biaya langganan bulanan, biaya tahunan, maupun potongan komisi penjualan apa pun</strong>. Seluruh omzet dari penjualan usaha Anda 100% bersih menjadi hak milik Anda.
@@ -51,12 +51,12 @@ export default function TermsOfServicePage() {
           </section>
 
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h2 className="text-base font-black text-slate-900">2. Aturan 1 Lisensi untuk 1 Perangkat</h2>
+            <h2 className="text-base font-black text-slate-900">2. Aturan Lisensi Satu Toko (Maksimal 2 Perangkat)</h2>
             <p className="text-slate-600">
-              Setiap nomor lisensi yang diterbitkan berlaku untuk 1 HP atau komputer kasir. Satu nomor lisensi tidak dapat digunakan secara bersamaan pada beberapa HP kasir yang berbeda.
+              Setiap nomor lisensi yang diterbitkan berlaku untuk 1 toko dengan dukungan maksimal 2 perangkat aktif: perangkat Pemilik untuk memantau omzet dan stok, serta perangkat Kasir untuk transaksi penjualan. Satu nomor lisensi tidak dapat digunakan di luar toko atau perangkat yang terdaftar.
             </p>
             <p className="text-slate-600">
-              Apabila Anda berganti HP (misalnya HP rusak atau membeli HP kasir baru), Anda dapat mengajukan pemindahan perangkat melalui WhatsApp Dukungan Resmi dengan menyertakan Nomor Lisensi dan Kode Rahasia Anda.
+              Apabila Anda berganti HP kasir atau perangkat pemilik (misalnya HP rusak atau membeli perangkat baru), Anda dapat mengajukan pemindahan perangkat melalui WhatsApp Dukungan Resmi dengan menyertakan Nomor Lisensi dan Kode Rahasia Anda tanpa biaya tambahan.
             </p>
           </section>
 

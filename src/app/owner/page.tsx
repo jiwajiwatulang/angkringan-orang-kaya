@@ -645,7 +645,7 @@ Diterbitkan Untuk:
     text += `\n• Kode Akses Cek Status: ${o.accessCode}
 
 Rincian Tagihan:
-• 1x Lisensi SakuNota (Akses 1 perangkat, tanpa biaya langganan bulanan)`;
+• 1x Lisensi SakuNota (Akses satu toko maksimal 2 perangkat, tanpa biaya langganan bulanan)`;
 
     if (o.promoCode) {
       text += `\n• Diskon Promo (${o.promoCode}): -Rp ${(o.discountAmount || 0).toLocaleString("id-ID")}`;
@@ -3195,7 +3195,7 @@ Lisensi aktif seumur hidup bebas biaya bulanan.`;
                       <td className="py-3 px-3">
                         <strong className="text-slate-900 block font-bold">Lisensi SakuNota</strong>
                         <span className="text-[10px] text-slate-500 leading-relaxed block mt-0.5">
-                          Akses 1 perangkat, tanpa biaya langganan bulanan
+                          Akses satu toko (maksimal 2 perangkat), tanpa biaya langganan bulanan
                         </span>
                       </td>
                       <td className="py-3 px-2 text-center font-bold whitespace-nowrap">1</td>

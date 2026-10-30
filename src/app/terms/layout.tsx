@@ -2,7 +2,7 @@ import { publicPageMetadata, breadcrumbJsonLd, jsonLdHtml } from '@/lib/publicMe
 
 export const metadata = publicPageMetadata(
   'Syarat dan Ketentuan',
-  'Syarat dan ketentuan SakuNota: lisensi kasir sekali bayar tanpa biaya bulanan, satu perangkat satu lisensi, serta kebijakan pengembalian dana.',
+  'Syarat dan ketentuan SakuNota: lisensi kasir sekali bayar tanpa biaya bulanan, satu toko maksimal dua perangkat (Pemilik dan Kasir), serta kebijakan pengembalian dana.',
   '/terms',
 );
 

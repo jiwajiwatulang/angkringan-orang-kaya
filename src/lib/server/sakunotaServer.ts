@@ -676,7 +676,7 @@ export async function activateLicenseOnDevice(
         success: false,
         error: `Lisensi ini sudah aktif pada perangkat lain (${
           lic.deviceName || "Perangkat Kasir Utama"
-        }). SakuNota memberlakukan aturan ketat 1 lisensi untuk 1 perangkat. Hubungi dukungan jika ingin memindahkan perangkat.`,
+        }). Hubungi dukungan jika ingin memindahkan perangkat.`,
         status: 409, // Conflict / Device binding rejection
       };
     }

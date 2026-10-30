@@ -36,7 +36,7 @@ export default function PrivacyPolicyPage() {
             Kebijakan Privasi SakuNota
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
-            Terakhir diperbarui: 17 Oktober 2026 • Komitmen 100% Privasi &amp; Kedaulatan Data Offline
+            Terakhir diperbarui: 30 Oktober 2026 • Komitmen 100% Privasi &amp; Kedaulatan Data Offline
           </p>
         </div>
 
@@ -71,9 +71,9 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h2 className="text-base font-black text-slate-900">4. Perlindungan 1 Lisensi untuk 1 Perangkat</h2>
+            <h2 className="text-base font-black text-slate-900">4. Perlindungan Lisensi Perangkat Toko</h2>
             <p className="text-slate-600">
-              Agar lisensi yang Anda beli tidak disalahgunakan orang lain, sistem kami hanya mengunci lisensi tersebut ke 1 perangkat kasir yang Anda gunakan. Jika di kemudian hari HP kasir Anda rusak atau Anda ingin ganti HP baru, Anda cukup menghubungi kami via WhatsApp untuk dibantu pemindahan perangkat secara gratis.
+              Agar lisensi yang Anda beli tidak disalahgunakan pihak lain, sistem kami mengunci lisensi tersebut untuk toko dan perangkat terdaftar Anda (maksimal 2 perangkat: Pemilik dan Kasir). Jika di kemudian hari HP kasir atau perangkat pemilik Anda rusak atau Anda ingin ganti HP baru, Anda cukup menghubungi kami via WhatsApp untuk dibantu pemindahan perangkat secara gratis.
             </p>
           </section>
 

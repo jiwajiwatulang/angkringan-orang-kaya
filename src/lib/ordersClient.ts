@@ -337,7 +337,7 @@ export async function activateLicenseServer(
     if (res.status === 409) {
       return {
         success: false,
-        error: json.error || "Lisensi ini sudah aktif pada perangkat lain (Aturan 1 lisensi untuk 1 perangkat).",
+        error: json.error || "Lisensi ini sudah aktif pada perangkat lain. Hubungi dukungan jika ingin memindahkan perangkat.",
         status: 409,
       };
     }

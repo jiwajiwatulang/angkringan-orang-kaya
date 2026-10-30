@@ -446,7 +446,7 @@ export function generateOfficialInvoiceHtml(order: CustomerOrder): string {
             <td>
               <div class="item-title">Lisensi SakuNota</div>
               <div class="item-desc">
-                Akses 1 perangkat, tanpa biaya langganan bulanan
+                Akses satu toko (maksimal 2 perangkat), tanpa biaya langganan bulanan
               </div>
             </td>
             <td class="col-center" style="font-weight: 700;">1</td>
