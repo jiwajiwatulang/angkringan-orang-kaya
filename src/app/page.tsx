@@ -678,28 +678,18 @@ export default function SakuNotaLandingPage() {
 
           {/* Action CTAs & Controls (Light Mode Only - No Dark Toggle) */}
           <div className="hidden sm:flex items-center gap-2.5">
-            {hasActiveLicense ? (
-              <Link
-                href="/pos"
-                onClick={() => {
-                  try {
-                    sessionStorage.removeItem("sakunota_demo_mode");
-                    sessionStorage.removeItem("sakunota_demo_started_at");
-                  } catch (_) {}
-                }}
-                className="px-3.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all border border-blue-200 flex items-center gap-1.5"
-              >
-                <span>Buka Kasir</span>
-              </Link>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleOpenLicenseModal("direct_license")}
-                className="px-3.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all border border-blue-200 flex items-center gap-1.5"
-              >
-                <span>Login</span>
-              </button>
-            )}
+            <Link
+              href="/pos"
+              onClick={() => {
+                try {
+                  sessionStorage.removeItem("sakunota_demo_mode");
+                  sessionStorage.removeItem("sakunota_demo_started_at");
+                } catch (_) {}
+              }}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all border border-blue-200 flex items-center gap-1.5"
+            >
+              <span>Login</span>
+            </Link>
             <a
               href="#coba-sakunota"
               className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-blue-600 hover:bg-slate-100 transition-all border border-slate-200"
@@ -717,28 +707,18 @@ export default function SakuNotaLandingPage() {
 
           {/* Mobile Hamburger Button (High Contrast Light Blue) */}
           <div className="flex items-center gap-2 sm:hidden">
-            {hasActiveLicense ? (
-              <Link
-                href="/pos"
-                onClick={() => {
-                  try {
-                    sessionStorage.removeItem("sakunota_demo_mode");
-                    sessionStorage.removeItem("sakunota_demo_started_at");
-                  } catch (_) {}
-                }}
-                className="px-2.5 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-extrabold text-[11px] flex items-center gap-1 shadow-xs active:scale-95"
-              >
-                <span>Kasir</span>
-              </Link>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleOpenLicenseModal("direct_license")}
-                className="px-2.5 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-extrabold text-[11px] flex items-center gap-1 shadow-xs active:scale-95"
-              >
-                <span>Login</span>
-              </button>
-            )}
+            <Link
+              href="/pos"
+              onClick={() => {
+                try {
+                  sessionStorage.removeItem("sakunota_demo_mode");
+                  sessionStorage.removeItem("sakunota_demo_started_at");
+                } catch (_) {}
+              }}
+              className="px-2.5 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-extrabold text-[11px] flex items-center gap-1 shadow-xs active:scale-95"
+            >
+              <span>Login</span>
+            </Link>
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -841,30 +821,14 @@ export default function SakuNotaLandingPage() {
 
           {/* Direct License Activation & Trial Links */}
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3 text-xs">
-            {hasActiveLicense ? (
-              <Link
-                href="/pos"
-                onClick={() => {
-                  try {
-                    sessionStorage.removeItem("sakunota_demo_mode");
-                    sessionStorage.removeItem("sakunota_demo_started_at");
-                  } catch (_) {}
-                }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-extrabold transition-all shadow-2xs"
-              >
-                <span>Buka Kasir</span>
-                <span>→</span>
-              </Link>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleOpenLicenseModal("direct_license")}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-extrabold transition-all shadow-2xs"
-              >
-                <span>Login</span>
-                <span>→</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => handleOpenLicenseModal("direct_license")}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-extrabold transition-all shadow-2xs"
+            >
+              <span>Aktivasi Lisensi</span>
+              <span>→</span>
+            </button>
 
             <button
               type="button"
