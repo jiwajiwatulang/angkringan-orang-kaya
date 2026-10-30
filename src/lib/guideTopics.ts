@@ -316,12 +316,12 @@ export const GUIDE_TOPICS: GuideTopic[] = [
         title: 'Scan barcode memakai kamera HP',
         summary: 'Gunakan kamera bawaan HP kasir untuk memindai barang tanpa membeli alat scanner tambahan.',
         steps: [
-          'Di layar Kasir POS, tekan tombol "Pindai Barcode (Kamera)".',
-          'Izinkan browser mengakses kamera saat notifikasi izin muncul.',
+          'Di layar Kasir POS, tekan tombol Scan.',
+          'Izinkan kamera saat diminta, termasuk ketika SakuNota dibuka dari layar utama HP.',
           'Arahkan kamera ke barcode kemasan barang dalam kondisi pencahayaan cukup.',
-          'Setelah barcode terbaca, barang otomatis ditambahkan ke keranjang belanja.'
+          'Barang yang sudah terdaftar masuk ke keranjang. Pada mode Retail, kode barang baru membuka Tambah Barang untuk diperiksa dan diisi harganya.'
         ],
-        tips: 'Gunakan koneksi HTTPS atau aplikasi Android terpasang agar fitur kamera diizinkan oleh sistem keamanan browser.'
+        tips: 'Jika kamera gagal dibuka, periksa izin kamera melalui pengaturan aplikasi atau browser, lalu tekan Coba Lagi. Tutup aplikasi kamera lain bila sedang dipakai. Kode barang juga bisa dimasukkan sendiri.'
       }
     ]
   },
