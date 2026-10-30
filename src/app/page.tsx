@@ -116,6 +116,20 @@ export default function SakuNotaLandingPage() {
     description?: string;
   } | null>(null);
 
+  // License detection for logged in devices
+  const [hasActiveLicense, setHasActiveLicense] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const key = localStorage.getItem("sakunota_license_key");
+      const token = localStorage.getItem("sakunota_activation_token");
+      const partition = localStorage.getItem("pos_device_token");
+      if ((key && token) || partition) {
+        setHasActiveLicense(true);
+      }
+    }
+  }, []);
+
   // Check Order / Direct License Activation State
   const [isCheckStatusModalOpen, setIsCheckStatusModalOpen] = useState(false);
   const [statusModalTab, setStatusModalTab] = useState<"direct_license" | "order_lookup">("direct_license");
@@ -281,6 +295,19 @@ export default function SakuNotaLandingPage() {
   };
 
   const handleOpenLicenseModal = (tab: "direct_license" | "order_lookup" = "direct_license") => {
+    if (tab === "direct_license" && typeof window !== "undefined") {
+      const key = localStorage.getItem("sakunota_license_key");
+      const token = localStorage.getItem("sakunota_activation_token");
+      const partition = localStorage.getItem("pos_device_token");
+      if ((key && token) || partition) {
+        try {
+          sessionStorage.removeItem("sakunota_demo_mode");
+          sessionStorage.removeItem("sakunota_demo_started_at");
+        } catch (_) {}
+        window.location.assign("/pos");
+        return;
+      }
+    }
     setStatusModalTab(tab);
     setDirectActivateError("");
     setDirectActivateSuccess(null);
@@ -651,13 +678,28 @@ export default function SakuNotaLandingPage() {
 
           {/* Action CTAs & Controls (Light Mode Only - No Dark Toggle) */}
           <div className="hidden sm:flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => handleOpenLicenseModal("direct_license")}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all border border-blue-200 flex items-center gap-1.5"
-            >
-              <span>Login</span>
-            </button>
+            {hasActiveLicense ? (
+              <Link
+                href="/pos"
+                onClick={() => {
+                  try {
+                    sessionStorage.removeItem("sakunota_demo_mode");
+                    sessionStorage.removeItem("sakunota_demo_started_at");
+                  } catch (_) {}
+                }}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all border border-blue-200 flex items-center gap-1.5"
+              >
+                <span>Buka Kasir</span>
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleOpenLicenseModal("direct_license")}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all border border-blue-200 flex items-center gap-1.5"
+              >
+                <span>Login</span>
+              </button>
+            )}
             <a
               href="#coba-sakunota"
               className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-blue-600 hover:bg-slate-100 transition-all border border-slate-200"
@@ -675,13 +717,28 @@ export default function SakuNotaLandingPage() {
 
           {/* Mobile Hamburger Button (High Contrast Light Blue) */}
           <div className="flex items-center gap-2 sm:hidden">
-            <button
-              type="button"
-              onClick={() => handleOpenLicenseModal("direct_license")}
-              className="px-2.5 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-extrabold text-[11px] flex items-center gap-1 shadow-xs active:scale-95"
-            >
-              <span>Login</span>
-            </button>
+            {hasActiveLicense ? (
+              <Link
+                href="/pos"
+                onClick={() => {
+                  try {
+                    sessionStorage.removeItem("sakunota_demo_mode");
+                    sessionStorage.removeItem("sakunota_demo_started_at");
+                  } catch (_) {}
+                }}
+                className="px-2.5 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-extrabold text-[11px] flex items-center gap-1 shadow-xs active:scale-95"
+              >
+                <span>Kasir</span>
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleOpenLicenseModal("direct_license")}
+                className="px-2.5 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-extrabold text-[11px] flex items-center gap-1 shadow-xs active:scale-95"
+              >
+                <span>Login</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -784,14 +841,30 @@ export default function SakuNotaLandingPage() {
 
           {/* Direct License Activation & Trial Links */}
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3 text-xs">
-            <button
-              type="button"
-              onClick={() => handleOpenLicenseModal("direct_license")}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-extrabold transition-all shadow-2xs"
-            >
-              <span>Login</span>
-              <span>→</span>
-            </button>
+            {hasActiveLicense ? (
+              <Link
+                href="/pos"
+                onClick={() => {
+                  try {
+                    sessionStorage.removeItem("sakunota_demo_mode");
+                    sessionStorage.removeItem("sakunota_demo_started_at");
+                  } catch (_) {}
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-extrabold transition-all shadow-2xs"
+              >
+                <span>Buka Kasir</span>
+                <span>→</span>
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleOpenLicenseModal("direct_license")}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-extrabold transition-all shadow-2xs"
+              >
+                <span>Login</span>
+                <span>→</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -1151,7 +1224,7 @@ export default function SakuNotaLandingPage() {
               <li><a href="#jenis-usaha" className="hover:text-blue-600 transition-colors">Jenis Usaha</a></li>
               <li><a href="#harga" className="hover:text-blue-600 transition-colors">Harga Lisensi</a></li>
               <li><Link href="/tentang" className="hover:text-blue-600 transition-colors font-bold text-blue-600">Tentang Kami</Link></li>
-              <li><a href="/pos?demo=true" className="hover:text-blue-600 transition-colors">Demo Kasir Lengkap</a></li>
+              <li><Link href="/panduan" className="hover:text-blue-600 transition-colors">Buku Panduan</Link></li>
             </ul>
           </div>
 
@@ -2233,6 +2306,23 @@ export default function SakuNotaLandingPage() {
             {/* TAB 1: LANGSUNG AKTIFKAN DENGAN KODE LISENSI / TESTER (TANPA NOMOR PESANAN & TANPA KODE AKSES) */}
             {statusModalTab === "direct_license" && (
               <div className="space-y-4">
+                {hasActiveLicense && (
+                  <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 flex flex-col gap-2">
+                    <p className="font-bold">Perangkat ini sudah memiliki lisensi aktif.</p>
+                    <Link
+                      href="/pos"
+                      onClick={() => {
+                        try {
+                          sessionStorage.removeItem("sakunota_demo_mode");
+                          sessionStorage.removeItem("sakunota_demo_started_at");
+                        } catch (_) {}
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition-colors"
+                    >
+                      Buka Kasir Langsung →
+                    </Link>
+                  </div>
+                )}
                 <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-[11px] text-blue-900 leading-relaxed">
                   <strong>Punya Kode Lisensi Resmi atau Uji Coba?</strong><br />
                   Masukkan langsung kode lisensi Anda di bawah ini (tidak perlu Nomor Pesanan dan tidak perlu Kode Akses Rahasia).

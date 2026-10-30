@@ -1,5 +1,5 @@
 // Activate a new build only after every required offline asset is available.
-const CACHE_NAME = 'sakunota-pos-v2.8.1-1793327664447';
+const CACHE_NAME = 'sakunota-pos-v2.8.1-1793328593282';
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {

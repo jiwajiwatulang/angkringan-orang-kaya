@@ -996,10 +996,21 @@ export default function POSPage() {
   };
 
   useEffect(() => {
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "true") {
-      try {
-        sessionStorage.setItem("sakunota_demo_mode", "true");
-      } catch (_) {}
+    if (typeof window !== "undefined") {
+      const isExplicitDemo = new URLSearchParams(window.location.search).get("demo") === "true";
+      const hasRealLicense = Boolean(
+        localStorage.getItem("sakunota_license_key") && localStorage.getItem("sakunota_activation_token")
+      ) || Boolean(localStorage.getItem("pos_device_token"));
+      if (!isExplicitDemo && hasRealLicense) {
+        try {
+          sessionStorage.removeItem("sakunota_demo_mode");
+          sessionStorage.removeItem("sakunota_demo_started_at");
+        } catch (_) {}
+      } else if (isExplicitDemo) {
+        try {
+          sessionStorage.setItem("sakunota_demo_mode", "true");
+        } catch (_) {}
+      }
     }
     preserveDemoUrl();
     const wantsDemo = isDemoMode();
@@ -2608,28 +2619,27 @@ export default function POSPage() {
           </div>
 
           <div className="mb-5 rounded-2xl border border-blue-200 bg-white p-4 text-left"><h2 className="text-sm font-bold">Data dari browser belum muncul?</h2><p className="mt-1 text-sm text-slate-600">Buka toko tersimpan atau bawa cadangan dari browser sebelumnya.</p><a href="/pulihkan-kasir" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-blue-600">Bawa Data Lama</a></div>
-          {/* Quick Demo Access Box */}
-          <div className="bg-blue-50/80 border border-blue-200 rounded-2xl p-4 sm:p-5 mb-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
-            <div className="flex items-center gap-3.5 text-left">
-              <div>
-                <h3 className="text-xs sm:text-sm font-black text-slate-900">
-                  {accessStatus.status === 'demo_expired' ? 'Ingin Mencoba Simulasi Demo Lagi?' : 'Ingin Mencoba Simulasi Kasir Tanpa Lisensi?'}
-                </h3>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  {accessStatus.status === 'demo_expired'
-                    ? 'Klik tombol di samping untuk memulai ulang sesi demo 30 menit secara gratis.'
-                    : 'Buka Demo Kasir interaktif gratis untuk mencoba menu, meja, dan cetak struk.'}
-                </p>
+          {/* Quick Demo Access Box (Hidden for unlicensed users; only shows if demo expired) */}
+          {accessStatus.status === 'demo_expired' && (
+            <div className="bg-blue-50/80 border border-blue-200 rounded-2xl p-4 sm:p-5 mb-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
+              <div className="flex items-center gap-3.5 text-left">
+                <div>
+                  <h3 className="text-xs sm:text-sm font-black text-slate-900">
+                    Sesi Demo Kasir Telah Berakhir
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Silakan kembali ke beranda untuk mengaktifkan lisensi resmi atau mencoba simulasi beranda.
+                  </p>
+                </div>
               </div>
+              <a
+                href="/"
+                className="w-full sm:w-auto px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs transition-all shadow-sm active:scale-95 shrink-0 text-center"
+              >
+                Kembali ke Beranda →
+              </a>
             </div>
-            <button
-              type="button"
-              onClick={handleStartDemo}
-              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs transition-all shadow-sm active:scale-95 shrink-0"
-            >
-              {accessStatus.status === 'demo_expired' ? 'Mulai Ulang Demo Kasir →' : 'Buka Demo Kasir →'}
-            </button>
-          </div>
+          )}
 
           {/* Guarantee Box: Data Never Held Hostage */}
           <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 mb-5 text-slate-800 shadow-2xs">

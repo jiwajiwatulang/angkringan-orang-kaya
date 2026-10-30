@@ -100,16 +100,16 @@ export const GUIDE_TOPICS: GuideTopic[] = [
         targetLabel: 'Aktivasi lisensi'
       },
       {
-        title: 'Mencoba demo kasir dengan aman',
-        summary: 'Data latihan disimpan terpisah dari data toko asli Anda.',
+        title: 'Mencoba simulasi kasir di halaman utama',
+        summary: 'Kenali fitur dan cara kerja kasir langsung dari simulasi beranda.',
         steps: [
-          'Buka tautan Demo Kasir Lengkap di bagian bawah halaman utama.',
-          'Di kasir demo, Anda bebas mencoba buka shift, scan barcode, tambah pesanan, dan mencetak struk latihan.',
-          'Data latihan demo disimpan terpisah dan struk dicetak dengan tanda simulasi agar tidak disalahgunakan.',
-          'Setelah selesai berlatih, tekan Keluar Demo untuk meninggalkan data latihan.'
+          'Buka bagian Coba Kasir pada halaman utama SakuNota.',
+          'Pilih jenis usaha (Warung, Retail, atau Kafe), isi pesanan atau timbangan, lalu cetak contoh struk.',
+          'Data simulasi aman dicoba dan struk diberi tanda simulasi.',
+          'Setelah yakin, Anda dapat mendaftar uji coba 7 hari atau membeli lisensi resmi.'
         ],
-        targetHref: '/pos?demo=true',
-        targetLabel: 'Buka demo kasir'
+        targetHref: '/#coba-sakunota',
+        targetLabel: 'Coba simulasi kasir'
       },
       {
         title: 'Memperbarui aktivasi lisensi lama',
