@@ -379,10 +379,10 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             </Link>
 
             <Link
-              href="/pos?demo=true"
+              href="/?beta=register"
               className="w-full py-3 px-4 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
             >
-              <span>Buka Demo Kasir (Simulasi 30 Menit)</span>
+              <span>Daftar Uji Coba Beta (7 Hari)</span>
             </Link>
 
             <Link

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
 import crypto from 'node:crypto';
-import {kitchenSignature,kitchenItemStage} from '../src/lib/operations';
+import {kitchenSignature,kitchenItemStage,employeeAttendance,attendanceSummary} from '../src/lib/operations';
 import {environment,owner} from './multideviceFixtures';
 import {testDeviceProof} from './securityFixtures';
 import {createPairing,requestPairing,approvePairing,saveEmployee,employeeLogin} from '../src/lib/server/multideviceAccess';
@@ -75,4 +75,43 @@ test('two isolated actual POS stores reconcile offline receipts, stock, owner pr
     await assert.rejects(()=>submitEvent(env.DB,o.claims,pending[0].event));
     assert.equal((await env.DB.prepare("SELECT count(*) n FROM MdEntities WHERE kind='pos_payments'").first<number>('n')),3);
   }finally{a.close();b.close();}
+});
+
+
+test('attendance agrees across owner and cashier, survives offline retries and isolates employee switches',{timeout:30000},async()=>{
+ const env=await environment(),o=await owner(env),pair=await createPairing(env,o.claims),deviceId=crypto.randomUUID();
+ const request=()=>({code:pair.code,deviceId,deviceName:'Kasir Absensi',proof:testDeviceProof('multi.pair',pair.code,deviceId)});
+ await requestPairing(env,request());await approvePairing(env,o.claims,pair.id);const device=await requestPairing(env,request());if(device.pending)throw new Error();
+ const first={employeeId:crypto.randomUUID(),employeeName:'Kasir Pagi'},second={employeeId:crypto.randomUUID(),employeeName:'Kasir Sore'};
+ for(const person of [first,second])await saveEmployee(env,o.claims,{id:person.employeeId,name:person.employeeName,pin:'482953',active:true});
+ const e=await employeeLogin(env,device.claims,{id:first.employeeId,pin:'482953'}),a=processPos(),b=processPos();
+ const flush=async(pos:ReturnType<typeof processPos>)=>{for(const row of await pos.send('queue')){await submitEvent(env.DB,row.claims,row.event);assert.equal((await submitEvent(env.DB,row.claims,row.event)).duplicate,true);await pos.send('ack',{id:row.id});}};
+ const pull=async(pos:ReturnType<typeof processPos>,claims:typeof o.claims)=>{let cursor=0;for(;;){const page=await pullEntities(env.DB,claims,cursor);await pos.send('pull',page);if(!page.hasMore)break;cursor=page.cursor;}};
+ try{
+  await a.send('init',{...o,name:'Pemilik'});await b.send('init',{...e,name:first.employeeName});
+  await a.call('saveOperation',{...first,kind:'attendance.in',sessionId:'owner-start'});await flush(a);await pull(b,e.claims);
+  let current=employeeAttendance(await b.send('records',{table:'operations'}),first.employeeId);
+  assert.equal(current.active?.id,'owner-start','owner attendance appears for the same cashier');
+  await a.call('saveOperation',{...first,kind:'attendance.out',sessionId:current.active!.id});
+  await b.call('saveOperation',{...first,kind:'attendance.out',sessionId:current.active!.id});
+  await flush(b);await flush(a);await pull(a,o.claims);await pull(b,e.claims);
+  assert.equal(attendanceSummary(await a.send('records',{table:'operations'})).length,1);
+  assert.equal(employeeAttendance(await b.send('records',{table:'operations'}),first.employeeId).active,undefined);
+  const attempts=await Promise.allSettled([b.call('saveOperation',{...first,kind:'attendance.in'}),b.call('saveOperation',{...first,kind:'attendance.in'})]);
+  assert.equal(attempts.filter(row=>row.status==='fulfilled').length,1,'two rapid actions create one local check-in');
+  await b.send('reopen');assert.equal((await b.send('queue')).length,1);
+  const next=await employeeLogin(env,device.claims,{id:second.employeeId,pin:'482953'});
+  await b.send('session',{...next,name:second.employeeName});
+  const before=await b.send('records',{table:'operations'});
+  assert.ok(employeeAttendance(before,first.employeeId).active);assert.equal(employeeAttendance(before,second.employeeId).latest,undefined);
+  await assert.rejects(()=>b.call('saveOperation',{...first,kind:'attendance.out',sessionId:'owner-start'}),/akun kasir/);
+  await b.call('saveOperation',{...second,kind:'attendance.in',sessionId:'second-start'});
+  await flush(b);await pull(a,o.claims);await pull(b,next.claims);
+  const ownerRows=await a.send('records',{table:'operations'});
+  assert.ok(employeeAttendance(ownerRows,first.employeeId).active,'switching employees never clocks the first out automatically');
+  assert.equal(employeeAttendance(ownerRows,second.employeeId).active?.id,'second-start');
+  await b.call('saveOperation',{...second,kind:'attendance.out',sessionId:'second-start'});await flush(b);await pull(a,o.claims);
+  assert.equal(employeeAttendance(await a.send('records',{table:'operations'}),second.employeeId).active,undefined);
+  for(const table of ['shifts','cashMovements','orders','payments'])assert.equal((await a.send('records',{table})).length,0,'attendance must not open a cash shift or alter money');
+ }finally{a.close();b.close();}
 });

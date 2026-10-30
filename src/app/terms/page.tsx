@@ -90,7 +90,7 @@ export default function TermsOfServicePage() {
               Lisensi aplikasi kasir SakuNota merupakan produk digital sekali bayar. Lisensi yang telah diterbitkan dan diaktifkan pada perangkat kasir tidak dapat dibatalkan atau dikembalikan (non-refundable), kecuali terjadi kendala teknis fatal pada sistem yang tidak dapat diselesaikan oleh tim teknis kami dalam 7 hari kerja.
             </p>
             <p className="text-slate-600">
-              Untuk memastikan kesesuaian fitur kasir dengan kebutuhan operasional usaha kuliner Anda, kami sangat menyarankan calon pembeli untuk mencoba <strong>Demo Kasir</strong> di halaman depan atau mendaftar <strong>Program Uji Coba Gratis 7 Hari</strong> sebelum melakukan pembelian lisensi permanen.
+              Untuk memastikan kesesuaian fitur kasir dengan kebutuhan operasional usaha kuliner Anda, kami sangat menyarankan calon pembeli untuk mencoba simulasi nota di halaman depan atau mendaftar <strong>Program Uji Coba Beta 7 Hari</strong> sebelum melakukan pembelian lisensi permanen.
             </p>
           </section>
         </div>

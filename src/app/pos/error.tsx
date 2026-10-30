@@ -65,13 +65,12 @@ export default function PosError({
             Muat Ulang Kasir
           </button>
 
-          <button
-            type="button"
-            onClick={handleStartDemo}
+          <Link
+            href="/?beta=register"
             className="w-full py-3.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
           >
-            Buka Demo Kasir
-          </button>
+            Daftar Uji Coba Beta (7 Hari)
+          </Link>
 
           <button
             type="button"
