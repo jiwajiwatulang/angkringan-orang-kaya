@@ -165,6 +165,19 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     }
   }, [storeSettings.adminPin, storeSettings.recoveryCodeHash, isAuthenticated]);
 
+  const handleKeypadPress = (val: string) => {
+    setPinError("");
+    if (val === "C") {
+      setPasswordInput("");
+    } else if (val === "BACK") {
+      setPasswordInput((prev) => prev.slice(0, -1));
+    } else {
+      if (passwordInput.length < 12) {
+        setPasswordInput((prev) => (prev + val).replace(/\D/g, ""));
+      }
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!storeSettings.adminPin) {
@@ -476,40 +489,79 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             {authView === "setup_initial" && "Perangkat ini belum memiliki PIN Admin. Buat PIN baru (minimal 4 digit) untuk melindungi pengaturan toko."}
           </p>
 
-          {authView === "login" && storeSettings.adminPin === "1234" && <div role="note" className="mb-5 rounded-xl border border-blue-100 bg-blue-50 p-3 text-left text-sm text-blue-900"><p className="font-semibold">PIN Admin awal: <span className="tracking-widest">1234</span></p><p className="mt-1 text-xs">Ganti melalui Pengaturan → Keamanan &amp; PIN Admin setelah masuk.</p></div>}
-          {/* FORM 1: NORMAL LOGIN */}
+          {authView === "login" && storeSettings.adminPin === "1234" && (
+            <div role="note" className="mb-4 rounded-2xl border border-blue-200 bg-blue-50/90 p-3.5 text-left shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700">Lisensi Baru / PIN Default</span>
+                <span className="rounded-md bg-blue-600 px-2 py-0.5 text-xs font-black tracking-widest text-white">1234</span>
+              </div>
+              <p className="mt-1.5 text-xs font-medium leading-relaxed text-blue-900">
+                Toko atau lisensi baru menggunakan password default <strong>1234</strong>. Masukkan pada keypad angka di bawah, lalu ganti PIN melalui Pengaturan Keamanan.
+              </p>
+            </div>
+          )}
+          {/* FORM 1: NORMAL LOGIN DENGAN KEYPAD */}
           {authView === "login" && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="relative">
                 <input
                   type="password"
                   inputMode="numeric"
+                  pattern="[0-9]*"
                   autoFocus
                   value={passwordInput}
                   onChange={(e) => {
-                    setPasswordInput(e.target.value);
+                    setPasswordInput(e.target.value.replace(/\D/g, ""));
                     setPinError("");
                   }}
                   aria-label="PIN Admin"
-                  placeholder="Masukkan PIN..."
-                  className="w-full text-center text-2xl tracking-widest font-black border-2 border-line focus:border-accent rounded-2xl py-3 px-4 bg-card text-fg outline-none transition-all"
+                  placeholder="••••"
+                  className="w-full text-center text-3xl tracking-widest font-black border-2 border-line focus:border-accent rounded-2xl py-3 px-4 bg-card text-fg outline-none transition-all shadow-inner"
                   required
                 />
               </div>
 
               {pinError && (
-                <p className="text-xs font-bold text-rose-700 animate-in fade-in"><LineIcon name="info" />{pinError}
+                <p className="text-xs font-bold text-rose-700 animate-in fade-in">
+                  <LineIcon name="info" />{pinError}
                 </p>
               )}
 
+              {/* Modern Numeric Keypad */}
+              <div className="grid grid-cols-3 gap-2 pt-1" role="group" aria-label="Keypad PIN">
+                {[
+                  "1", "2", "3",
+                  "4", "5", "6",
+                  "7", "8", "9",
+                  "C", "0", "Hapus"
+                ].map((key) => {
+                  const isAction = key === "C" || key === "Hapus";
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => handleKeypadPress(key === "Hapus" ? "BACK" : key)}
+                      className={`min-h-12 py-3 rounded-2xl text-base font-black transition-all active:scale-95 shadow-xs border select-none ${
+                        isAction
+                          ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 text-xs tracking-wide"
+                          : "bg-surface hover:bg-card text-fg border-line hover:border-accent/40 active:bg-accent/10"
+                      }`}
+                    >
+                      {key}
+                    </button>
+                  );
+                })}
+              </div>
+
               <button
                 type="submit"
-                className="w-full py-3.5 bg-accent hover:bg-accent-hover active:scale-95 text-white font-black rounded-2xl text-sm shadow-lg shadow-accent/20 transition-all"
+                disabled={!passwordInput}
+                className="w-full py-3.5 bg-accent hover:bg-accent-hover active:scale-95 text-white font-black rounded-2xl text-sm shadow-lg shadow-accent/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Masuk Admin
               </button>
 
-              <div className="pt-2">
+              <div className="pt-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -517,7 +569,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                     setAuthView("verify_recovery");
                   }}
                   className="text-xs font-bold text-accent-text hover:underline transition-colors"
-                > Lupa PIN Admin?
+                >
+                  Lupa PIN Admin?
                 </button>
               </div>
             </form>

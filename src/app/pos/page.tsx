@@ -42,7 +42,7 @@ import { activateLicenseServer } from '@/lib/ordersClient';
 import { setupHardwareBarcodeScanner, playScannerBeep } from '@/lib/barcodeScanner';
 import BarcodeCameraModal from '@/components/BarcodeCameraModal';
 import { db } from '@/lib/dexie';
-import { destroyAdminSession } from '@/lib/session';
+
 import CashierShiftPanel from '@/components/CashierShiftPanel';
 import CashierPrinter from '@/components/CashierPrinter';
 
@@ -55,8 +55,8 @@ export default function POSPage() {
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [view, setView] = useState<'kasir' | 'meja' | 'menu' | 'pesanan' | 'shift'>('menu');
-  useEffect(() => { void destroyAdminSession(); }, []);
-  const enterAdmin = async () => { if(getPosScope()?.claims.role==='cashier')return; await destroyAdminSession(); window.location.assign('/admin' + (accessStatus.isDemo ? '?demo=true' : '')); };
+
+  const enterAdmin = () => { if(getPosScope()?.claims.role==='cashier')return; window.location.assign('/admin' + (accessStatus.isDemo ? '?demo=true' : '')); };
 
   const [mobileTab, setMobileTab] = useState<MobileTab>('menu');
   const navigateWorkspace = (next: typeof view) => { setView(next); setMobileTab(({ kasir: "home", menu: "menu", meja: "meja", pesanan: "nota", shift: "lainnya" } as const)[next]); };

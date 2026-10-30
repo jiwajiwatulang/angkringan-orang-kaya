@@ -12,7 +12,7 @@ import { db } from './dexie';
 
 const SESSION_STORAGE_KEY = 'sakunota_admin_session_token';
 const DB_SESSION_KEY = 'admin_active_session';
-const SESSION_DURATION_MS = 2 * 60 * 60 * 1000; // 2 Jam
+const SESSION_DURATION_MS = 60 * 60 * 1000; // 1 Jam
 
 /**
  * Meng-hash token sesi dengan SHA-256
