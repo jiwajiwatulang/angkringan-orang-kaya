@@ -59,7 +59,6 @@ function CameraScanner({ onClose, onScan, title = 'Pindai Barcode Produk' }: Bar
     if (!visible) return;
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let startupTimer: ReturnType<typeof setTimeout> | undefined;
     let acquired: MediaStream | null = null;
     let track: MediaStreamTrack | undefined;
     const disconnected = () => {
@@ -111,7 +110,7 @@ function CameraScanner({ onClose, onScan, title = 'Pindai Barcode Produk' }: Bar
         if (active && !completed.current) { setReady(false); setError(cameraErrorMessage(cause)); }
       }
     };
-    startupTimer = setTimeout(() => {
+    const startupTimer = setTimeout(() => {
       if (!active) return;
       active = false;
       stop(); setReady(false);
