@@ -3,6 +3,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import Dexie from 'dexie';
 import {DeviceClient} from '../src/lib/multidevice/client';
+import {PosSyncFailure} from '../src/lib/multidevice/syncFailure';
 import {PosSynchronizer} from '../src/lib/multidevice/posSync';
 import {POS_TABLES} from '../src/lib/multidevice/posWire';
 import {AccessError,type AccessClaims} from '../src/lib/multidevice/protocol';
@@ -23,5 +24,14 @@ test('queued cashier work keeps its original valid grant after login renewal; de
     t.mock.method(DeviceClient.prototype,'send',async()=>{throw new AccessError('Akses berakhir.',403);});
     await assert.rejects(new PosSynchronizer(db,client).synchronize(),/Akses berakhir/);
     assert.equal(await db.table('posOutbox').count(),1,'denied work remains recoverable');
+    assert.equal((await db.table('posOutbox').get('queued')).errorDetail,'Akses berakhir.');
+    await assert.rejects(new PosSynchronizer(db,client).synchronize(),(error:unknown)=>error instanceof PosSyncFailure&&error.phase==='send'&&error.status===403);
+    await db.table('posOutbox').clear();
+    t.mock.method(DeviceClient.prototype,'pull',async()=>{throw new AccessError('Data belum lengkap.',503);});
+    await assert.rejects(new PosSynchronizer(db,client).synchronize(),(error:unknown)=>error instanceof PosSyncFailure&&error.phase==='pull'&&error.status===503);
+    assert.equal(await db.table('posOutbox').count(),0);
+    t.mock.method(DeviceClient.prototype,'pull',async()=>{throw new Error('private internal stack');});
+    await assert.rejects(new PosSynchronizer(db,client).synchronize(),(error:unknown)=>error instanceof PosSyncFailure&&!error.message.includes('private'));
+
   }finally{await db.delete();}
 });

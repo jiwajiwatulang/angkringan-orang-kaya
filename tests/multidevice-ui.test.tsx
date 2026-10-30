@@ -48,3 +48,10 @@ test('owner portal shows both roles and receipt times without claiming live conn
   for(const label of ['2 / 2 perangkat','Pemilik','Kasir','Data diterima','Belum ada data diterima'])assert.ok(html.includes(label));
   assert.equal(/Online|Semua Data Terbaru|PIN|publicKey/.test(html),false);
 });
+
+test('failed refresh without queued receipts is not mislabeled as failed delivery',()=>{
+  const pull=renderToStaticMarkup(<StoreDataStatus pending={0} online failed failurePhase="pull"/>);
+  assert.ok(pull.includes('Data Belum Diperbarui'));assert.equal(pull.includes('Pengiriman'),false);
+  const send=renderToStaticMarkup(<StoreDataStatus pending={2} online failed failurePhase="send"/>);
+  assert.ok(send.includes('Pengiriman Belum Berhasil'));assert.ok(send.includes('2 Data Belum Terkirim'));
+});

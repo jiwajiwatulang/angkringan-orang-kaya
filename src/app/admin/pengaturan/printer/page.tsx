@@ -1,4 +1,6 @@
 "use client";
+import {isDemoMode} from "@/lib/demoMode";
+import {adminNavigationHref} from "@/lib/adminNavigation";
 import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
@@ -7,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useAdmin } from "../../AdminContext";
 import { BluetoothSerial } from "@ascentio-it/capacitor-bluetooth-serial";
 import { Capacitor } from "@capacitor/core";
-import { App } from "@capacitor/app";
+import {useAdminBack} from "@/components/admin/useAdminBack";
 import { 
   generateEscPosReceipt, 
   generateReceiptHtml, 
@@ -91,26 +93,13 @@ export default function PengaturanPrinterPage() {
   };
 
   // Back button
-  useEffect(() => {
-    let removeListener: any;
-    try {
-      App.addListener("backButton", () => {
+  useAdminBack(() => {
         if (isPreviewOpen) {
           setIsPreviewOpen(false);
         } else {
-          router.push("/admin/pengaturan");
+          router.push(adminNavigationHref("/admin/pengaturan",isDemoMode()));
         }
-      }).then((handle) => {
-        removeListener = handle;
-      }).catch(() => {});
-    } catch (_) {}
-
-    return () => {
-      if (removeListener && removeListener.remove) {
-        removeListener.remove();
-      }
-    };
-  }, [isPreviewOpen, router]);
+  });
 
   const scanBluetooth = async () => {
     if (!Capacitor.isNativePlatform()) {
@@ -224,12 +213,7 @@ export default function PengaturanPrinterPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line">
         <div>
-          <Link
-            href="/admin/pengaturan"
-            className="text-xs font-bold text-accent-text hover:underline flex items-center gap-1 mb-1"
-          >
-            <span>← Kembali ke Pengaturan</span>
-          </Link>
+
           <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
             
             <span>Koneksi Printer Bluetooth Thermal</span>

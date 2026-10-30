@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {attendanceSummary,estimateFinalTax,priceSimulation,validateOperation,kitchenSignature,commissionBalance} from '../src/lib/operations';
+import {attendanceSummary,estimateFinalTax,priceSimulation,validateOperation,kitchenSignature,commissionBalance,supportsKitchen} from '../src/lib/operations';
 import {storeReports} from '../src/lib/storeReports';
 import {csvCell} from '../src/lib/reportExport';
 import {environment,owner} from './multideviceFixtures';
@@ -129,4 +129,15 @@ test('actual offline POS operational records sync exactly once with cash, commis
     assert.equal(await db.table('posOutbox').count(),queuedBefore);
     await assert.rejects(async()=>api.deleteCashMovement((await db.table('cashMovements').toArray())[0].id),/terhubung/);
   }finally{setPosScope(undefined);await db.delete();}
+});
+
+test('kitchen statuses are private to the receipt cashier and never expose payroll values',()=>{
+  for(const type of ['warung','restoran','kafe'])assert.equal(supportsKitchen(type),true);
+  for(const type of ['retail','rental'])assert.equal(supportsKitchen(type),false);
+  const claims:AccessClaims={version:1,storeId:'s',deviceId:'cashier',deviceKey:'key',deviceEpoch:1,role:'cashier',employeeId:'a',issuedAt:Date.now(),expiresAt:Date.now()+60000};
+  const entity={kind:'pos_operations',id:'kitchen-status',value:{kind:'kitchen',stage:'ready',mdDeviceId:'owner',mdOperatorId:'owner',mdTargetDeviceId:'cashier',mdTargetOperatorId:'a',amount:100000,note:'private payroll',costPrice:3000}};
+  const visible=visiblePosEntity(entity,claims)!;
+  assert.equal(visible.value.stage,'ready');assert.equal(visible.value.amount,undefined);assert.equal(visible.value.note,undefined);assert.equal(visible.value.costPrice,undefined);
+  assert.equal(visiblePosEntity(entity,{...claims,employeeId:'b'}),undefined);
+  assert.equal(visiblePosEntity(entity,{...claims,deviceId:'other'}),undefined);
 });

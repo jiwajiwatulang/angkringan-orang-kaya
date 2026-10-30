@@ -2484,6 +2484,7 @@ export default function POSPage() {
 
   const renderCashierOrders = () => (<MobileOrdersScreen
               onResumeOrder={order => { loadOrderIntoCart(order); navigateWorkspace('kasir'); navigateMobile('home'); }}
+              businessType={storeSettings.businessType}
               allOrders={allOrders}
               onReprintReceipt={(order) => {
                 const receiptDoc = {

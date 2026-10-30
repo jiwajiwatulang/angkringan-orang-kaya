@@ -1,11 +1,13 @@
 "use client";
+import {isDemoMode} from "@/lib/demoMode";
+import {adminNavigationHref} from "@/lib/adminNavigation";
 import {APP_VERSION} from "@/lib/appVersion";
 import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { App } from "@capacitor/app";
+import {useAdminBack} from "@/components/admin/useAdminBack";
 import { downloadAllOfflineAssets } from "@/lib/offlineManager";
 import { checkCashierAccess, CashierAccessStatus } from "@/lib/licenseGuard";
 import { SUPPORT_WHATSAPP } from "@/lib/config";
@@ -41,28 +43,15 @@ export default function PengaturanTentangPage() {
   };
 
   // Android Back button handler
-  useEffect(() => {
-    let removeListener: any;
-    try {
-      App.addListener("backButton", () => {
+  useAdminBack(() => {
         if (isPrivacyModalOpen) {
           setIsPrivacyModalOpen(false);
         } else if (isTermsModalOpen) {
           setIsTermsModalOpen(false);
         } else {
-          router.push("/admin/pengaturan");
+          router.push(adminNavigationHref("/admin/pengaturan",isDemoMode()));
         }
-      }).then((handle) => {
-        removeListener = handle;
-      }).catch(() => {});
-    } catch (_) {}
-
-    return () => {
-      if (removeListener && removeListener.remove) {
-        removeListener.remove();
-      }
-    };
-  }, [isPrivacyModalOpen, isTermsModalOpen, router]);
+  });
 
   // Escape key listener to close modals
   useEffect(() => {
@@ -80,12 +69,7 @@ export default function PengaturanTentangPage() {
     <div className="space-y-6 animate-in fade-in duration-200 max-w-2xl mx-auto pb-12">
       {/* Back button */}
       <div>
-        <Link
-          href="/admin/pengaturan"
-          className="text-xs font-bold text-accent-text hover:underline inline-flex items-center gap-1"
-        >
-          <span>← Kembali ke Pengaturan</span>
-        </Link>
+
       </div>
 
       {/* Main Branding Card */}

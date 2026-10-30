@@ -1,4 +1,6 @@
 "use client";
+import {isDemoMode} from "@/lib/demoMode";
+import {adminNavigationHref} from "@/lib/adminNavigation";
 import LockIcon from "@/components/LockIcon";
 import LineIcon from "@/components/LineIcon";
 
@@ -15,7 +17,7 @@ import {
   rollbackPreRestoreBackup 
 } from "@/lib/api";
 import { db } from "@/lib/dexie";
-import { App } from "@capacitor/app";
+import {useAdminBack} from "@/components/admin/useAdminBack";
 import { applyBusinessDemoPreset, BUSINESS_DEMO_PRESETS, BusinessDemoType } from "@/lib/demoCatalog";
 import {posPartition} from '@/lib/multidevice/posPartition';
 import {currentPosRuntime} from '@/lib/multidevice/posRuntime';
@@ -125,10 +127,7 @@ function LegacyDataPage(){
   }, []);
 
   // Back button handling
-  useEffect(() => {
-    let removeListener: any;
-    try {
-      App.addListener("backButton", () => {
+  useAdminBack(() => {
         if (previewBackupData) {
           setPreviewBackupData(null);
         } else if (isMigrateModalOpen) {
@@ -136,19 +135,9 @@ function LegacyDataPage(){
         } else if (isResetModalOpen) {
           setIsResetModalOpen(false);
         } else {
-          router.push("/admin/pengaturan");
+          router.push(adminNavigationHref("/admin/pengaturan",isDemoMode()));
         }
-      }).then((handle) => {
-        removeListener = handle;
-      }).catch(() => {});
-    } catch (_) {}
-
-    return () => {
-      if (removeListener && removeListener.remove) {
-        removeListener.remove();
-      }
-    };
-  }, [previewBackupData, isMigrateModalOpen, isResetModalOpen, router]);
+  });
 
   // 1. Cadangkan Sekarang
   const handleExportBackup = async () => {
@@ -291,12 +280,7 @@ function LegacyDataPage(){
     <div className="space-y-6 animate-in fade-in duration-200 max-w-4xl">
       {/* Header Halaman */}
       <div className="pb-3 border-b border-line">
-        <Link
-          href="/admin/pengaturan"
-          className="text-xs font-bold text-accent-text hover:underline flex items-center gap-1 mb-1"
-        >
-          <span>← Kembali ke Pengaturan</span>
-        </Link>
+
         <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
           
           <span>Data & Cadangan</span>

@@ -126,10 +126,12 @@ export async function projectPosCommit(event:PosCommit,claims:AccessClaims,looku
       }
       if(value.kind==='kitchen'){
         const item=await get('orderItems',value.orderItemId),order=await get('orders',value.orderId);
-        if(!item||item.orderId!==value.orderId||item.mdDeleted||!order||order.status==='void')throw new AccessError('Pesanan sudah tidak tersedia.',409);
+        if(!item||item.orderId!==value.orderId||item.mdDeleted||!order||order.status==='void'||order.isHistorical)throw new AccessError('Pesanan sudah tidak tersedia.',409);
         const ids=await index(`kitchenItem_${value.orderItemId}`),last=[...ids].at(-1),previous=last?await get('operations',last):undefined;
         if((value.previousId||undefined)!==last||kitchenStages.indexOf(value.stage)!==kitchenStages.indexOf(previous?.lineSignature===kitchenSignature(item)?previous.stage:'waiting')+1)throw new AccessError('Status pesanan berubah. Perbarui lalu coba lagi.',409);
         if(value.lineSignature!==kitchenSignature(item))throw new AccessError('Pesanan berubah. Periksa kembali.',409);
+        // Derive recipients from the accepted receipt, never from the sender.
+        value.mdTargetDeviceId=order.mdDeviceId;value.mdTargetOperatorId=order.mdOperatorId;
         ids.add(row.id);
       }
 
@@ -346,6 +348,11 @@ export function visiblePosEntity(entity:Entity,claims:AccessClaims):Entity|undef
   if(!entity.kind.startsWith('pos_'))return undefined;
   if(claims.role==='owner')return entity;
   if(['pos_index','pos_catalogVersion','pos_reservation'].includes(entity.kind))return undefined;
+  if(entity.kind==='pos_operations'&&entity.value.kind==='kitchen'){
+    if(entity.value.mdTargetDeviceId!==claims.deviceId||entity.value.mdTargetOperatorId!==claims.employeeId)return undefined;
+    const fields=['kind','employeeId','employeeName','at','orderId','orderItemId','stage','sessionId','previousId','lineSignature','mdId','mdVersion','mdStoreId','mdDeviceId','mdOperatorId','mdTargetDeviceId','mdTargetOperatorId'];
+    return {...entity,value:Object.fromEntries(fields.filter(key=>key in entity.value).map(key=>[key,entity.value[key]]))};
+  }
   // An owner may record attendance for an employee. That employee must see the same session.
   if(entity.kind==='pos_operations'&&['attendance.in','attendance.out'].includes(String(entity.value.kind))&&entity.value.employeeId===claims.employeeId)return entity;
   if(!['pos_menuItems','pos_tables'].includes(entity.kind)&&(entity.value.mdDeviceId!==claims.deviceId||entity.value.mdOperatorId!==claims.employeeId))return undefined;

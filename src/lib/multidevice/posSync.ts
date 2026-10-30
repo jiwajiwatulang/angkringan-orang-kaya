@@ -1,3 +1,4 @@
+import {PosSyncFailure,syncFailureMessage} from './syncFailure';
 import Dexie from 'dexie';
 import {DeviceClient} from './client';
 import {POS_TABLES,FOREIGN_KEYS,type PosTable,type PosCommit} from './posWire';
@@ -63,14 +64,16 @@ export class PosSynchronizer {
       }catch(error){
         const status=(error as {status?:number}).status;
         const needsRecovery=!current&&(status===401||status===403);
-        await this.db.table('posOutbox').update(row.id,{attempts:row.attempts+1,error:needsRecovery?'Transaksi kasir sebelumnya perlu dipulihkan.':'Pengiriman belum berhasil.',needsRecovery});
-        if(!needsRecovery)throw error;
+        await this.db.table('posOutbox').update(row.id,{attempts:row.attempts+1,error:needsRecovery?'Transaksi kasir sebelumnya perlu dipulihkan.':'Pengiriman belum berhasil.',errorDetail:syncFailureMessage(error,'send'),needsRecovery});
+        if(!needsRecovery)throw new PosSyncFailure('send',error);
         blocked.add(actor);
       }
     }
     // Pull still verifies the active employee's access. importPosEntities refuses to replace
     // the local snapshot while immutable offline work exists, and the loop then stops.
-    let cursor=Number((await this.db.table('posMeta').get('cursor'))?.value||0);
+    try {
+    const refreshKitchen=this.client.claims.role==='cashier'&&!(await this.db.table('posMeta').get('kitchenReadVersion'));
+    let cursor=refreshKitchen?0:Number((await this.db.table('posMeta').get('cursor'))?.value||0);
     for(let page=0;page<1000;page++){
       const result=await this.client.pull(cursor);
       if(result.cursor<cursor||result.hasMore&&result.cursor===cursor)throw new AccessError('Data belum dapat diperbarui.',409);
@@ -78,6 +81,8 @@ export class PosSynchronizer {
       if(await this.db.table('posOutbox').count())return;
       cursor=result.cursor;if(!result.hasMore)break;
     }
+    if(refreshKitchen)await this.db.table('posMeta').put({key:'kitchenReadVersion',value:1});
+    } catch(error){throw new PosSyncFailure('pull',error);}
     await this.db.table('posMeta').put({key:'lastUpdated',value:Date.now()});
     if(typeof window!=='undefined')window.dispatchEvent(new Event('sakunota-pos-updated'));
   }

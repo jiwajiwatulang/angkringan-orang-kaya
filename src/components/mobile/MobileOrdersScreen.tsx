@@ -1,10 +1,12 @@
 "use client";
+import KitchenOrderStatus from '@/components/KitchenOrderStatus';
 import LineIcon from "@/components/LineIcon";
 
 import React, { useState } from "react";
 
 interface MobileOrdersScreenProps {
   allOrders: any[];
+  businessType?: string;
   onReprintReceipt: (order: any) => void;
   onOpenSplitBill: (order: any) => void;
   onResumeOrder?: (order: any) => void;
@@ -12,6 +14,7 @@ interface MobileOrdersScreenProps {
 
 export default function MobileOrdersScreen({
   allOrders,
+  businessType,
   onReprintReceipt,
   onOpenSplitBill,
   onResumeOrder,
@@ -111,6 +114,7 @@ export default function MobileOrdersScreen({
                   </span>
                 </div>
 
+                <KitchenOrderStatus orderId={order.id} businessType={businessType}/>
                 {/* Bottom Row: Actions */}
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-line/40">
                   {!isPaid && (
