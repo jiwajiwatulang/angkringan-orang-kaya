@@ -1,5 +1,6 @@
 "use client";
 import LoadingState from "@/components/LoadingState";
+import {getPosScope} from "@/lib/multidevice/posWire";
 import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -204,8 +205,10 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
         syncedToServer = false;
       }
 
-      setClosedSuccessResult({...closed,...await getShiftLiveStats(closingShiftTarget.id)});
-      if (syncedToServer) {
+      setClosedSuccessResult({...closed,...await getShiftLiveStats(closingShiftTarget.id),closurePending:!!getPosScope()&&!syncedToServer});
+      if (!getPosScope()) {
+        showToast(`Shift #${closingShiftTarget.id} berhasil ditutup.`, "success");
+      } else if (syncedToServer) {
         showToast(`Shift #${closingShiftTarget.id} ditutup. Nilai kas diperbarui saat kiriman kasir diterima.`, "success");
       } else {
         showToast(`Shift #${closingShiftTarget.id} tersimpan di perangkat ini. Menunggu koneksi untuk dikirim.`, "success");
@@ -1109,10 +1112,10 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
                 </div>
                 <div>
                   <h4 className="text-base font-black text-fg">
-                    Shift #{closedSuccessResult.id} Berhasil Ditutup
+                    Shift #{closedSuccessResult.id} {closedSuccessResult.closurePending ? "Menunggu Pengiriman" : "Berhasil Ditutup"}
                   </h4>
                   <p className="text-xs text-muted mt-1">
-                    Penutupan tersimpan. Nilai kas dapat berubah saat kiriman kasir diterima. Transaksi kasir offline yang menyusul akan otomatis diselaraskan ke dalam laporan shift ini.
+                    {getPosScope() ? "Penutupan tersimpan. Nilai kas dapat berubah saat kiriman dengan izin yang masih berlaku diterima." : "Penutupan shift dan hasil hitung kas tersimpan."}
                   </p>
                 </div>
 
