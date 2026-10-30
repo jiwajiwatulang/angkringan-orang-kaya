@@ -53,6 +53,10 @@ export function attendanceSummary(rows:OperationRecord[]){
   for(const row of rows)if(row.kind==='attendance.out'&&!row.ignored){const session=sessions.get(row.sessionId!);if(session&&session.employeeId===row.employeeId)session.end=row.at;}
   return [...sessions.entries()].map(([id,s])=>({id,...s,minutes:s.end?Math.max(0,Math.round((Date.parse(s.end)-Date.parse(s.start))/60000)):null}));
 }
+export function employeeAttendance(rows:OperationRecord[],employeeId:string){
+  const sessions=attendanceSummary(rows).filter(session=>session.employeeId===employeeId);
+  return {active:sessions.find(session=>!session.end),latest:sessions.sort((a,b)=>Date.parse(b.start)-Date.parse(a.start))[0]};
+}
 export function priceSimulation(price:number,cost:number,units:number){
   wholeMoney(price,true);wholeMoney(cost);wholeMoney(units,true);
   const revenue=price*units,modal=cost*units;if(!Number.isSafeInteger(revenue)||!Number.isSafeInteger(modal))throw new Error('Jumlah terlalu besar');

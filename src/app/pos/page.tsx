@@ -2522,7 +2522,7 @@ export default function POSPage() {
                 pushModalHistory('splitbill');
               }}
             />);
-  const renderShiftPanel = () => <CashierShiftPanel shift={activeShift} onOpen={() => setIsOpenShiftModalOpen(true)} onCash={() => setIsCashMovementModalOpen(true)} onClose={openCloseShiftModal} />;
+  const renderShiftPanel = () => <CashierShiftPanel attendance={<AttendanceButton variant="card"/>} shift={activeShift} onOpen={() => setIsOpenShiftModalOpen(true)} onCash={() => setIsCashMovementModalOpen(true)} onClose={openCloseShiftModal} />;
 
   if (isAccessChecking) {
     return (

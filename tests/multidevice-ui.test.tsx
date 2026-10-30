@@ -55,3 +55,24 @@ test('failed refresh without queued receipts is not mislabeled as failed deliver
   const send=renderToStaticMarkup(<StoreDataStatus pending={2} online failed failurePhase="send"/>);
   assert.ok(send.includes('Pengiriman Belum Berhasil'));assert.ok(send.includes('2 Data Belum Terkirim'));
 });
+
+
+test('cashier attendance card shows own status and shift controls stay independent',async()=>{
+ const {default:Card}=await import('../src/components/operations/AttendanceCard');
+ const {default:Shift}=await import('../src/components/CashierShiftPanel');
+ const {default:Button}=await import('../src/components/operations/AttendanceButton');
+ const {setPosScope}=await import('../src/lib/multidevice/posWire');
+ const open={id:'session',employeeId:'a',name:'Kasir Pagi',start:'2026-10-30T08:00:00Z',minutes:null};
+ const render=(props:any)=>renderToStaticMarkup(<Card name="Kasir Pagi" loading={false} busy={false} error="" onAction={()=>{}} {...props}/>);
+ const active=render({active:open,latest:open});assert.ok(active.includes('Kehadiran Saya'));assert.ok(active.includes('Kasir Pagi'));assert.ok(active.includes('Absen Pulang'));assert.ok(active.includes('Masuk '));assert.equal(active.includes('<select'),false);
+ const closed=render({latest:{...open,end:'2026-10-30T09:00:00Z',minutes:60}});assert.ok(closed.includes('Sudah Pulang'));assert.ok(closed.includes('Terakhir pulang'));assert.ok(closed.includes('Absen Masuk'));
+ assert.ok(render({busy:true}).includes('disabled=""'));assert.ok(render({error:'Absensi belum tersimpan'}).includes('role="alert"'));
+ const claims:any={version:1,storeId:'store',deviceId:'device',deviceKey:'key',deviceEpoch:1,role:'cashier',employeeId:'a',issuedAt:Date.now(),expiresAt:Date.now()+60000};
+ try{
+  setPosScope({claims,operatorName:'Kasir Pagi',access:'test'});
+  const panel=renderToStaticMarkup(<Shift shift={null} onOpen={()=>{}} onCash={()=>{}} onClose={()=>{}} attendance={<Button variant="card"/>}/>);
+  assert.ok(panel.includes('Kehadiran Saya'));assert.ok(panel.includes('Buka Shift Saya'));assert.ok(panel.includes('Kasir Pagi'));
+  setPosScope({claims:{...claims,role:'owner',employeeId:undefined},operatorName:'Pemilik',access:'test'});
+  assert.equal(renderToStaticMarkup(<Button variant="card"/>),'');
+ }finally{setPosScope(undefined);}
+});
