@@ -15,7 +15,7 @@ import {
   bulkDeleteEmptyTables,
 } from "@/lib/api";
 import type { TableShape } from "@/lib/dexie";
-import { App } from "@capacitor/app";
+import {useAdminBack} from "@/components/admin/useAdminBack";
 
 interface TableItem {
   id: number;
@@ -108,10 +108,7 @@ export default function AdminMejaPage() {
   }, []);
 
   // Back button handling
-  useEffect(() => {
-    let removeListener: any;
-    try {
-      App.addListener("backButton", () => {
+  useAdminBack(() => {
         if (unsavedConfirm?.isOpen) {
           setUnsavedConfirm(null);
         } else if (tableToDelete) {
@@ -128,31 +125,8 @@ export default function AdminMejaPage() {
           handleCloseAdd();
         } else if (selectedTableIds.length > 0) {
           setSelectedTableIds([]);
-        }
-      })
-        .then((handle) => {
-          removeListener = handle;
-        })
-        .catch(() => {});
-    } catch (_) {}
-
-    return () => {
-      if (removeListener && removeListener.remove) {
-        removeListener.remove();
-      }
-    };
-  }, [
-    unsavedConfirm,
-    tableToDelete,
-    isBulkDeleteOpen,
-    isBulkRenameOpen,
-    isBulkCreateOpen,
-    tableToEdit,
-    isAddOpen,
-    selectedTableIds,
-    newTableName,
-    tableEditName,
-  ]);
+        } else return false;
+  });
 
   // Unique Zones list from tables
   const existingZones = useMemo(() => {

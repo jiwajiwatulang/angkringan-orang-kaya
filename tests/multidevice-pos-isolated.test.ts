@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
 import crypto from 'node:crypto';
+import {kitchenSignature,kitchenItemStage} from '../src/lib/operations';
 import {environment,owner} from './multideviceFixtures';
 import {testDeviceProof} from './securityFixtures';
 import {createPairing,requestPairing,approvePairing,saveEmployee,employeeLogin} from '../src/lib/server/multideviceAccess';
@@ -46,6 +47,26 @@ test('two isolated actual POS stores reconcile offline receipts, stock, owner pr
     await assert.rejects(()=>b.call('saveOperation',{kind:'loan',employeeId,employeeName:'Kasir Pagi',amount:1,source:'rekening'}),/pemilik/);
     await b.call('saveOperation',{kind:'attendance.out',employeeId,employeeName:'Kasir Pagi',sessionId:'local-attendance'});await flush(b,e);await pull(a,o);
     assert.equal((await a.send('records',{table:'operations'})).length,2);
+    // Owner prepares the cashier's real receipt; delivery survives lost ACK and reopen.
+    const receipt=(await b.call('getCashierOrders'))[0];
+    const line=(await a.send('records',{table:'orderItems'})).find((item:any)=>item.mdId===receipt.items[0].mdId);
+    const kitchen={kind:'kitchen',employeeId:o.id,employeeName:'Pemilik',orderId:line.orderId,orderItemId:line.id,lineSignature:kitchenSignature(line)};
+    await a.call('saveOperation',{...kitchen,stage:'preparing'});await a.send('reopen');
+    await flush(a,o,true);await flush(a,o);await pull(b,e);
+    let statuses=(await b.send('records',{table:'operations'})).filter((row:any)=>row.kind==='kitchen');
+    assert.equal(statuses.length,1);assert.equal(statuses[0].stage,'preparing');
+    assert.equal(statuses[0].orderItemId,receipt.items[0].id);
+    const first=(await a.send('records',{table:'operations'})).find((row:any)=>row.kind==='kitchen');
+    await a.call('saveOperation',{...kitchen,stage:'ready',previousId:first.mdId});await flush(a,o);await pull(b,e);await b.send('reopen');
+    statuses=(await b.send('records',{table:'operations'})).filter((row:any)=>row.kind==='kitchen');
+    assert.equal(kitchenItemStage(receipt.items[0],statuses),'ready');
+    assert.equal(kitchenItemStage({...receipt.items[0],qty:3},statuses),'waiting');
+    await assert.rejects(()=>b.call('saveOperation',{...kitchen,stage:'served',employeeId}),/pemilik/);
+    // Legacy records are routed from the authoritative receipt, not untrusted target metadata.
+    await env.DB.prepare("UPDATE MdEntities SET payload=json_remove(payload,'$.mdTargetDeviceId','$.mdTargetOperatorId') WHERE kind='pos_operations' AND json_extract(payload,'$.kind')='kitchen'").run();
+    const legacy=(await pullEntities(env.DB,e.claims,0)).entities.filter(row=>row.kind==='pos_operations'&&row.value.kind==='kitchen');
+    assert.equal(legacy.length,2);assert.equal(legacy[1].value.stage,'ready');
+    assert.equal(legacy[1].value.amount,undefined);
     await a.call('createOrder',{status:'paid',total:6000,items:[{id:product,nama:'Teh',harga:6000,qty:1}]});
     const pending=await a.send('queue');assert.equal(pending.length,1);
     await submitEvent(env.DB,o.claims,pending[0].event); // Lost response before replacement.

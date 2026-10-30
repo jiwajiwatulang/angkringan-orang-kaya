@@ -490,7 +490,7 @@ export default function DashboardOverview({cashierHref,catalogHref}:{cashierHref
           {label:'Rata-rata Nota',value:`Rp ${currentAov.toLocaleString('id-ID')}`,previous:prevAov,delta:deltaAov},
           {label:'Unit Terjual',value:String(currentUnitsSold),previous:prevUnitsSold,delta:deltaUnits}
         ].map((metric,index)=><div key={metric.label} className={`sn-stat rounded-2xl border border-line p-4 sm:p-5 ${index===0?'dashboard-sales-total col-span-6 lg:col-span-1':'col-span-2 bg-surface lg:col-span-1'}`}>
-          <p className="text-xs font-medium text-muted sm:text-sm">{metric.label}</p><p className={`mt-3 break-words font-bold tracking-tight tabular-nums ${index===0?'text-3xl':index===2?'text-sm sm:text-2xl':'text-xl sm:text-2xl'}`}>{metric.value}</p>
+          <p className="text-xs font-medium text-muted sm:text-sm">{metric.label}</p><p className={`mt-3 break-words font-bold tracking-tight tabular-nums ${index===0?'text-3xl lg:text-2xl':index===2?'text-sm sm:text-2xl':'text-xl sm:text-2xl'}`}>{metric.value}</p>
           <p className={`mt-3 text-[11px] ${metric.previous===0?'text-muted':metric.delta>=0?'text-emerald-700':'text-rose-700'}`}>{metric.previous===0?(index===0?'Belum ada perbandingan':'—'):`${metric.delta>0?'+':''}${metric.delta}% dari periode lalu`}</p>
         </div>)}
       </section>

@@ -11,6 +11,11 @@ export interface OperationRecord {
 export function kitchenSignature(item:{qty?:number;namaMenu?:string;selectedModifiers?:unknown[]}){return JSON.stringify([item.qty,item.namaMenu||'',item.selectedModifiers||[]]);}
 export const kitchenStages:KitchenStage[]=['waiting','preparing','ready','served'];
 export const kitchenLabels:Record<KitchenStage,string>={waiting:'Menunggu',preparing:'Disiapkan',ready:'Siap',served:'Disajikan'};
+export function supportsKitchen(businessType?:string){return ['warung','restoran','kafe'].includes(businessType||'warung');}
+export function kitchenItemStage(item:{id?:number;qty?:number;namaMenu?:string;selectedModifiers?:unknown[]},records:OperationRecord[]):KitchenStage{
+  const previous=records.filter(row=>row.kind==='kitchen'&&row.orderItemId===item.id).at(-1);
+  return previous?.lineSignature===kitchenSignature(item)?previous.stage||'waiting':'waiting';
+}
 export function wholeMoney(value:unknown,positive=false):number {
   if(typeof value!=='number'||!Number.isSafeInteger(value)||value<(positive?1:0)||value>1_000_000_000_000)throw new Error('Jumlah tidak valid');
   return value;

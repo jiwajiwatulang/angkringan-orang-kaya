@@ -3,7 +3,7 @@ import React,{useEffect,useState} from 'react';
 import {useLiveQuery} from 'dexie-react-hooks';
 import {db} from '@/lib/dexie';
 import {saveOperation} from '@/lib/operationsApi';
-import {kitchenStages,kitchenLabels,kitchenSignature,type KitchenStage,type OperationRecord} from '@/lib/operations';
+import {supportsKitchen,kitchenStages,kitchenLabels,kitchenSignature,type KitchenStage,type OperationRecord} from '@/lib/operations';
 import {getPosScope} from '@/lib/multidevice/posWire';
 import {useAdmin} from '../AdminContext';
 import {Tabs,PageHeading,OperationIcon,primary,secondary,date} from '@/components/operations/Shared';
@@ -20,7 +20,7 @@ export default function Kitchen(){
   },[]);
   const categories=[...new Set(data?.items.map(i=>i.kategoriMenu||'Lainnya')||[])];
   const scope=getPosScope();
-  if(storeSettings.businessType==='retail')return <main className="p-6 text-fg"><h1 className="text-2xl font-bold">Pesanan Dapur</h1><p className="mt-4 text-sm text-muted">Tersedia untuk usaha makanan dan minuman.</p></main>;
+  if(!supportsKitchen(storeSettings.businessType))return <main className="p-6 text-fg"><h1 className="text-2xl font-bold">Pesanan Dapur</h1><p className="mt-4 text-sm text-muted">Tersedia untuk usaha makanan dan minuman.</p></main>;
   const lines=data?.orders.flatMap(order=>data.items.filter(i=>i.orderId===order.id&&(station==='all'||(i.kategoriMenu||'Lainnya')===station)).map(item=>{
     const previous=data.records.filter(r=>r.kind==='kitchen'&&r.orderItemId===item.id).at(-1);
     const changed=!!previous&&previous.lineSignature!==kitchenSignature(item);
@@ -33,7 +33,7 @@ export default function Kitchen(){
     ready:{'--stage-color':'#047857','--stage-wash':'rgb(16 185 129 / 9%)'} as React.CSSProperties,
     served:{'--stage-color':'#64748b','--stage-wash':'rgb(100 116 139 / 7%)'} as React.CSSProperties,
   };
-  return <main className="sn-operations mx-auto max-w-7xl space-y-5 p-4 text-fg sm:space-y-6 sm:p-6">
+  return <main className="sn-operations mx-auto max-w-7xl space-y-5 text-fg sm:space-y-6">
     <PageHeading title="Pesanan Dapur" icon="food">
       <button type="button" className={secondary} aria-pressed={showServed} onClick={()=>setShowServed(!showServed)}>{showServed?'Sembunyikan Selesai':'Lihat Selesai'}</button>
     </PageHeading>
@@ -46,7 +46,7 @@ export default function Kitchen(){
       <section className="sn-kitchen-empty"><span><OperationIcon name="food" className="h-7 w-7"/></span><h2 className="text-lg font-bold">Antrean sudah selesai</h2><p className="text-sm text-muted">Belum ada pesanan yang perlu disiapkan.</p></section>:
       <div className="grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-3">{lines.map(({order,item,previous,stage,changed})=>{
         const next=kitchenStages[kitchenStages.indexOf(stage)+1],elapsed=Math.max(0,Math.floor((now-Date.parse(order.createdAt))/60000));
-        const destination=order.tableId?data.tables.find(t=>t.id===order.tableId)?.nomor||`Meja ${order.tableId}`:order.orderType==='takeaway'?'Bawa Pulang':order.customerName||'Pesanan Kasir';
+        const destination=order.tableId?data.tables.find(t=>t.id===order.tableId)?.nomor||`Meja ${order.tableId}`:order.orderType?.toLowerCase()==='takeaway'?'Bawa Pulang':order.customerName||'Pesanan Kasir';
         return <article key={item.id} className="sn-kitchen-ticket flex flex-col" style={stageStyles[stage]}>
           <header className="sn-ticket-top">
             <div className="mb-4 flex items-center justify-between gap-3"><span className="sn-stage-pill"><span className="sn-stage-dot"/>{kitchenLabels[stage]}</span><span className="sn-ticket-time"><OperationIcon name="clock" className="h-4 w-4"/>{elapsed} mnt</span></div>

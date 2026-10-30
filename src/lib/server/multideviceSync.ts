@@ -103,8 +103,21 @@ export async function pullEntities(db:D1Database,claims:AccessClaims,cursor:numb
   const page=await db.prepare('SELECT revision FROM MdEntities WHERE storeId=? AND revision>? ORDER BY revision LIMIT 200').bind(claims.storeId,cursor).all<{revision:number}>();
   if(!page.results.length) return {cursor,entities:[] as Entity[],hasMore:false};
   const upper=page.results[page.results.length-1].revision;
-  const rows=await db.prepare('SELECT kind,id,payload FROM MdEntities WHERE storeId=? AND revision>? AND revision<=? ORDER BY revision,kind,id').bind(claims.storeId,cursor,upper).all<{kind:string;id:string;payload:string}>();
-  const entities=(await Promise.all(rows.results.map(async row=>visibleEntity({kind:row.kind,id:row.id,value:await readPayload(db,claims.storeId,row.kind,row.id,row.payload)},claims)))).filter((row):row is Entity=>!!row);
+  const rows=await db.prepare(`SELECT e.kind,e.id,e.payload,receipt.payload AS kitchenOrderPayload
+    FROM MdEntities e LEFT JOIN MdEntities receipt ON e.kind='pos_operations'
+      AND json_extract(e.payload,'$.kind')='kitchen' AND receipt.storeId=e.storeId
+      AND receipt.kind='pos_orders' AND receipt.id=json_extract(e.payload,'$.orderId')
+    WHERE e.storeId=? AND e.revision>? AND e.revision<=? ORDER BY e.revision,e.kind,e.id`)
+    .bind(claims.storeId,cursor,upper).all<{kind:string;id:string;payload:string;kitchenOrderPayload:string|null}>();
+  const entities=(await Promise.all(rows.results.map(async row=>{
+    const value=await readPayload(db,claims.storeId,row.kind,row.id,row.payload);
+    if(claims.role==='cashier'&&row.kind==='pos_operations'&&value.kind==='kitchen'){
+      // Also support existing kitchen records without rewriting production history.
+      const order=row.kitchenOrderPayload?await readPayload(db,claims.storeId,'pos_orders',value.orderId,row.kitchenOrderPayload):undefined;
+      value.mdTargetDeviceId=order?.mdDeviceId;value.mdTargetOperatorId=order?.mdOperatorId;
+    }
+    return visibleEntity({kind:row.kind,id:row.id,value},claims);
+  }))).filter((row):row is Entity=>!!row);
   const more=await db.prepare('SELECT id FROM MdEntities WHERE storeId=? AND revision>? LIMIT 1').bind(claims.storeId,upper).first();
   return {cursor:upper,entities,hasMore:!!more};
 }

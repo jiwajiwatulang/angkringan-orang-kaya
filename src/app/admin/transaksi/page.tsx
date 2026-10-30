@@ -23,7 +23,7 @@ import {
 } from "@/lib/excelUtils";
 import { compressPaymentProof, formatBytes } from "@/lib/imageUtils";
 import { generateEscPosReceipt, generateReceiptHtml, generateBulkReceiptHtml, executePrintDocument } from "@/lib/receipt";
-import { App } from "@capacitor/app";
+import {useAdminBack} from "@/components/admin/useAdminBack";
 
 export default function AdminTransaksiPage() {
   const { storeSettings, showToast } = useAdmin();
@@ -112,10 +112,7 @@ export default function AdminTransaksiPage() {
   }, []);
 
   // Back button listener
-  useEffect(() => {
-    let removeListener: any;
-    try {
-      App.addListener("backButton", () => {
+  useAdminBack(() => {
         if (zoomProofImage) {
           setZoomProofImage(null);
         } else if (receiptData) {
@@ -126,18 +123,8 @@ export default function AdminTransaksiPage() {
           setIsHistoricalModalOpen(false);
         } else if (isBulkProofModalOpen) {
           setIsBulkProofModalOpen(false);
-        }
-      }).then(handle => {
-        removeListener = handle;
-      }).catch(() => {});
-    } catch (_) {}
-
-    return () => {
-      if (removeListener && removeListener.remove) {
-        removeListener.remove();
-      }
-    };
-  }, [zoomProofImage, receiptData, voidTargetOrder, isHistoricalModalOpen, isBulkProofModalOpen]);
+        } else return false;
+  });
 
   // Filter orders
   const filteredOrders = orders.filter((o) => {

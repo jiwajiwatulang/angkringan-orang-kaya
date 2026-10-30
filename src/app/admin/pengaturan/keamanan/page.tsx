@@ -1,4 +1,5 @@
 "use client";
+import {adminNavigationHref} from "@/lib/adminNavigation";
 import LockIcon from "@/components/LockIcon";
 import LineIcon from "@/components/LineIcon";
 
@@ -9,7 +10,7 @@ import { useAdmin } from "../../AdminContext";
 import { requireMerchantAdmin } from "@/lib/merchantAccess";
 import { saveStoreSettingsAsync } from "@/lib/settings";
 import { generateRecoveryCode, hashRecoveryCode } from "@/lib/recovery";
-import { App } from "@capacitor/app";
+import {useAdminBack} from "@/components/admin/useAdminBack";
 import { isDemoMode } from "@/lib/demoMode";
 
 export default function PengaturanKeamananPage() {
@@ -30,22 +31,9 @@ export default function PengaturanKeamananPage() {
   const [regenError, setRegenError] = useState("");
 
   // Back button
-  useEffect(() => {
-    let removeListener: any;
-    try {
-      App.addListener("backButton", () => {
-        router.push("/admin/pengaturan");
-      }).then((handle) => {
-        removeListener = handle;
-      }).catch(() => {});
-    } catch (_) {}
-
-    return () => {
-      if (removeListener && removeListener.remove) {
-        removeListener.remove();
-      }
-    };
-  }, [router]);
+  useAdminBack(() => {
+        router.push(adminNavigationHref("/admin/pengaturan",isDemoMode()));
+  });
 
   const hasExistingPin = Boolean(storeSettings.adminPin);
 
@@ -164,12 +152,7 @@ export default function PengaturanKeamananPage() {
     <div className="space-y-6 animate-in fade-in duration-200 max-w-2xl">
       {/* Header */}
       <div className="pb-3 border-b border-line">
-        <Link
-          href="/admin/pengaturan"
-          className="text-xs font-bold text-accent-text hover:underline flex items-center gap-1 mb-1"
-        >
-          <span>← Kembali ke Pengaturan</span>
-        </Link>
+
         <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
           <span><LockIcon /></span>
           <span>Keamanan & PIN Admin</span>

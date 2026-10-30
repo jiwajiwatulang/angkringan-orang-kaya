@@ -1,4 +1,6 @@
 "use client";
+import {isDemoMode} from "@/lib/demoMode";
+import {adminNavigationHref} from "@/lib/adminNavigation";
 import LineIcon from "@/components/LineIcon";
 
 import React, { useState, useEffect } from "react";
@@ -7,7 +9,8 @@ import { useRouter } from "next/navigation";
 import { useAdmin } from "../../AdminContext";
 import { requireMerchantAdmin } from "@/lib/merchantAccess";
 import { saveStoreSettingsAsync } from "@/lib/settings";
-import { App } from "@capacitor/app";
+import {useSettingsLeaveGuard} from "@/components/admin/useAdminBack";
+import {useAdminBack} from "@/components/admin/useAdminBack";
 
 export default function PengaturanPajakPage() {
   const router = useRouter();
@@ -42,44 +45,20 @@ export default function PengaturanPajakPage() {
     );
   };
 
-  const handleNavigateBack = (e?: React.MouseEvent) => {
-    if (isDirty()) {
-      if (e) e.preventDefault();
-      setUnsavedConfirm({
-        isOpen: true,
-        onDiscard: () => router.push("/admin/pengaturan"),
-      });
-    } else {
-      router.push("/admin/pengaturan");
-    }
-  };
-
+  useSettingsLeaveGuard(isDirty(), href => setUnsavedConfirm({isOpen:true,onDiscard:()=>router.push(href)}));
   // Back button
-  useEffect(() => {
-    let removeListener: any;
-    try {
-      App.addListener("backButton", () => {
+  useAdminBack(() => {
         if (unsavedConfirm?.isOpen) {
           setUnsavedConfirm(null);
         } else if (isDirty()) {
           setUnsavedConfirm({
             isOpen: true,
-            onDiscard: () => router.push("/admin/pengaturan"),
+            onDiscard: () => router.push(adminNavigationHref("/admin/pengaturan",isDemoMode())),
           });
         } else {
-          router.push("/admin/pengaturan");
+          router.push(adminNavigationHref("/admin/pengaturan",isDemoMode()));
         }
-      }).then((handle) => {
-        removeListener = handle;
-      }).catch(() => {});
-    } catch (_) {}
-
-    return () => {
-      if (removeListener && removeListener.remove) {
-        removeListener.remove();
-      }
-    };
-  }, [enableTax, taxPercent, enableService, servicePercent, taxAppliesToService, unsavedConfirm, storeSettings, router]);
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,13 +92,7 @@ export default function PengaturanPajakPage() {
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-line">
         <div>
-          <button
-            type="button"
-            onClick={() => handleNavigateBack()}
-            className="text-xs font-bold text-accent-text hover:underline flex items-center gap-1 mb-1"
-          >
-            <span>← Kembali ke Pengaturan</span>
-          </button>
+
           <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
             
             <span>Pajak (PBJT) & Biaya Layanan</span>

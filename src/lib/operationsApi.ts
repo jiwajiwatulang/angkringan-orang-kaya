@@ -43,7 +43,7 @@ export async function saveOperation(input:Omit<OperationRecord,'id'|'at'>){
     if(row.kind==='commission.paid'&&row.amount!>commissionBalance(records,row.employeeId,await db.table('orders').toArray()))throw new Error('Pembayaran melebihi komisi tersedia');
     if(row.kind==='kitchen'){
       const item=await db.table('orderItems').get(row.orderItemId!),order=await db.table('orders').get(row.orderId!);
-      if(!item||item.orderId!==row.orderId||order?.status==='void')throw new Error('Pesanan sudah tidak tersedia');
+      if(!item||item.orderId!==row.orderId||!order||order.status==='void'||order.isHistorical||item.mdDeleted)throw new Error('Pesanan sudah tidak tersedia');
       const previous=records.filter(r=>r.kind==='kitchen'&&r.orderItemId===row.orderItemId).at(-1);
       if((row.previousId||undefined)!==(previous?.mdId||previous?.sessionId)||kitchenStages.indexOf(row.stage!)!==kitchenStages.indexOf(previous?.lineSignature===kitchenSignature(item)?previous.stage!:'waiting')+1)throw new Error('Status pesanan berubah. Coba lagi');
     }

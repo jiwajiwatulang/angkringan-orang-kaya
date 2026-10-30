@@ -1,4 +1,7 @@
 "use client";
+import {supportsKitchen} from '@/lib/operations';
+import {StoreSyncNotice} from "@/components/StoreSyncNotice";
+import {requestSettingsNavigation,ADMIN_BACK_EVENT} from "@/lib/adminNavigation";
 import LockIcon from "@/components/LockIcon";
 
 import { isDemoMode, preserveDemoUrl, demoSessionValid } from "@/lib/demoMode";
@@ -42,6 +45,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const navigationHref=(href:string)=>adminNavigationHref(href,isDemo);
   const keepDashboard=(event:React.MouseEvent<HTMLAnchorElement>)=>{
+    if(!requestSettingsNavigation(event))return;
     if(pathname==='/admin'&&new URL(window.location.href).searchParams.get('view')!=='reports'&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){event.preventDefault();preserveDemoUrl();}
   };
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -111,10 +115,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   // Android Back button handler
   useEffect(() => {
     let removeListener: any;
+    let cancelled=false;
     try {
       App.addListener('backButton', ({ canGoBack }) => {
         if (isLainnyaOpen) {
           setIsLainnyaOpen(false);
+        } else if (!window.dispatchEvent(new Event(ADMIN_BACK_EVENT,{cancelable:true}))) {
+          return;
         } else if (pathname !== '/admin') {
           router.push(adminNavigationHref('/admin',isDemo));
         } else if (canGoBack) {
@@ -123,11 +130,12 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           router.push('/');
         }
       }).then(handle => {
-        removeListener = handle;
+        if(cancelled)void handle.remove();else removeListener = handle;
       }).catch(() => {});
     } catch (_) {}
 
     return () => {
+      cancelled=true;
       if (removeListener && removeListener.remove) {
         removeListener.remove();
       }
@@ -640,7 +648,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-app text-fg flex flex-col md:flex-row">
+    <div className="sn-admin min-h-screen bg-app text-fg flex flex-col md:flex-row">
       {/* --- DESKTOP & TABLET SIDEBAR --- */}
       <aside
         className={`hidden md:flex flex-col bg-surface border-r border-line shrink-0 select-none transition-all duration-300 ease-in-out ${
@@ -697,7 +705,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         {/* Navigation Links */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems
-            .filter(item => item.href !== "/admin/dapur" || storeSettings.businessType !== "retail")
+            .filter(item => item.href !== "/admin/dapur" || supportsKitchen(storeSettings.businessType))
             .filter(
               (item) =>
                 !["/admin/meja", "/admin/pelayan"].includes(item.href) ||
@@ -709,7 +717,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.href}
                   href={navigationHref(item.href)}
-                  onClick={item.href==='/admin'?keepDashboard:undefined}
+                  onClick={item.href==='/admin'?keepDashboard:event=>{requestSettingsNavigation(event);}}
                   title={isSidebarCollapsed ? item.label : undefined}
                   className={`flex items-center rounded-2xl font-bold transition-all ${
                     isSidebarCollapsed
@@ -850,6 +858,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
         {/* Page Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8 max-w-7xl w-full mx-auto">
+          <StoreSyncNotice/>
           {children}
         </main>
       </div>
@@ -869,7 +878,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         </Link>
 
         <Link
-          href={navigationHref("/admin/menu")}
+          href={navigationHref("/admin/menu")} onClick={event=>{requestSettingsNavigation(event);}}
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
             pathname.startsWith("/admin/menu")
               ? " text-accent-text font-black"
@@ -881,7 +890,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         </Link>
 
         <Link
-          href={navigationHref("/admin/transaksi")}
+          href={navigationHref("/admin/transaksi")} onClick={event=>{requestSettingsNavigation(event);}}
           className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition-all text-center ${
             pathname.startsWith("/admin/transaksi")
               ? " text-accent-text font-black"
@@ -910,7 +919,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       {isLainnyaOpen && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end justify-center md:hidden animate-in fade-in duration-200"
-          onClick={() => setIsLainnyaOpen(false)}
+          onClick={event=>{if(requestSettingsNavigation(event))setIsLainnyaOpen(false);}}
         >
           <div
             className=" bg-surface rounded-t-3xl w-full p-5 shadow-2xl border-t border-line animate-in slide-in-from-bottom duration-250 max-h-[85vh] overflow-y-auto"
@@ -922,14 +931,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <div className="grid grid-cols-1 gap-2 mb-4">
               {navItems.filter(item =>
                 item.href === '/admin/pelayan' && isTableManagementEnabled(storeSettings) ||
-                item.href === '/admin/dapur' && storeSettings.businessType !== 'retail'
-              ).map(item => <Link key={item.href} href={navigationHref(item.href)} onClick={() => setIsLainnyaOpen(false)} className="flex items-center gap-3 rounded-2xl border border-line bg-card p-3.5 text-fg">
+                item.href === '/admin/dapur' && supportsKitchen(storeSettings.businessType)
+              ).map(item => <Link key={item.href} href={navigationHref(item.href)} onClick={event=>{if(requestSettingsNavigation(event))setIsLainnyaOpen(false);}} className="flex items-center gap-3 rounded-2xl border border-line bg-card p-3.5 text-fg">
                 <LineIcon name={item.icon}/><span className="text-sm font-bold">{item.label}</span>
               </Link>)}
               {isTableManagementEnabled(storeSettings) && (
                 <Link
                   href={navigationHref("/admin/meja")}
-                  onClick={() => setIsLainnyaOpen(false)}
+                  onClick={event=>{if(requestSettingsNavigation(event))setIsLainnyaOpen(false);}}
                   className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
                 >
                   <span className="text-xl"><LineIcon name="tables" /></span>
@@ -943,7 +952,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
               <Link
                 href={navigationHref("/admin/karyawan")}
-                onClick={() => setIsLainnyaOpen(false)}
+                onClick={event=>{if(requestSettingsNavigation(event))setIsLainnyaOpen(false);}}
                 className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
                 <span className="text-xl"><LineIcon name="shift" /></span>
@@ -956,7 +965,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
               <Link
                 href={navigationHref("/admin/pengaturan")}
-                onClick={() => setIsLainnyaOpen(false)}
+                onClick={event=>{if(requestSettingsNavigation(event))setIsLainnyaOpen(false);}}
                 className="flex items-center gap-3 p-3.5 rounded-2xl bg-card/60 hover:bg-accent-hover/40 text-fg text-xs font-bold transition-colors"
               >
                 <span className="text-xl"><LineIcon name="settings" /></span>
@@ -981,7 +990,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </button>
               <button
                 type="button"
-                onClick={() => setIsLainnyaOpen(false)}
+                onClick={event=>{if(requestSettingsNavigation(event))setIsLainnyaOpen(false);}}
                 className="flex-1 py-3 rounded-2xl bg-card text-fg font-bold text-xs text-center"
               >
                 Tutup

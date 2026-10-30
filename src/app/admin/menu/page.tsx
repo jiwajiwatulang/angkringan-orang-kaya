@@ -29,7 +29,7 @@ import {
   downloadFile,
   MenuImportValidationResult,
 } from "@/lib/excelUtils";
-import { App } from "@capacitor/app";
+import {useAdminBack} from "@/components/admin/useAdminBack";
 import { ModifierGroup, ModifierOption } from "@/lib/dexie";
 import BarcodeCameraModal from "@/components/BarcodeCameraModal";
 import InventoryPanel from "@/components/InventoryPanel";
@@ -132,10 +132,7 @@ function CatalogPanel() {
   }, []);
 
   // Back button handling
-  useEffect(() => {
-    let removeListener: any;
-    try {
-      App.addListener("backButton", () => {
+  useAdminBack(() => {
         if (unsavedConfirm?.isOpen) {
           setUnsavedConfirm(null);
         } else if (menuToDelete) {
@@ -152,33 +149,8 @@ function CatalogPanel() {
           handleCloseSheet();
         } else if (selectedMenuIds.length > 0) {
           setSelectedMenuIds([]);
-        }
-      })
-        .then((handle) => {
-          removeListener = handle;
-        })
-        .catch(() => {});
-    } catch (_) {}
-
-    return () => {
-      if (removeListener && removeListener.remove) {
-        removeListener.remove();
-      }
-    };
-  }, [
-    isSheetOpen,
-    unsavedConfirm,
-    menuToDelete,
-    isBulkDeleteOpen,
-    isBulkPriceOpen,
-    isBulkCategoryOpen,
-    isImportOpen,
-    selectedMenuIds,
-    formNama,
-    formHarga,
-    formKategori,
-    customKategori,
-  ]);
+        } else return false;
+  });
 
   // Sort & Pagination State
   const [sortBy, setSortBy] = useState<"nama_asc" | "nama_desc" | "harga_asc" | "harga_desc" | "stok_first">("nama_asc");

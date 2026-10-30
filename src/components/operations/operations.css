@@ -1,6 +1,5 @@
 .sn-operations {
-  background: radial-gradient(ellipse at top left, rgb(37 99 235 / 5%), transparent 44%);
-  min-height: 100%;
+  background: transparent;
 }
 .sn-page-heading { padding: 8px 0 12px; }
 .sn-heading-icon {
@@ -59,9 +58,9 @@
   .sn-primary, .sn-secondary, .sn-tab, .sn-field { transition: none; }
 }
 
-.business-dashboard .dashboard-sales-total { background: linear-gradient(120deg,#2563eb,#1d4ed8); border-color:#2563eb; color:white; box-shadow:0 8px 20px rgb(37 99 235 / 18%); }
-.business-dashboard .dashboard-sales-total p { color:rgb(255 255 255 / 86%); }
-.business-dashboard .dashboard-sales-total p:nth-child(2) { color:white; }
+.business-dashboard .dashboard-sales-total { background:var(--color-surface,white); border-color:var(--color-line,#e2e8f0); color:var(--color-fg,#0f172a); box-shadow:0 3px 12px rgb(15 23 42 / 4%); }
+.business-dashboard .dashboard-sales-total p { color:var(--color-muted,#475569); }
+.business-dashboard .dashboard-sales-total p:nth-child(2) { color:var(--color-fg,#0f172a); }
 .business-dashboard .dashboard-chart { border-radius:20px; }
 .business-dashboard .dashboard-trend-canvas { touch-action:pan-y; overflow:visible; }
 .business-dashboard .dashboard-chart-detail { border-color:rgb(37 99 235 / 12%); }
