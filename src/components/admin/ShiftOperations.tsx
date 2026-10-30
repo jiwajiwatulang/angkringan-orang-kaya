@@ -1204,7 +1204,7 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
                 )}
 
                 {/* Notifikasi Shift Kasir & Perlindungan Offline */}
-                {closingShiftTarget && closingShiftTarget.operatorName !== "Pemilik" && (
+                {getPosScope() && closingShiftTarget && closingShiftTarget.operatorName !== "Pemilik" && (
                   <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-2xl text-xs text-indigo-950 flex items-start gap-2">
                     <LineIcon name="info" className="w-5 h-5 flex-shrink-0 text-indigo-700 mt-0.5" />
                     <div>
