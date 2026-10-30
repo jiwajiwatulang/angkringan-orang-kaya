@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import LineIcon from "@/components/LineIcon";
 import "./operations.css";
 
 export const field = "sn-field mt-1 min-h-11 w-full rounded-xl border border-line bg-surface px-3 py-2 text-fg";
@@ -8,12 +9,13 @@ export const secondary = "sn-secondary min-h-11 rounded-xl border border-line bg
 export const money = (value: number) => new Intl.NumberFormat("id-ID", {style:"currency", currency:"IDR", maximumFractionDigits:0}).format(value);
 export const date = (value: string) => new Date(value).toLocaleString("id-ID", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"});
 
-export function OperationIcon({name, className="h-5 w-5"}: {name:"clock"|"arrow"|"check"|"food"|"chart"|"devices";className?:string}) {
+export function OperationIcon({name, className="h-5 w-5"}: {name:"clock"|"arrow"|"check"|"food"|"chart"|"devices"|"shift";className?:string}) {
+  if (name === "shift") return <LineIcon name="shift" className={className} />;
   return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     {name==="clock"?<><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></>:name==="arrow"?<path d="M5 12h14m-5-5 5 5-5 5"/>:name==="check"?<path d="m5 12 4 4L19 6"/>:name==="devices"?<><rect x="3" y="4" width="12" height="10" rx="2"/><path d="M7 18h4m-2-4v4"/><rect x="16" y="9" width="5" height="11" rx="1.5"/></>:name==="chart"?<><path d="M4 4v16h16M8 15v-4m5 4V7m5 8v-6"/></>:<><path d="M4 3v5a3 3 0 0 0 6 0V3M7 3v18M17 13V3c-3 2-3 7-3 10h6M20 3v18"/></>}
   </svg>;
 }
-export function PageHeading({title,icon="chart",children}:{title:string;icon?:"food"|"chart";children?:React.ReactNode}) {
+export function PageHeading({title,icon="chart",children}:{title:string;icon?:"food"|"chart"|"shift";children?:React.ReactNode}) {
   return <header className="sn-page-heading flex flex-wrap items-center justify-between gap-4"><div className="flex min-w-0 items-center gap-3"><span className="sn-heading-icon"><OperationIcon name={icon} className="h-6 w-6"/></span><h1 className="text-2xl font-bold tracking-tight sm:text-[28px]">{title}</h1></div>{children}</header>;
 }
 export function Card({title,children}:{title:string;children:React.ReactNode}) {
