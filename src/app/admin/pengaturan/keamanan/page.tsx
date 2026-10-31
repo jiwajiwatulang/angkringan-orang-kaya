@@ -172,7 +172,7 @@ export default function PengaturanKeamananPage() {
       {/* Change PIN Form */}
       <div className=" bg-surface p-6 rounded-3xl border border-line shadow-sm space-y-4">
         <h3 className="text-sm font-black text-fg">
-          {hasExistingPin ? "Ubah PIN Otorisasi Admin" : "Buat PIN Otorisasi Admin"}
+          {hasExistingPin ? "Ubah PIN Admin" : "Buat PIN Admin"}
         </h3>
 
         {storeSettings.adminPin === "1234" && <p className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">PIN Admin awal: <strong>1234</strong>. Gunakan sebagai PIN saat ini, lalu tentukan PIN baru.</p>}
@@ -258,21 +258,15 @@ export default function PengaturanKeamananPage() {
           <div>
             <h3 className="text-sm font-black text-fg flex items-center gap-1.5">
               
-              <span>Kode Pemulihan Pemilik (Offline Recovery Code)</span>
+              <span>Kode Pemulihan</span>
             </h3>
-            <p className="text-xs text-muted mt-0.5">
-              Kunci darurat offline untuk mereset PIN Admin jika Anda lupa PIN atau data PIN terhapus.
-            </p>
           </div>
           <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-            {storeSettings.recoveryCodeHash ? "Aktif (SHA-256)" : "Belum Dibuat"}
+            {storeSettings.recoveryCodeHash ? "Aktif" : "Belum Dibuat"}
           </span>
         </div>
 
         <div className="p-4 bg-card/60 rounded-2xl border border-line text-xs space-y-2">
-          <p className="text-muted leading-relaxed">
-            Kode Pemulihan dibuat secara acak terenkripsi dan disimpan hanya dalam bentuk hash di penyimpanan perangkat Anda. Kode ini <strong>tidak pernah disertakan dalam file cadangan JSON</strong> demi privasi.
-          </p>
           {!isRegenerating ? (
             <button
               type="button"
@@ -282,12 +276,12 @@ export default function PengaturanKeamananPage() {
                 setRegenError("");
               }}
               className="px-4 py-2 bg-card hover:bg-card/80 border border-line text-xs font-bold text-fg rounded-xl transition-all"
-            > Buat Ulang Kode Pemulihan Baru
+            > Buat Kode Pemulihan Baru
             </button>
           ) : (
             <form onSubmit={handleRegenerateRecoveryCode} className="space-y-3 pt-2">
               <label className="block text-[11px] font-bold text-fg">
-                Masukkan PIN Admin saat ini untuk otorisasi:
+                Masukkan PIN Admin saat ini:
               </label>
               <div className="flex gap-2">
                 <input
@@ -331,12 +325,12 @@ export default function PengaturanKeamananPage() {
             <div className="w-16 h-16 rounded-2xl bg-accent text-white flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-lg shadow-accent/20"><LineIcon name="info" /></div>
             <h2 className="text-xl font-black text-fg">Simpan Kode Pemulihan Baru Anda!</h2>
             <p className="text-xs text-muted mt-1 mb-5">
-              Kode pemulihan lama Anda telah dinonaktifkan. Catat kode baru ini di tempat yang aman.
+              Kode lama tidak berlaku lagi. Simpan kode baru ini.
             </p>
 
             <div className="bg-card p-4 rounded-2xl border-2 border-dashed border-accent mb-4 select-all">
               <span className="text-[10px] text-muted uppercase font-bold tracking-wider block mb-1">
-                Kode Pemulihan Pemilik Baru:
+                Kode Pemulihan Baru:
               </span>
               <div className="text-2xl font-black font-mono text-accent-text tracking-widest py-1">
                 {revealedCode}
@@ -390,13 +384,13 @@ export default function PengaturanKeamananPage() {
       <div className=" bg-surface p-5 rounded-3xl border border-line shadow-sm space-y-2 text-xs">
         <h4 className="font-black text-fg flex items-center gap-1.5">
           
-          <span>Operasi Kasir yang Memerlukan Otorisasi PIN:</span>
+          <span>Tindakan yang Memerlukan PIN</span>
         </h4>
         <ul className="space-y-1.5 text-muted list-disc list-inside pt-1">
           <li><strong>Pembatalan Transaksi (Void):</strong> Kasir tidak bisa membatalkan pesanan secara sepihak tanpa persetujuan Admin/Owner.</li>
-          <li><strong>Pengembalian Uang (Refund):</strong> Setiap pengembalian uang dari laci diverifikasi dan tercatat ke Audit Log.</li>
+          <li><strong>Pengembalian Uang (Refund):</strong> Pengembalian uang memerlukan persetujuan Admin dan dicatat di riwayat.</li>
           <li><strong>Akses Backoffice:</strong> Halaman laporan laba, pengaturan toko, dan data menu dilindungi PIN.</li>
-          <li><strong>Reset Transaksi:</strong> Penghapusan database penjualan harus melalui validasi ganda.</li>
+          <li><strong>Reset Transaksi:</strong> Konfirmasi dan PIN Admin diperlukan sebelum transaksi dihapus.</li>
         </ul>
       </div>
     </div>

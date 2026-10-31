@@ -198,7 +198,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         setPinError("Gagal membuat sesi aman: " + err.message);
       }
     } else {
-      setPinError("PIN otorisasi salah. Silakan coba lagi.");
+      setPinError("PIN salah. Coba lagi.");
     }
   };
 
@@ -219,7 +219,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
     // PRINSIP FAIL-CLOSED: Tolak reset jika hash tidak ditemukan pada toko yang aktif
     if (!storeSettings.recoveryCodeHash) {
-      setPinError("Kredensial pemulihan tidak ditemukan pada perangkat ini. Reset PIN ditolak demi keamanan data usaha Anda. Silakan hubungi dukungan resmi SakuNota dengan bukti lisensi usaha.");
+      setPinError("Kode pemulihan belum tersedia di perangkat ini. Hubungi bantuan SakuNota untuk memulihkan akses.");
       return;
     }
 
@@ -306,7 +306,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       await createAdminSession();
       setIsAuthenticated(true);
       setRevealedCode(null);
-      showToast("Kredensial keamanan berhasil disimpan!", "success");
+      showToast("Pengaturan keamanan disimpan.", "success");
     } catch (err: any) {
       setPinError("Gagal mengaktifkan sesi aman: " + err.message);
     }
@@ -406,13 +406,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <div className="w-16 h-16 rounded-2xl bg-accent text-white flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-lg shadow-accent/20"><LineIcon name="info" /></div>
             <h2 className="text-xl font-black text-fg">Simpan Kode Pemulihan Anda!</h2>
             <p className="text-xs text-muted mt-1 mb-5">
-              Kode ini adalah <strong>satu-satunya kunci</strong> untuk mereset PIN Admin Anda secara offline jika lupa PIN atau data PIN terhapus.
+              Simpan kode ini untuk memulihkan PIN.
             </p>
 
             {/* Kotak Kode Pemulihan */}
             <div className="bg-card p-4 rounded-2xl border-2 border-dashed border-accent mb-4 select-all">
               <span className="text-[10px] text-muted uppercase font-bold tracking-wider block mb-1">
-                Kode Pemulihan Pemilik (Offline):
+                Kode Pemulihan:
               </span>
               <div className="text-2xl font-black font-mono text-accent-text tracking-widest py-1">
                 {revealedCode}
@@ -484,7 +484,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
           <p className="text-xs text-muted mt-1 mb-6">
             {authView === "login" && "Masukkan PIN Admin untuk melanjutkan."}
-            {authView === "verify_recovery" && "PIN tidak ditemukan atau lupa. Masukkan Kode Pemulihan Pemilik untuk memverifikasi hak akses."}
+            {authView === "verify_recovery" && "Masukkan kode pemulihan untuk mengganti PIN."}
             {authView === "reset_pin" && "Pemilik terverifikasi. Silakan tentukan PIN Admin baru untuk perangkat ini."}
             {authView === "setup_initial" && "Perangkat ini belum memiliki PIN Admin. Buat PIN baru (minimal 4 digit) untuk melindungi pengaturan toko."}
           </p>
@@ -581,7 +581,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <form onSubmit={handleVerifyRecovery} className="space-y-4 text-left">
               <div>
                 <label className="block text-[11px] font-bold text-fg mb-1">
-                  Masukkan Kode Pemulihan Pemilik:
+                  Masukkan Kode Pemulihan:
                 </label>
                 <input
                   type="text"

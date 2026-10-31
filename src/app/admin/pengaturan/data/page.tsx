@@ -257,7 +257,7 @@ function LegacyDataPage(){
     }
 
     if (resetPinInput !== storeSettings.adminPin) {
-      setResetPinError("PIN Otorisasi salah. Silakan coba lagi.");
+      setResetPinError("PIN salah. Coba lagi.");
       return;
     }
 

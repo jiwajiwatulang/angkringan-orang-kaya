@@ -1418,7 +1418,7 @@ function CatalogPanel() {
             <h3 className="text-base font-black text-fg mb-1">
               Hapus {selectedMenuIds.length} Menu Terpilih?
             </h3>
-            <p className="text-xs text-fg/80 leading-relaxed mb-4 text-left bg-card/60 p-3 rounded-xl border border-line/60"><LineIcon name="info" /><strong>Fitur Pengaman Finansial:</strong> Menu yang pernah memiliki riwayat transaksi/nota tidak akan dihapus dari database, melainkan otomatis dinonaktifkan (Status Habis) agar seluruh laporan penjualan masa lalu tetap akurat.
+            <p className="text-xs text-fg/80 leading-relaxed mb-4 text-left bg-card/60 p-3 rounded-xl border border-line/60">Produk yang sudah pernah dijual akan dinonaktifkan agar riwayat penjualan tetap tersimpan.
             </p>
             <div className="flex space-x-2">
               <button
