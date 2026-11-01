@@ -641,7 +641,7 @@ function LegacyDataPage(){
             </div>
 
             {/* Warning Text */}
-            <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-xs text-amber-200 leading-relaxed">
+            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/60 text-xs text-amber-950 dark:text-amber-200 font-medium leading-relaxed">
               {paired ? 'Transaksi yang belum terkirim akan dipulihkan. Data usaha dimuat kembali melalui internet tanpa menimpa nota yang sudah diterima.' : <><strong>Peringatan Penting:</strong> Data yang sekarang ada di perangkat ini akan diganti dengan data dari file cadangan. Salinan darurat data saat ini akan dibuat otomatis untuk berjaga-jaga.</>}
             </div>
 

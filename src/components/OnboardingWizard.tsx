@@ -200,7 +200,7 @@ export default function OnboardingWizard({
                     onClick={() => setBusinessType(type.id)}
                     className={`flex items-start gap-3 p-3.5 rounded-2xl text-left border transition-all ${
                       businessType === type.id
-                        ? " bg-accent/40 border-accent ring-2 ring-accent/20 text-blue-100"
+                        ? " bg-accent/40 border-accent ring-2 ring-accent/20 text-blue-950 dark:text-blue-100"
                         : " bg-card/60 border-line text-muted hover:text-fg"
                     }`}
                   >

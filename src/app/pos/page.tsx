@@ -5251,8 +5251,8 @@ export default function POSPage() {
           <div
             className={`px-4 py-2.5 rounded-2xl text-xs font-black shadow-xl border backdrop-blur-md flex items-center gap-2 ${
               barcodeScanToast.type === 'success'
-                ? 'bg-emerald-100 border-emerald-500 text-emerald-100 shadow-emerald-950/40'
-                : 'bg-rose-100 border-rose-500 text-rose-100 shadow-rose-950/40'
+                ? 'bg-emerald-100 dark:bg-emerald-950 border-emerald-500 text-emerald-950 dark:text-emerald-100 shadow-emerald-950/40'
+                : 'bg-rose-100 dark:bg-rose-950 border-rose-500 text-rose-950 dark:text-rose-100 shadow-rose-950/40'
             }`}
           >
             <span>{barcodeScanToast.message}</span>
