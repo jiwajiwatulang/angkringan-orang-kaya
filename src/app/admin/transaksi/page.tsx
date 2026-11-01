@@ -626,7 +626,7 @@ export default function AdminTransaksiPage() {
             <span>Riwayat Transaksi & Pembatalan</span>
           </h2>
           <p className="text-xs text-muted mt-0.5">
-            Daftar seluruh nota penjualan, verifikasi bukti bayar QRIS/Transfer, dan audit void.
+            Daftar seluruh nota penjualan, bukti transfer/QRIS, dan riwayat nota batal.
           </p>
         </div>
 
@@ -654,7 +654,7 @@ export default function AdminTransaksiPage() {
                   : " text-rose-700"
               }`}
             >
-              <span>Void & Refund</span>
+              <span>Nota Batal &amp; Refund</span>
               <span className="px-1.5 py-0.2 rounded-full bg-rose-900 text-rose-700 text-[10px]">
                 {orders.filter(o => o.status === 'void').length}
               </span>
@@ -2044,7 +2044,7 @@ export default function AdminTransaksiPage() {
 
               <div>
                 <label className="block text-[11px] font-bold text-fg mb-1">
-                  PIN Otorisasi Admin:
+                  PIN Konfirmasi Admin:
                 </label>
                 <input
                   type="password"
@@ -2076,7 +2076,7 @@ export default function AdminTransaksiPage() {
                   type="submit"
                   className="flex-[2] py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-md transition-all active:scale-95"
                 >
-                  Konfirmasi VOID
+                  Batalkan Nota Ini
                 </button>
               </div>
             </form>

@@ -33,14 +33,14 @@ export default function AdminPengaturanHubPage() {
       href: "/admin/pengaturan/keamanan",
       icon: "lock",
       title: "Keamanan & PIN Admin",
-      desc: "Ganti PIN Admin 4 digit untuk melindungi Void, Refund, dan Pengaturan Sensitif.",
+      desc: "Ganti PIN Admin 4 digit untuk mengunci pembatalan nota, pengembalian uang, dan menu penting.",
       badge: storeSettings.enablePin ? "PIN Aktif" : "PIN Siap",
     },
     {
       href: "/admin/pengaturan/pajak",
       icon: "tax",
       title: "Pajak & Biaya Layanan",
-      desc: "Konfigurasi PBJT Restoran (pajak daerah) dan Service Charge otomatis.",
+      desc: "Atur pajak restoran (PBJT) dan biaya layanan otomatis.",
       badge: storeSettings.enableTax ? `PBJT ${storeSettings.taxPercent}%` : "Nonaktif",
     },
     {

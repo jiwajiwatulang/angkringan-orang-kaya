@@ -289,7 +289,7 @@ export default function OnboardingWizard({
             <div className="space-y-4 animate-in fade-in duration-200">
               <div>
                 <h3 className="text-sm font-black text-fg">
-                  4. Konfigurasi Meja & Siap Melayani
+                  4. Atur Meja &amp; Siap Melayani
                 </h3>
                 <p className="text-xs text-muted mt-0.5">
                   Berapa jumlah meja yang ingin otomatis dibuat sekarang?

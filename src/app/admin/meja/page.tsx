@@ -705,7 +705,7 @@ export default function AdminMejaPage() {
             <div className="w-12 h-1.5 bg-line rounded-full mx-auto mb-3 sm:hidden" />
             <h3 className="text-lg font-black text-fg mb-1">Tambah Meja Baru</h3>
             <p className="text-xs text-muted mb-4">
-              Konfigurasi tata letak fisik, bentuk, zona ruang, dan kapasitas kursi.
+              Atur posisi meja, bentuk, area ruangan, dan jumlah kursi.
             </p>
 
             <form onSubmit={handleAddSubmit} className="space-y-4">

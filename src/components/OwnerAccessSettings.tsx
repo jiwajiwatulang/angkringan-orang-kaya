@@ -75,7 +75,7 @@ export default function OwnerAccessSettings({view='all'}:{view?:'all'|'employees
             Untuk toko dengan satu perangkat utama, nama kasir/karyawan otomatis tercatat di sistem saat Anda membuka <strong>Shift Kasir</strong>.
           </p>
           <p className="text-xs text-blue-800">
-            PIN otorisasi kasir dan keamanan menu dilindungi melalui <strong>PIN Admin</strong> yang dapat dikonfigurasi pada menu Keamanan.
+            Persetujuan kasir dan keamanan menu dilindungi melalui <strong>PIN Admin</strong> yang dapat diatur pada menu Keamanan.
           </p>
         </div>
         <div className="flex flex-wrap gap-3 pt-1">

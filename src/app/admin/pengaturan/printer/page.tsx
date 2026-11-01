@@ -216,10 +216,10 @@ export default function PengaturanPrinterPage() {
 
           <h2 className="text-2xl font-black text-fg tracking-tight flex items-center gap-2">
             
-            <span>Koneksi Printer Bluetooth Thermal</span>
+            <span>Printer Kasir &amp; Dapur (Bluetooth)</span>
           </h2>
           <p className="text-xs text-muted mt-0.5">
-            Konfigurasi printer thermal ESC/POS 58mm atau 80mm untuk cetak struk kasir, dapur, dan Z-Report.
+            Atur sambungan printer struk ukuran 58mm atau 80mm untuk cetak nota kasir, pesanan dapur, dan laporan shift.
           </p>
         </div>
 

@@ -888,7 +888,7 @@ function LegacyDataPage(){
 
               <div>
                 <label className="text-[11px] font-bold text-muted block mb-1">
-                  Masukkan PIN Admin untuk otorisasi:
+                  Masukkan PIN Admin untuk konfirmasi:
                 </label>
                 <input
                   type="password"

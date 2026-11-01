@@ -5056,7 +5056,7 @@ export default function POSPage() {
 
               {true && (
                 <div>
-                  <label className="block text-[11px] font-bold text-muted mb-1">PIN Otorisasi Admin:</label>
+                  <label className="block text-[11px] font-bold text-muted mb-1">PIN Konfirmasi Admin:</label>
                   <input
                     type="password"
                     maxLength={6}
