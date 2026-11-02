@@ -43,7 +43,9 @@ export default function EmployeeOperations() {
   }, [scope]);
 
   // Attendance Photo viewer modal state
-  const [viewingPhoto, setViewingPhoto] = useState<{ id?: string; label: string; name: string; at: string } | null>(null);
+  const [viewingPhoto, setViewingPhoto] = useState<{ id?: string; label: string; name: string; at: string; employeeId?: string; operationId?: string } | null>(null);
+  const [requestingReupload, setRequestingReupload] = useState(false);
+  const [reuploadSent, setReuploadSent] = useState(false);
   const [photoRecord, setPhotoRecord] = useState<AttendancePhotoRecord | null | undefined>(undefined);
   const [loadingPhoto, setLoadingPhoto] = useState(false);
   const [photoObjectUrl, setPhotoObjectUrl] = useState<string>('');
@@ -65,6 +67,8 @@ export default function EmployeeOperations() {
   }, [photoRecord]);
 
   useEffect(() => {
+    setReuploadSent(false);
+    setRequestingReupload(false);
     if (!viewingPhoto?.id) {
       setPhotoRecord(undefined);
       return;
@@ -236,11 +240,46 @@ export default function EmployeeOperations() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center text-xs text-amber-900">
-                  <p className="font-semibold">Foto Tersimpan di Perangkat Karyawan</p>
-                  <p className="mt-1 text-muted">
-                    Foto asli tersimpan di HP karyawan dan belum diteruskan ke HP Pemilik. Saat transfer diaktifkan, foto akan dikirim otomatis saat kedua perangkat terhubung.
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center text-xs text-amber-900 space-y-3 w-full">
+                  <p className="font-semibold">Foto Belum Tersedia di HP Pemilik</p>
+                  <p className="text-muted">
+                    Foto asli masih tersimpan aman di HP karyawan atau buffer transit R2 (24 jam) telah kedaluwarsa.
                   </p>
+                  {scope?.claims.role === 'owner' && (
+                    <button
+                      type="button"
+                      disabled={requestingReupload || reuploadSent}
+                      onClick={async () => {
+                        if (!viewingPhoto?.id || !scope?.claims.storeId) return;
+                        const runtime = currentPosRuntime();
+                        if (!runtime?.client) return;
+                        setRequestingReupload(true);
+                        try {
+                          const { publicKey } = await getOrCreateOwnerE2eeKeyPair(scope.claims.storeId);
+                          const pubJwk = await exportPublicKeyJwk(publicKey);
+                          await runtime.client.call('photo.relay.reupload', {
+                            photoId: viewingPhoto.id,
+                            employeeId: viewingPhoto.employeeId,
+                            operationId: viewingPhoto.operationId || viewingPhoto.id,
+                            reason: 'Pemilik meminta pengiriman ulang bukti foto absensi',
+                            ownerPublicKeyJwk: pubJwk,
+                          });
+                          setReuploadSent(true);
+                        } catch (err: any) {
+                          alert(err?.message || 'Gagal meminta unggah ulang foto.');
+                        } finally {
+                          setRequestingReupload(false);
+                        }
+                      }}
+                      className="min-h-10 w-full rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-fg hover:opacity-90 disabled:opacity-50"
+                    >
+                      {requestingReupload
+                        ? 'Mengirim permintaan...'
+                        : reuploadSent
+                        ? 'Permintaan Kirim Ulang Terkirim'
+                        : 'Minta Kirim Ulang Foto'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -341,6 +380,8 @@ export default function EmployeeOperations() {
                                         label: 'Foto Absen Masuk',
                                         name: s.name,
                                         at: s.start,
+                                        employeeId: s.employeeId,
+                                        operationId: s.id,
                                       })
                                     }
                                     className="rounded-lg border border-line bg-card px-2.5 py-1 text-xs font-semibold text-fg hover:border-fg"
@@ -362,6 +403,8 @@ export default function EmployeeOperations() {
                                         label: 'Foto Absen Pulang',
                                         name: s.name,
                                         at: s.end || '',
+                                        employeeId: s.employeeId,
+                                        operationId: s.id,
                                       })
                                     }
                                     className="rounded-lg border border-line bg-card px-2.5 py-1 text-xs font-semibold text-fg hover:border-fg"

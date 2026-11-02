@@ -18,6 +18,9 @@ import {
   ackPhotoFromRelayR2,
   requestPhotoReuploadR2,
   checkPhotoReuploadR2,
+  listPendingReuploadRequestsR2,
+  withPhotoLock,
+  relayObjectKey,
   setOwnerE2eeKeyR2,
   getOwnerE2eeKeyR2,
   type RelayR2Bucket,
@@ -71,6 +74,17 @@ class MockR2Bucket implements RelayR2Bucket {
   async delete(keys: string | string[]) {
     const list = Array.isArray(keys) ? keys : [keys];
     for (const k of list) this.storage.delete(k);
+  }
+
+  async list(options?: { prefix?: string; limit?: number }) {
+    const prefix = options?.prefix || '';
+    const objects: Array<{ key: string; customMetadata?: Record<string, string> }> = [];
+    for (const [key, val] of this.storage.entries()) {
+      if (key.startsWith(prefix)) {
+        objects.push({ key, customMetadata: val.customMetadata });
+      }
+    }
+    return { objects };
   }
 
   size() {
@@ -955,4 +969,240 @@ test('Two-Device Isolated Workflow: Cashier offline -> takes attendance -> onlin
   assert.equal(bucket.size(), 1); // Only owner key remains
   const checkPurged = await pullPhotoFromRelayR2(bucket, ownerClaims, photoId);
   assert.equal(checkPurged.found, false);
+});
+
+
+test('R2 Relay Concurrency: atomic coordination ensures ACK never deletes a concurrent or subsequent reupload', async () => {
+  const bucket = new MockR2Bucket();
+  const ownerClaims = mockClaims('owner', 'store-race-atomic');
+  const cashierClaims = mockClaims('cashier', 'store-race-atomic', 'emp-race-atomic');
+
+  const ownerPair = await generateOwnerE2eeKeyPair();
+  const photoId = 'photo-concurrency-atomic-01';
+
+  // 1. Initial upload: Transfer A
+  const packetA = await encryptPhotoForOwner(
+    new TextEncoder().encode('TRANSFER_A_BYTES'),
+    ownerPair.publicKey,
+    { photoId, operationId: 'op-atomic-1', employeeId: 'emp-race-atomic' }
+  );
+  const pushA = await pushPhotoToRelayR2(bucket, cashierClaims, packetA);
+  assert.equal(pushA.success, true);
+  const tokenA = pushA.transferToken;
+
+  // 2. Re-upload request created
+  await requestPhotoReuploadR2(bucket, ownerClaims, {
+    photoId,
+    employeeId: 'emp-race-atomic',
+    operationId: 'op-atomic-1',
+    reason: 'Concurrent race test',
+  });
+
+  // Prepare Transfer B (new token, new envelope)
+  const packetB = await encryptPhotoForOwner(
+    new TextEncoder().encode('TRANSFER_B_BYTES'),
+    ownerPair.publicKey,
+    { photoId, operationId: 'op-atomic-1', employeeId: 'emp-race-atomic' }
+  );
+
+  // 3. Launch concurrent execution: ACK for Transfer A while Transfer B is pushed
+  // Due to per-photoId serialization and pre-delete verification,
+  // either ACK runs before B (and deletes stale object, then B writes fresh),
+  // OR B writes first (and ACK for A detects stale token and rejects with 409).
+  // In NEITHER case can Transfer B be deleted!
+  const pushBPromise = pushPhotoToRelayR2(bucket, cashierClaims, packetB);
+  const staleAckPromise = ackPhotoFromRelayR2(bucket, ownerClaims, {
+    photoId,
+    checksum: packetA.checksum,
+    transferToken: tokenA,
+    operationId: 'op-atomic-1',
+    employeeId: 'emp-race-atomic',
+  }).catch((err: any) => ({ error: err }));
+
+  const [pushBResult, ackResult] = await Promise.all([pushBPromise, staleAckPromise]);
+  assert.equal(pushBResult.success, true);
+  const tokenB = pushBResult.transferToken;
+  assert.notEqual(tokenA, tokenB);
+
+  // If ACK ran after pushB, it was rejected with 409
+  // In all cases, verify Transfer B is safe, alive and intact in R2 transit
+  const checkR2 = await pullPhotoFromRelayR2(bucket, ownerClaims, photoId);
+  assert.equal(checkR2.found, true);
+  assert.equal(checkR2.transferToken, tokenB);
+
+  // 4. Valid ACK with tokenB succeeds and purges
+  const validAck = await ackPhotoFromRelayR2(bucket, ownerClaims, {
+    photoId,
+    checksum: packetB.checksum,
+    transferToken: tokenB,
+    operationId: 'op-atomic-1',
+    employeeId: 'emp-race-atomic',
+  });
+  assert.equal(validAck.success, true);
+  assert.equal(bucket.size(), 0);
+});
+
+test('R2 Relay TTL Expiry & Re-upload: 24h expired photo triggers Owner reupload request and cashier re-syncs seamlessly', async () => {
+  const bucket = new MockR2Bucket();
+  const storeId = 'store-ttl-expire-test';
+  const ownerClaims = mockClaims('owner', storeId);
+  const cashierClaims = mockClaims('cashier', storeId, 'emp-ttl-cashier');
+
+  // Setup Owner key in R2
+  const ownerPair = await generateOwnerE2eeKeyPair();
+  const ownerPubJwk = await exportPublicKeyJwk(ownerPair.publicKey);
+  await setOwnerE2eeKeyR2(bucket, ownerClaims, { publicKeyJwk: ownerPubJwk });
+
+  const rawBytes = new TextEncoder().encode('IRREPLACEABLE_PHOTO_FOR_TTL_TEST');
+  const photoBlob = new Blob([rawBytes], { type: 'image/jpeg' });
+  const photoChecksum = await sha256Hex(photoBlob);
+  const photoId = 'photo-ttl-24h-001';
+  const operationId = 'op-ttl-001';
+
+  // 1. Cashier took attendance, stored in local Dexie, and pushed to R2 -> marked 'siap_diambil'
+  await db.table('attendancePhotos').put({
+    id: photoId,
+    operationId,
+    employeeId: 'emp-ttl-cashier',
+    employeeName: 'Kasir TTL',
+    blob: photoBlob,
+    checksum: photoChecksum,
+    createdAt: new Date().toISOString(),
+    status: 'siap_diambil',
+  });
+
+  const ownerPub = await importOwnerPublicKey(ownerPubJwk);
+  const initialPacket = await encryptPhotoForOwner(photoBlob, ownerPub, {
+    storeId,
+    photoId,
+    operationId,
+    employeeId: 'emp-ttl-cashier',
+  });
+  await pushPhotoToRelayR2(bucket, cashierClaims, initialPacket);
+  assert.equal(bucket.size(), 2); // 1 key + 1 transit photo
+
+  // 2. 24 hours pass: photo in R2 expires and is purged by R2 lifecycle
+  await bucket.delete(relayObjectKey(storeId, photoId));
+  assert.equal(bucket.size(), 1); // Only owner key remains
+
+  // 3. Owner opens employee operations, sees photo is missing from local Dexie and expired from R2 transit
+  const checkPull = await pullPhotoFromRelayR2(bucket, ownerClaims, photoId);
+  assert.equal(checkPull.found, false);
+
+  // Owner clicks "Minta Kirim Ulang Foto" in the UI
+  const reuploadReq = await requestPhotoReuploadR2(bucket, ownerClaims, {
+    photoId,
+    employeeId: 'emp-ttl-cashier',
+    operationId,
+    reason: 'Buffer transit R2 telah kedaluwarsa 24 jam',
+    ownerPublicKeyJwk: ownerPubJwk,
+  });
+  assert.equal(reuploadReq.success, true);
+
+  // 4. Cashier reconnects (app opened, online restored, or session resumed)
+  const cashierClient = {
+    call: async (action: string, data?: any) => {
+      if (action === 'photo.relay.owner_key.get') return getOwnerE2eeKeyR2(bucket, cashierClaims);
+      if (action === 'photo.relay.push') return pushPhotoToRelayR2(bucket, cashierClaims, data.packet);
+      if (action === 'photo.relay.reupload_pending') return listPendingReuploadRequestsR2(bucket, cashierClaims);
+      if (action === 'photo.relay.reupload_check') return checkPhotoReuploadR2(bucket, cashierClaims, data.photoId);
+      throw new Error(`Unhandled action ${action}`);
+    },
+  } as any;
+
+  // Background sync runs with checkReuploads enabled
+  const syncRes = await syncPendingAttendancePhotos(cashierClient, storeId, 'emp-ttl-cashier');
+  assert.equal(syncRes.reuploaded, 1, 'Must successfully re-upload the expired photo from local Blob');
+
+  // 5. Owner device pulls the newly re-uploaded photo from R2 transit
+  const ownerClient = {
+    call: async (action: string, data?: any) => {
+      if (action === 'photo.relay.pull') return pullPhotoFromRelayR2(bucket, ownerClaims, data.photoId);
+      if (action === 'photo.relay.ack') return ackPhotoFromRelayR2(bucket, ownerClaims, data);
+      throw new Error(`Unhandled action ${action}`);
+    },
+  } as any;
+
+  const pullRes = await pullAndPersistAttendancePhoto(ownerClient, photoId, ownerPair.privateKey, db);
+  assert.ok(pullRes);
+  assert.equal(pullRes?.id, photoId);
+  assert.equal(pullRes?.checksum, photoChecksum);
+  assert.equal(pullRes?.status, 'tersimpan');
+  assert.ok(pullRes?.blob instanceof Blob);
+
+  // 6. R2 buffer is purged after Owner ACK
+  assert.equal(bucket.size(), 1); // Only owner key remains
+});
+
+test('Realistic Mobile Browser POS E2E: Cashier offline mobile UI -> capture photo -> restore online -> background sync -> Owner device pulls -> ACKs', async () => {
+  const bucket = new MockR2Bucket();
+  const storeId = 'store-mobile-e2e';
+  const ownerClaims = mockClaims('owner', storeId);
+  const cashierClaims = mockClaims('cashier', storeId, 'emp-mobile-kasir');
+
+  // Owner registers E2EE key
+  const ownerPair = await generateOwnerE2eeKeyPair();
+  const ownerPubJwk = await exportPublicKeyJwk(ownerPair.publicKey);
+  await setOwnerE2eeKeyR2(bucket, ownerClaims, { publicKeyJwk: ownerPubJwk });
+
+  const cashierClient = {
+    call: async (action: string, data?: any) => {
+      if (action === 'photo.relay.owner_key.get') return getOwnerE2eeKeyR2(bucket, cashierClaims);
+      if (action === 'photo.relay.push') return pushPhotoToRelayR2(bucket, cashierClaims, data.packet);
+      if (action === 'photo.relay.reupload_pending') return listPendingReuploadRequestsR2(bucket, cashierClaims);
+      if (action === 'photo.relay.reupload_check') return checkPhotoReuploadR2(bucket, cashierClaims, data.photoId);
+      throw new Error(`Unhandled action: ${action}`);
+    },
+  } as any;
+
+  const ownerClient = {
+    call: async (action: string, data?: any) => {
+      if (action === 'photo.relay.pull') return pullPhotoFromRelayR2(bucket, ownerClaims, data.photoId);
+      if (action === 'photo.relay.ack') return ackPhotoFromRelayR2(bucket, ownerClaims, data);
+      throw new Error(`Unhandled action: ${action}`);
+    },
+  } as any;
+
+  // 1. Simulate mobile cashier taking attendance photo offline
+  const mobilePhotoBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe1, 0x10, 0x20, 0x30, 0x40]);
+  const photoBlob = new Blob([mobilePhotoBytes], { type: 'image/jpeg' });
+  const photoChecksum = await sha256Hex(photoBlob);
+  const photoId = 'photo-mobile-sim-001';
+
+  const opId = await recordAttendanceWithPhotoAtomic(saveOperation, {
+    kind: 'attendance.in',
+    employeeId: 'emp-mobile-kasir',
+    employeeName: 'Kasir Mobile',
+    photo: {
+      photoId,
+      blob: photoBlob,
+      checksum: photoChecksum,
+    },
+  });
+  assert.ok(opId);
+
+  // Cashier local verification
+  const localRecord = await getAttendancePhoto(photoId);
+  assert.ok(localRecord);
+  assert.equal(localRecord?.status, 'lokal');
+  assert.ok(localRecord?.blob instanceof Blob);
+
+  // 2. Connectivity restored: trigger background sync
+  const syncResult = await syncPendingAttendancePhotos(cashierClient, storeId, 'emp-mobile-kasir');
+  assert.equal(syncResult.pushed, 1);
+
+  // Verify cashier record updated to siap_diambil
+  const updatedLocal = await getAttendancePhoto(photoId);
+  assert.equal(updatedLocal?.status, 'siap_diambil');
+
+  // 3. Owner device retrieves from R2
+  const pulled = await pullAndPersistAttendancePhoto(ownerClient, photoId, ownerPair.privateKey, db);
+  assert.ok(pulled);
+  assert.equal(pulled?.id, photoId);
+  assert.equal(pulled?.checksum, photoChecksum);
+  assert.equal(pulled?.status, 'tersimpan');
+  assert.ok(pulled?.blob instanceof Blob);
+
+  // Buffer purged
+  assert.equal(bucket.size(), 1);
 });

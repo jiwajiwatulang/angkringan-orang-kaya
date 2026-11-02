@@ -28,6 +28,7 @@ export interface RelayR2Bucket {
     options?: RelayR2PutOptions
   ): Promise<RelayR2Object | null | unknown>;
   delete(key: string | string[]): Promise<void>;
+  list?(options?: { prefix?: string; limit?: number }): Promise<{ objects: Array<{ key: string; customMetadata?: Record<string, string> }> }>;
 }
 
 export interface PhotoReuploadRequest {
@@ -69,6 +70,34 @@ export function ownerKeyObjectKey(storeId: string): string {
     throw new AccessError('Parameter tidak valid.', 400);
   }
   return `relay/${storeId}/owner-e2ee-key.json`;
+}
+
+const photoIdLocks = new Map<string, Promise<unknown>>();
+
+/**
+ * Serializes all asynchronous R2 mutation operations (push, ack, requestReupload)
+ * targeting the exact same storeId and photoId to completely eliminate race conditions
+ * between concurrent reads, conditional writes, and deletions.
+ */
+export async function withPhotoLock<T>(storeId: string, photoId: string, fn: () => Promise<T>): Promise<T> {
+  const lockKey = `${storeId}:${photoId}`;
+  const previous = photoIdLocks.get(lockKey) || Promise.resolve();
+  let release: () => void;
+  const current = new Promise<void>(res => {
+    release = res;
+  });
+  const chained = previous.then(() => {}, () => {}).then(() => current);
+  photoIdLocks.set(lockKey, chained);
+
+  try {
+    await previous;
+    return await fn();
+  } finally {
+    release!();
+    if (photoIdLocks.get(lockKey) === chained) {
+      photoIdLocks.delete(lockKey);
+    }
+  }
 }
 
 /** Computes hex SHA-256 string from Uint8Array */
@@ -159,72 +188,74 @@ export async function pushPhotoToRelayR2(
     new TextEncoder().encode(`${key}::${envelopeHash}::${expiresAt}::${now}`)
   );
 
-  // 4. Check existing object for true full-envelope idempotency
-  const existing = await bucket.get(key);
-  if (existing) {
-    const existingMetaHash = existing.customMetadata?.envelopeHash;
-    let existingEnvelopeHash = existingMetaHash;
-    if (!existingEnvelopeHash) {
-      try {
-        const parsed = JSON.parse(await existing.text()) as E2eePhotoPacket;
-        existingEnvelopeHash = await computePacketEnvelopeHash(parsed);
-      } catch {}
-    }
+  return withPhotoLock(claims.storeId, packet.photoId, async () => {
+    // 4. Check existing object for true full-envelope idempotency
+    const existing = await bucket.get(key);
+    if (existing) {
+      const existingMetaHash = existing.customMetadata?.envelopeHash;
+      let existingEnvelopeHash = existingMetaHash;
+      if (!existingEnvelopeHash) {
+        try {
+          const parsed = JSON.parse(await existing.text()) as E2eePhotoPacket;
+          existingEnvelopeHash = await computePacketEnvelopeHash(parsed);
+        } catch {}
+      }
 
-    if (existingEnvelopeHash === envelopeHash) {
-      // True idempotent retry: whole envelope (ciphertext, IV, ephemeral key, checksum) is identical
-      return {
-        success: true,
-        photoId: packet.photoId,
-        expiresAt,
-        transferToken: existing.customMetadata?.transferToken || transferToken,
-        idempotent: true,
-      };
-    }
-
-    // Different ciphertext, IV, ephemeral key, or checksum: reject overwrite!
-    throw new AccessError('Foto bukti dengan ID ini sudah ada dan tidak dapat diganti.', 409, 'photo_exists');
-  }
-
-  // 5. Atomic conditional put: only write if object does not exist (prevents concurrent race conditions)
-  const payloadWithExpiry = { ...packet, storeId: claims.storeId, expiresAt, envelopeHash, transferToken };
-  const putResult = await bucket.put(key, JSON.stringify(payloadWithExpiry), {
-    onlyIf: { etagDoesNotMatch: '*' },
-    customMetadata: {
-      storeId: claims.storeId,
-      employeeId: packet.employeeId,
-      operationId: packet.operationId,
-      checksum: packet.checksum,
-      envelopeHash,
-      transferToken,
-      expiresAt: String(expiresAt),
-      uploadedAt: String(now),
-    },
-  });
-
-  // If conditional write was blocked by a concurrent upload that raced between get() and put()
-  if (putResult === null) {
-    const postRace = await bucket.get(key);
-    if (postRace) {
-      const raceHash = postRace.customMetadata?.envelopeHash;
-      if (raceHash === envelopeHash) {
+      if (existingEnvelopeHash === envelopeHash) {
+        // True idempotent retry: whole envelope (ciphertext, IV, ephemeral key, checksum) is identical
         return {
           success: true,
           photoId: packet.photoId,
           expiresAt,
-          transferToken: postRace.customMetadata?.transferToken || transferToken,
+          transferToken: existing.customMetadata?.transferToken || transferToken,
           idempotent: true,
         };
       }
+
+      // Different ciphertext, IV, ephemeral key, or checksum: reject overwrite!
+      throw new AccessError('Foto bukti dengan ID ini sudah ada dan tidak dapat diganti.', 409, 'photo_exists');
     }
-    throw new AccessError('Foto bukti dengan ID ini sudah ada dan tidak dapat diganti.', 409, 'photo_exists');
-  }
 
-  // 6. Clean up pending reupload request if this upload fulfills one
-  const reqKey = reuploadRequestKey(claims.storeId, packet.photoId);
-  await bucket.delete(reqKey).catch(() => {});
+    // 5. Atomic conditional put: only write if object does not exist (prevents concurrent race conditions)
+    const payloadWithExpiry = { ...packet, storeId: claims.storeId, expiresAt, envelopeHash, transferToken };
+    const putResult = await bucket.put(key, JSON.stringify(payloadWithExpiry), {
+      onlyIf: { etagDoesNotMatch: '*' },
+      customMetadata: {
+        storeId: claims.storeId,
+        employeeId: packet.employeeId,
+        operationId: packet.operationId,
+        checksum: packet.checksum,
+        envelopeHash,
+        transferToken,
+        expiresAt: String(expiresAt),
+        uploadedAt: String(now),
+      },
+    });
 
-  return { success: true, photoId: packet.photoId, expiresAt, transferToken };
+    // If conditional write was blocked by a concurrent upload that raced between get() and put()
+    if (putResult === null) {
+      const postRace = await bucket.get(key);
+      if (postRace) {
+        const raceHash = postRace.customMetadata?.envelopeHash;
+        if (raceHash === envelopeHash) {
+          return {
+            success: true,
+            photoId: packet.photoId,
+            expiresAt,
+            transferToken: postRace.customMetadata?.transferToken || transferToken,
+            idempotent: true,
+          };
+        }
+      }
+      throw new AccessError('Foto bukti dengan ID ini sudah ada dan tidak dapat diganti.', 409, 'photo_exists');
+    }
+
+    // 6. Clean up pending reupload request if this upload fulfills one
+    const reqKey = reuploadRequestKey(claims.storeId, packet.photoId);
+    await bucket.delete(reqKey).catch(() => {});
+
+    return { success: true, photoId: packet.photoId, expiresAt, transferToken };
+  });
 }
 
 /**
@@ -291,43 +322,54 @@ export async function ackPhotoFromRelayR2(
     throw new AccessError('Token transfer wajib disertakan untuk konfirmasi penerimaan foto.', 400);
   }
 
-  const key = relayObjectKey(claims.storeId, data.photoId);
-  const existing = await bucket.get(key);
-  if (!existing) {
-    // Idempotent: already deleted or expired
-    return { success: true, deleted: true, alreadyDeleted: true };
-  }
-
-  const content = await existing.text();
-  try {
-    // 1. Transfer token protection: strictly mandatory, must match existing metadata
-    const existingToken = existing.customMetadata?.transferToken;
-    if (!existingToken || data.transferToken !== existingToken) {
-      throw new AccessError('Token transfer foto sudah kedaluwarsa atau digantikan transfer baru.', 409, 'stale_transfer');
+  return withPhotoLock(claims.storeId, data.photoId, async () => {
+    const key = relayObjectKey(claims.storeId, data.photoId);
+    const existing = await bucket.get(key);
+    if (!existing) {
+      // Idempotent: already deleted or expired
+      return { success: true, deleted: true, alreadyDeleted: true };
     }
 
-    if (data.envelopeHash && existing.customMetadata?.envelopeHash && data.envelopeHash !== existing.customMetadata.envelopeHash) {
-      throw new AccessError('Hash paket foto tidak sesuai dengan transfer yang sedang aktif.', 409, 'stale_transfer');
+    const content = await existing.text();
+    try {
+      // 1. Transfer token protection: strictly mandatory, must match existing metadata
+      const existingToken = existing.customMetadata?.transferToken;
+      if (!existingToken || data.transferToken !== existingToken) {
+        throw new AccessError('Token transfer foto sudah kedaluwarsa atau digantikan transfer baru.', 409, 'stale_transfer');
+      }
+
+      if (data.envelopeHash && existing.customMetadata?.envelopeHash && data.envelopeHash !== existing.customMetadata.envelopeHash) {
+        throw new AccessError('Hash paket foto tidak sesuai dengan transfer yang sedang aktif.', 409, 'stale_transfer');
+      }
+
+      // 2. Validate content matches confirmation
+      const packet = JSON.parse(content) as E2eePhotoPacket;
+      if (packet.checksum && packet.checksum.toLowerCase() !== data.checksum.toLowerCase()) {
+        throw new AccessError('Checksum foto tidak sesuai konfirmasi.', 400);
+      }
+      if (data.operationId && packet.operationId && packet.operationId !== data.operationId) {
+        throw new AccessError('ID operasi tidak sesuai konfirmasi transfer.', 400);
+      }
+      if (data.employeeId && packet.employeeId && packet.employeeId !== data.employeeId) {
+        throw new AccessError('ID karyawan tidak sesuai konfirmasi transfer.', 400);
+      }
+    } catch (e) {
+      if (e instanceof AccessError) throw e;
     }
 
-    // 2. Validate content matches confirmation
-    const packet = JSON.parse(content) as E2eePhotoPacket;
-    if (packet.checksum && packet.checksum.toLowerCase() !== data.checksum.toLowerCase()) {
-      throw new AccessError('Checksum foto tidak sesuai konfirmasi.', 400);
+    // 3. Double-check verify immediately before deletion
+    const verifyBeforeDelete = await bucket.get(key);
+    if (!verifyBeforeDelete) {
+      return { success: true, deleted: true, alreadyDeleted: true };
     }
-    if (data.operationId && packet.operationId && packet.operationId !== data.operationId) {
-      throw new AccessError('ID operasi tidak sesuai konfirmasi transfer.', 400);
+    if (verifyBeforeDelete.customMetadata?.transferToken !== data.transferToken) {
+      throw new AccessError('Token transfer foto sudah digantikan transfer baru sebelum penghapusan.', 409, 'stale_transfer');
     }
-    if (data.employeeId && packet.employeeId && packet.employeeId !== data.employeeId) {
-      throw new AccessError('ID karyawan tidak sesuai konfirmasi transfer.', 400);
-    }
-  } catch (e) {
-    if (e instanceof AccessError) throw e;
-  }
 
-  await bucket.delete(key);
-  await bucket.delete(reuploadRequestKey(claims.storeId, data.photoId)).catch(() => {});
-  return { success: true, deleted: true };
+    await bucket.delete(key);
+    await bucket.delete(reuploadRequestKey(claims.storeId, data.photoId)).catch(() => {});
+    return { success: true, deleted: true };
+  });
 }
 
 /**
@@ -353,32 +395,34 @@ export async function requestPhotoReuploadR2(
     throw new AccessError('ID karyawan tidak valid.', 400);
   }
 
-  // 1. Remove stale buffer if present so fresh upload is unblocked
-  const key = relayObjectKey(claims.storeId, data.photoId);
-  await bucket.delete(key);
+  return withPhotoLock(claims.storeId, data.photoId, async () => {
+    // 1. Remove stale buffer if present so fresh upload is unblocked
+    const key = relayObjectKey(claims.storeId, data.photoId);
+    await bucket.delete(key);
 
-  // 2. Persist explicit reupload request in R2
-  const reqKey = reuploadRequestKey(claims.storeId, data.photoId);
-  const payload: PhotoReuploadRequest = {
-    storeId: claims.storeId,
-    photoId: data.photoId,
-    employeeId: data.employeeId,
-    operationId: data.operationId,
-    reason: data.reason || 'Pemilik toko meminta unggah ulang bukti foto absensi',
-    requestedAt: Date.now(),
-    ownerPublicKeyJwk: data.ownerPublicKeyJwk,
-  };
-
-  await bucket.put(reqKey, JSON.stringify(payload), {
-    customMetadata: {
+    // 2. Persist explicit reupload request in R2
+    const reqKey = reuploadRequestKey(claims.storeId, data.photoId);
+    const payload: PhotoReuploadRequest = {
       storeId: claims.storeId,
-      employeeId: data.employeeId,
       photoId: data.photoId,
-      requestedAt: String(Date.now()),
-    },
-  });
+      employeeId: data.employeeId,
+      operationId: data.operationId,
+      reason: data.reason || 'Pemilik toko meminta unggah ulang bukti foto absensi',
+      requestedAt: Date.now(),
+      ownerPublicKeyJwk: data.ownerPublicKeyJwk,
+    };
 
-  return { success: true, requested: true, photoId: data.photoId };
+    await bucket.put(reqKey, JSON.stringify(payload), {
+      customMetadata: {
+        storeId: claims.storeId,
+        employeeId: data.employeeId,
+        photoId: data.photoId,
+        requestedAt: String(Date.now()),
+      },
+    });
+
+    return { success: true, requested: true, photoId: data.photoId };
+  });
 }
 
 /**
@@ -411,6 +455,39 @@ export async function checkPhotoReuploadR2(
   } catch {
     return { hasRequest: false };
   }
+}
+
+/**
+ * Lists all active re-upload requests targeted for the calling employee.
+ * Uses prefix listing if supported by the R2 bucket.
+ */
+export async function listPendingReuploadRequestsR2(
+  bucket: RelayR2Bucket,
+  claims: AccessClaims
+): Promise<{ success: boolean; requests: PhotoReuploadRequest[] }> {
+  if (!claims.storeId || !claims.employeeId) {
+    throw new AccessError('Akses tidak sah.', 401);
+  }
+
+  const prefix = `relay/${claims.storeId}/requests/`;
+  const requests: PhotoReuploadRequest[] = [];
+
+  if (typeof bucket.list === 'function') {
+    const listRes = await bucket.list({ prefix, limit: 100 });
+    for (const item of listRes.objects || []) {
+      const obj = await bucket.get(item.key);
+      if (obj) {
+        try {
+          const req = JSON.parse(await obj.text()) as PhotoReuploadRequest;
+          if (req.employeeId === claims.employeeId) {
+            requests.push(req);
+          }
+        } catch {}
+      }
+    }
+  }
+
+  return { success: true, requests };
 }
 
 /**

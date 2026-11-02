@@ -349,7 +349,8 @@ export async function syncPendingAttendancePhotos(
     ? pending.filter(record => record.employeeId === employeeId)
     : pending;
 
-  const readyPhotos = options?.checkReuploads
+  const shouldCheckReuploads = options?.checkReuploads !== false;
+  const readyPhotos = shouldCheckReuploads
     ? await db
         .table<AttendancePhotoRecord>('attendancePhotos')
         .where('status')
@@ -407,32 +408,67 @@ export async function syncPendingAttendancePhotos(
     } catch {}
   }
 
-  // 3. Process reupload requests if checked
-  for (const record of targetReady) {
-    if (!record.blob || typeof record.blob === 'string') continue;
-
+  // 3. Process reupload requests if ready photos exist
+  if (targetReady.length > 0) {
+    let handledByBatch = false;
     try {
-      const check = await client.call<{ hasRequest: boolean; request?: { ownerPublicKeyJwk?: JsonWebKey } }>(
-        'photo.relay.reupload_check',
-        { photoId: record.id }
+      const batchRes = await client.call<{ success: boolean; requests: Array<{ photoId: string; ownerPublicKeyJwk?: JsonWebKey }> }>(
+        'photo.relay.reupload_pending'
       );
+      if (batchRes && Array.isArray(batchRes.requests)) {
+        handledByBatch = true;
+        for (const req of batchRes.requests) {
+          const match = targetReady.find(r => r.id === req.photoId);
+          if (match && match.blob && typeof match.blob !== 'string') {
+            try {
+              const targetPub = req.ownerPublicKeyJwk
+                ? await importOwnerPublicKey(req.ownerPublicKeyJwk)
+                : ownerCryptoPub;
 
-      if (check.hasRequest) {
-        const targetPub = check.request?.ownerPublicKeyJwk
-          ? await importOwnerPublicKey(check.request.ownerPublicKeyJwk)
-          : ownerCryptoPub;
+              const rePacket = await encryptPhotoForOwner(match.blob, targetPub, {
+                storeId,
+                photoId: match.id,
+                operationId: match.operationId,
+                employeeId: match.employeeId,
+              });
 
-        const rePacket = await encryptPhotoForOwner(record.blob, targetPub, {
-          storeId,
-          photoId: record.id,
-          operationId: record.operationId,
-          employeeId: record.employeeId,
-        });
-
-        const rePush = await client.call<{ success: boolean }>('photo.relay.push', { packet: rePacket });
-        if (rePush.success) reuploaded++;
+              const rePush = await client.call<{ success: boolean }>('photo.relay.push', { packet: rePacket });
+              if (rePush.success) reuploaded++;
+            } catch {}
+          }
+        }
       }
     } catch {}
+
+    // Fallback: per-photo query if batch endpoint was unavailable
+    if (!handledByBatch) {
+      for (const record of targetReady) {
+        if (!record.blob || typeof record.blob === 'string') continue;
+
+        try {
+          const check = await client.call<{ hasRequest: boolean; request?: { ownerPublicKeyJwk?: JsonWebKey } }>(
+            'photo.relay.reupload_check',
+            { photoId: record.id }
+          );
+
+          if (check.hasRequest) {
+            const targetPub = check.request?.ownerPublicKeyJwk
+              ? await importOwnerPublicKey(check.request.ownerPublicKeyJwk)
+              : ownerCryptoPub;
+
+            const rePacket = await encryptPhotoForOwner(record.blob, targetPub, {
+              storeId,
+              photoId: record.id,
+              operationId: record.operationId,
+              employeeId: record.employeeId,
+            });
+
+            const rePush = await client.call<{ success: boolean }>('photo.relay.push', { packet: rePacket });
+            if (rePush.success) reuploaded++;
+          }
+        } catch {}
+      }
+    }
   }
 
   return { pushed, reuploaded };
