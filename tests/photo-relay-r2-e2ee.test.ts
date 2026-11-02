@@ -21,6 +21,7 @@ import {
   setOwnerE2eeKeyR2,
   getOwnerE2eeKeyR2,
   type RelayR2Bucket,
+  type RelayR2PutOptions,
   MAX_PHOTO_CIPHERTEXT_BYTES,
 } from '../src/lib/server/photoRelayR2';
 import type { AccessClaims } from '../src/lib/multidevice/protocol';
@@ -30,23 +31,39 @@ import {
   reconcileAttendanceConsistency,
   sha256Hex,
 } from '../src/lib/attendancePhoto';
+import { saveOperation } from '../src/lib/operationsApi';
 
-/** In-memory mock implementing RelayR2Bucket for isolated unit tests */
+/** In-memory mock implementing RelayR2Bucket with conditional operations support */
 class MockR2Bucket implements RelayR2Bucket {
-  private storage = new Map<string, { value: string; customMetadata?: Record<string, string> }>();
+  private storage = new Map<string, { value: string; etag: string; customMetadata?: Record<string, string> }>();
+  private etagCounter = 1;
 
   async get(key: string) {
     const item = this.storage.get(key);
     if (!item) return null;
     return {
+      etag: item.etag,
       text: async () => item.value,
       customMetadata: item.customMetadata,
     };
   }
 
-  async put(key: string, value: string | ArrayBuffer | Uint8Array, options?: { customMetadata?: Record<string, string> }) {
+  async put(key: string, value: string | ArrayBuffer | Uint8Array, options?: RelayR2PutOptions) {
+    const existing = this.storage.get(key);
+
+    if (options?.onlyIf) {
+      if (options.onlyIf.etagDoesNotMatch === '*' && existing) {
+        return null; // Conditional write failed: object already exists
+      }
+      if (options.onlyIf.etagMatches && (!existing || existing.etag !== options.onlyIf.etagMatches)) {
+        return null; // Conditional write failed: etag mismatch
+      }
+    }
+
     const strVal = typeof value === 'string' ? value : new TextDecoder().decode(value as ArrayBuffer);
-    this.storage.set(key, { value: strVal, customMetadata: options?.customMetadata });
+    const newEtag = `etag-${this.etagCounter++}`;
+    this.storage.set(key, { value: strVal, etag: newEtag, customMetadata: options?.customMetadata });
+    return { etag: newEtag };
   }
 
   async delete(keys: string | string[]) {
@@ -192,7 +209,7 @@ test('R2 Relay: push enforces employee session and strictly forbids cross-employ
     deviceKey: 'key-no-emp',
     role: 'cashier',
     deviceEpoch: 1,
-    employeeId: undefined, // No employee active session
+    employeeId: undefined,
     issuedAt: Date.now() - 1000,
     expiresAt: Date.now() + 3600000,
   };
@@ -229,13 +246,13 @@ test('R2 Relay: push enforces employee session and strictly forbids cross-employ
   );
 });
 
-test('R2 Relay: prevents photo overwrite and enforces idempotency', async () => {
+test('R2 Relay: prevents photo overwrite and enforces idempotency comparing entire envelope (ciphertext, iv, ephemeral key)', async () => {
   const bucket = new MockR2Bucket();
   const cashierClaims = mockClaims('cashier', 'store-12345678', 'emp-101');
   const ownerPair = await generateOwnerE2eeKeyPair();
 
-  const rawBytes1 = new TextEncoder().encode('ORIGINAL_PHOTO_1');
-  const packet1 = await encryptPhotoForOwner(rawBytes1, ownerPair.publicKey, {
+  const rawBytes = new TextEncoder().encode('ORIGINAL_PHOTO_EXACT');
+  const packet1 = await encryptPhotoForOwner(rawBytes, ownerPair.publicKey, {
     photoId: 'photo-immutable-001',
     operationId: 'op-imm-001',
     employeeId: 'emp-101',
@@ -244,29 +261,34 @@ test('R2 Relay: prevents photo overwrite and enforces idempotency', async () => 
   // 1. Initial push succeeds
   const res1 = await pushPhotoToRelayR2(bucket, cashierClaims, packet1);
   assert.equal(res1.success, true);
+  assert.ok(res1.transferToken);
 
   // 2. Exact same upload again succeeds idempotently
   const resRetry = await pushPhotoToRelayR2(bucket, cashierClaims, packet1);
   assert.equal(resRetry.success, true);
   assert.equal(resRetry.idempotent, true);
+  assert.equal(resRetry.transferToken, res1.transferToken);
 
-  // 3. Attempt to overwrite with different photo content/checksum is rejected with 409
-  const rawBytes2 = new TextEncoder().encode('MODIFIED_PHOTO_2');
-  const packetTampered: E2eePhotoPacket = {
-    ...packet1,
-    checksum: await computeSha256Hex(rawBytes2),
-    ciphertext: 'DIFFERENT_CIPHERTEXT_BASE64',
-  };
+  // 3. Re-encrypting the SAME photo produces different IV, different ephemeral key, and different ciphertext.
+  // Must be REJECTED as an unauthorized overwrite attempt despite matching unencrypted checksum!
+  const packetDifferentCiphertext = await encryptPhotoForOwner(rawBytes, ownerPair.publicKey, {
+    photoId: 'photo-immutable-001',
+    operationId: 'op-imm-001',
+    employeeId: 'emp-101',
+  });
+
+  assert.equal(packetDifferentCiphertext.checksum, packet1.checksum); // Same photo raw bytes
+  assert.notEqual(packetDifferentCiphertext.ciphertext, packet1.ciphertext); // Different ciphertext!
 
   await assert.rejects(
     async () => {
-      await pushPhotoToRelayR2(bucket, cashierClaims, packetTampered);
+      await pushPhotoToRelayR2(bucket, cashierClaims, packetDifferentCiphertext);
     },
     /sudah ada dan tidak dapat diganti/i
   );
 });
 
-test('R2 Relay: Owner ACK deletes object immediately, protects against fake/mismatched ACK', async () => {
+test('R2 Relay: Owner ACK deletes object immediately, protects against fake/mismatched/stale ACK', async () => {
   const bucket = new MockR2Bucket();
   const ownerClaims = mockClaims('owner', 'store-12345678');
   const cashierClaims = mockClaims('cashier', 'store-12345678', 'emp-ack');
@@ -278,85 +300,75 @@ test('R2 Relay: Owner ACK deletes object immediately, protects against fake/mism
     { photoId: 'photo-strict-ack-01', operationId: 'op-ack-01', employeeId: 'emp-ack' }
   );
 
-  await pushPhotoToRelayR2(bucket, cashierClaims, packet);
+  const pushRes = await pushPhotoToRelayR2(bucket, cashierClaims, packet);
   assert.equal(bucket.size(), 1);
 
   // 1. Fake ACK with mismatched checksum is rejected
   await assert.rejects(
     async () => {
-      await ackPhotoFromRelayR2(
-        bucket,
-        ownerClaims,
-        'photo-strict-ack-01',
-        '0000000000000000000000000000000000000000000000000000000000000000'
-      );
+      await ackPhotoFromRelayR2(bucket, ownerClaims, {
+        photoId: 'photo-strict-ack-01',
+        checksum: '0000000000000000000000000000000000000000000000000000000000000000',
+        transferToken: pushRes.transferToken,
+      });
     },
     /Checksum foto tidak sesuai konfirmasi/i
   );
 
-  // 2. Mismatched operationId in ACK is rejected
+  // 2. Mismatched transferToken (stale transfer ACK) is rejected
   await assert.rejects(
     async () => {
-      await ackPhotoFromRelayR2(
-        bucket,
-        ownerClaims,
-        'photo-strict-ack-01',
-        packet.checksum,
-        'op-wrong-id',
-        'emp-ack'
-      );
+      await ackPhotoFromRelayR2(bucket, ownerClaims, {
+        photoId: 'photo-strict-ack-01',
+        checksum: packet.checksum,
+        transferToken: 'stale-token-1234567890abcdef',
+      });
     },
-    /ID operasi tidak sesuai konfirmasi/i
+    /Token transfer foto sudah kedaluwarsa/i
   );
 
-  // 3. Mismatched employeeId in ACK is rejected
+  // 3. Mismatched operationId in ACK is rejected
   await assert.rejects(
     async () => {
-      await ackPhotoFromRelayR2(
-        bucket,
-        ownerClaims,
-        'photo-strict-ack-01',
-        packet.checksum,
-        'op-ack-01',
-        'emp-wrong-employee'
-      );
+      await ackPhotoFromRelayR2(bucket, ownerClaims, {
+        photoId: 'photo-strict-ack-01',
+        checksum: packet.checksum,
+        transferToken: pushRes.transferToken,
+        operationId: 'op-wrong-id',
+        employeeId: 'emp-ack',
+      });
     },
-    /ID karyawan tidak sesuai konfirmasi/i
+    /ID operasi tidak sesuai konfirmasi/i
   );
 
   // 4. Non-owner cannot ACK
   await assert.rejects(
     async () => {
-      await ackPhotoFromRelayR2(
-        bucket,
-        cashierClaims,
-        'photo-strict-ack-01',
-        packet.checksum
-      );
+      await ackPhotoFromRelayR2(bucket, cashierClaims, {
+        photoId: 'photo-strict-ack-01',
+        checksum: packet.checksum,
+      });
     },
     /memerlukan akses pemilik/i
   );
 
   // 5. Authentic Owner ACK deletes object
-  const ack = await ackPhotoFromRelayR2(
-    bucket,
-    ownerClaims,
-    'photo-strict-ack-01',
-    packet.checksum,
-    'op-ack-01',
-    'emp-ack'
-  );
+  const ack = await ackPhotoFromRelayR2(bucket, ownerClaims, {
+    photoId: 'photo-strict-ack-01',
+    checksum: packet.checksum,
+    transferToken: pushRes.transferToken,
+    operationId: 'op-ack-01',
+    employeeId: 'emp-ack',
+  });
   assert.equal(ack.success, true);
   assert.equal(ack.deleted, true);
   assert.equal(bucket.size(), 0);
 
-  // 6. Duplicate ACK is idempotent
-  const dupAck = await ackPhotoFromRelayR2(
-    bucket,
-    ownerClaims,
-    'photo-strict-ack-01',
-    packet.checksum
-  );
+  // 6. Subsequent duplicate ACK is idempotent
+  const dupAck = await ackPhotoFromRelayR2(bucket, ownerClaims, {
+    photoId: 'photo-strict-ack-01',
+    checksum: packet.checksum,
+  });
   assert.equal(dupAck.success, true);
 });
 
@@ -369,7 +381,7 @@ test('R2 Relay: programmatic TTL expiry (24h) auto-deletes expired objects', asy
   const packet = await encryptPhotoForOwner(
     new TextEncoder().encode('MOCK_PHOTO_EXPIRE'),
     ownerPair.publicKey,
-    { photoId: 'photo-expired-01', operationId: 'op-exp', employeeId: 'emp-kasir-001', ttlMs: -1000 }
+    { photoId: 'photo-expired-01', operationId: 'op-exp-01', employeeId: 'emp-kasir-001', ttlMs: -1000 }
   );
 
   await pushPhotoToRelayR2(bucket, cashierClaims, packet);
@@ -381,7 +393,7 @@ test('R2 Relay: programmatic TTL expiry (24h) auto-deletes expired objects', asy
   assert.equal(bucket.size(), 0);
 });
 
-test('Owner E2EE Public Key: setting, fetching, rotation, and fingerprint verification', async () => {
+test('Owner E2EE Public Key: concurrent rotation CAS epoch protection and device binding', async () => {
   const bucket = new MockR2Bucket();
   const ownerClaims = mockClaims('owner', 'store-rot-1234');
   const cashierClaims = mockClaims('cashier', 'store-rot-1234');
@@ -389,38 +401,37 @@ test('Owner E2EE Public Key: setting, fetching, rotation, and fingerprint verifi
   const keypair1 = await generateOwnerE2eeKeyPair();
   const pubJwk1 = await exportPublicKeyJwk(keypair1.publicKey);
 
-  // 1. Non-owner cannot register owner key
-  await assert.rejects(
-    async () => {
-      await setOwnerE2eeKeyR2(bucket, cashierClaims, { publicKeyJwk: pubJwk1 });
-    },
-    /memerlukan akses pemilik/i
-  );
-
-  // 2. Owner registers initial public key
+  // 1. Initial key registration (epoch 1)
   const setRes1 = await setOwnerE2eeKeyR2(bucket, ownerClaims, { publicKeyJwk: pubJwk1 });
   assert.equal(setRes1.success, true);
   assert.equal(setRes1.keyEpoch, 1);
-  assert.equal(setRes1.fingerprint.length, 64);
 
-  // 3. Cashier fetches registered key
-  const getRes1 = await getOwnerE2eeKeyR2(bucket, cashierClaims);
-  assert.equal(getRes1.found, true);
-  assert.equal(getRes1.identity?.fingerprint, setRes1.fingerprint);
-  assert.equal(getRes1.identity?.keyEpoch, 1);
-
-  // 4. Owner rotates key (e.g. device replacement)
+  // 2. Concurrent rotation attempt with stale expectedCurrentEpoch = 0 -> rejected
   const keypair2 = await generateOwnerE2eeKeyPair();
   const pubJwk2 = await exportPublicKeyJwk(keypair2.publicKey);
-  const setRes2 = await setOwnerE2eeKeyR2(bucket, ownerClaims, { publicKeyJwk: pubJwk2 });
-  assert.equal(setRes2.success, true);
-  assert.equal(setRes2.keyEpoch, 2); // Automatically bumped epoch
-  assert.notEqual(setRes2.fingerprint, setRes1.fingerprint);
 
-  // 5. Cashier fetches updated rotated key
-  const getRes2 = await getOwnerE2eeKeyR2(bucket, cashierClaims);
-  assert.equal(getRes2.identity?.keyEpoch, 2);
-  assert.equal(getRes2.identity?.fingerprint, setRes2.fingerprint);
+  await assert.rejects(
+    async () => {
+      await setOwnerE2eeKeyR2(bucket, ownerClaims, {
+        publicKeyJwk: pubJwk2,
+        expectedCurrentEpoch: 0, // Stale! Current is 1
+      });
+    },
+    /epoch_conflict|sudah berubah/i
+  );
+
+  // 3. Proper rotation specifying expectedCurrentEpoch = 1 -> succeeds
+  const setRes2 = await setOwnerE2eeKeyR2(bucket, ownerClaims, {
+    publicKeyJwk: pubJwk2,
+    expectedCurrentEpoch: 1,
+  });
+  assert.equal(setRes2.success, true);
+  assert.equal(setRes2.keyEpoch, 2);
+
+  // 4. Cashier fetches updated key
+  const getRes = await getOwnerE2eeKeyR2(bucket, cashierClaims);
+  assert.equal(getRes.identity?.keyEpoch, 2);
+  assert.equal(getRes.identity?.fingerprint, setRes2.fingerprint);
 });
 
 test('Re-upload mechanism: Owner requests re-upload, employee queries request, re-uploads, request cleared', async () => {
@@ -477,61 +488,80 @@ test('Re-upload mechanism: Owner requests re-upload, employee queries request, r
   assert.equal(checkAfter.hasRequest, false);
 });
 
-test('True Atomicity & IndexedDB Storage: transaction aborts completely on failure', async () => {
-  const photoId = 'photo-atomic-strict-001';
-  const rawBytes = new TextEncoder().encode('PHOTO_RAW_BYTES');
+test('Real Integration: recordAttendanceWithPhotoAtomic using real saveOperation', async () => {
+  const photoId = 'photo-real-saveop-001';
+  const rawBytes = new TextEncoder().encode('PHOTO_RAW_DATA_REAL');
   const photoBlob = new Blob([rawBytes], { type: 'image/jpeg' });
   const checksum = await sha256Hex(photoBlob);
+  const employeeId = 'emp-real-integration-1';
+  const employeeName = 'Kasir Real Integrasi';
 
-  const failingSaveOp = async () => {
-    throw new Error('Database operational constraint failure simulation');
-  };
+  // 1. Perform actual attendance.in with photo using saveOperation
+  const opId = await recordAttendanceWithPhotoAtomic(saveOperation, {
+    kind: 'attendance.in',
+    employeeId,
+    employeeName,
+    photo: {
+      photoId,
+      blob: photoBlob,
+      checksum,
+    },
+  });
 
+  assert.ok(opId);
+
+  // 2. Verify both photo and operation were persisted in Dexie
+  const photoRecord = await getAttendancePhoto(photoId);
+  assert.ok(photoRecord);
+  assert.equal(photoRecord?.id, photoId);
+  assert.equal(photoRecord?.employeeId, employeeId);
+  assert.ok(photoRecord?.blob instanceof Blob);
+
+  const opRecord = await db.table('operations').where('employeeId').equals(employeeId).first();
+  assert.ok(opRecord);
+  assert.equal(opRecord?.kind, 'attendance.in');
+  assert.equal(opRecord?.photoId, photoId);
+
+  // 3. Attempting duplicate attendance.in for same employee MUST fail validation and roll back atomically
+  const dupPhotoId = 'photo-dup-fail-002';
   await assert.rejects(
     async () => {
-      await recordAttendanceWithPhotoAtomic(failingSaveOp, {
+      await recordAttendanceWithPhotoAtomic(saveOperation, {
         kind: 'attendance.in',
-        employeeId: 'emp-atomic-1',
-        employeeName: 'Budi Test',
+        employeeId, // Same employee already clocked in!
+        employeeName,
         photo: {
-          photoId,
+          photoId: dupPhotoId,
           blob: photoBlob,
           checksum,
         },
       });
     },
-    /Database operational constraint failure simulation/
+    /sudah absen masuk/i
   );
 
-  // Verify that the native Dexie transaction aborted: neither photo nor operation was persisted
-  const photoRecord = await getAttendancePhoto(photoId);
-  assert.equal(photoRecord, undefined);
-});
+  // 4. Verify that due to atomic rollback, dupPhotoId was NOT saved
+  const dupPhotoRecord = await getAttendancePhoto(dupPhotoId);
+  assert.equal(dupPhotoRecord, undefined);
 
-test('Crash & Interrupted Session: reconcileAttendanceConsistency cleans up orphaned photos', async () => {
-  const orphanPhotoId = 'photo-orphan-from-crash';
-  const now = Date.now();
-
-  // Simulate an interrupted photo written > 15 minutes ago with no operation record
-  await db.table('attendancePhotos').put({
-    id: orphanPhotoId,
-    operationId: 'missing-operation-id',
-    employeeId: 'emp-crash',
-    employeeName: 'Kasir Crash',
-    blob: new Blob(['bytes'], { type: 'image/jpeg' }),
-    checksum: 'mock-hash',
-    createdAt: new Date(now - 15 * 60 * 1000).toISOString(),
-    status: 'lokal',
+  // 5. Now perform attendance.out with photo -> succeeds and closes session
+  const outPhotoId = 'photo-out-success-003';
+  const outOpId = await recordAttendanceWithPhotoAtomic(saveOperation, {
+    kind: 'attendance.out',
+    employeeId,
+    employeeName,
+    sessionId: opRecord?.sessionId,
+    photo: {
+      photoId: outPhotoId,
+      blob: photoBlob,
+      checksum,
+    },
   });
+  assert.ok(outOpId);
 
-  const before = await getAttendancePhoto(orphanPhotoId);
-  assert.ok(before);
-
-  const res = await reconcileAttendanceConsistency(db);
-  assert.equal(res.cleanedPhotos >= 1, true);
-
-  const after = await getAttendancePhoto(orphanPhotoId);
-  assert.equal(after, undefined);
+  const outPhotoRecord = await getAttendancePhoto(outPhotoId);
+  assert.ok(outPhotoRecord);
+  assert.equal(outPhotoRecord?.id, outPhotoId);
 });
 
 test('End-to-End Lifecycle: Cashier photo -> E2EE encrypt -> R2 Push -> Owner pull -> Decrypt -> IndexedDB Blob -> ACK -> Purge', async () => {

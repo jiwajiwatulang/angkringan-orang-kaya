@@ -5,17 +5,28 @@ import type { E2eePhotoPacket } from '../crypto/e2eePhoto';
 export const MAX_PHOTO_CIPHERTEXT_BYTES = 512 * 1024; // 512 KB cap per transit photo
 export const MAX_RELAY_TTL_MS = 24 * 60 * 60 * 1000; // 24-hour transit limit
 
-/** Minimal interface representing Cloudflare R2Bucket */
+/** Minimal interface representing Cloudflare R2Bucket with conditional operation support */
+export interface RelayR2PutOptions {
+  customMetadata?: Record<string, string>;
+  onlyIf?: {
+    etagMatches?: string;
+    etagDoesNotMatch?: string;
+  };
+}
+
+export interface RelayR2Object {
+  etag?: string;
+  text(): Promise<string>;
+  customMetadata?: Record<string, string>;
+}
+
 export interface RelayR2Bucket {
-  get(key: string): Promise<{
-    text(): Promise<string>;
-    customMetadata?: Record<string, string>;
-  } | null>;
+  get(key: string): Promise<RelayR2Object | null>;
   put(
     key: string,
     value: string | ArrayBuffer | Uint8Array,
-    options?: { customMetadata?: Record<string, string> }
-  ): Promise<unknown>;
+    options?: RelayR2PutOptions
+  ): Promise<RelayR2Object | null | unknown>;
   delete(key: string | string[]): Promise<void>;
 }
 
@@ -32,6 +43,7 @@ export interface PhotoReuploadRequest {
 export interface OwnerE2eeIdentity {
   storeId: string;
   deviceId: string;
+  deviceEpoch: number;
   publicKeyJwk: JsonWebKey;
   fingerprint: string;
   keyEpoch: number;
@@ -59,15 +71,51 @@ export function ownerKeyObjectKey(storeId: string): string {
   return `relay/${storeId}/owner-e2ee-key.json`;
 }
 
+/** Computes hex SHA-256 string from Uint8Array */
+async function sha256HexStr(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', bytes as BufferSource);
+  return Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
+ * Computes a canonical cryptographic hash representing the ENTIRE encrypted packet envelope.
+ * Any difference in ciphertext, IV, ephemeral public key, unencrypted checksum,
+ * employee ID, or operation ID produces a different envelope hash.
+ */
+export async function computePacketEnvelopeHash(packet: E2eePhotoPacket): Promise<string> {
+  const canonicalPubKey = packet.ephemeralPublicKeyJwk
+    ? JSON.stringify({
+        crv: packet.ephemeralPublicKeyJwk.crv,
+        kty: packet.ephemeralPublicKeyJwk.kty,
+        x: packet.ephemeralPublicKeyJwk.x,
+        y: packet.ephemeralPublicKeyJwk.y,
+      })
+    : '';
+
+  const parts = [
+    packet.photoId,
+    packet.operationId,
+    packet.employeeId,
+    packet.checksum.toLowerCase(),
+    packet.iv,
+    packet.ciphertext,
+    canonicalPubKey,
+  ].join('::');
+
+  return sha256HexStr(new TextEncoder().encode(parts));
+}
+
 /**
  * Pushes an encrypted attendance photo to temporary R2 transit storage.
- * Enforces employee ownership, size limits, idempotency, and overwrite prevention.
+ * Enforces employee ownership, size limits, full-envelope idempotency, and atomic overwrite prevention.
  */
 export async function pushPhotoToRelayR2(
   bucket: RelayR2Bucket,
   claims: AccessClaims,
   packet: E2eePhotoPacket
-): Promise<{ success: boolean; photoId: string; expiresAt: number; idempotent?: boolean }> {
+): Promise<{ success: boolean; photoId: string; expiresAt: number; transferToken: string; idempotent?: boolean }> {
   if (!claims.storeId) throw new AccessError('Akses tidak sah.', 401);
 
   // 1. Employee ownership check: must be active cashier session and match employeeId
@@ -81,7 +129,7 @@ export async function pushPhotoToRelayR2(
     throw new AccessError('storeId tidak sesuai.', 403);
   }
 
-  // 2. Data validation
+  // 2. Strict format validation
   if (!packet.photoId || !/^[a-zA-Z0-9_-]{4,80}$/.test(packet.photoId)) {
     throw new AccessError('ID foto tidak valid.', 400);
   }
@@ -104,58 +152,90 @@ export async function pushPhotoToRelayR2(
   }
 
   const key = relayObjectKey(claims.storeId, packet.photoId);
+  const envelopeHash = await computePacketEnvelopeHash(packet);
+  const now = Date.now();
+  const expiresAt = Math.min(now + MAX_RELAY_TTL_MS, packet.expiresAt || now + MAX_RELAY_TTL_MS);
+  const transferToken = await sha256HexStr(
+    new TextEncoder().encode(`${key}::${envelopeHash}::${expiresAt}::${now}`)
+  );
 
-  // 4. Overwrite prevention & Idempotency guard
+  // 4. Check existing object for true full-envelope idempotency
   const existing = await bucket.get(key);
   if (existing) {
-    const content = await existing.text();
-    try {
-      const existingPacket = JSON.parse(content) as E2eePhotoPacket;
-      if (
-        existingPacket.photoId === packet.photoId &&
-        existingPacket.operationId === packet.operationId &&
-        existingPacket.employeeId === packet.employeeId &&
-        existingPacket.checksum.toLowerCase() === packet.checksum.toLowerCase()
-      ) {
-        // Idempotent retry of identical payload
-        return { success: true, photoId: packet.photoId, expiresAt: existingPacket.expiresAt, idempotent: true };
-      }
-    } catch {}
-    // Reject attempt to replace or tamper with existing photo
+    const existingMetaHash = existing.customMetadata?.envelopeHash;
+    let existingEnvelopeHash = existingMetaHash;
+    if (!existingEnvelopeHash) {
+      try {
+        const parsed = JSON.parse(await existing.text()) as E2eePhotoPacket;
+        existingEnvelopeHash = await computePacketEnvelopeHash(parsed);
+      } catch {}
+    }
+
+    if (existingEnvelopeHash === envelopeHash) {
+      // True idempotent retry: whole envelope (ciphertext, IV, ephemeral key, checksum) is identical
+      return {
+        success: true,
+        photoId: packet.photoId,
+        expiresAt,
+        transferToken: existing.customMetadata?.transferToken || transferToken,
+        idempotent: true,
+      };
+    }
+
+    // Different ciphertext, IV, ephemeral key, or checksum: reject overwrite!
     throw new AccessError('Foto bukti dengan ID ini sudah ada dan tidak dapat diganti.', 409, 'photo_exists');
   }
 
-  const now = Date.now();
-  const expiresAt = Math.min(now + MAX_RELAY_TTL_MS, packet.expiresAt || (now + MAX_RELAY_TTL_MS));
-  const payloadWithExpiry = { ...packet, storeId: claims.storeId, expiresAt };
-
-  await bucket.put(key, JSON.stringify(payloadWithExpiry), {
+  // 5. Atomic conditional put: only write if object does not exist (prevents concurrent race conditions)
+  const payloadWithExpiry = { ...packet, storeId: claims.storeId, expiresAt, envelopeHash, transferToken };
+  const putResult = await bucket.put(key, JSON.stringify(payloadWithExpiry), {
+    onlyIf: { etagDoesNotMatch: '*' },
     customMetadata: {
       storeId: claims.storeId,
       employeeId: packet.employeeId,
       operationId: packet.operationId,
       checksum: packet.checksum,
+      envelopeHash,
+      transferToken,
       expiresAt: String(expiresAt),
       uploadedAt: String(now),
     },
   });
 
-  // 5. Clean up pending reupload request if this upload fulfills one
+  // If conditional write was blocked by a concurrent upload that raced between get() and put()
+  if (putResult === null) {
+    const postRace = await bucket.get(key);
+    if (postRace) {
+      const raceHash = postRace.customMetadata?.envelopeHash;
+      if (raceHash === envelopeHash) {
+        return {
+          success: true,
+          photoId: packet.photoId,
+          expiresAt,
+          transferToken: postRace.customMetadata?.transferToken || transferToken,
+          idempotent: true,
+        };
+      }
+    }
+    throw new AccessError('Foto bukti dengan ID ini sudah ada dan tidak dapat diganti.', 409, 'photo_exists');
+  }
+
+  // 6. Clean up pending reupload request if this upload fulfills one
   const reqKey = reuploadRequestKey(claims.storeId, packet.photoId);
   await bucket.delete(reqKey).catch(() => {});
 
-  return { success: true, photoId: packet.photoId, expiresAt };
+  return { success: true, photoId: packet.photoId, expiresAt, transferToken };
 }
 
 /**
  * Pulls an encrypted attendance photo from R2 transit storage.
- * Requires Owner role and performs programmatic TTL verification.
+ * Requires Owner role, performs programmatic TTL verification, and returns the transferToken.
  */
 export async function pullPhotoFromRelayR2(
   bucket: RelayR2Bucket,
   claims: AccessClaims,
   photoId: string
-): Promise<{ found: boolean; expired?: boolean; packet?: E2eePhotoPacket }> {
+): Promise<{ found: boolean; expired?: boolean; packet?: E2eePhotoPacket; transferToken?: string; envelopeHash?: string }> {
   requireOwner(claims);
   const key = relayObjectKey(claims.storeId, photoId);
   const obj = await bucket.get(key);
@@ -178,61 +258,73 @@ export async function pullPhotoFromRelayR2(
     return { found: false, expired: true };
   }
 
-  return { found: true, packet };
+  const transferToken = obj.customMetadata?.transferToken;
+  const envelopeHash = obj.customMetadata?.envelopeHash;
+
+  return { found: true, packet, transferToken, envelopeHash };
 }
 
 /**
- * Idempotently deletes an encrypted attendance photo from R2 after Owner verifies checksum.
- * Protects against stale transfer ACKs or mismatched requests.
+ * Idempotently deletes an encrypted attendance photo from R2 after Owner verifies checksum and integrity.
+ * Enforces transferToken binding so that stale transfers or in-flight newer uploads are never deleted.
  */
 export async function ackPhotoFromRelayR2(
   bucket: RelayR2Bucket,
   claims: AccessClaims,
-  photoId: string,
-  checksum: string,
-  operationId?: string,
-  employeeId?: string
-): Promise<{ success: boolean; deleted: boolean }> {
+  data: {
+    photoId: string;
+    checksum: string;
+    transferToken?: string;
+    envelopeHash?: string;
+    operationId?: string;
+    employeeId?: string;
+  }
+): Promise<{ success: boolean; deleted: boolean; alreadyDeleted?: boolean }> {
   requireOwner(claims);
-  if (!photoId || !/^[a-zA-Z0-9_-]{4,80}$/.test(photoId)) {
+  if (!data.photoId || !/^[a-zA-Z0-9_-]{4,80}$/.test(data.photoId)) {
     throw new AccessError('ID foto tidak valid.', 400);
   }
-  if (!checksum || !/^[a-f0-9]{64}$/i.test(checksum)) {
+  if (!data.checksum || !/^[a-f0-9]{64}$/i.test(data.checksum)) {
     throw new AccessError('Checksum tidak valid.', 400);
   }
 
-  const key = relayObjectKey(claims.storeId, photoId);
+  const key = relayObjectKey(claims.storeId, data.photoId);
   const existing = await bucket.get(key);
   if (!existing) {
     // Idempotent: already deleted or expired
-    return { success: true, deleted: true };
+    return { success: true, deleted: true, alreadyDeleted: true };
   }
 
   const content = await existing.text();
   try {
     const packet = JSON.parse(content) as E2eePhotoPacket;
-    if (packet.checksum && packet.checksum.toLowerCase() !== checksum.toLowerCase()) {
+    if (packet.checksum && packet.checksum.toLowerCase() !== data.checksum.toLowerCase()) {
       throw new AccessError('Checksum foto tidak sesuai konfirmasi.', 400);
     }
-    if (operationId && packet.operationId && packet.operationId !== operationId) {
+    if (data.operationId && packet.operationId && packet.operationId !== data.operationId) {
       throw new AccessError('ID operasi tidak sesuai konfirmasi transfer.', 400);
     }
-    if (employeeId && packet.employeeId && packet.employeeId !== employeeId) {
+    if (data.employeeId && packet.employeeId && packet.employeeId !== data.employeeId) {
       throw new AccessError('ID karyawan tidak sesuai konfirmasi transfer.', 400);
+    }
+
+    // Transfer token protection: if provided, must match existing metadata (prevents deleting newer in-flight transfer)
+    const existingToken = existing.customMetadata?.transferToken;
+    if (data.transferToken && existingToken && data.transferToken !== existingToken) {
+      throw new AccessError('Token transfer foto sudah kedaluwarsa atau digantikan transfer baru.', 409, 'stale_transfer');
     }
   } catch (e) {
     if (e instanceof AccessError) throw e;
   }
 
   await bucket.delete(key);
-  await bucket.delete(reuploadRequestKey(claims.storeId, photoId)).catch(() => {});
+  await bucket.delete(reuploadRequestKey(claims.storeId, data.photoId)).catch(() => {});
   return { success: true, deleted: true };
 }
 
 /**
  * Allows the Owner to request a re-upload for an uncollected attendance photo
  * (e.g. after Owner device replacement or key rotation).
- * Records an explicit re-upload request in R2 readable by employee device.
  */
 export async function requestPhotoReuploadR2(
   bucket: RelayR2Bucket,
@@ -316,11 +408,17 @@ export async function checkPhotoReuploadR2(
 /**
  * Registers or rotates the Owner's E2EE public key.
  * Only the authentic Owner can set the public key.
+ * Protects against concurrent rotation via CAS (Compare-And-Swap) epoch checking
+ * and conditional R2 write.
  */
 export async function setOwnerE2eeKeyR2(
   bucket: RelayR2Bucket,
   claims: AccessClaims,
-  data: { publicKeyJwk: JsonWebKey; keyEpoch?: number }
+  data: {
+    publicKeyJwk: JsonWebKey;
+    keyEpoch?: number;
+    expectedCurrentEpoch?: number;
+  }
 ): Promise<{ success: boolean; fingerprint: string; keyEpoch: number; rotatedAt: number }> {
   requireOwner(claims);
   if (!data.publicKeyJwk || typeof data.publicKeyJwk !== 'object') {
@@ -331,17 +429,33 @@ export async function setOwnerE2eeKeyR2(
   }
 
   const key = ownerKeyObjectKey(claims.storeId);
-  let nextEpoch = data.keyEpoch || 1;
-
   const existing = await bucket.get(key);
+  let currentEpoch = 0;
+  let existingDeviceEpoch = 0;
+
   if (existing) {
     try {
       const existingData = JSON.parse(await existing.text()) as OwnerE2eeIdentity;
       if (typeof existingData.keyEpoch === 'number') {
-        nextEpoch = Math.max(nextEpoch, existingData.keyEpoch + 1);
+        currentEpoch = existingData.keyEpoch;
+      }
+      if (typeof existingData.deviceEpoch === 'number') {
+        existingDeviceEpoch = existingData.deviceEpoch;
       }
     } catch {}
+
+    // Concurrent rotation protection: client specified expectedCurrentEpoch must match
+    if (
+      typeof data.expectedCurrentEpoch === 'number' &&
+      data.expectedCurrentEpoch !== currentEpoch
+    ) {
+      throw new AccessError('Versi kunci toko sudah berubah. Muat ulang dan coba lagi.', 409, 'epoch_conflict');
+    }
   }
+
+  const nextEpoch = (typeof data.keyEpoch === 'number' && data.keyEpoch > currentEpoch)
+    ? data.keyEpoch
+    : currentEpoch + 1;
 
   // Compute SHA-256 fingerprint of canonical JWK
   const canonicalJwkStr = JSON.stringify({
@@ -350,27 +464,37 @@ export async function setOwnerE2eeKeyR2(
     x: data.publicKeyJwk.x,
     y: data.publicKeyJwk.y,
   });
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalJwkStr));
-  const fingerprint = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const fingerprint = await sha256HexStr(new TextEncoder().encode(canonicalJwkStr));
 
   const now = Date.now();
   const identity: OwnerE2eeIdentity = {
     storeId: claims.storeId,
     deviceId: claims.deviceId,
+    deviceEpoch: claims.deviceEpoch,
     publicKeyJwk: data.publicKeyJwk,
     fingerprint,
     keyEpoch: nextEpoch,
     rotatedAt: now,
   };
 
-  await bucket.put(key, JSON.stringify(identity), {
+  // Atomic conditional write: etagMatches if existing, or etagDoesNotMatch if initial
+  const putResult = await bucket.put(key, JSON.stringify(identity), {
+    onlyIf: existing?.etag
+      ? { etagMatches: existing.etag }
+      : { etagDoesNotMatch: '*' },
     customMetadata: {
       storeId: claims.storeId,
+      deviceId: claims.deviceId,
+      deviceEpoch: String(claims.deviceEpoch),
       fingerprint,
       keyEpoch: String(nextEpoch),
       rotatedAt: String(now),
     },
   });
+
+  if (putResult === null) {
+    throw new AccessError('Terjadi konflik perubahan kunci bersamaan. Coba lagi.', 409, 'epoch_conflict');
+  }
 
   return { success: true, fingerprint, keyEpoch: nextEpoch, rotatedAt: now };
 }

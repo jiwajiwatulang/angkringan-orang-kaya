@@ -47,7 +47,14 @@ export async function handleMultiDevice(request:Request,env:MultiDeviceHttpEnv):
     }
     if(action==='photo.relay.ack'){
       if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
-      return response(await ackPhotoFromRelayR2(env.PHOTOS_BUCKET,claims,String(data.photoId||''),String(data.checksum||''),data.operationId?String(data.operationId):undefined,data.employeeId?String(data.employeeId):undefined));
+      return response(await ackPhotoFromRelayR2(env.PHOTOS_BUCKET,claims,{
+        photoId:String(data.photoId||''),
+        checksum:String(data.checksum||''),
+        transferToken:data.transferToken?String(data.transferToken):undefined,
+        envelopeHash:data.envelopeHash?String(data.envelopeHash):undefined,
+        operationId:data.operationId?String(data.operationId):undefined,
+        employeeId:data.employeeId?String(data.employeeId):undefined,
+      }));
     }
     if(action==='photo.relay.reupload'){
       if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
@@ -59,7 +66,11 @@ export async function handleMultiDevice(request:Request,env:MultiDeviceHttpEnv):
     }
     if(action==='photo.relay.owner_key.set'){
       if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
-      return response(await setOwnerE2eeKeyR2(env.PHOTOS_BUCKET,claims,{publicKeyJwk:data.publicKeyJwk as any,keyEpoch:typeof data.keyEpoch==='number'?data.keyEpoch:undefined}));
+      return response(await setOwnerE2eeKeyR2(env.PHOTOS_BUCKET,claims,{
+        publicKeyJwk:data.publicKeyJwk as any,
+        keyEpoch:typeof data.keyEpoch==='number'?data.keyEpoch:undefined,
+        expectedCurrentEpoch:typeof data.expectedCurrentEpoch==='number'?data.expectedCurrentEpoch:undefined,
+      }));
     }
     if(action==='photo.relay.owner_key.get'){
       if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);

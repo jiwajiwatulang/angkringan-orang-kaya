@@ -1,4 +1,15 @@
 import { db, type AttendancePhotoRecord } from './dexie';
+import {
+  generateOwnerE2eeKeyPair,
+  exportPublicKeyJwk,
+  exportPrivateKeyJwk,
+  importOwnerPublicKey,
+  importOwnerPrivateKey,
+  encryptPhotoForOwner,
+  decryptPhotoAsOwner,
+  type E2eePhotoPacket,
+} from './crypto/e2eePhoto';
+import type { DeviceClient } from './multidevice/client';
 
 export const MAX_PHOTO_BYTES = 250 * 1024; // 250 KB target cap
 export const DEFAULT_RETENTION_DAYS = 30;
@@ -192,20 +203,27 @@ export async function pruneExpiredAttendancePhotos(retentionDays = DEFAULT_RETEN
 
 /**
  * Transactional atomic wrapper to record attendance and store local photo in IndexedDB.
- * Executes both photo staging and operation saving inside a single native Dexie transaction.
- * If anything fails or crashes, IndexedDB aborts the entire transaction atomically.
+ * Passes the photo directly to saveOpFn so access checks occur before opening the transaction,
+ * avoiding transaction inactivity or async boundary drops.
  */
 export async function recordAttendanceWithPhotoAtomic(
-  saveOpFn: (params: {
-    kind: 'attendance.in' | 'attendance.out';
-    employeeId: string;
-    employeeName: string;
-    sessionId?: string;
-    photoId?: string;
-    photoStatus?: 'lokal' | 'tanpa_foto';
-    photoChecksum?: string;
-    photoReason?: string;
-  }) => Promise<unknown>,
+  saveOpFn: (
+    operationInput: {
+      kind: 'attendance.in' | 'attendance.out';
+      employeeId: string;
+      employeeName: string;
+      sessionId?: string;
+      photoId?: string;
+      photoStatus?: 'lokal' | 'tanpa_foto';
+      photoChecksum?: string;
+      photoReason?: string;
+    },
+    photoInput?: {
+      photoId: string;
+      blob: Blob | string;
+      checksum: string;
+    }
+  ) => Promise<unknown>,
   params: {
     kind: 'attendance.in' | 'attendance.out';
     employeeId: string;
@@ -221,44 +239,32 @@ export async function recordAttendanceWithPhotoAtomic(
     };
   }
 ): Promise<unknown> {
-  return db.transaction(
-    'rw',
-    ['operations', 'orders', 'orderItems', 'shifts', 'cashMovements', 'auditLogs', 'attendancePhotos'],
-    async () => {
-      if (params.photo) {
-        const photoRecord: AttendancePhotoRecord = {
-          id: params.photo.photoId,
-          operationId: params.sessionId || params.photo.photoId,
-          employeeId: params.employeeId,
-          employeeName: params.employeeName,
-          blob: params.photo.blob, // Native Blob stored in IndexedDB
-          checksum: params.photo.checksum,
-          createdAt: new Date().toISOString(),
-          status: 'lokal',
-        };
-        await db.table<AttendancePhotoRecord>('attendancePhotos').put(photoRecord);
-
-        return await saveOpFn({
-          kind: params.kind,
-          employeeId: params.employeeId,
-          employeeName: params.employeeName,
-          sessionId: params.sessionId,
-          photoId: params.photo.photoId,
-          photoStatus: 'lokal',
-          photoChecksum: params.photo.checksum,
-        });
-      } else {
-        return await saveOpFn({
-          kind: params.kind,
-          employeeId: params.employeeId,
-          employeeName: params.employeeName,
-          sessionId: params.sessionId,
-          photoStatus: 'tanpa_foto',
-          photoReason: params.withoutPhoto?.reason || 'Tanpa keterangan',
-        });
+  const photoInput = params.photo
+    ? {
+        photoId: params.photo.photoId,
+        blob: params.photo.blob,
+        checksum: params.photo.checksum,
       }
-    }
-  );
+    : undefined;
+
+  const operationInput = {
+    kind: params.kind,
+    employeeId: params.employeeId,
+    employeeName: params.employeeName,
+    sessionId: params.sessionId,
+    ...(params.photo
+      ? {
+          photoId: params.photo.photoId,
+          photoStatus: 'lokal' as const,
+          photoChecksum: params.photo.checksum,
+        }
+      : {
+          photoStatus: 'tanpa_foto' as const,
+          photoReason: params.withoutPhoto?.reason || 'Tanpa keterangan',
+        }),
+  };
+
+  return await saveOpFn(operationInput, photoInput);
 }
 
 /**
@@ -276,7 +282,7 @@ export async function reconcileAttendanceConsistency(dexieDb = db): Promise<{ cl
       if (!p.blob || p.status === 'tanpa_foto') return false;
       if (opSessionIds.has(p.operationId) || opSessionIds.has(p.id)) return false;
       // Older than 10 minutes without matching operation is considered an interrupted orphan
-      return (now - Date.parse(p.createdAt)) > 10 * 60 * 1000;
+      return now - Date.parse(p.createdAt) > 10 * 60 * 1000;
     });
 
     if (orphans.length > 0) {
@@ -285,5 +291,187 @@ export async function reconcileAttendanceConsistency(dexieDb = db): Promise<{ cl
     return { cleanedPhotos: orphans.length };
   } catch {
     return { cleanedPhotos: 0 };
+  }
+}
+
+/**
+ * Retrieves or lazily initializes the Owner device's E2EE keypair in local device storage.
+ */
+export async function getOrCreateOwnerE2eeKeyPair(storeId: string): Promise<CryptoKeyPair> {
+  const privKeyKey = `sakunota_e2ee_priv_${storeId}`;
+  const pubKeyKey = `sakunota_e2ee_pub_${storeId}`;
+
+  const savedPrivJwk = typeof localStorage !== 'undefined' ? localStorage.getItem(privKeyKey) : null;
+  const savedPubJwk = typeof localStorage !== 'undefined' ? localStorage.getItem(pubKeyKey) : null;
+
+  if (savedPrivJwk && savedPubJwk) {
+    try {
+      const privateKey = await importOwnerPrivateKey(JSON.parse(savedPrivJwk));
+      const publicKey = await importOwnerPublicKey(JSON.parse(savedPubJwk));
+      return { privateKey, publicKey };
+    } catch {}
+  }
+
+  // Generate new keypair
+  const pair = await generateOwnerE2eeKeyPair();
+  if (typeof localStorage !== 'undefined') {
+    const privJwk = await exportPrivateKeyJwk(pair.privateKey);
+    const pubJwk = await exportPublicKeyJwk(pair.publicKey);
+    localStorage.setItem(privKeyKey, JSON.stringify(privJwk));
+    localStorage.setItem(pubKeyKey, JSON.stringify(pubJwk));
+  }
+  return pair;
+}
+
+/**
+ * Cashier device: syncs all pending local attendance photos to Cloudflare R2 relay.
+ * Runs non-blocking in background when connectivity is active.
+ */
+export async function syncPendingAttendancePhotos(
+  client: DeviceClient,
+  storeId: string,
+  employeeId?: string
+): Promise<{ pushed: number; reuploaded: number }> {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return { pushed: 0, reuploaded: 0 };
+  }
+
+  // 1. Fetch Owner's active public key
+  let ownerKeyInfo: { found: boolean; identity?: { publicKeyJwk: JsonWebKey } };
+  try {
+    ownerKeyInfo = await client.call<{ found: boolean; identity?: { publicKeyJwk: JsonWebKey } }>(
+      'photo.relay.owner_key.get'
+    );
+  } catch {
+    return { pushed: 0, reuploaded: 0 };
+  }
+
+  if (!ownerKeyInfo.found || !ownerKeyInfo.identity?.publicKeyJwk) {
+    return { pushed: 0, reuploaded: 0 };
+  }
+
+  const ownerCryptoPub = await importOwnerPublicKey(ownerKeyInfo.identity.publicKeyJwk);
+
+  // 2. Query local photos needing relay
+  const pending = await db
+    .table<AttendancePhotoRecord>('attendancePhotos')
+    .where('status')
+    .equals('lokal')
+    .toArray();
+
+  let pushed = 0;
+  let reuploaded = 0;
+
+  for (const record of pending) {
+    if (employeeId && record.employeeId !== employeeId) continue;
+    if (!record.blob || typeof record.blob === 'string') continue;
+
+    try {
+      const packet = await encryptPhotoForOwner(record.blob, ownerCryptoPub, {
+        storeId,
+        photoId: record.id,
+        operationId: record.operationId,
+        employeeId: record.employeeId,
+      });
+
+      const pushRes = await client.call<{ success: boolean; transferToken?: string }>(
+        'photo.relay.push',
+        { packet }
+      );
+
+      if (pushRes.success) {
+        await db.table('attendancePhotos').update(record.id, { status: 'siap_diambil' });
+        pushed++;
+      }
+    } catch {}
+  }
+
+  // 3. Check for any reupload requests
+  const readyPhotos = await db
+    .table<AttendancePhotoRecord>('attendancePhotos')
+    .where('status')
+    .equals('siap_diambil')
+    .toArray();
+
+  for (const record of readyPhotos) {
+    if (employeeId && record.employeeId !== employeeId) continue;
+    if (!record.blob || typeof record.blob === 'string') continue;
+
+    try {
+      const check = await client.call<{ hasRequest: boolean; request?: { ownerPublicKeyJwk?: JsonWebKey } }>(
+        'photo.relay.reupload_check',
+        { photoId: record.id }
+      );
+
+      if (check.hasRequest) {
+        const targetPub = check.request?.ownerPublicKeyJwk
+          ? await importOwnerPublicKey(check.request.ownerPublicKeyJwk)
+          : ownerCryptoPub;
+
+        const rePacket = await encryptPhotoForOwner(record.blob, targetPub, {
+          storeId,
+          photoId: record.id,
+          operationId: record.operationId,
+          employeeId: record.employeeId,
+        });
+
+        const rePush = await client.call<{ success: boolean }>('photo.relay.push', { packet: rePacket });
+        if (rePush.success) reuploaded++;
+      }
+    } catch {}
+  }
+
+  return { pushed, reuploaded };
+}
+
+/**
+ * Owner device: pulls, decrypts, saves to local IndexedDB, and ACKs a photo from R2 relay.
+ */
+export async function pullAndPersistAttendancePhoto(
+  client: DeviceClient,
+  photoId: string,
+  ownerPrivateKey: CryptoKey,
+  dexieDb = db
+): Promise<AttendancePhotoRecord | null> {
+  try {
+    const pull = await client.call<{
+      found: boolean;
+      expired?: boolean;
+      packet?: E2eePhotoPacket;
+      transferToken?: string;
+      envelopeHash?: string;
+    }>('photo.relay.pull', { photoId });
+
+    if (!pull.found || !pull.packet) return null;
+
+    const { photoBytes, checksum } = await decryptPhotoAsOwner(pull.packet, ownerPrivateKey);
+    const blob = new Blob([photoBytes as unknown as BlobPart], { type: 'image/jpeg' });
+
+    const record: AttendancePhotoRecord = {
+      id: pull.packet.photoId,
+      operationId: pull.packet.operationId,
+      employeeId: pull.packet.employeeId,
+      employeeName: '',
+      blob,
+      checksum,
+      createdAt: new Date(pull.packet.capturedAt).toISOString(),
+      status: 'tersimpan',
+    };
+
+    await dexieDb.table('attendancePhotos').put(record);
+
+    // Send ACK only after local IndexedDB save succeeds
+    await client.call('photo.relay.ack', {
+      photoId: pull.packet.photoId,
+      checksum,
+      transferToken: pull.transferToken,
+      envelopeHash: pull.envelopeHash,
+      operationId: pull.packet.operationId,
+      employeeId: pull.packet.employeeId,
+    });
+
+    return record;
+  } catch {
+    return null;
   }
 }

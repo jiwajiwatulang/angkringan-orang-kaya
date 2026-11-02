@@ -5,7 +5,8 @@ import { db } from '@/lib/dexie';
 import { getPosScope } from '@/lib/multidevice/posWire';
 import { saveOperation } from '@/lib/operationsApi';
 import { employeeAttendance } from '@/lib/operations';
-import { recordAttendanceWithPhotoAtomic } from '@/lib/attendancePhoto';
+import { recordAttendanceWithPhotoAtomic, syncPendingAttendancePhotos } from '@/lib/attendancePhoto';
+import { currentPosRuntime } from '@/lib/multidevice/posRuntime';
 import AttendanceCard from './AttendanceCard';
 import AttendanceCameraModal from './AttendanceCameraModal';
 import { BusyLabel } from '@/components/LoadingState';
@@ -51,6 +52,10 @@ export default function AttendanceButton({ variant = 'button' }: { variant?: 'bu
           checksum: result.checksum,
         },
       });
+      const runtime = currentPosRuntime();
+      if (runtime?.client && scope?.claims.storeId) {
+        void syncPendingAttendancePhotos(runtime.client, scope.claims.storeId, scope.claims.employeeId).catch(() => {});
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Absensi belum tersimpan');
       throw e;
@@ -75,6 +80,8 @@ export default function AttendanceButton({ variant = 'button' }: { variant?: 'bu
         sessionId,
         withoutPhoto: { reason },
       });
+
+
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Absensi belum tersimpan');
       throw e;

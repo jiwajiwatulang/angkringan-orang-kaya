@@ -18,14 +18,26 @@ export async function operationEmployees(){
   const shifts=await db.table('shifts').toArray();
   return [...new Set(shifts.map(s=>s.operatorName as string))].filter(Boolean).map(name=>({id:`local:${name}`,name,active:1}));
 }
-export async function saveOperation(input:Omit<OperationRecord,'id'|'at'>){
+export async function saveOperation(input:Omit<OperationRecord,'id'|'at'>, photoInput?: { photoId: string; blob: Blob | string; checksum: string }){
   await requireCashierWriteAccess();
   const scope=getPosScope();
   if(!input.kind.startsWith('attendance.')||scope?.claims.role!=='cashier')await requireMerchantAdmin();
   if(scope?.claims.role==='cashier'&&input.employeeId!==scope.claims.employeeId)throw new Error('Pilih akun kasir Anda');
   const row:OperationRecord={...input,at:new Date().toISOString(),sessionId:input.sessionId||crypto.randomUUID()};
   validateOperation(row);
-  return db.transaction('rw',['operations','orders','orderItems','shifts','cashMovements','auditLogs'],async()=>{
+  return db.transaction('rw',['operations','orders','orderItems','shifts','cashMovements','auditLogs','attendancePhotos'],async()=>{
+    if(photoInput){
+      await db.table('attendancePhotos').put({
+        id: photoInput.photoId,
+        operationId: row.sessionId,
+        employeeId: row.employeeId,
+        employeeName: row.employeeName,
+        blob: photoInput.blob,
+        checksum: photoInput.checksum,
+        createdAt: row.at,
+        status: 'lokal',
+      });
+    }
     const records:OperationRecord[]=await db.table('operations').toArray();
     if(row.kind.startsWith('attendance.')){
       const active=attendanceSummary(records).find(s=>s.employeeId===row.employeeId&&!s.end);

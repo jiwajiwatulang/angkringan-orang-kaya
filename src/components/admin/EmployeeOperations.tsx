@@ -6,7 +6,10 @@ import { getActiveShift } from '@/lib/api';
 import { operationEmployees, saveOperation } from '@/lib/operationsApi';
 import { attendanceSummary, loanBalance, commissionBalance, type OperationKind, type OperationRecord } from '@/lib/operations';
 import { cashierReport } from '@/lib/storeReports';
-import { getAttendancePhoto } from '@/lib/attendancePhoto';
+import { getAttendancePhoto, getOrCreateOwnerE2eeKeyPair, pullAndPersistAttendancePhoto } from '@/lib/attendancePhoto';
+import { exportPublicKeyJwk } from '@/lib/crypto/e2eePhoto';
+import { currentPosRuntime } from '@/lib/multidevice/posRuntime';
+import { getPosScope } from '@/lib/multidevice/posWire';
 import { Card, Stat, Tabs, field, primary, secondary, money, date } from '@/components/operations/Shared';
 import OwnerAccessSettings from '@/components/OwnerAccessSettings';
 import LoadingState, { BusyLabel } from '@/components/LoadingState';
@@ -24,6 +27,20 @@ export default function EmployeeOperations() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const scope = getPosScope();
+
+  // Auto-register Owner E2EE public key with R2 relay when Owner is active
+  useEffect(() => {
+    const runtime = currentPosRuntime();
+    if (runtime?.client && scope?.claims.role === 'owner' && typeof navigator !== 'undefined' && navigator.onLine) {
+      void getOrCreateOwnerE2eeKeyPair(scope.claims.storeId)
+        .then(async pair => {
+          const pubJwk = await exportPublicKeyJwk(pair.publicKey);
+          await runtime.client.call('photo.relay.owner_key.set', { publicKeyJwk: pubJwk }).catch(() => {});
+        })
+        .catch(() => {});
+    }
+  }, [scope]);
 
   // Attendance Photo viewer modal state
   const [viewingPhoto, setViewingPhoto] = useState<{ id?: string; label: string; name: string; at: string } | null>(null);
@@ -54,10 +71,27 @@ export default function EmployeeOperations() {
     }
     setLoadingPhoto(true);
     void getAttendancePhoto(viewingPhoto.id)
-      .then(res => setPhotoRecord(res || null))
+      .then(async res => {
+        if (res?.blob) {
+          setPhotoRecord(res);
+          return;
+        }
+        const runtime = currentPosRuntime();
+        if (runtime?.client && viewingPhoto.id && scope?.claims.role === 'owner') {
+          try {
+            const { privateKey } = await getOrCreateOwnerE2eeKeyPair(scope.claims.storeId);
+            const pulled = await pullAndPersistAttendancePhoto(runtime.client, viewingPhoto.id, privateKey, db);
+            if (pulled) {
+              setPhotoRecord(pulled);
+              return;
+            }
+          } catch {}
+        }
+        setPhotoRecord(res || null);
+      })
       .catch(() => setPhotoRecord(null))
       .finally(() => setLoadingPhoto(false));
-  }, [viewingPhoto]);
+  }, [viewingPhoto, scope]);
 
   const data = useLiveQuery(async () => {
     const [records, orders, payments, items, shifts, audits] = await Promise.all(

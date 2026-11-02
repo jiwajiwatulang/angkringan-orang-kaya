@@ -8,6 +8,7 @@ import type { AccessClaims } from '../multidevice/protocol';
 import {
   pullPhotoFromRelayR2,
   ackPhotoFromRelayR2,
+  computePacketEnvelopeHash,
   type RelayR2Bucket,
 } from '../server/photoRelayR2';
 
@@ -198,7 +199,7 @@ export async function decryptPhotoAsOwner(
 
 /**
  * Helper for Owner device: pulls, decrypts, validates integrity, persists to local IndexedDB as Blob,
- * and ONLY sends ACK after IndexedDB save succeeds.
+ * and ONLY sends cryptographically bound ACK after IndexedDB save succeeds.
  */
 export async function processAndAckIncomingPhoto(
   bucket: RelayR2Bucket,
@@ -231,15 +232,15 @@ export async function processAndAckIncomingPhoto(
     });
   }
 
-  // 4. Send ACK ONLY after local save succeeds
-  await ackPhotoFromRelayR2(
-    bucket,
-    ownerClaims,
-    pull.packet.photoId,
+  // 4. Send ACK ONLY after local save succeeds, bound to transferToken and envelopeHash
+  await ackPhotoFromRelayR2(bucket, ownerClaims, {
+    photoId: pull.packet.photoId,
     checksum,
-    pull.packet.operationId,
-    pull.packet.employeeId
-  );
+    transferToken: pull.transferToken,
+    envelopeHash: pull.envelopeHash,
+    operationId: pull.packet.operationId,
+    employeeId: pull.packet.employeeId,
+  });
 
   return { success: true, photoId: pull.packet.photoId, checksum };
 }
