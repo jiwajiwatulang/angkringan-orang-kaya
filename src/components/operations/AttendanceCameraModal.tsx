@@ -321,15 +321,6 @@ export default function AttendanceCameraModal({
                       {isMirrored ? 'Cermin: Aktif' : 'Cermin: Nonaktif'}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={flipCamera}
-                    disabled={busy}
-                    aria-label="Putar Kamera"
-                    className="rounded-full bg-slate-900/80 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur hover:bg-slate-800"
-                  >
-                    {facingMode === 'user' ? 'Kamera Belakang' : 'Kamera Depan'}
-                  </button>
                 </div>
               )}
             </div>
@@ -348,24 +339,35 @@ export default function AttendanceCameraModal({
               </button>
             )}
 
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowFallback(true)}
-                disabled={busy}
-                className="min-h-11 rounded-xl border border-line px-3 py-2 text-xs font-semibold text-fg disabled:opacity-50"
-              >
-                Absen Tanpa Foto
-              </button>
-              <button
-                type="button"
-                onClick={() => void snapPhoto()}
-                disabled={!ready || busy || Boolean(error)}
-                className="min-h-11 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
-              >
-                {busy ? <BusyLabel>Memproses...</BusyLabel> : 'Ambil Foto'}
-              </button>
-            </div>
+            {error ? (
+              <div className="space-y-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => void startCamera(facingMode)}
+                  className="min-h-11 w-full rounded-xl border border-line px-4 py-2 text-xs font-semibold text-fg"
+                >
+                  Coba Buka Kamera Lagi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFallback(true)}
+                  className="min-h-11 w-full rounded-xl bg-amber-600 hover:bg-amber-700 px-3 py-2 text-xs font-bold text-white shadow-sm"
+                >
+                  Absen Tanpa Foto (Kamera Bermasalah)
+                </button>
+              </div>
+            ) : (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => void snapPhoto()}
+                  disabled={!ready || busy || Boolean(error)}
+                  className="min-h-11 w-full rounded-xl bg-blue-600 hover:bg-blue-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50 shadow-sm transition-all active:scale-[0.99]"
+                >
+                  {busy ? <BusyLabel>Memproses Foto...</BusyLabel> : 'Ambil Foto Wajah'}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
