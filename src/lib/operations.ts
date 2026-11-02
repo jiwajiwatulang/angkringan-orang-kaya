@@ -7,6 +7,7 @@ export interface OperationRecord {
   orderId?:number; orderItemId?:number; stage?:KitchenStage; sessionId?:string; previousId?:string;
   rate?:number; basisAmount?:number; mdId?:string; lineSignature?:string;
   ignored?:boolean; activeSessionId?:string;
+  photoId?:string; photoStatus?:'lokal'|'siap_diambil'|'tanpa_foto'; photoReason?:string; photoChecksum?:string;
 }
 export function kitchenSignature(item:{qty?:number;namaMenu?:string;selectedModifiers?:unknown[]}){return JSON.stringify([item.qty,item.namaMenu||'',item.selectedModifiers||[]]);}
 export const kitchenStages:KitchenStage[]=['waiting','preparing','ready','served'];
@@ -47,10 +48,10 @@ export function commissionBalance(rows:OperationRecord[],employeeId:string,order
   return rows.filter(r=>r.employeeId===employeeId).reduce((n,r)=>n+(r.kind==='commission'?earnedCommission(r.amount||0,orders.find(o=>o.id===r.orderId)):r.kind==='commission.paid'?-(r.amount||0):0),0);
 }
 export function attendanceSummary(rows:OperationRecord[]){
-  const sessions=new Map<string,{employeeId:string;name:string;start:string;end?:string}>();
-  for(const row of rows)if(row.kind==='attendance.in'&&!row.ignored)sessions.set(row.sessionId!,{employeeId:row.employeeId,name:row.employeeName,start:row.at});
+  const sessions=new Map<string,{employeeId:string;name:string;start:string;end?:string;inPhotoId?:string;inPhotoStatus?:string;inPhotoReason?:string;inPhotoChecksum?:string;outPhotoId?:string;outPhotoStatus?:string;outPhotoReason?:string;outPhotoChecksum?:string}>();
+  for(const row of rows)if(row.kind==='attendance.in'&&!row.ignored)sessions.set(row.sessionId!,{employeeId:row.employeeId,name:row.employeeName,start:row.at,inPhotoId:row.photoId,inPhotoStatus:row.photoStatus,inPhotoReason:row.photoReason,inPhotoChecksum:row.photoChecksum});
   for(const row of rows)if(row.kind==='attendance.in'&&row.ignored&&row.activeSessionId){const session=sessions.get(row.activeSessionId);if(session&&session.employeeId===row.employeeId&&Date.parse(row.at)<Date.parse(session.start))session.start=row.at;}
-  for(const row of rows)if(row.kind==='attendance.out'&&!row.ignored){const session=sessions.get(row.sessionId!);if(session&&session.employeeId===row.employeeId)session.end=row.at;}
+  for(const row of rows)if(row.kind==='attendance.out'&&!row.ignored){const session=sessions.get(row.sessionId!);if(session&&session.employeeId===row.employeeId){session.end=row.at;session.outPhotoId=row.photoId;session.outPhotoStatus=row.photoStatus;session.outPhotoReason=row.photoReason;session.outPhotoChecksum=row.photoChecksum;}}
   return [...sessions.entries()].map(([id,s])=>({id,...s,minutes:s.end?Math.max(0,Math.round((Date.parse(s.end)-Date.parse(s.start))/60000)):null}));
 }
 export function employeeAttendance(rows:OperationRecord[],employeeId:string){

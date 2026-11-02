@@ -1,3 +1,15 @@
+export interface AttendancePhotoRecord {
+  id: string;
+  operationId: string;
+  employeeId: string;
+  employeeName: string;
+  blob?: string;
+  checksum?: string;
+  createdAt: string;
+  status: 'lokal' | 'siap_diambil' | 'tanpa_foto';
+  failureReason?: string;
+}
+
 import Dexie, { type Table as DexieTable } from 'dexie';
 import { isDemoMode } from './demoMode';
 import type { RetailDraftProduct } from './retailDraft';
@@ -284,6 +296,8 @@ if(partitionName){
 }
 // Additive only: preserve every existing receipt, shift and pending delivery.
 db.version(14).stores({operations:'++id,kind,employeeId,at,orderId,orderItemId,sessionId'});
+// Local offline-first attendance photo table (never pushed to Cloudflare ledger/transactions)
+db.version(15).stores({attendancePhotos:'id,operationId,employeeId,status,createdAt'});
 if(partitionName){
   installPosCapture(db,getPosScope);
 }
