@@ -56,6 +56,8 @@ export default function PosSessionBoundary({children}:{children:React.ReactNode}
     document.addEventListener('visibilitychange',visibility);window.addEventListener('pointerdown',activity,{passive:true});window.addEventListener('keydown',activity);
     return()=>{stopped=true;subscription.unsubscribe();loop.stop();if(scheduler.current===loop)scheduler.current=null;window.removeEventListener('online',connectivity);window.removeEventListener('offline',connectivity);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pointerdown',activity);window.removeEventListener('keydown',activity);};
   },[enabled,runtime]);
+  const changeEmployee=()=>{void leaveEmployee().then(()=>setRuntime(prev=>prev?{...prev,scope:undefined}:undefined));};
+  useEffect(()=>{const onEvt=()=>changeEmployee();window.addEventListener('sakunota:change-employee',onEvt);return()=>window.removeEventListener('sakunota:change-employee',onEvt);},[]);
   if(process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE!=='enabled')return <>{children}</>;
   if(!workspace||!posPartition())return <>{children}</>;
   if(!enabled||!ready)return <main className="mx-auto w-full max-w-md space-y-4 p-6">{error?<><p role="alert">{error}</p><button className="min-h-11 rounded-xl bg-blue-600 px-4 text-white" onClick={()=>void initialize()}>Coba Lagi</button></>:<LoadingState label="Memuat data kasir"/>}</main>;
@@ -64,8 +66,7 @@ export default function PosSessionBoundary({children}:{children:React.ReactNode}
   const cashierPage=typeof location!=='undefined'&&location.pathname==='/pos';
   const pendingCount=review?.pending??pending;
   const showStatus=failed||!online||pendingCount>0||!!review?.stock||!!review?.recovery;
-  const changeEmployee=()=>void leaveEmployee().then(()=>setRuntime(runtime?{...runtime,scope:undefined}:undefined));
-  useEffect(()=>{const onEvt=()=>changeEmployee();window.addEventListener('sakunota:change-employee',onEvt);return()=>window.removeEventListener('sakunota:change-employee',onEvt);},[runtime]);
+
   const notice=<>{showStatus&&<aside aria-label="Status data kasir" className="mb-5 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
     <div className="min-w-0 space-y-1"><StoreDataStatus pending={pendingCount} online={online} failed={failed} failurePhase={failure?.phase} needsReview={review?.stock}/>
       {pendingCount>0&&<p className="text-xs">Data tetap tersimpan di perangkat ini.</p>}
