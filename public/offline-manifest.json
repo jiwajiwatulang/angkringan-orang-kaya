@@ -1,6 +1,6 @@
 {
-  "version": "sakunota-pos-v2.8.1-1793588975316",
-  "generatedAt": "2026-11-02T03:09:35.316Z",
+  "version": "sakunota-pos-v2.8.1-1793591017347",
+  "generatedAt": "2026-11-02T03:43:37.347Z",
   "totalFiles": 188,
   "totalBytes": 6204512,
   "totalSizeFormatted": "5.92 MB",
@@ -65,9 +65,6 @@
     "/waiter.html"
   ],
   "assets": [
-    "/_next/static/3r8h3uz_Kxf4WsmYk838Y/_buildManifest.js",
-    "/_next/static/3r8h3uz_Kxf4WsmYk838Y/_clientMiddlewareManifest.js",
-    "/_next/static/3r8h3uz_Kxf4WsmYk838Y/_ssgManifest.js",
     "/_next/static/chunks/0-4unm_-ghxxp.js",
     "/_next/static/chunks/0-u-vysbk_6wq.js",
     "/_next/static/chunks/05otfs34qb252.js",
@@ -153,6 +150,9 @@
     "/_next/static/media/76b70a1dbe058eb5-s.1y4-pdgsjb-pw.woff2",
     "/_next/static/media/ba63f6a0e436df8e-s.3-6t-g6q0vh0a.woff2",
     "/_next/static/media/favicon.1lga9_j5r3_6a.ico",
+    "/_next/static/puRnRvkqTCr3xGwcKIEa1/_buildManifest.js",
+    "/_next/static/puRnRvkqTCr3xGwcKIEa1/_clientMiddlewareManifest.js",
+    "/_next/static/puRnRvkqTCr3xGwcKIEa1/_ssgManifest.js",
     "/apple-touch-icon.png",
     "/favicon.ico",
     "/file.svg",
@@ -198,9 +198,6 @@
   ],
   "allUrls": [
     "/",
-    "/_next/static/3r8h3uz_Kxf4WsmYk838Y/_buildManifest.js",
-    "/_next/static/3r8h3uz_Kxf4WsmYk838Y/_clientMiddlewareManifest.js",
-    "/_next/static/3r8h3uz_Kxf4WsmYk838Y/_ssgManifest.js",
     "/_next/static/chunks/0-4unm_-ghxxp.js",
     "/_next/static/chunks/0-u-vysbk_6wq.js",
     "/_next/static/chunks/05otfs34qb252.js",
@@ -286,6 +283,9 @@
     "/_next/static/media/76b70a1dbe058eb5-s.1y4-pdgsjb-pw.woff2",
     "/_next/static/media/ba63f6a0e436df8e-s.3-6t-g6q0vh0a.woff2",
     "/_next/static/media/favicon.1lga9_j5r3_6a.ico",
+    "/_next/static/puRnRvkqTCr3xGwcKIEa1/_buildManifest.js",
+    "/_next/static/puRnRvkqTCr3xGwcKIEa1/_clientMiddlewareManifest.js",
+    "/_next/static/puRnRvkqTCr3xGwcKIEa1/_ssgManifest.js",
     "/admin",
     "/admin.html",
     "/admin/dapur",

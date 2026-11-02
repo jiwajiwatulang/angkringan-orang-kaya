@@ -85,14 +85,14 @@ export function reuploadRequestKey(storeId: string, photoId: string): string {
   if (!storeId || !photoId || /[^a-zA-Z0-9_-]/.test(photoId)) {
     throw new AccessError('Parameter tidak valid.', 400);
   }
-  return `relay/${storeId}/requests/${photoId}.json`;
+  return `requests/${storeId}/${photoId}.json`;
 }
 
 export function ownerKeyObjectKey(storeId: string): string {
   if (!storeId || /[^a-zA-Z0-9_-]/.test(storeId)) {
     throw new AccessError('Parameter tidak valid.', 400);
   }
-  return `relay/${storeId}/owner-e2ee-key.json`;
+  return `keys/${storeId}/owner-e2ee-key.json`;
 }
 
 /**
@@ -571,7 +571,7 @@ export async function listPendingReuploadRequestsR2(
     throw new AccessError('Akses tidak sah.', 401);
   }
 
-  const prefix = `relay/${claims.storeId}/requests/`;
+  const prefix = `requests/${claims.storeId}/`;
   const requests: PhotoReuploadRequest[] = [];
 
   if (typeof bucket.list === 'function') {

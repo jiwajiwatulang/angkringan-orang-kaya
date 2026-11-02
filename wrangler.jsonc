@@ -28,5 +28,11 @@
       "database_id": "09a2c118-5c9d-49e8-a199-d14e930d02f2",
       "migrations_dir": "migrations"
     }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS_BUCKET",
+      "bucket_name": "sakunota-attendance-photos"
+    }
   ]
 }
