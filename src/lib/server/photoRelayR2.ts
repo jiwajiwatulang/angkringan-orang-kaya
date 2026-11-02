@@ -28,7 +28,11 @@ export interface RelayR2Bucket {
     options?: RelayR2PutOptions
   ): Promise<RelayR2Object | null | unknown>;
   delete(key: string | string[]): Promise<void>;
-  list?(options?: { prefix?: string; limit?: number }): Promise<{ objects: Array<{ key: string; customMetadata?: Record<string, string> }> }>;
+  list?(options?: {
+    prefix?: string;
+    limit?: number;
+    include?: Array<'httpMetadata' | 'customMetadata'>;
+  }): Promise<{ objects: Array<{ key: string; customMetadata?: Record<string, string> }> }>;
 }
 
 export interface PhotoReuploadRequest {
@@ -206,7 +210,7 @@ export async function pushPhotoToRelayR2(
 
   // 4. Check existing transfers under this photoId before write
   if (typeof bucket.list === 'function') {
-    const listRes = await bucket.list({ prefix, limit: 10 });
+    const listRes = await bucket.list({ prefix, limit: 10, include: ['customMetadata'] });
     const existingTransfers = listRes.objects || [];
 
     for (const obj of existingTransfers) {
@@ -275,7 +279,7 @@ export async function pushPhotoToRelayR2(
   // Ensure only one canonical active transfer version remains under prefix.
   let finalToken = transferToken;
   if (typeof bucket.list === 'function') {
-    const postList = await bucket.list({ prefix, limit: 10 });
+    const postList = await bucket.list({ prefix, limit: 10, include: ['customMetadata'] });
     const activeObjects = (postList.objects || []).filter(obj => {
       const expMeta = obj.customMetadata?.expiresAt;
       const isExpired = expMeta ? Number(expMeta) < now : false;
@@ -312,7 +316,8 @@ export async function pushPhotoToRelayR2(
           return b.key.localeCompare(a.key);
         });
         const winner = activeObjects[0];
-        finalToken = winner.customMetadata?.transferToken || transferToken;
+        const keyToken = winner.key.slice(prefix.length).replace(/\.json$/, '');
+        finalToken = winner.customMetadata?.transferToken || keyToken || transferToken;
         for (const loser of activeObjects.slice(1)) {
           await bucket.delete(loser.key).catch(() => {});
         }
@@ -344,7 +349,7 @@ export async function pullPhotoFromRelayR2(
   let targetMeta: Record<string, string> | undefined;
 
   if (typeof bucket.list === 'function') {
-    const listRes = await bucket.list({ prefix, limit: 10 });
+    const listRes = await bucket.list({ prefix, limit: 10, include: ['customMetadata'] });
     const objects = listRes.objects || [];
     if (objects.length === 0) {
       return { found: false };

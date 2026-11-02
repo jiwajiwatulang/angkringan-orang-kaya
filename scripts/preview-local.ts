@@ -3,13 +3,51 @@ import fs from 'node:fs';
 import path from 'node:path';
 import worker from '../src/worker';
 import { createD1NodeAdapter } from '../src/lib/server/d1';
+import type { RelayR2Bucket, RelayR2PutOptions } from '../src/lib/server/photoRelayR2';
 
-// Isolated preview: no production database, no real payment credentials.
+function createPreviewR2Bucket(): RelayR2Bucket {
+  const storage = new Map<string, { value: string; etag: string; customMetadata?: Record<string, string> }>();
+  let etagSeq = 1;
+  return {
+    async get(key: string) {
+      const item = storage.get(key);
+      if (!item) return null;
+      return { etag: item.etag, text: async () => item.value, customMetadata: item.customMetadata };
+    },
+    async put(key: string, value: string | ArrayBuffer | Uint8Array, options?: RelayR2PutOptions) {
+      const existing = storage.get(key);
+      if (options?.onlyIf) {
+        if (options.onlyIf.etagDoesNotMatch === '*' && existing) return null;
+        if (options.onlyIf.etagMatches && (!existing || existing.etag !== options.onlyIf.etagMatches)) return null;
+      }
+      const strVal = typeof value === 'string' ? value : new TextDecoder().decode(value as ArrayBuffer);
+      const etag = `etag-preview-${etagSeq++}`;
+      storage.set(key, { value: strVal, etag, customMetadata: options?.customMetadata });
+      return { etag };
+    },
+    async delete(keys: string | string[]) {
+      for (const k of (Array.isArray(keys) ? keys : [keys])) storage.delete(k);
+    },
+    async list(options?: { prefix?: string; limit?: number }) {
+      const prefix = options?.prefix || '';
+      const objects: Array<{ key: string; customMetadata?: Record<string, string> }> = [];
+      for (const [key, val] of storage.entries()) {
+        if (key.startsWith(prefix)) objects.push({ key, customMetadata: val.customMetadata });
+      }
+      return { objects };
+    },
+  };
+}
+
+// Isolated preview: no production database, no customer data, no real payment credentials.
 const root = path.resolve('out');
 const port = Number(process.env.PORT || 4370);
+const host = process.env.HOST || '127.0.0.1';
 const mime: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.webp': 'image/webp', '.txt': 'text/plain' };
 const env = {
   DB: createD1NodeAdapter(':memory:'),
+  PHOTOS_BUCKET: createPreviewR2Bucket(),
+  SAKUNOTA_MULTI_DEVICE: 'enabled',
   SAKUNOTA_OWNER_USERNAME: 'preview-owner', SAKUNOTA_OWNER_PASSWORD: 'Preview-Local-Only!',
   SAKUNOTA_OWNER_SALT: 'preview-only-salt', SAKUNOTA_SERVER_SECRET: 'preview-only-license-secret', SAKUNOTA_OWNER_JWT_SECRET: 'preview-only-session-secret',
   ASSETS: { fetch: async (request: Request | string) => {
@@ -28,12 +66,13 @@ http.createServer(async (req, res) => {
     const chunks: Buffer[] = []; for await (const chunk of req) chunks.push(Buffer.from(chunk));
     const body = Buffer.concat(chunks);
     const request = new Request(`http://localhost:${port}${req.url}`, { method: req.method, headers: req.headers as Record<string, string>, ...(body.length ? { body } : {}) });
-    const response = await worker.fetch(request, env, {});
+    const response = await worker.fetch(request, env as any, {});
     res.writeHead(response.status, Object.fromEntries(response.headers));
     res.end(Buffer.from(await response.arrayBuffer()));
   } catch (error) { console.error(error); res.writeHead(500); res.end('Local preview error'); }
-}).listen(port, '127.0.0.1', () => {
-  console.log(`SakuNota local preview: http://localhost:${port}`);
+}).listen(port, host, () => {
+  console.log(`SakuNota local preview: http://${host}:${port}`);
   console.log('Owner test login: preview-owner / Preview-Local-Only!');
+  console.log('Isolated R2 test bucket (PHOTOS_BUCKET) enabled in local memory.');
   console.log('Payments disabled: no Midtrans key. All owner data lives in local memory.');
 });

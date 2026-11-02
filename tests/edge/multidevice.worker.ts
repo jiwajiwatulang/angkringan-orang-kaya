@@ -4,8 +4,10 @@ import {handleMultiDevice} from '../../src/lib/server/multideviceHttp';
 import {proofMessage,publicKeyIdentity} from '../../src/lib/licenseProtocol';
 import {verifyAccess} from '../../src/lib/multidevice/offlineAccess';
 import {digest} from '../../src/lib/server/multideviceCrypto';
+import {generateOwnerE2eeKeyPair,exportPublicKeyJwk,importOwnerPublicKey,encryptPhotoForOwner,decryptPhotoAsOwner} from '../../src/lib/crypto/e2eePhoto';
+import type {RelayR2Bucket} from '../../src/lib/server/photoRelayR2';
 // Loopback-only runtime regression. This file is not part of the production Worker.
-export default {async fetch(request:Request,env:{DB:D1Database;MIGRATION:string}) {
+export default {async fetch(request:Request,env:{DB:D1Database;PHOTOS_BUCKET:RelayR2Bucket;MIGRATION:string}) {
   const steps:string[]=[];
   try{
     await initD1Tables(env.DB);
@@ -13,7 +15,7 @@ export default {async fetch(request:Request,env:{DB:D1Database;MIGRATION:string}
     const signer=crypto.generateKeyPairSync('ec',{namedCurve:'prime256v1'});
     const privateJwk=JSON.stringify(signer.privateKey.export({format:'jwk'}));
     const publicJwk=signer.publicKey.export({format:'jwk'}) as JsonWebKey;
-    const runtime={DB:env.DB,SAKUNOTA_MULTI_DEVICE:'enabled',SAKUNOTA_LICENSE_PRIVATE_JWK:privateJwk};
+    const runtime={DB:env.DB,PHOTOS_BUCKET:env.PHOTOS_BUCKET,SAKUNOTA_MULTI_DEVICE:'enabled',SAKUNOTA_LICENSE_PRIVATE_JWK:privateJwk};
     const device=()=>{const pair=crypto.generateKeyPairSync('ec',{namedCurve:'prime256v1'});return {id:crypto.randomUUID(),pair,identity:publicKeyIdentity(pair.publicKey.export({format:'jwk'}) as JsonWebKey)};};
     const proof=(d:ReturnType<typeof device>,action:string,key:string,token='')=>{const timestamp=Date.now(),nonce=crypto.randomUUID();return {publicKey:d.pair.publicKey.export({format:'jwk'}),timestamp,nonce,signature:crypto.sign('sha256',Buffer.from(proofMessage(action,key,d.id,token,timestamp,nonce)),{key:d.pair.privateKey.export({format:'pem',type:'pkcs8'}),dsaEncoding:'ieee-p1363'}).toString('base64url')};};
     const invoke=async(body:unknown,expected=200)=>{const response=await handleMultiDevice(new Request('http://localhost/api/store',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),runtime);const data=await response.json() as any;if(response.status!==expected)throw new Error(`${(body as any).action}: expected ${expected}, got ${response.status}: ${data.error}`);return data;};
@@ -36,7 +38,7 @@ export default {async fetch(request:Request,env:{DB:D1Database;MIGRATION:string}
     const cashier=await invoke({action:'pair.request',data:{code:pair.code,deviceId:c.id,deviceName:'Kasir'},proof:proof(c,'multi.pair',pair.code)});
     const cashierClaims=await verifyAccess(cashier.access,c.id,c.identity,publicJwk);cashier.claims=cashierClaims;steps.push('cashier pairing and browser grant');
     const id=crypto.randomUUID();await call(o,enrolled,'employee.save',{id,name:'Kasir Pagi',pin:'482953',active:true});
-    const employee=await call(c,cashier,'employee.login',{id,pin:'482953'});await verifyAccess(employee.access,c.id,c.identity,publicJwk);steps.push('employee PIN login');
+    const employee=await call(c,cashier,'employee.login',{id,pin:'482953'});const empClaims=await verifyAccess(employee.access,c.id,c.identity,publicJwk);employee.claims=empClaims;steps.push('employee PIN login');
     await call(c,employee,'pair.create',{},403);steps.push('cashier owner-action denied');
     const attendanceId=crypto.randomUUID(),attendanceEventId=crypto.randomUUID();
     const attendance={id:attendanceEventId,entityId:attendanceEventId,storeId:employee.claims.storeId,deviceId:c.id,operatorId:id,kind:'pos.commit',data:{rows:[{table:'operations',id:attendanceId,expectedVersion:0,value:{kind:'attendance.in',employeeId:id,employeeName:'Kasir Pagi',sessionId:crypto.randomUUID(),at:new Date().toISOString(),mdId:attendanceId,mdStoreId:employee.claims.storeId,mdDeviceId:c.id,mdOperatorId:id,mdVersion:1}}]}};
@@ -44,6 +46,48 @@ export default {async fetch(request:Request,env:{DB:D1Database;MIGRATION:string}
     if(!again.duplicate)throw new Error('Repeated attendance was not idempotent');
     const ownerPull=await call(o,enrolled,'pull',{cursor:0});if(!ownerPull.entities.some((r:any)=>r.kind==='pos_operations'&&r.id===attendanceId))throw new Error('Owner attendance missing');
     steps.push('attendance delivered exactly once and visible to owner');
+
+    // Real Cloudflare R2 Bucket Smoke Test: E2EE key registration, photo push, pull, reupload, and ACK buffer purge
+    const ownerE2ee=await generateOwnerE2eeKeyPair();
+    const ownerE2eePubJwk=await exportPublicKeyJwk(ownerE2ee.publicKey);
+    const keySetRes=await call(o,enrolled,'photo.relay.owner_key.set',{publicKeyJwk:ownerE2eePubJwk});
+    if(!keySetRes.success||keySetRes.keyEpoch!==1)throw new Error('R2 owner key set failed');
+    const keyGetRes=await call(c,employee,'photo.relay.owner_key.get',{});
+    if(!keyGetRes.found||!keyGetRes.identity?.publicKeyJwk)throw new Error('R2 owner key get failed');
+    const importedOwnerPub=await importOwnerPublicKey(keyGetRes.identity.publicKeyJwk);
+    const photoId=`photo-r2-edge-${crypto.randomUUID().slice(0,12)}`;
+    const rawPhotoBytes=new TextEncoder().encode('REAL_R2_WORKERD_CAMERA_JPEG_PAYLOAD_ANDROID_IOS');
+    const packet1=await encryptPhotoForOwner(rawPhotoBytes,importedOwnerPub,{storeId:employee.claims.storeId,photoId,operationId:attendanceId,employeeId:id});
+    const push1=await call(c,employee,'photo.relay.push',{packet:packet1});
+    if(!push1.success||!push1.transferToken)throw new Error('R2 photo push failed');
+    const pushIdemp=await call(c,employee,'photo.relay.push',{packet:packet1});
+    if(!pushIdemp.idempotent||pushIdemp.transferToken!==push1.transferToken)throw new Error('R2 photo idempotent retry failed');
+    steps.push('real R2 bucket photo push and idempotency verified');
+
+    const pull1=await call(o,enrolled,'photo.relay.pull',{photoId});
+    if(!pull1.found||pull1.transferToken!==push1.transferToken)throw new Error('R2 photo pull failed');
+    const dec1=await decryptPhotoAsOwner(pull1.packet,ownerE2ee.privateKey);
+    if(dec1.checksum!==packet1.checksum)throw new Error('R2 photo decrypt checksum mismatch');
+    steps.push('real R2 bucket owner pull and E2EE decryption verified');
+
+    await call(o,enrolled,'photo.relay.reupload',{photoId,employeeId:id,operationId:attendanceId,reason:'Edge R2 smoke test reupload',ownerPublicKeyJwk:ownerE2eePubJwk});
+    const pendingReuploads=await call(c,employee,'photo.relay.reupload_pending',{});
+    if(!pendingReuploads.requests?.some((r:any)=>r.photoId===photoId))throw new Error('R2 reupload_pending missing request');
+    const packet2=await encryptPhotoForOwner(rawPhotoBytes,importedOwnerPub,{storeId:employee.claims.storeId,photoId,operationId:attendanceId,employeeId:id});
+    const push2=await call(c,employee,'photo.relay.push',{packet:packet2});
+    if(!push2.success||push2.transferToken===push1.transferToken)throw new Error('R2 photo reupload failed');
+    steps.push('real R2 bucket reupload workflow verified');
+
+    // Stale ACK with old token must be rejected with 409 and must NOT delete the reuploaded photo
+    await call(o,enrolled,'photo.relay.ack',{photoId,checksum:packet1.checksum,transferToken:push1.transferToken,operationId:attendanceId,employeeId:id},409);
+    const pullAfterStaleAck=await call(o,enrolled,'photo.relay.pull',{photoId});
+    if(!pullAfterStaleAck.found||pullAfterStaleAck.transferToken!==push2.transferToken)throw new Error('Stale ACK corrupted active R2 transfer');
+    const ack2=await call(o,enrolled,'photo.relay.ack',{photoId,checksum:packet2.checksum,transferToken:push2.transferToken,operationId:attendanceId,employeeId:id});
+    if(!ack2.success||!ack2.deleted)throw new Error('R2 valid ACK failed');
+    const pullAfterValidAck=await call(o,enrolled,'photo.relay.pull',{photoId});
+    if(pullAfterValidAck.found)throw new Error('R2 buffer was not deleted after ACK');
+    steps.push('real R2 bucket ACK and buffer deletion verified');
+
     const forbidden=structuredClone(attendance);forbidden.id=crypto.randomUUID();forbidden.entityId=forbidden.id;forbidden.data.rows[0].id=crypto.randomUUID();Object.assign(forbidden.data.rows[0].value,{mdId:forbidden.data.rows[0].id,kind:'loan',amount:1000,source:'rekening'});
     await call(c,employee,'send',{event:forbidden},403);steps.push('cashier financial operation denied');
     await call(c,cashier,'refresh');steps.push('cashier grant renewal');
