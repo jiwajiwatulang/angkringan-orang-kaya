@@ -330,13 +330,42 @@ export async function getOrCreateOwnerE2eeKeyPair(storeId: string): Promise<Cryp
 export async function syncPendingAttendancePhotos(
   client: DeviceClient,
   storeId: string,
-  employeeId?: string
+  employeeId?: string,
+  options?: { checkReuploads?: boolean }
 ): Promise<{ pushed: number; reuploaded: number }> {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return { pushed: 0, reuploaded: 0 };
   }
 
-  // 1. Fetch Owner's active public key
+  // 1. Check local pending photos FIRST.
+  // If zero photos are pending upload or reupload check, produce ZERO network requests!
+  const pending = await db
+    .table<AttendancePhotoRecord>('attendancePhotos')
+    .where('status')
+    .equals('lokal')
+    .toArray();
+
+  const targetPending = employeeId
+    ? pending.filter(record => record.employeeId === employeeId)
+    : pending;
+
+  const readyPhotos = options?.checkReuploads
+    ? await db
+        .table<AttendancePhotoRecord>('attendancePhotos')
+        .where('status')
+        .equals('siap_diambil')
+        .toArray()
+    : [];
+
+  const targetReady = employeeId
+    ? readyPhotos.filter(record => record.employeeId === employeeId)
+    : readyPhotos;
+
+  if (targetPending.length === 0 && targetReady.length === 0) {
+    return { pushed: 0, reuploaded: 0 };
+  }
+
+  // 2. Fetch Owner's active public key only when there is work to do
   let ownerKeyInfo: { found: boolean; identity?: { publicKeyJwk: JsonWebKey } };
   try {
     ownerKeyInfo = await client.call<{ found: boolean; identity?: { publicKeyJwk: JsonWebKey } }>(
@@ -352,18 +381,10 @@ export async function syncPendingAttendancePhotos(
 
   const ownerCryptoPub = await importOwnerPublicKey(ownerKeyInfo.identity.publicKeyJwk);
 
-  // 2. Query local photos needing relay
-  const pending = await db
-    .table<AttendancePhotoRecord>('attendancePhotos')
-    .where('status')
-    .equals('lokal')
-    .toArray();
-
   let pushed = 0;
   let reuploaded = 0;
 
-  for (const record of pending) {
-    if (employeeId && record.employeeId !== employeeId) continue;
+  for (const record of targetPending) {
     if (!record.blob || typeof record.blob === 'string') continue;
 
     try {
@@ -386,15 +407,8 @@ export async function syncPendingAttendancePhotos(
     } catch {}
   }
 
-  // 3. Check for any reupload requests
-  const readyPhotos = await db
-    .table<AttendancePhotoRecord>('attendancePhotos')
-    .where('status')
-    .equals('siap_diambil')
-    .toArray();
-
-  for (const record of readyPhotos) {
-    if (employeeId && record.employeeId !== employeeId) continue;
+  // 3. Process reupload requests if checked
+  for (const record of targetReady) {
     if (!record.blob || typeof record.blob === 'string') continue;
 
     try {
@@ -422,6 +436,35 @@ export async function syncPendingAttendancePhotos(
   }
 
   return { pushed, reuploaded };
+}
+
+let photoListenersAttached = false;
+
+/**
+ * Attaches online and visibility listeners to trigger background retry
+ * for any pending attendance photos without polling or blocking normal operation.
+ */
+export function setupAttendancePhotoSyncListeners(
+  getClientInfo: () => { client: DeviceClient; storeId: string; employeeId?: string } | null | undefined
+): void {
+  if (typeof window === 'undefined' || photoListenersAttached) return;
+  photoListenersAttached = true;
+
+  const retryHandler = () => {
+    try {
+      const info = getClientInfo();
+      if (info?.client && info.storeId) {
+        syncPendingAttendancePhotos(info.client, info.storeId, info.employeeId).catch(() => {});
+      }
+    } catch {}
+  };
+
+  window.addEventListener('online', retryHandler);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      retryHandler();
+    }
+  });
 }
 
 /**

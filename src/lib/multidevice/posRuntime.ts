@@ -9,6 +9,7 @@ import {POS_TABLES,setPosScope,type PosScope} from './posWire';
 import {DEFAULT_SETTINGS,loadStoreSettingsAsync} from '../settings';
 import {AccessError} from './protocol';
 import {prepareLocalSession,rememberAccessRejection,wasAccessRejected} from './localReadiness';
+import {syncPendingAttendancePhotos,setupAttendancePhotoSyncListeners} from '../attendancePhoto';
 export interface PosRuntime {client:DeviceClient;synchronizer:PosSynchronizer;scope?:PosScope;employees?:EmployeeSessions}
 let current:PosRuntime|undefined;
 export function currentPosRuntime(){return current;}
@@ -39,6 +40,12 @@ export async function initializePosRuntime():Promise<PosRuntime>{
   }
   const client=new DeviceClient(access,claims),synchronizer=new PosSynchronizer(db,client);
   current={client,synchronizer};
+  setupAttendancePhotoSyncListeners(() => {
+    if (current?.client && current.scope?.claims.storeId) {
+      return { client: current.client, storeId: current.scope.claims.storeId, employeeId: current.scope.claims.employeeId };
+    }
+    return null;
+  });
   if(claims.role==='cashier'){
     current.employees=new EmployeeSessions(client,db,deviceId,identity);
     const employee=await current.employees.current();
@@ -78,7 +85,7 @@ export async function enterEmployee(employee:Awaited<ReturnType<EmployeeSessions
   current.scope={claims:employee.claims,access:employee.access,operatorName:employee.name};setPosScope(current.scope);
   current.synchronizer=new PosSynchronizer(db,activeClient);
   await db.table('posMeta').put({key:'cursor',value:0});
-  try{await prepareLocalSession(db,()=>current!.synchronizer.synchronize(),loadStoreSettingsAsync);return current;}
+  try{await prepareLocalSession(db,()=>current!.synchronizer.synchronize(),loadStoreSettingsAsync);syncPendingAttendancePhotos(activeClient,employee.claims.storeId,employee.claims.employeeId).catch(()=>{});return current;}
   catch(error){current.scope=undefined;setPosScope(undefined);await current.employees.logout();throw error;}
 }
 export async function leaveEmployee(){

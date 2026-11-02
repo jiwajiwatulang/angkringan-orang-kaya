@@ -287,6 +287,9 @@ export async function ackPhotoFromRelayR2(
   if (!data.checksum || !/^[a-f0-9]{64}$/i.test(data.checksum)) {
     throw new AccessError('Checksum tidak valid.', 400);
   }
+  if (!data.transferToken || typeof data.transferToken !== 'string' || !/^[a-f0-9]{64}$/i.test(data.transferToken)) {
+    throw new AccessError('Token transfer wajib disertakan untuk konfirmasi penerimaan foto.', 400);
+  }
 
   const key = relayObjectKey(claims.storeId, data.photoId);
   const existing = await bucket.get(key);
@@ -297,6 +300,17 @@ export async function ackPhotoFromRelayR2(
 
   const content = await existing.text();
   try {
+    // 1. Transfer token protection: strictly mandatory, must match existing metadata
+    const existingToken = existing.customMetadata?.transferToken;
+    if (!existingToken || data.transferToken !== existingToken) {
+      throw new AccessError('Token transfer foto sudah kedaluwarsa atau digantikan transfer baru.', 409, 'stale_transfer');
+    }
+
+    if (data.envelopeHash && existing.customMetadata?.envelopeHash && data.envelopeHash !== existing.customMetadata.envelopeHash) {
+      throw new AccessError('Hash paket foto tidak sesuai dengan transfer yang sedang aktif.', 409, 'stale_transfer');
+    }
+
+    // 2. Validate content matches confirmation
     const packet = JSON.parse(content) as E2eePhotoPacket;
     if (packet.checksum && packet.checksum.toLowerCase() !== data.checksum.toLowerCase()) {
       throw new AccessError('Checksum foto tidak sesuai konfirmasi.', 400);
@@ -306,12 +320,6 @@ export async function ackPhotoFromRelayR2(
     }
     if (data.employeeId && packet.employeeId && packet.employeeId !== data.employeeId) {
       throw new AccessError('ID karyawan tidak sesuai konfirmasi transfer.', 400);
-    }
-
-    // Transfer token protection: if provided, must match existing metadata (prevents deleting newer in-flight transfer)
-    const existingToken = existing.customMetadata?.transferToken;
-    if (data.transferToken && existingToken && data.transferToken !== existingToken) {
-      throw new AccessError('Token transfer foto sudah kedaluwarsa atau digantikan transfer baru.', 409, 'stale_transfer');
     }
   } catch (e) {
     if (e instanceof AccessError) throw e;
@@ -419,7 +427,7 @@ export async function setOwnerE2eeKeyR2(
     keyEpoch?: number;
     expectedCurrentEpoch?: number;
   }
-): Promise<{ success: boolean; fingerprint: string; keyEpoch: number; rotatedAt: number }> {
+): Promise<{ success: boolean; fingerprint: string; keyEpoch: number; rotatedAt: number; idempotent?: boolean }> {
   requireOwner(claims);
   if (!data.publicKeyJwk || typeof data.publicKeyJwk !== 'object') {
     throw new AccessError('Kunci publik tidak valid.', 400);
@@ -428,14 +436,24 @@ export async function setOwnerE2eeKeyR2(
     throw new AccessError('Format kunci ECDH P-256 tidak sesuai.', 400);
   }
 
+  // Compute SHA-256 fingerprint of canonical JWK
+  const canonicalJwkStr = JSON.stringify({
+    crv: data.publicKeyJwk.crv,
+    kty: data.publicKeyJwk.kty,
+    x: data.publicKeyJwk.x,
+    y: data.publicKeyJwk.y,
+  });
+  const fingerprint = await sha256HexStr(new TextEncoder().encode(canonicalJwkStr));
+
   const key = ownerKeyObjectKey(claims.storeId);
   const existing = await bucket.get(key);
   let currentEpoch = 0;
   let existingDeviceEpoch = 0;
 
   if (existing) {
+    let existingData: OwnerE2eeIdentity | null = null;
     try {
-      const existingData = JSON.parse(await existing.text()) as OwnerE2eeIdentity;
+      existingData = JSON.parse(await existing.text()) as OwnerE2eeIdentity;
       if (typeof existingData.keyEpoch === 'number') {
         currentEpoch = existingData.keyEpoch;
       }
@@ -444,7 +462,18 @@ export async function setOwnerE2eeKeyR2(
       }
     } catch {}
 
-    // Concurrent rotation protection: client specified expectedCurrentEpoch must match
+    // 1. Idempotent re-registration: exact same key! Do NOT increment keyEpoch
+    if (existingData && existingData.fingerprint === fingerprint) {
+      return {
+        success: true,
+        fingerprint: existingData.fingerprint,
+        keyEpoch: existingData.keyEpoch,
+        rotatedAt: existingData.rotatedAt,
+        idempotent: true,
+      };
+    }
+
+    // 2. Genuine key rotation: client specified expectedCurrentEpoch must match
     if (
       typeof data.expectedCurrentEpoch === 'number' &&
       data.expectedCurrentEpoch !== currentEpoch
@@ -456,15 +485,6 @@ export async function setOwnerE2eeKeyR2(
   const nextEpoch = (typeof data.keyEpoch === 'number' && data.keyEpoch > currentEpoch)
     ? data.keyEpoch
     : currentEpoch + 1;
-
-  // Compute SHA-256 fingerprint of canonical JWK
-  const canonicalJwkStr = JSON.stringify({
-    crv: data.publicKeyJwk.crv,
-    kty: data.publicKeyJwk.kty,
-    x: data.publicKeyJwk.x,
-    y: data.publicKeyJwk.y,
-  });
-  const fingerprint = await sha256HexStr(new TextEncoder().encode(canonicalJwkStr));
 
   const now = Date.now();
   const identity: OwnerE2eeIdentity = {
