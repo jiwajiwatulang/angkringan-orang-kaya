@@ -204,7 +204,7 @@ export async function pushPhotoToRelayR2(
   const reuploadReqObj = await bucket.get(reqKey);
   const hasReuploadRequest = !!reuploadReqObj;
 
-  // 4. Check existing transfers under this photoId
+  // 4. Check existing transfers under this photoId before write
   if (typeof bucket.list === 'function') {
     const listRes = await bucket.list({ prefix, limit: 10 });
     const existingTransfers = listRes.objects || [];
@@ -223,7 +223,6 @@ export async function pushPhotoToRelayR2(
 
       // Existing transfer with a different token/envelope
       if (!hasReuploadRequest) {
-        // Check if existing transfer is still valid/unexpired
         const expMeta = obj.customMetadata?.expiresAt;
         const isExpired = expMeta ? Number(expMeta) < now : false;
         if (!isExpired) {
@@ -231,8 +230,6 @@ export async function pushPhotoToRelayR2(
           throw new AccessError('Foto bukti dengan ID ini sudah ada dan tidak dapat diganti.', 409, 'photo_exists');
         }
       }
-      // Re-upload authorized or old transfer expired: clean up stale transfer
-      await bucket.delete(obj.key).catch(() => {});
     }
   } else {
     const directObj = await bucket.get(targetKey);
@@ -247,7 +244,7 @@ export async function pushPhotoToRelayR2(
     }
   }
 
-  // 5. Atomic conditional put: write this transfer version
+  // 5. Atomic conditional put: write this transfer version first before pruning old versions
   const payloadWithExpiry = { ...packet, storeId: claims.storeId, expiresAt, envelopeHash, transferToken };
   const putResult = await bucket.put(targetKey, JSON.stringify(payloadWithExpiry), {
     onlyIf: { etagDoesNotMatch: '*' },
@@ -274,12 +271,61 @@ export async function pushPhotoToRelayR2(
     };
   }
 
-  // 6. Clean up fulfilled reupload request
+  // 6. Post-write deterministic convergence across isolated Workers:
+  // Ensure only one canonical active transfer version remains under prefix.
+  let finalToken = transferToken;
+  if (typeof bucket.list === 'function') {
+    const postList = await bucket.list({ prefix, limit: 10 });
+    const activeObjects = (postList.objects || []).filter(obj => {
+      const expMeta = obj.customMetadata?.expiresAt;
+      const isExpired = expMeta ? Number(expMeta) < now : false;
+      if (isExpired && obj.key !== targetKey) {
+        bucket.delete(obj.key).catch(() => {});
+        return false;
+      }
+      return true;
+    });
+
+    if (activeObjects.length > 1) {
+      if (!hasReuploadRequest) {
+        // Concurrent initial uploads without reupload request: canonical first writer wins (uploadedAt ASC, key ASC)
+        activeObjects.sort((a, b) => {
+          const timeA = Number(a.customMetadata?.uploadedAt || 0);
+          const timeB = Number(b.customMetadata?.uploadedAt || 0);
+          if (timeA !== timeB) return timeA - timeB;
+          return a.key.localeCompare(b.key);
+        });
+        const winner = activeObjects[0];
+        if (winner.key !== targetKey) {
+          await bucket.delete(targetKey).catch(() => {});
+          throw new AccessError('Foto bukti dengan ID ini sudah ada dan tidak dapat diganti.', 409, 'photo_exists');
+        }
+        for (const loser of activeObjects.slice(1)) {
+          await bucket.delete(loser.key).catch(() => {});
+        }
+      } else {
+        // Concurrent reuploads: canonical latest transfer wins deterministically (uploadedAt DESC, key DESC)
+        activeObjects.sort((a, b) => {
+          const timeA = Number(a.customMetadata?.uploadedAt || 0);
+          const timeB = Number(b.customMetadata?.uploadedAt || 0);
+          if (timeB !== timeA) return timeB - timeA;
+          return b.key.localeCompare(a.key);
+        });
+        const winner = activeObjects[0];
+        finalToken = winner.customMetadata?.transferToken || transferToken;
+        for (const loser of activeObjects.slice(1)) {
+          await bucket.delete(loser.key).catch(() => {});
+        }
+      }
+    }
+  }
+
+  // 7. Clean up fulfilled reupload request
   if (hasReuploadRequest) {
     await bucket.delete(reqKey).catch(() => {});
   }
 
-  return { success: true, photoId: packet.photoId, expiresAt, transferToken };
+  return { success: true, photoId: packet.photoId, expiresAt, transferToken: finalToken };
 }
 
 /**
@@ -303,11 +349,12 @@ export async function pullPhotoFromRelayR2(
     if (objects.length === 0) {
       return { found: false };
     }
-    // Pick the latest transfer by uploadedAt
+    // Pick the latest transfer deterministically by (uploadedAt DESC, key DESC)
     objects.sort((a, b) => {
       const timeA = Number(a.customMetadata?.uploadedAt || 0);
       const timeB = Number(b.customMetadata?.uploadedAt || 0);
-      return timeB - timeA;
+      if (timeB !== timeA) return timeB - timeA;
+      return b.key.localeCompare(a.key);
     });
     targetKey = objects[0].key;
     targetMeta = objects[0].customMetadata;
