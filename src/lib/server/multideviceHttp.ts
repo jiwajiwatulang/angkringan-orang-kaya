@@ -2,9 +2,10 @@ import type {DeviceProof} from '../licenseProtocol';
 import {AccessError,requireOwner,type StoreEvent} from '../multidevice/protocol';
 import {enrollOwner,requestPairing,authorize,createPairing,approvePairing,revokeDevice,saveEmployee,employeeLogin,listAccess,renewCashierDevice,signingKey,type MultiDeviceEnv} from './multideviceAccess';
 import {pullEntities,submitEvent,recoverEvent} from './multideviceSync';
+import {pushPhotoToRelayR2,pullPhotoFromRelayR2,ackPhotoFromRelayR2,requestPhotoReuploadR2,type RelayR2Bucket} from './photoRelayR2';
 
 type RequestLimiter={limit(options:{key:string}):Promise<{success:boolean}>};
-export interface MultiDeviceHttpEnv extends MultiDeviceEnv {PUBLIC_RATE_LIMITER?:RequestLimiter;MULTI_DEVICE_RATE_LIMITER?:RequestLimiter}
+export interface MultiDeviceHttpEnv extends MultiDeviceEnv {PUBLIC_RATE_LIMITER?:RequestLimiter;MULTI_DEVICE_RATE_LIMITER?:RequestLimiter;PHOTOS_BUCKET?:RelayR2Bucket}
 function response(body:unknown,status=200){return Response.json(body,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'}});}
 async function boundedBody(request:Request){
   if(!request.headers.get('Content-Type')?.startsWith('application/json')) throw new AccessError('Permintaan tidak sesuai.',415);
@@ -36,6 +37,22 @@ export async function handleMultiDevice(request:Request,env:MultiDeviceHttpEnv):
     if(action==='refresh')return response(await renewCashierDevice(env,claims));
     if(action==='employee.login')return response(await employeeLogin(env,claims,{id:String(data.id||''),pin:String(data.pin||'')}));
     if(action==='pull')return response(await pullEntities(env.DB,claims,Number(data.cursor)));
+    if(action==='photo.relay.push'){
+      if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
+      return response(await pushPhotoToRelayR2(env.PHOTOS_BUCKET,claims,data.packet as any));
+    }
+    if(action==='photo.relay.pull'){
+      if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
+      return response(await pullPhotoFromRelayR2(env.PHOTOS_BUCKET,claims,String(data.photoId||'')));
+    }
+    if(action==='photo.relay.ack'){
+      if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
+      return response(await ackPhotoFromRelayR2(env.PHOTOS_BUCKET,claims,String(data.photoId||''),String(data.checksum||'')));
+    }
+    if(action==='photo.relay.reupload'){
+      if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
+      return response(await requestPhotoReuploadR2(env.PHOTOS_BUCKET,claims,String(data.photoId||''),String(data.reason||'')));
+    }
     if(action==='send')return response(await submitEvent(env.DB,claims,data.event as StoreEvent));
     requireOwner(claims);
     if(action==='recover')return response(await recoverEvent(env.DB,claims,data.event as StoreEvent));

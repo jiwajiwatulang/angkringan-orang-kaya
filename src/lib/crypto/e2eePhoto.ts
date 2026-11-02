@@ -75,7 +75,7 @@ export async function importOwnerPrivateKey(jwk: JsonWebKey): Promise<CryptoKey>
  * Computes SHA-256 checksum for byte integrity validation.
  */
 export async function computeSha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  const digest = await crypto.subtle.digest('SHA-256', bytes as BufferSource);
   return Array.from(new Uint8Array(digest))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
@@ -110,9 +110,9 @@ export async function encryptPhotoForOwner(
 
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encryptedBuffer = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
+    { name: 'AES-GCM', iv: iv as BufferSource },
     sharedAesKey,
-    photoBytes
+    photoBytes as BufferSource
   );
 
   const ephemeralPublicKeyJwk = await crypto.subtle.exportKey('jwk', ephemeralPair.publicKey);
@@ -163,9 +163,9 @@ export async function decryptPhotoAsOwner(
   const ciphertextBytes = fromBase64(packet.ciphertext);
 
   const decryptedBuffer = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv },
+    { name: 'AES-GCM', iv: iv as BufferSource },
     sharedAesKey,
-    ciphertextBytes
+    ciphertextBytes as BufferSource
   );
 
   const photoBytes = new Uint8Array(decryptedBuffer);
