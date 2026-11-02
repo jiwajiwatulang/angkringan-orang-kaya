@@ -11,6 +11,7 @@ import EmployeeLogin from './EmployeeLogin';
 import {db} from '@/lib/dexie';
 import LoadingState from './LoadingState';
 import {SyncScheduler,watchPosCommits} from '@/lib/multidevice/syncScheduler';
+import {syncPendingAttendancePhotos} from '@/lib/attendancePhoto';
 export default function PosSessionBoundary({children}:{children:React.ReactNode}){
   const pathname=usePathname(),workspace=pathname==='/pos'||pathname.startsWith('/admin');
   const [enabled,setEnabled]=useState(false),[ready,setReady]=useState(false),[runtime,setRuntime]=useState<PosRuntime>(),[error,setError]=useState(''),[pending,setPending]=useState(0),[online,setOnline]=useState(true),[failed,setFailed]=useState(false);
@@ -39,7 +40,7 @@ export default function PosSessionBoundary({children}:{children:React.ReactNode}
         const before=Number((await db.table('posMeta').get('cursor'))?.value||0);
         await runtime.synchronizer.synchronize();
         const remaining=await db.table('posOutbox').count(),after=Number((await db.table('posMeta').get('cursor'))?.value||0);
-        if(!stopped){setFailed(false);setFailure(undefined);setPending(remaining);}
+        if(!stopped){setFailed(false);setFailure(undefined);setPending(remaining);if(runtime.scope?.claims.role==='cashier'&&runtime.scope.claims.storeId)void syncPendingAttendancePhotos(runtime.client,runtime.scope.claims.storeId,runtime.scope.claims.employeeId).catch(()=>{});}
         return {changed:before!==after,pending:remaining>0};
       }catch(e){
         if(!stopped){setFailed(true);const phase=e instanceof PosSyncFailure?e.phase:'pull';setFailure({phase,message:syncFailureMessage(e,phase)});setPending(await db.table('posOutbox').count());if((e as {status?:number}).status===401||(e as {status?:number}).status===403){setReady(false);await rejectRuntimeAccess(runtime,e);setRuntime({...runtime});setError(e instanceof Error?e.message:'Silakan masuk lagi.');setReady(!!runtime.employees);}}

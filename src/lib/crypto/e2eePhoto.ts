@@ -65,7 +65,7 @@ export async function importOwnerPublicKey(jwk: JsonWebKey): Promise<CryptoKey> 
     'jwk',
     jwk,
     { name: 'ECDH', namedCurve: 'P-256' },
-    false,
+    true,
     []
   );
 }
@@ -75,7 +75,7 @@ export async function importOwnerPrivateKey(jwk: JsonWebKey): Promise<CryptoKey>
     'jwk',
     jwk,
     { name: 'ECDH', namedCurve: 'P-256' },
-    false,
+    true,
     ['deriveKey', 'deriveBits']
   );
 }

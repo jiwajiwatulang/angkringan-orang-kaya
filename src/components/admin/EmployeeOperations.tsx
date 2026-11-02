@@ -35,8 +35,16 @@ export default function EmployeeOperations() {
     if (runtime?.client && scope?.claims.role === 'owner' && typeof navigator !== 'undefined' && navigator.onLine) {
       void getOrCreateOwnerE2eeKeyPair(scope.claims.storeId)
         .then(async pair => {
-          const pubJwk = await exportPublicKeyJwk(pair.publicKey);
-          await runtime.client.call('photo.relay.owner_key.set', { publicKeyJwk: pubJwk }).catch(() => {});
+          let pubJwk: JsonWebKey | undefined;
+          try {
+            pubJwk = await exportPublicKeyJwk(pair.publicKey);
+          } catch {
+            const savedPubStr = typeof localStorage !== 'undefined' ? localStorage.getItem(`sakunota_e2ee_pub_${scope.claims.storeId}`) : null;
+            if (savedPubStr) pubJwk = JSON.parse(savedPubStr);
+          }
+          if (pubJwk) {
+            await runtime.client.call('photo.relay.owner_key.set', { publicKeyJwk: pubJwk }).catch(() => {});
+          }
         })
         .catch(() => {});
     }
@@ -256,7 +264,14 @@ export default function EmployeeOperations() {
                         setRequestingReupload(true);
                         try {
                           const { publicKey } = await getOrCreateOwnerE2eeKeyPair(scope.claims.storeId);
-                          const pubJwk = await exportPublicKeyJwk(publicKey);
+                          let pubJwk: JsonWebKey | undefined;
+                          try {
+                            pubJwk = await exportPublicKeyJwk(publicKey);
+                          } catch {
+                            const savedPubStr = typeof localStorage !== 'undefined' ? localStorage.getItem(`sakunota_e2ee_pub_${scope.claims.storeId}`) : null;
+                            if (savedPubStr) pubJwk = JSON.parse(savedPubStr);
+                          }
+                          if (!pubJwk) throw new Error('Kunci publik pemilik belum tersedia.');
                           await runtime.client.call('photo.relay.reupload', {
                             photoId: viewingPhoto.id,
                             employeeId: viewingPhoto.employeeId,
