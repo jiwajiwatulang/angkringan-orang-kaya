@@ -130,3 +130,78 @@ export async function pruneExpiredAttendancePhotos(retentionDays = DEFAULT_RETEN
   await db.table<AttendancePhotoRecord>('attendancePhotos').bulkDelete(toDelete.map(item => item.id));
   return toDelete.length;
 }
+
+/**
+ * Transactional atomic wrapper to record attendance and store local photo.
+ * If operation recording fails, rolls back the local photo to prevent orphaned files.
+ * If photo saving fails, prevents creating an attendance record with broken references.
+ */
+export async function recordAttendanceWithPhotoAtomic(
+  saveOpFn: (params: {
+    kind: 'attendance.in' | 'attendance.out';
+    employeeId: string;
+    employeeName: string;
+    sessionId?: string;
+    photoId?: string;
+    photoStatus?: 'lokal' | 'tanpa_foto';
+    photoChecksum?: string;
+    photoReason?: string;
+  }) => Promise<unknown>,
+  params: {
+    kind: 'attendance.in' | 'attendance.out';
+    employeeId: string;
+    employeeName: string;
+    sessionId?: string;
+    photo?: {
+      photoId: string;
+      dataUrl: string;
+      checksum: string;
+    };
+    withoutPhoto?: {
+      reason: string;
+    };
+  }
+): Promise<unknown> {
+  if (params.photo) {
+    // 1. Stage local photo
+    const photoRecord: AttendancePhotoRecord = {
+      id: params.photo.photoId,
+      operationId: params.sessionId || params.photo.photoId,
+      employeeId: params.employeeId,
+      employeeName: params.employeeName,
+      blob: params.photo.dataUrl,
+      checksum: params.photo.checksum,
+      createdAt: new Date().toISOString(),
+      status: 'lokal',
+    };
+    await saveAttendancePhoto(photoRecord);
+
+    // 2. Save attendance operation
+    try {
+      return await saveOpFn({
+        kind: params.kind,
+        employeeId: params.employeeId,
+        employeeName: params.employeeName,
+        sessionId: params.sessionId,
+        photoId: params.photo.photoId,
+        photoStatus: 'lokal',
+        photoChecksum: params.photo.checksum,
+      });
+    } catch (opErr) {
+      // Rollback local photo to prevent inconsistency
+      await deleteAttendancePhoto(params.photo.photoId).catch(() => {});
+      throw opErr;
+    }
+  } else {
+    // Record without photo
+    return await saveOpFn({
+      kind: params.kind,
+      employeeId: params.employeeId,
+      employeeName: params.employeeName,
+      sessionId: params.sessionId,
+      photoStatus: 'tanpa_foto',
+      photoReason: params.withoutPhoto?.reason || 'Tanpa keterangan',
+    });
+  }
+}
+

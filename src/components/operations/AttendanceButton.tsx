@@ -5,7 +5,7 @@ import { db } from '@/lib/dexie';
 import { getPosScope } from '@/lib/multidevice/posWire';
 import { saveOperation } from '@/lib/operationsApi';
 import { employeeAttendance } from '@/lib/operations';
-import { saveAttendancePhoto } from '@/lib/attendancePhoto';
+import { recordAttendanceWithPhotoAtomic } from '@/lib/attendancePhoto';
 import AttendanceCard from './AttendanceCard';
 import AttendanceCameraModal from './AttendanceCameraModal';
 import { BusyLabel } from '@/components/LoadingState';
@@ -40,27 +40,16 @@ export default function AttendanceButton({ variant = 'button' }: { variant?: 'bu
     const kind = active ? 'attendance.out' : 'attendance.in';
     const sessionId = active?.id;
     try {
-      // 1. Save attendance operation record with photo metadata
-      await saveOperation({
+      await recordAttendanceWithPhotoAtomic(saveOperation, {
         kind,
         employeeId: scope.claims.employeeId,
         employeeName: scope.operatorName,
         sessionId,
-        photoId: result.photoId,
-        photoStatus: 'lokal',
-        photoChecksum: result.checksum,
-      });
-
-      // 2. Save compressed photo locally to IndexedDB
-      await saveAttendancePhoto({
-        id: result.photoId,
-        operationId: sessionId || result.photoId,
-        employeeId: scope.claims.employeeId,
-        employeeName: scope.operatorName,
-        blob: result.dataUrl,
-        checksum: result.checksum,
-        createdAt: new Date().toISOString(),
-        status: 'lokal',
+        photo: {
+          photoId: result.photoId,
+          dataUrl: result.dataUrl,
+          checksum: result.checksum,
+        },
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Absensi belum tersimpan');
@@ -79,13 +68,12 @@ export default function AttendanceButton({ variant = 'button' }: { variant?: 'bu
     const kind = active ? 'attendance.out' : 'attendance.in';
     const sessionId = active?.id;
     try {
-      await saveOperation({
+      await recordAttendanceWithPhotoAtomic(saveOperation, {
         kind,
         employeeId: scope.claims.employeeId,
         employeeName: scope.operatorName,
         sessionId,
-        photoStatus: 'tanpa_foto',
-        photoReason: reason,
+        withoutPhoto: { reason },
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Absensi belum tersimpan');
