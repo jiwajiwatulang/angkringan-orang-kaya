@@ -14,7 +14,7 @@ const FALLBACK_REASONS = [
 interface AttendanceCameraModalProps {
   employeeName: string;
   kind: 'in' | 'out';
-  onConfirmPhoto: (result: { photoId: string; dataUrl: string; checksum: string }) => void | Promise<void>;
+  onConfirmPhoto: (result: { photoId: string; blob: Blob; dataUrl?: string; checksum: string }) => void | Promise<void>;
   onConfirmWithoutPhoto: (reason: string) => void | Promise<void>;
   onClose: () => void;
 }
@@ -35,7 +35,7 @@ export default function AttendanceCameraModal({
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [captured, setCaptured] = useState<{ dataUrl: string; checksum: string } | null>(null);
+  const [captured, setCaptured] = useState<{ blob: Blob; dataUrl: string; checksum: string } | null>(null);
 
   // Fallback without photo state
   const [showFallback, setShowFallback] = useState(false);
@@ -110,7 +110,7 @@ export default function AttendanceCameraModal({
     try {
       const result = await compressAttendancePhoto(video, video.videoWidth, video.videoHeight, 1080, 0.75);
       stopCamera();
-      setCaptured({ dataUrl: result.dataUrl, checksum: result.checksum });
+      setCaptured({ blob: result.blob, dataUrl: result.dataUrl, checksum: result.checksum });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal mengambil foto. Coba lagi.');
     } finally {
@@ -129,7 +129,7 @@ export default function AttendanceCameraModal({
     setError('');
     try {
       const photoId = crypto.randomUUID();
-      await onConfirmPhoto({ photoId, dataUrl: captured.dataUrl, checksum: captured.checksum });
+      await onConfirmPhoto({ photoId, blob: captured.blob, dataUrl: captured.dataUrl, checksum: captured.checksum });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menyimpan absensi foto.');

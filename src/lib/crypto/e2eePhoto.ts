@@ -4,8 +4,16 @@
  * The Cloudflare Worker / R2 relay only holds ciphertext and cannot decrypt photo bytes.
  */
 
+import type { AccessClaims } from '../multidevice/protocol';
+import {
+  pullPhotoFromRelayR2,
+  ackPhotoFromRelayR2,
+  type RelayR2Bucket,
+} from '../server/photoRelayR2';
+
 export interface E2eePhotoPacket {
   version: 1;
+  storeId?: string;
   photoId: string;
   operationId: string;
   employeeId: string;
@@ -74,7 +82,7 @@ export async function importOwnerPrivateKey(jwk: JsonWebKey): Promise<CryptoKey>
 /**
  * Computes SHA-256 checksum for byte integrity validation.
  */
-export async function computeSha256Hex(bytes: Uint8Array): Promise<string> {
+export async function computeSha256Hex(bytes: Uint8Array | ArrayBuffer): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', bytes as BufferSource);
   return Array.from(new Uint8Array(digest))
     .map(b => b.toString(16).padStart(2, '0'))
@@ -89,10 +97,19 @@ export async function computeSha256Hex(bytes: Uint8Array): Promise<string> {
  * 4. Computes SHA-256 of unencrypted bytes.
  */
 export async function encryptPhotoForOwner(
-  photoBytes: Uint8Array,
+  photoInput: Uint8Array | ArrayBuffer | Blob,
   ownerPublicKey: CryptoKey,
-  metadata: { photoId: string; operationId: string; employeeId: string; ttlMs?: number }
+  metadata: { storeId?: string; photoId: string; operationId: string; employeeId: string; ttlMs?: number }
 ): Promise<E2eePhotoPacket> {
+  let photoBytes: Uint8Array;
+  if ('arrayBuffer' in photoInput && typeof (photoInput as Blob).arrayBuffer === 'function') {
+    photoBytes = new Uint8Array(await (photoInput as Blob).arrayBuffer());
+  } else if (photoInput instanceof ArrayBuffer) {
+    photoBytes = new Uint8Array(photoInput);
+  } else {
+    photoBytes = photoInput as Uint8Array;
+  }
+
   const checksum = await computeSha256Hex(photoBytes);
   const ephemeralPair = await crypto.subtle.generateKey(
     { name: 'ECDH', namedCurve: 'P-256' },
@@ -121,6 +138,7 @@ export async function encryptPhotoForOwner(
 
   return {
     version: 1,
+    storeId: metadata.storeId,
     photoId: metadata.photoId,
     operationId: metadata.operationId,
     employeeId: metadata.employeeId,
@@ -171,9 +189,57 @@ export async function decryptPhotoAsOwner(
   const photoBytes = new Uint8Array(decryptedBuffer);
   const computedChecksum = await computeSha256Hex(photoBytes);
 
-  if (computedChecksum !== packet.checksum) {
+  if (computedChecksum.toLowerCase() !== packet.checksum.toLowerCase()) {
     throw new Error('Integritas foto tidak valid: checksum tidak cocok.');
   }
 
   return { photoBytes, checksum: computedChecksum };
+}
+
+/**
+ * Helper for Owner device: pulls, decrypts, validates integrity, persists to local IndexedDB as Blob,
+ * and ONLY sends ACK after IndexedDB save succeeds.
+ */
+export async function processAndAckIncomingPhoto(
+  bucket: RelayR2Bucket,
+  ownerClaims: AccessClaims,
+  photoId: string,
+  ownerPrivateKey: CryptoKey,
+  dexieDb?: any
+): Promise<{ success: boolean; photoId?: string; checksum?: string; reason?: string }> {
+  // 1. Pull from R2
+  const pull = await pullPhotoFromRelayR2(bucket, ownerClaims, photoId);
+  if (!pull.found || !pull.packet) {
+    return { success: false, reason: pull.expired ? 'expired' : 'not_found' };
+  }
+
+  // 2. Decrypt and verify integrity
+  const { photoBytes, checksum } = await decryptPhotoAsOwner(pull.packet, ownerPrivateKey);
+
+  // 3. Save to local IndexedDB as native Blob
+  if (dexieDb) {
+    const blob = new Blob([photoBytes as unknown as BlobPart], { type: 'image/jpeg' });
+    await dexieDb.table('attendancePhotos').put({
+      id: pull.packet.photoId,
+      operationId: pull.packet.operationId,
+      employeeId: pull.packet.employeeId,
+      employeeName: '',
+      blob,
+      checksum,
+      createdAt: new Date(pull.packet.capturedAt).toISOString(),
+      status: 'tersimpan',
+    });
+  }
+
+  // 4. Send ACK ONLY after local save succeeds
+  await ackPhotoFromRelayR2(
+    bucket,
+    ownerClaims,
+    pull.packet.photoId,
+    checksum,
+    pull.packet.operationId,
+    pull.packet.employeeId
+  );
+
+  return { success: true, photoId: pull.packet.photoId, checksum };
 }

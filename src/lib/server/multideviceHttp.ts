@@ -2,7 +2,7 @@ import type {DeviceProof} from '../licenseProtocol';
 import {AccessError,requireOwner,type StoreEvent} from '../multidevice/protocol';
 import {enrollOwner,requestPairing,authorize,createPairing,approvePairing,revokeDevice,saveEmployee,employeeLogin,listAccess,renewCashierDevice,signingKey,type MultiDeviceEnv} from './multideviceAccess';
 import {pullEntities,submitEvent,recoverEvent} from './multideviceSync';
-import {pushPhotoToRelayR2,pullPhotoFromRelayR2,ackPhotoFromRelayR2,requestPhotoReuploadR2,type RelayR2Bucket} from './photoRelayR2';
+import {pushPhotoToRelayR2,pullPhotoFromRelayR2,ackPhotoFromRelayR2,requestPhotoReuploadR2,checkPhotoReuploadR2,setOwnerE2eeKeyR2,getOwnerE2eeKeyR2,type RelayR2Bucket} from './photoRelayR2';
 
 type RequestLimiter={limit(options:{key:string}):Promise<{success:boolean}>};
 export interface MultiDeviceHttpEnv extends MultiDeviceEnv {PUBLIC_RATE_LIMITER?:RequestLimiter;MULTI_DEVICE_RATE_LIMITER?:RequestLimiter;PHOTOS_BUCKET?:RelayR2Bucket}
@@ -47,11 +47,23 @@ export async function handleMultiDevice(request:Request,env:MultiDeviceHttpEnv):
     }
     if(action==='photo.relay.ack'){
       if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
-      return response(await ackPhotoFromRelayR2(env.PHOTOS_BUCKET,claims,String(data.photoId||''),String(data.checksum||'')));
+      return response(await ackPhotoFromRelayR2(env.PHOTOS_BUCKET,claims,String(data.photoId||''),String(data.checksum||''),data.operationId?String(data.operationId):undefined,data.employeeId?String(data.employeeId):undefined));
     }
     if(action==='photo.relay.reupload'){
       if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
-      return response(await requestPhotoReuploadR2(env.PHOTOS_BUCKET,claims,String(data.photoId||''),String(data.reason||'')));
+      return response(await requestPhotoReuploadR2(env.PHOTOS_BUCKET,claims,{photoId:String(data.photoId||''),employeeId:String(data.employeeId||''),operationId:String(data.operationId||''),reason:data.reason?String(data.reason):undefined,ownerPublicKeyJwk:data.ownerPublicKeyJwk as any}));
+    }
+    if(action==='photo.relay.reupload_check'){
+      if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
+      return response(await checkPhotoReuploadR2(env.PHOTOS_BUCKET,claims,String(data.photoId||'')));
+    }
+    if(action==='photo.relay.owner_key.set'){
+      if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
+      return response(await setOwnerE2eeKeyR2(env.PHOTOS_BUCKET,claims,{publicKeyJwk:data.publicKeyJwk as any,keyEpoch:typeof data.keyEpoch==='number'?data.keyEpoch:undefined}));
+    }
+    if(action==='photo.relay.owner_key.get'){
+      if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
+      return response(await getOwnerE2eeKeyR2(env.PHOTOS_BUCKET,claims));
     }
     if(action==='send')return response(await submitEvent(env.DB,claims,data.event as StoreEvent));
     requireOwner(claims);

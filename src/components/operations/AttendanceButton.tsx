@@ -32,7 +32,7 @@ export default function AttendanceButton({ variant = 'button' }: { variant?: 'bu
     setShowCamera(true);
   };
 
-  const handleConfirmPhoto = async (result: { photoId: string; dataUrl: string; checksum: string }) => {
+  const handleConfirmPhoto = async (result: { photoId: string; blob: Blob | string; dataUrl?: string; checksum: string }) => {
     if (saving.current || !scope.claims.employeeId) return;
     saving.current = true;
     setBusy(true);
@@ -47,7 +47,7 @@ export default function AttendanceButton({ variant = 'button' }: { variant?: 'bu
         sessionId,
         photo: {
           photoId: result.photoId,
-          dataUrl: result.dataUrl,
+          blob: result.blob,
           checksum: result.checksum,
         },
       });

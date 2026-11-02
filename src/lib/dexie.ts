@@ -3,10 +3,10 @@ export interface AttendancePhotoRecord {
   operationId: string;
   employeeId: string;
   employeeName: string;
-  blob?: string;
+  blob?: Blob | string;
   checksum?: string;
   createdAt: string;
-  status: 'lokal' | 'siap_diambil' | 'tanpa_foto';
+  status: 'lokal' | 'siap_diambil' | 'tanpa_foto' | 'tersimpan';
   failureReason?: string;
 }
 

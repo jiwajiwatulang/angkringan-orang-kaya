@@ -29,6 +29,23 @@ export default function EmployeeOperations() {
   const [viewingPhoto, setViewingPhoto] = useState<{ id?: string; label: string; name: string; at: string } | null>(null);
   const [photoRecord, setPhotoRecord] = useState<AttendancePhotoRecord | null | undefined>(undefined);
   const [loadingPhoto, setLoadingPhoto] = useState(false);
+  const [photoObjectUrl, setPhotoObjectUrl] = useState<string>('');
+
+  useEffect(() => {
+    if (!photoRecord?.blob) {
+      setPhotoObjectUrl('');
+      return;
+    }
+    if (typeof photoRecord.blob === 'string') {
+      setPhotoObjectUrl(photoRecord.blob);
+      return;
+    }
+    const url = URL.createObjectURL(photoRecord.blob);
+    setPhotoObjectUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [photoRecord]);
 
   useEffect(() => {
     if (!viewingPhoto?.id) {
@@ -170,7 +187,7 @@ export default function EmployeeOperations() {
                   <div className="overflow-hidden rounded-xl border border-line bg-slate-950">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={photoRecord.blob}
+                      src={photoObjectUrl}
                       alt={`Foto absensi ${viewingPhoto.name}`}
                       className="max-h-[55dvh] w-full object-contain"
                     />

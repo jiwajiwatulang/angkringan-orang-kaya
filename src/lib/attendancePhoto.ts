@@ -4,8 +4,16 @@ export const MAX_PHOTO_BYTES = 250 * 1024; // 250 KB target cap
 export const DEFAULT_RETENTION_DAYS = 30;
 
 /** Computes hex-encoded SHA-256 checksum for byte integrity validation. */
-export async function sha256Hex(data: ArrayBuffer | Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', data as ArrayBuffer);
+export async function sha256Hex(data: ArrayBuffer | Uint8Array | Blob): Promise<string> {
+  let buffer: ArrayBuffer;
+  if ('arrayBuffer' in data && typeof (data as Blob).arrayBuffer === 'function') {
+    buffer = await (data as Blob).arrayBuffer();
+  } else if (data instanceof Uint8Array) {
+    buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+  } else {
+    buffer = data as ArrayBuffer;
+  }
+  const digest = await crypto.subtle.digest('SHA-256', buffer);
   return Array.from(new Uint8Array(digest))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
@@ -13,70 +21,121 @@ export async function sha256Hex(data: ArrayBuffer | Uint8Array): Promise<string>
 
 /**
  * Compresses an image element or video frame to JPEG using HTML5 Canvas.
- * Caps the maximum dimension to maxDim (default 1080px) and applies quality compression.
+ * Caps the maximum dimension and enforces MAX_PHOTO_BYTES (250 KB)
+ * using an adaptive multi-pass fallback if the initial result is too large.
  */
 export async function compressAttendancePhoto(
   source: CanvasImageSource,
   sourceWidth: number,
   sourceHeight: number,
-  maxDim = 1080,
-  quality = 0.75
+  initialMaxDim = 1080,
+  initialQuality = 0.75
 ): Promise<{ blob: Blob; dataUrl: string; checksum: string; width: number; height: number; sizeBytes: number }> {
   if (sourceWidth <= 0 || sourceHeight <= 0) {
     throw new Error('Dimensi gambar tidak valid.');
   }
 
-  let targetWidth = sourceWidth;
-  let targetHeight = sourceHeight;
+  // Fallback stages if compressed image exceeds MAX_PHOTO_BYTES
+  const stages = [
+    { maxDim: initialMaxDim, quality: initialQuality },
+    { maxDim: Math.min(initialMaxDim, 900), quality: 0.60 },
+    { maxDim: Math.min(initialMaxDim, 720), quality: 0.45 },
+    { maxDim: Math.min(initialMaxDim, 540), quality: 0.35 },
+    { maxDim: Math.min(initialMaxDim, 400), quality: 0.25 },
+  ];
 
-  if (targetWidth > maxDim || targetHeight > maxDim) {
-    if (targetWidth > targetHeight) {
-      targetHeight = Math.round((targetHeight * maxDim) / targetWidth);
-      targetWidth = maxDim;
-    } else {
-      targetWidth = Math.round((targetWidth * maxDim) / targetHeight);
-      targetHeight = maxDim;
+  let bestBlob: Blob | null = null;
+  let bestWidth = sourceWidth;
+  let bestHeight = sourceHeight;
+
+  for (const stage of stages) {
+    let targetWidth = sourceWidth;
+    let targetHeight = sourceHeight;
+
+    if (targetWidth > stage.maxDim || targetHeight > stage.maxDim) {
+      if (targetWidth > targetHeight) {
+        targetHeight = Math.round((targetHeight * stage.maxDim) / targetWidth);
+        targetWidth = stage.maxDim;
+      } else {
+        targetWidth = Math.round((targetWidth * stage.maxDim) / targetHeight);
+        targetHeight = stage.maxDim;
+      }
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas 2D context tidak tersedia.');
+
+    ctx.drawImage(source, 0, 0, targetWidth, targetHeight);
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        b => (b ? resolve(b) : reject(new Error('Gagal mengompresi foto.'))),
+        'image/jpeg',
+        stage.quality
+      );
+    });
+
+    bestBlob = blob;
+    bestWidth = targetWidth;
+    bestHeight = targetHeight;
+
+    // Strict size cap enforcement
+    if (blob.size <= MAX_PHOTO_BYTES) {
+      break;
     }
   }
 
-  const canvas = document.createElement('canvas');
-  canvas.width = targetWidth;
-  canvas.height = targetHeight;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas 2D context tidak tersedia.');
+  if (!bestBlob) {
+    throw new Error('Gagal memproses foto absensi.');
+  }
 
-  ctx.drawImage(source, 0, 0, targetWidth, targetHeight);
+  if (bestBlob.size > MAX_PHOTO_BYTES) {
+    throw new Error(`Ukuran foto (${Math.round(bestBlob.size / 1024)} KB) melebihi batas maksimal 250 KB.`);
+  }
 
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      b => (b ? resolve(b) : reject(new Error('Gagal mengompresi foto.'))),
-      'image/jpeg',
-      quality
-    );
-  });
-
-  const arrayBuffer = await blob.arrayBuffer();
-  const checksum = await sha256Hex(arrayBuffer);
+  const checksum = await sha256Hex(bestBlob);
 
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = () => reject(new Error('Gagal membaca data foto.'));
-    reader.readAsDataURL(blob);
+    reader.readAsDataURL(bestBlob);
   });
 
   return {
-    blob,
+    blob: bestBlob,
     dataUrl,
     checksum,
-    width: targetWidth,
-    height: targetHeight,
-    sizeBytes: blob.size,
+    width: bestWidth,
+    height: bestHeight,
+    sizeBytes: bestBlob.size,
   };
 }
 
 /**
+ * Creates an object URL for a photo blob or passes through existing URL string.
+ */
+export function createPhotoBlobUrl(blob?: Blob | string): string {
+  if (!blob) return '';
+  if (typeof blob === 'string') return blob;
+  return URL.createObjectURL(blob);
+}
+
+/**
+ * Safely revokes an object URL created via createPhotoBlobUrl.
+ */
+export function revokePhotoBlobUrl(url: string): void {
+  if (url && url.startsWith('blob:')) {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/**
  * Saves or updates an attendance photo record in local IndexedDB.
+ * Stores raw Blob in record.blob.
  */
 export async function saveAttendancePhoto(record: AttendancePhotoRecord): Promise<void> {
   if (!record.id || !record.operationId || !record.employeeId) {
@@ -132,9 +191,9 @@ export async function pruneExpiredAttendancePhotos(retentionDays = DEFAULT_RETEN
 }
 
 /**
- * Transactional atomic wrapper to record attendance and store local photo.
- * If operation recording fails, rolls back the local photo to prevent orphaned files.
- * If photo saving fails, prevents creating an attendance record with broken references.
+ * Transactional atomic wrapper to record attendance and store local photo in IndexedDB.
+ * Executes both photo staging and operation saving inside a single native Dexie transaction.
+ * If anything fails or crashes, IndexedDB aborts the entire transaction atomically.
  */
 export async function recordAttendanceWithPhotoAtomic(
   saveOpFn: (params: {
@@ -154,7 +213,7 @@ export async function recordAttendanceWithPhotoAtomic(
     sessionId?: string;
     photo?: {
       photoId: string;
-      dataUrl: string;
+      blob: Blob | string;
       checksum: string;
     };
     withoutPhoto?: {
@@ -162,46 +221,69 @@ export async function recordAttendanceWithPhotoAtomic(
     };
   }
 ): Promise<unknown> {
-  if (params.photo) {
-    // 1. Stage local photo
-    const photoRecord: AttendancePhotoRecord = {
-      id: params.photo.photoId,
-      operationId: params.sessionId || params.photo.photoId,
-      employeeId: params.employeeId,
-      employeeName: params.employeeName,
-      blob: params.photo.dataUrl,
-      checksum: params.photo.checksum,
-      createdAt: new Date().toISOString(),
-      status: 'lokal',
-    };
-    await saveAttendancePhoto(photoRecord);
+  return db.transaction(
+    'rw',
+    ['operations', 'orders', 'orderItems', 'shifts', 'cashMovements', 'auditLogs', 'attendancePhotos'],
+    async () => {
+      if (params.photo) {
+        const photoRecord: AttendancePhotoRecord = {
+          id: params.photo.photoId,
+          operationId: params.sessionId || params.photo.photoId,
+          employeeId: params.employeeId,
+          employeeName: params.employeeName,
+          blob: params.photo.blob, // Native Blob stored in IndexedDB
+          checksum: params.photo.checksum,
+          createdAt: new Date().toISOString(),
+          status: 'lokal',
+        };
+        await db.table<AttendancePhotoRecord>('attendancePhotos').put(photoRecord);
 
-    // 2. Save attendance operation
-    try {
-      return await saveOpFn({
-        kind: params.kind,
-        employeeId: params.employeeId,
-        employeeName: params.employeeName,
-        sessionId: params.sessionId,
-        photoId: params.photo.photoId,
-        photoStatus: 'lokal',
-        photoChecksum: params.photo.checksum,
-      });
-    } catch (opErr) {
-      // Rollback local photo to prevent inconsistency
-      await deleteAttendancePhoto(params.photo.photoId).catch(() => {});
-      throw opErr;
+        return await saveOpFn({
+          kind: params.kind,
+          employeeId: params.employeeId,
+          employeeName: params.employeeName,
+          sessionId: params.sessionId,
+          photoId: params.photo.photoId,
+          photoStatus: 'lokal',
+          photoChecksum: params.photo.checksum,
+        });
+      } else {
+        return await saveOpFn({
+          kind: params.kind,
+          employeeId: params.employeeId,
+          employeeName: params.employeeName,
+          sessionId: params.sessionId,
+          photoStatus: 'tanpa_foto',
+          photoReason: params.withoutPhoto?.reason || 'Tanpa keterangan',
+        });
+      }
     }
-  } else {
-    // Record without photo
-    return await saveOpFn({
-      kind: params.kind,
-      employeeId: params.employeeId,
-      employeeName: params.employeeName,
-      sessionId: params.sessionId,
-      photoStatus: 'tanpa_foto',
-      photoReason: params.withoutPhoto?.reason || 'Tanpa keterangan',
-    });
-  }
+  );
 }
 
+/**
+ * Reconciles local attendance photos and operation consistency.
+ * Cleans up any orphaned photo records where the operation was interrupted or crashed.
+ */
+export async function reconcileAttendanceConsistency(dexieDb = db): Promise<{ cleanedPhotos: number }> {
+  try {
+    const photos = await dexieDb.table<AttendancePhotoRecord>('attendancePhotos').toArray();
+    const operations = await dexieDb.table('operations').toArray();
+    const opSessionIds = new Set(operations.map((o: any) => o.sessionId || o.id));
+    const now = Date.now();
+
+    const orphans = photos.filter(p => {
+      if (!p.blob || p.status === 'tanpa_foto') return false;
+      if (opSessionIds.has(p.operationId) || opSessionIds.has(p.id)) return false;
+      // Older than 10 minutes without matching operation is considered an interrupted orphan
+      return (now - Date.parse(p.createdAt)) > 10 * 60 * 1000;
+    });
+
+    if (orphans.length > 0) {
+      await dexieDb.table('attendancePhotos').bulkDelete(orphans.map(o => o.id));
+    }
+    return { cleanedPhotos: orphans.length };
+  } catch {
+    return { cleanedPhotos: 0 };
+  }
+}
