@@ -21,6 +21,7 @@ import {
   listPendingReuploadRequestsR2,
   withPhotoLock,
   relayObjectKey,
+  relayTransferPrefix,
   setOwnerE2eeKeyR2,
   getOwnerE2eeKeyR2,
   type RelayR2Bucket,
@@ -1082,7 +1083,8 @@ test('R2 Relay TTL Expiry & Re-upload: 24h expired photo triggers Owner reupload
   assert.equal(bucket.size(), 2); // 1 key + 1 transit photo
 
   // 2. 24 hours pass: photo in R2 expires and is purged by R2 lifecycle
-  await bucket.delete(relayObjectKey(storeId, photoId));
+  const listTransfers = await bucket.list({ prefix: relayTransferPrefix(storeId, photoId) });
+  for (const obj of listTransfers.objects) await bucket.delete(obj.key);
   assert.equal(bucket.size(), 1); // Only owner key remains
 
   // 3. Owner opens employee operations, sees photo is missing from local Dexie and expired from R2 transit
@@ -1205,4 +1207,100 @@ test('Realistic Mobile Browser POS E2E: Cashier offline mobile UI -> capture pho
 
   // Buffer purged
   assert.equal(bucket.size(), 1);
+});
+
+test('Multi-Isolate Concurrency: two independent server instances without shared memory safely handle interleaved ACK and reupload', async () => {
+  const bucket = new MockR2Bucket();
+  const storeId = 'store-multi-isolate-test';
+  const photoId = 'photo-iso-concurrency-01';
+  const ownerClaims = mockClaims('owner', storeId);
+  const cashierClaims = mockClaims('cashier', storeId, 'emp-iso-cashier');
+
+  // Register Owner E2EE Key
+  const ownerPair = await generateOwnerE2eeKeyPair();
+  const ownerPubJwk = await exportPublicKeyJwk(ownerPair.publicKey);
+  await setOwnerE2eeKeyR2(bucket, ownerClaims, { publicKeyJwk: ownerPubJwk });
+
+  // Simulate two completely separate Cloudflare Worker isolates:
+  // Isolate 1 (e.g. edge worker in Singapore handling cashier upload)
+  // Isolate 2 (e.g. edge worker in Tokyo handling owner ACK)
+  // Neither shares any JavaScript memory, locks, or variables. They share ONLY Cloudflare R2 bucket.
+  const isolate1PushHandler = async (packet: E2eePhotoPacket) => {
+    return pushPhotoToRelayR2(bucket, cashierClaims, packet);
+  };
+
+  const isolate2AckHandler = async (data: { photoId: string; checksum: string; transferToken: string; operationId?: string; employeeId?: string }) => {
+    return ackPhotoFromRelayR2(bucket, ownerClaims, data);
+  };
+
+  // 1. Initial upload via Isolate 1: Transfer A
+  const photoBytesA = new TextEncoder().encode('PHOTO_ISOLATE_TRANSFER_A');
+  const packetA = await encryptPhotoForOwner(photoBytesA, ownerPair.publicKey, {
+    storeId,
+    photoId,
+    operationId: 'op-iso-1',
+    employeeId: 'emp-iso-cashier',
+  });
+  const pushARes = await isolate1PushHandler(packetA);
+  assert.equal(pushARes.success, true);
+  const tokenA = pushARes.transferToken;
+
+  // 2. Owner requests re-upload (e.g. device replacement or buffer recovery)
+  await requestPhotoReuploadR2(bucket, ownerClaims, {
+    photoId,
+    employeeId: 'emp-iso-cashier',
+    operationId: 'op-iso-1',
+    reason: 'Multi-isolate reupload test',
+  });
+
+  // Prepare Transfer B (new ephemeral key, new IV, new ciphertext, new deterministic transfer token)
+  const photoBytesB = new TextEncoder().encode('PHOTO_ISOLATE_TRANSFER_B');
+  const packetB = await encryptPhotoForOwner(photoBytesB, ownerPair.publicKey, {
+    storeId,
+    photoId,
+    operationId: 'op-iso-1',
+    employeeId: 'emp-iso-cashier',
+  });
+
+  // 3. Concurrent race across isolates:
+  // Isolate 1 executes Re-upload (Transfer B)
+  // Isolate 2 executes ACK for Transfer A (tokenA)
+  // In the real world, these run in separate isolates at the exact same millisecond.
+  // Because Transfer A and Transfer B use transfer-versioned R2 keys,
+  // Isolate 2's deletion of tokenA CANNOT delete Transfer B!
+  const [resB, resStaleAck] = await Promise.all([
+    isolate1PushHandler(packetB),
+    isolate2AckHandler({
+      photoId,
+      checksum: packetA.checksum,
+      transferToken: tokenA,
+      operationId: 'op-iso-1',
+      employeeId: 'emp-iso-cashier',
+    }).catch(err => ({ error: err })),
+  ]);
+
+  assert.equal(resB.success, true);
+  const tokenB = resB.transferToken;
+  assert.notEqual(tokenA, tokenB);
+
+  // 4. Verify Transfer B is 100% intact, alive, and readable in R2
+  const pullRes = await pullPhotoFromRelayR2(bucket, ownerClaims, photoId);
+  assert.equal(pullRes.found, true);
+  assert.equal(pullRes.transferToken, tokenB);
+
+  // Decrypt Transfer B and verify bytes
+  const { photoBytes: decryptedB, checksum: checksumB } = await decryptPhotoAsOwner(pullRes.packet!, ownerPair.privateKey);
+  assert.equal(checksumB, packetB.checksum);
+  assert.deepEqual(decryptedB, photoBytesB);
+
+  // 5. Valid ACK for tokenB via Isolate 2 cleanly purges R2 buffer
+  const validAck = await isolate2AckHandler({
+    photoId,
+    checksum: packetB.checksum,
+    transferToken: tokenB,
+    operationId: 'op-iso-1',
+    employeeId: 'emp-iso-cashier',
+  });
+  assert.equal(validAck.success, true);
+  assert.equal(bucket.size(), 1); // Only owner key remains
 });
