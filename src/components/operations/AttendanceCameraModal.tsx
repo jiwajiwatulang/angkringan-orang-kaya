@@ -32,6 +32,7 @@ export default function AttendanceCameraModal({
   const mountedRef = useRef(false);
 
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [isMirrored, setIsMirrored] = useState(true);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -108,7 +109,8 @@ export default function AttendanceCameraModal({
     setBusy(true);
     setError('');
     try {
-      const result = await compressAttendancePhoto(video, video.videoWidth, video.videoHeight, 1080, 0.75);
+      const mirrorPhoto = isMirrored && facingMode === 'user';
+      const result = await compressAttendancePhoto(video, video.videoWidth, video.videoHeight, 1080, 0.75, mirrorPhoto);
       stopCamera();
       setCaptured({ blob: result.blob, dataUrl: result.dataUrl, checksum: result.checksum });
     } catch (err) {
@@ -304,18 +306,31 @@ export default function AttendanceCameraModal({
                 autoPlay
                 onLoadedData={() => setReady(true)}
                 aria-label="Pratinjau kamera absensi"
-                className={`max-h-[50dvh] w-full object-contain ${error ? 'hidden' : ''}`}
+                className={`max-h-[50dvh] w-full object-contain ${error ? 'hidden' : ''} ${isMirrored && facingMode === 'user' ? '-scale-x-100' : ''}`}
               />
               {ready && (
-                <button
-                  type="button"
-                  onClick={flipCamera}
-                  disabled={busy}
-                  aria-label="Putar Kamera"
-                  className="absolute right-3 top-3 rounded-full bg-slate-900/80 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur hover:bg-slate-800"
-                >
-                  {facingMode === 'user' ? 'Kamera Belakang' : 'Kamera Depan'}
-                </button>
+                <div className="absolute right-3 top-3 flex items-center gap-1.5">
+                  {facingMode === 'user' && (
+                    <button
+                      type="button"
+                      onClick={() => setIsMirrored(prev => !prev)}
+                      disabled={busy}
+                      aria-label="Mode Cermin"
+                      className="rounded-full bg-slate-900/80 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur hover:bg-slate-800"
+                    >
+                      {isMirrored ? 'Cermin: Aktif' : 'Cermin: Nonaktif'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={flipCamera}
+                    disabled={busy}
+                    aria-label="Putar Kamera"
+                    className="rounded-full bg-slate-900/80 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur hover:bg-slate-800"
+                  >
+                    {facingMode === 'user' ? 'Kamera Belakang' : 'Kamera Depan'}
+                  </button>
+                </div>
               )}
             </div>
 

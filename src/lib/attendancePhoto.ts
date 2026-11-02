@@ -40,7 +40,8 @@ export async function compressAttendancePhoto(
   sourceWidth: number,
   sourceHeight: number,
   initialMaxDim = 1080,
-  initialQuality = 0.75
+  initialQuality = 0.75,
+  mirror = false
 ): Promise<{ blob: Blob; dataUrl: string; checksum: string; width: number; height: number; sizeBytes: number }> {
   if (sourceWidth <= 0 || sourceHeight <= 0) {
     throw new Error('Dimensi gambar tidak valid.');
@@ -78,6 +79,11 @@ export async function compressAttendancePhoto(
     canvas.height = targetHeight;
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas 2D context tidak tersedia.');
+
+    if (mirror) {
+      ctx.translate(targetWidth, 0);
+      ctx.scale(-1, 1);
+    }
 
     ctx.drawImage(source, 0, 0, targetWidth, targetHeight);
 

@@ -65,6 +65,7 @@ export default function PosSessionBoundary({children}:{children:React.ReactNode}
   const pendingCount=review?.pending??pending;
   const showStatus=failed||!online||pendingCount>0||!!review?.stock||!!review?.recovery;
   const changeEmployee=()=>void leaveEmployee().then(()=>setRuntime(runtime?{...runtime,scope:undefined}:undefined));
+  useEffect(()=>{const onEvt=()=>changeEmployee();window.addEventListener('sakunota:change-employee',onEvt);return()=>window.removeEventListener('sakunota:change-employee',onEvt);},[runtime]);
   const notice=<>{showStatus&&<aside aria-label="Status data kasir" className="mb-5 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
     <div className="min-w-0 space-y-1"><StoreDataStatus pending={pendingCount} online={online} failed={failed} failurePhase={failure?.phase} needsReview={review?.stock}/>
       {pendingCount>0&&<p className="text-xs">Data tetap tersimpan di perangkat ini.</p>}
@@ -74,6 +75,6 @@ export default function PosSessionBoundary({children}:{children:React.ReactNode}
     <div className="flex flex-wrap gap-2">{online&&(failed||pendingCount>0)&&<button disabled={busy} className="min-h-11 rounded-xl border border-amber-300 bg-white px-3 font-semibold disabled:opacity-50" onClick={()=>void retry.current()}>{busy?'Mencoba…':'Coba Lagi'}</button>}
       {pendingCount>0&&<button className="min-h-11 rounded-xl border border-amber-300 bg-white px-3 font-semibold" onClick={()=>void backup()}>Simpan Cadangan</button>}
       {runtime?.employees&&<button className="min-h-11 rounded-xl border border-amber-300 bg-white px-3 font-semibold" onClick={changeEmployee}>Ganti Karyawan</button>}
-    </div></aside>}{!showStatus&&runtime?.employees&&<div className="flex shrink-0 justify-end px-3 py-2"><button className="min-h-11 rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-fg" onClick={changeEmployee}>Ganti Karyawan</button></div>}{error&&<p role="alert" className="px-4 py-2 text-sm text-red-700">{error}</p>}</>;
+    </div></aside>}{error&&<p role="alert" className="px-4 py-2 text-sm text-red-700">{error}</p>}</>;
   return <StoreSyncProvider value={notice}><div style={cashierPage?{height:'100dvh',display:'flex',flexDirection:'column',overflow:'hidden'}:undefined}>{cashierPage&&notice}<div style={cashierPage?{flex:1,minHeight:0,overflow:'auto'}:undefined}>{children}</div></div></StoreSyncProvider>;
 }
