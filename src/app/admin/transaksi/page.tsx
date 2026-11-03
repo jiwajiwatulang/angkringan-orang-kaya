@@ -22,7 +22,7 @@ import {
   parseHistoricalTransactionsFile,
 } from "@/lib/excelUtils";
 import { compressPaymentProof, formatBytes } from "@/lib/imageUtils";
-import { generateEscPosReceipt, generateReceiptHtml, generateBulkReceiptHtml, executePrintDocument } from "@/lib/receipt";
+import { generateEscPosReceipt, generateReceiptHtml, generateBulkReceiptHtml, generateCupLabelsEscPos, generateCupLabelsHtml, executePrintDocument } from "@/lib/receipt";
 import {useAdminBack} from "@/components/admin/useAdminBack";
 
 export default function AdminTransaksiPage() {
@@ -259,8 +259,22 @@ export default function AdminTransaksiPage() {
     }
   };
 
-  const handlePrintSingleOrder = async (order: any, mode: 'all' | 'food' | 'drink' = 'all') => {
+  const handlePrintSingleOrder = async (order: any, mode: 'all' | 'food' | 'drink' | 'cup_label' = 'all') => {
     try {
+      if (mode === 'cup_label') {
+        const escposText = generateCupLabelsEscPos(order, storeSettings);
+        const htmlContent = generateCupLabelsHtml(order, storeSettings);
+        const result = await executePrintDocument({
+          title: `Stiker_Cup_#${order.id}`,
+          escposText,
+          htmlContent,
+          settings: storeSettings
+        });
+        if (result.success) {
+          showToast(result.message, "success");
+        }
+        return;
+      }
       const escposText = generateEscPosReceipt(order, mode, storeSettings);
       const htmlContent = generateReceiptHtml(order, mode, storeSettings);
       const modeLabel = mode === 'food' ? 'Dapur' : mode === 'drink' ? 'Bar' : 'Nota';
@@ -280,7 +294,7 @@ export default function AdminTransaksiPage() {
   };
 
   // Single Print from modal
-  const handlePrint = async (mode: 'all' | 'food' | 'drink' = 'all') => {
+  const handlePrint = async (mode: 'all' | 'food' | 'drink' | 'cup_label' = 'all') => {
     if (!receiptData) return;
     await handlePrintSingleOrder(receiptData, mode);
     showToast("Perintah cetak struk dikirim");
@@ -1718,6 +1732,13 @@ export default function AdminTransaksiPage() {
                 onClick={() => handlePrint('all')}
                 className="w-full py-2.5 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-bold shadow-md shadow-accent/20 active:scale-95 transition-all"
               > Cetak Ulang Struk Tamu
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePrint('cup_label')}
+                className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-1.5"
+              >
+                <span>Cetak Ulang Stiker Cup</span>
               </button>
               <div className="flex gap-2">
                 <button

@@ -14,6 +14,8 @@ import {
   generateEscPosReceipt, 
   generateReceiptHtml, 
   generateTestReceiptData, 
+  generateCupLabelsEscPos,
+  generateCupLabelsHtml,
   executePrintDocument,
   formatCurrency
 } from "@/lib/receipt";
@@ -206,6 +208,34 @@ export default function PengaturanPrinterPage() {
     }
   };
 
+  const handleTestCupLabelPrint = async () => {
+    setIsPrintingTest(true);
+    setStatusMessage("Menyiapkan stiker cup uji coba...");
+
+    const testData = generateTestReceiptData(currentReceiptConfig);
+    const escposText = generateCupLabelsEscPos(testData, currentReceiptConfig);
+    const htmlContent = generateCupLabelsHtml(testData, currentReceiptConfig);
+
+    try {
+      const result = await executePrintDocument({
+        title: "Uji_Stiker_Cup_Thermal",
+        escposText,
+        htmlContent,
+        settings: currentReceiptConfig
+      });
+
+      if (result.success) {
+        showToast("Stiker cup berhasil dikirim ke printer!", "success");
+        setStatusMessage("Stiker cup berhasil dikirim ke printer.");
+      }
+    } catch (_) {
+      alert("Printer belum tersambung. Periksa koneksi Bluetooth dan coba lagi.");
+      setStatusMessage("Printer belum tersambung. Periksa Bluetooth dan coba lagi.");
+    } finally {
+      setIsPrintingTest(false);
+    }
+  };
+
   const testReceiptData = generateTestReceiptData(currentReceiptConfig);
 
   return (
@@ -241,6 +271,16 @@ export default function PengaturanPrinterPage() {
           >
             <span><LineIcon name="printer" /></span>
             <span>{isPrintingTest ? "Mencetak Dokumen..." : "Tes Cetak Struk"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleTestCupLabelPrint}
+            disabled={isPrintingTest}
+            className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <span><LineIcon name="food" /></span>
+            <span>Uji Stiker Cup</span>
           </button>
         </div>
       </div>

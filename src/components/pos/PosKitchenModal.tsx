@@ -15,6 +15,7 @@ import {
 import { getPosScope } from '@/lib/multidevice/posWire';
 import { OperationIcon, date } from '@/components/operations/Shared';
 import LoadingState, { BusyLabel } from '@/components/LoadingState';
+import { generateCupLabelsEscPos, generateCupLabelsHtml, executePrintDocument } from '@/lib/receipt';
 
 interface PosKitchenModalProps {
   isOpen: boolean;
@@ -94,6 +95,39 @@ export default function PosKitchenModal({
       // If multi-device cashier lacks direct server operation write permission,
       // acknowledge locally so cashier's UI completes immediately.
       setLocallyServedItemIds((prev) => new Set(prev).add(item.id));
+    }
+  };
+
+  const handlePrintCupLabels = async (order: any, allLines: any[]) => {
+    try {
+      const isTakeaway = !order.tableId || order.orderType?.toLowerCase() === 'takeaway';
+      const tableName = order.tableId ? data?.tables.find((t: any) => t.id === order.tableId)?.nomor : undefined;
+
+      const receiptLike = {
+        orderId: order.id,
+        customerName: order.customerName,
+        orderType: order.orderType || (isTakeaway ? 'Takeaway' : 'Dine-in'),
+        tableName,
+        tableId: order.tableId,
+        createdAt: order.createdAt,
+        notes: order.notes,
+        items: allLines.map((l: any) => ({
+          nama: l.item.namaMenu || l.item.nama,
+          qty: l.item.qty,
+          kategori: l.item.kategoriMenu || l.item.kategori,
+          selectedModifiers: l.item.selectedModifiers,
+        })),
+      };
+
+      const escposText = generateCupLabelsEscPos(receiptLike);
+      const htmlContent = generateCupLabelsHtml(receiptLike);
+      await executePrintDocument({
+        title: `Stiker_Cup_A-${order.id}`,
+        escposText,
+        htmlContent,
+      });
+    } catch (err: any) {
+      setError('Gagal mencetak stiker cup: ' + (err.message || err));
     }
   };
 
@@ -342,7 +376,7 @@ export default function PosKitchenModal({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {processedOrders.map(({ order, isTakeaway, tableName, lines, hasReady, hasPreparing }) => {
+              {processedOrders.map(({ order, isTakeaway, tableName, lines, allLines, hasReady, hasPreparing }) => {
                 const elapsed = Math.max(0, Math.floor((now - Date.parse(order.createdAt)) / 60000));
                 const readyLines = lines.filter((l) => l.stage === 'ready');
                 const isPaid = order.status === 'paid';
@@ -375,9 +409,20 @@ export default function PosKitchenModal({
                             {order.customerName || (isTakeaway ? 'Bungkus' : tableName || 'Tamu')}
                           </span>
                         </div>
-                        <span className="text-[11px] font-semibold text-muted">
-                          #{String(order.id).padStart(3, '0')}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handlePrintCupLabels(order, allLines)}
+                            className="px-2 py-0.5 rounded-lg border border-line bg-surface hover:bg-card text-[10px] font-bold text-muted hover:text-fg flex items-center gap-1 transition-all"
+                            title="Cetak stiker tempel untuk cup atau kemasan"
+                          >
+                            <OperationIcon name="food" className="h-3 w-3" />
+                            <span>Stiker Cup</span>
+                          </button>
+                          <span className="text-[11px] font-semibold text-muted">
+                            #{String(order.id).padStart(3, '0')}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Sub-header info: Elapsed time & Payment status */}

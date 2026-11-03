@@ -951,6 +951,290 @@ export function generateTestReceiptData(settings?: StoreSettings) {
 }
 
 // ============================================================================
+// 3B. GENERATOR STIKER LABEL CUP / PESANAN PER ITEM (CUP LABEL PRINTER)
+// ============================================================================
+
+export interface CupLabelItem {
+  index: number;
+  total: number;
+  customerOrTable: string;
+  orderType: string;
+  nama: string;
+  unit: string;
+  modifiers: string[];
+  notes?: string;
+  dateTime: string;
+  orderId?: string | number;
+}
+
+export function extractCupLabelUnits(receipt: any): CupLabelItem[] {
+  receipt = safePrintData(receipt);
+  const items = Array.isArray(receipt.items) ? receipt.items : [];
+  const expanded: any[] = [];
+
+  for (const item of items) {
+    const qty = Math.max(1, Math.round(Number(item.qty) || 1));
+    for (let q = 0; q < qty; q++) {
+      expanded.push(item);
+    }
+  }
+
+  const total = expanded.length;
+  const isTakeaway = receipt.orderType?.toLowerCase() === 'takeaway' || (!receipt.tableId && receipt.orderType !== 'Dine-in');
+  const orderType = isTakeaway ? 'Take Away' : 'Dine In';
+
+  let customerOrTable = 'Tamu';
+  if (isTakeaway) {
+    customerOrTable = receipt.customerName?.trim() || 'Take Away';
+  } else {
+    const tName = receipt.tableName?.trim() || (receipt.tableId ? `Meja ${receipt.tableId}` : '');
+    const cName = receipt.customerName?.trim() || '';
+    if (tName && cName) {
+      customerOrTable = `${tName} (${cName})`;
+    } else if (tName) {
+      customerOrTable = tName;
+    } else if (cName) {
+      customerOrTable = cName;
+    } else {
+      customerOrTable = 'Dine In';
+    }
+  }
+
+  const dateObj = receipt.createdAt ? new Date(receipt.createdAt) : new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const d = pad(dateObj.getDate());
+  const m = pad(dateObj.getMonth() + 1);
+  const y = String(dateObj.getFullYear()).slice(-2);
+  const hh = pad(dateObj.getHours());
+  const mm = pad(dateObj.getMinutes());
+  const dateTime = `${d}/${m}/${y} ${hh}:${mm}`;
+
+  return expanded.map((item, idx) => {
+    const isDrink = isDrinkCategory(item.kategori || item.kategoriMenu);
+    const unit = isDrink ? '1 Cup' : '1 Porsi';
+    const modifiers: string[] = [];
+    if (Array.isArray(item.selectedModifiers)) {
+      for (const mod of item.selectedModifiers) {
+        const modName = mod.optionName || mod.nama || '';
+        if (modName) modifiers.push(modName);
+      }
+    }
+    const notes = item.notes || item.catatan || (idx === 0 && receipt.notes ? receipt.notes : undefined);
+
+    return {
+      index: idx + 1,
+      total,
+      customerOrTable,
+      orderType,
+      nama: item.nama || item.namaMenu || 'Menu',
+      unit,
+      modifiers,
+      notes,
+      dateTime,
+      orderId: receipt.orderId || receipt.id,
+    };
+  });
+}
+
+export function generateCupLabelsEscPos(receipt: any, settings?: StoreSettings): string {
+  receipt = safePrinterText(receipt);
+  const units = extractCupLabelUnits(receipt);
+  if (!units.length) return '';
+
+  const cfg = safePrinterText(settings || getStoreSettings());
+  const width = cfg.paperWidth === '80mm' ? 48 : 32;
+  const divider = '-'.repeat(width) + '\n';
+
+  const lineTwoCols = (left: string, right: string): string => {
+    const space = width - left.length - right.length;
+    if (space >= 0) return `${left}${' '.repeat(space)}${right}\n`;
+    const maxLeft = Math.max(1, width - right.length - 1);
+    return `${left.slice(0, maxLeft)} ${right}\n`;
+  };
+
+  let txt = '';
+  const INIT = '\x1b@';
+  const DBL_HEIGHT = '\x1b!\x10';
+  const NORMAL = '\x1b!\x00';
+  const BOLD_ON = '\x1bE\x01';
+  const BOLD_OFF = '\x1bE\x00';
+
+  for (const u of units) {
+    txt += INIT;
+    txt += BOLD_ON + lineTwoCols(u.customerOrTable, u.orderType) + BOLD_OFF;
+    txt += `${u.unit}\n`;
+    txt += divider;
+    txt += BOLD_ON + DBL_HEIGHT + u.nama + NORMAL + BOLD_OFF + '\n';
+    for (const mod of u.modifiers) {
+      txt += `  * ${mod}\n`;
+    }
+    if (u.notes) {
+      txt += `  (Catatan: ${u.notes})\n`;
+    }
+    txt += divider;
+    txt += BOLD_ON + lineTwoCols(u.dateTime, `${u.index}/${u.total}`) + BOLD_OFF;
+    txt += '\n\n\n\x1dV\x42\x00';
+  }
+
+  return txt;
+}
+
+export function generateCupLabelsHtml(receipt: any, settings?: StoreSettings): string {
+  receipt = safePrintData(receipt);
+  const units = extractCupLabelUnits(receipt);
+  if (!units.length) return '';
+
+  const cfg = safePrintData(settings || getStoreSettings());
+  const is80 = cfg.paperWidth === '80mm';
+  const labelWidth = is80 ? '70mm' : '50mm';
+
+  const labelsHtml = units
+    .map(
+      (u) => `
+    <div class="cup-label">
+      <div class="label-header">
+        <span class="label-cust">${u.customerOrTable}</span>
+        <span class="label-type">${u.orderType}</span>
+      </div>
+      <div class="label-unit">${u.unit}</div>
+      <div class="label-item-name">${u.nama}</div>
+      ${
+        u.modifiers.length > 0
+          ? `<div class="label-modifiers">${u.modifiers.map((m) => `<div>• ${m}</div>`).join('')}</div>`
+          : ''
+      }
+      ${u.notes ? `<div class="label-notes">Catatan: ${u.notes}</div>` : ''}
+      <div class="label-footer">
+        <span class="label-date">${u.dateTime}</span>
+        <span class="label-counter">${u.index}/${u.total}</span>
+      </div>
+    </div>
+  `
+    )
+    .join('\n');
+
+  return `
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+      <meta charset="utf-8">
+      <title>Stiker_Cup_${receipt.orderId || receipt.id || 'Order'}</title>
+      <style>
+        @page {
+          margin: 0;
+          size: ${is80 ? '80mm' : '58mm'} auto;
+        }
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Courier New", monospace;
+          font-size: 11px;
+          line-height: 1.25;
+          color: #000000 !important;
+          background: #ffffff !important;
+          padding: 4px;
+        }
+        .cup-label {
+          width: ${labelWidth};
+          min-height: 32mm;
+          margin: 0 auto 5mm auto;
+          padding: 3mm 2.5mm;
+          border: 1px dashed #777;
+          border-radius: 4px;
+          page-break-after: always;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          background: #ffffff;
+        }
+        @media print {
+          body {
+            padding: 0;
+          }
+          .cup-label {
+            border: none;
+            margin: 0 auto;
+            border-radius: 0;
+          }
+        }
+        .label-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          border-bottom: 1.5px solid #000;
+          padding-bottom: 2px;
+          margin-bottom: 2px;
+        }
+        .label-cust {
+          font-weight: 900;
+          font-size: 13px;
+          max-width: 65%;
+          word-break: break-word;
+        }
+        .label-type {
+          font-weight: 800;
+          font-size: 10px;
+          text-transform: uppercase;
+          text-align: right;
+        }
+        .label-unit {
+          font-size: 9px;
+          color: #444;
+          font-weight: bold;
+          margin-top: 2px;
+        }
+        .label-item-name {
+          font-size: 14px;
+          font-weight: 900;
+          line-height: 1.15;
+          margin: 3px 0 2px 0;
+          word-break: break-word;
+        }
+        .label-modifiers {
+          font-size: 10px;
+          font-weight: 600;
+          color: #222;
+          margin-bottom: 4px;
+          line-height: 1.25;
+          padding-left: 2px;
+        }
+        .label-notes {
+          font-size: 9px;
+          font-style: italic;
+          color: #444;
+          margin-bottom: 4px;
+        }
+        .label-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          border-top: 1px dashed #666;
+          padding-top: 2px;
+          margin-top: auto;
+          font-size: 9px;
+        }
+        .label-date {
+          font-weight: normal;
+        }
+        .label-counter {
+          font-weight: 900;
+          font-size: 12px;
+        }
+      </style>
+    </head>
+    <body>
+      ${labelsHtml}
+    </body>
+    </html>
+  `;
+}
+
+// ============================================================================
 // 4. PRINT EXECUTION CONTROLLER DENGAN DETEKSI CAPACITOR NATIVE & FALLBACK WEB
 // ============================================================================
 

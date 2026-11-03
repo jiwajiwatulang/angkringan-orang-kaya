@@ -26,6 +26,8 @@ import {
   generateReceiptHtml, 
   generateZReportReceipt, 
   generateZReportHtml, 
+  generateCupLabelsEscPos,
+  generateCupLabelsHtml,
   executePrintDocument 
 } from '@/lib/receipt';
 import PaymentProofUpload from '@/components/PaymentProofUpload';
@@ -483,7 +485,7 @@ export default function POSPage() {
   const kitchenSummary = useKitchenSummary(storeSettings?.businessType);
 
   const [receiptData, setReceiptData] = useState<any>(null);
-  const [printMode, setPrintMode] = useState<'all' | 'food' | 'drink'>('all');
+  const [printMode, setPrintMode] = useState<'all' | 'food' | 'drink' | 'cup_label'>('all');
 
   const [activeVariantGroup, setActiveVariantGroup] = useState<any>(null);
 
@@ -1913,21 +1915,32 @@ export default function POSPage() {
     return btoa(txt);
   };
 
-  const handlePrint = async (mode: 'all' | 'food' | 'drink', autoReceiptData?: any) => {
+  const handlePrint = async (mode: 'all' | 'food' | 'drink' | 'cup_label' = 'all', autoReceiptData?: any) => {
     const dataToPrint = autoReceiptData || receiptData;
     if (!dataToPrint) return;
     setPrintMode(mode);
 
     try {
-      const escposText = generateEscPosReceipt(dataToPrint, mode, storeSettings);
-      const htmlContent = generateReceiptHtml(dataToPrint, mode, storeSettings);
-      const modeLabel = mode === 'food' ? 'Dapur' : mode === 'drink' ? 'Bar' : 'Nota_POS';
-      await executePrintDocument({
-        title: modeLabel,
-        escposText,
-        htmlContent,
-        settings: storeSettings
-      });
+      if (mode === 'cup_label') {
+        const escposText = generateCupLabelsEscPos(dataToPrint, storeSettings);
+        const htmlContent = generateCupLabelsHtml(dataToPrint, storeSettings);
+        await executePrintDocument({
+          title: `Stiker_Cup_A-${dataToPrint.orderId || dataToPrint.id || ''}`,
+          escposText,
+          htmlContent,
+          settings: storeSettings
+        });
+      } else {
+        const escposText = generateEscPosReceipt(dataToPrint, mode, storeSettings);
+        const htmlContent = generateReceiptHtml(dataToPrint, mode, storeSettings);
+        const modeLabel = mode === 'food' ? 'Dapur' : mode === 'drink' ? 'Bar' : 'Nota_POS';
+        await executePrintDocument({
+          title: modeLabel,
+          escposText,
+          htmlContent,
+          settings: storeSettings
+        });
+      }
     } catch (e: any) {
       console.warn('Gagal memanggil print:', e);
       alert('Gagal memanggil print: ' + (e.message || e));
@@ -3307,7 +3320,15 @@ export default function POSPage() {
                 </button>
               )}
               <button onClick={() => handlePrint('all')} className="w-full py-3 rounded-xl bg-accent hover:bg-accent-hover text-white font-bold flex items-center justify-center space-x-2 shadow transition-transform active:scale-95">
-                <span>Cetak Semua</span>
+                <span>Cetak Semua (Struk Nota)</span>
+              </button>
+              <button 
+                type="button" 
+                onClick={() => handlePrint('cup_label')} 
+                className="w-full py-2.5 rounded-xl border-2 border-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-xs"
+              >
+                <OperationIcon name="food" className="h-4 w-4" />
+                <span>Cetak Stiker Cup / Label Pesanan</span>
               </button>
               <div className="flex space-x-2">
                 {receiptData.items.some((i:any) => !isDrinkCategory(i.kategori)) && (
