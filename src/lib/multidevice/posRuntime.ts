@@ -14,7 +14,30 @@ export interface PosRuntime {client:DeviceClient;synchronizer:PosSynchronizer;sc
 let current:PosRuntime|undefined;
 export function currentPosRuntime(){return current;}
 export async function initializePosRuntime():Promise<PosRuntime>{
-  const saved=(await db.table('settings').get('multi_device_access'))?.value;
+  let saved=(await db.table('settings').get('multi_device_access'))?.value;
+  if(!saved?.access){
+    const activation=typeof localStorage!=='undefined'?localStorage.getItem('sakunota_activation_token'):null;
+    const licenseKey=typeof localStorage!=='undefined'?localStorage.getItem('sakunota_license_key'):null;
+    if(activation&&licenseKey&&typeof navigator!=='undefined'&&navigator.onLine){
+      try{
+        const targetKeys=(await db.table('settings').get('license_device_keys_v2'))?.value;
+        if(!targetKeys){
+          const DexieModule=await import('dexie');
+          const DexieCtor=DexieModule.default||DexieModule;
+          const mainDb=new DexieCtor('AngkringanDB');
+          try{
+            await mainDb.open();
+            const mainKeys=(await mainDb.table('settings').get('license_device_keys_v2'))?.value;
+            if(mainKeys)await db.table('settings').put({key:'license_device_keys_v2',value:mainKeys});
+          }catch{}finally{mainDb.close();}
+        }
+        const {enrollOwnerClient}=await import('./client');
+        const fresh=(await enrollOwnerClient()).snapshot();
+        saved={access:fresh.access,claims:fresh.claims};
+        await db.table('settings').put({key:'multi_device_access',value:saved});
+      }catch{}
+    }
+  }
   if(!saved?.access)throw new AccessError('Hubungkan perangkat terlebih dahulu.',401);
   const deviceId=getLocalDeviceId(),identity=await deviceKeyIdentity();
   let access=String(saved.access),claims;

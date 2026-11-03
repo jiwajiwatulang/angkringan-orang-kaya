@@ -16,6 +16,18 @@ export default function PosSessionBoundary({children}:{children:React.ReactNode}
   const pathname=usePathname(),workspace=pathname==='/pos'||pathname.startsWith('/admin');
   const [enabled,setEnabled]=useState(false),[ready,setReady]=useState(false),[runtime,setRuntime]=useState<PosRuntime>(),[error,setError]=useState(''),[pending,setPending]=useState(0),[online,setOnline]=useState(true),[failed,setFailed]=useState(false);
   const [failure,setFailure]=useState<{phase:SyncPhase;message:string}>(),[busy,setBusy]=useState(false);
+  const [hasLocalLicense,setHasLocalLicense]=useState(false);
+  useEffect(()=>{
+    try{
+      if(typeof localStorage!=='undefined'&&(localStorage.getItem('sakunota_license_key')||localStorage.getItem('sakunota_activation_token'))){
+        setHasLocalLicense(true);
+      }
+    }catch{}
+  },[]);
+  const openStandalone=()=>{
+    try{localStorage.removeItem('sakunota_pos_partition');}catch{}
+    window.location.reload();
+  };
   const retry=useRef<()=>Promise<void>>(async()=>{});
   const scheduler=useRef<SyncScheduler|null>(null);
   useEffect(()=>{scheduler.current?.activity();},[pathname]);
@@ -61,7 +73,7 @@ export default function PosSessionBoundary({children}:{children:React.ReactNode}
   useEffect(()=>{const onEvt=()=>changeEmployee();window.addEventListener('sakunota:change-employee',onEvt);return()=>window.removeEventListener('sakunota:change-employee',onEvt);},[]);
   if(process.env.NEXT_PUBLIC_SAKUNOTA_MULTI_DEVICE!=='enabled')return <>{children}</>;
   if(!workspace||!posPartition())return <>{children}</>;
-  if(!enabled||!ready)return <main className="mx-auto w-full max-w-md space-y-4 p-6">{error?<><p role="alert">{error}</p><button className="min-h-11 rounded-xl bg-blue-600 px-4 text-white" onClick={()=>void initialize()}>Coba Lagi</button></>:<LoadingState label="Memuat data kasir"/>}</main>;
+  if(!enabled||!ready)return <main className="mx-auto flex min-h-[60vh] w-full max-w-md flex-col justify-center p-6">{error?<div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-4 flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></div><div className="min-w-0 flex-1"><h2 className="font-semibold text-slate-900">Akses Kasir Terhubung</h2><p role="alert" className="mt-0.5 text-sm text-slate-600 leading-relaxed">{error}</p></div></div>{hasLocalLicense&&<div className="mb-5 rounded-xl border border-blue-100 bg-blue-50/70 p-3.5 text-xs text-blue-900 leading-relaxed"><span className="font-semibold block mb-0.5">Lisensi Toko Terdeteksi</span>Perangkat ini memiliki lisensi toko aktif di penyimpanan lokal. Anda dapat membuka kasir utama langsung menggunakan lisensi toko Anda.</div>}<div className="flex flex-col gap-2.5">{hasLocalLicense?<><button type="button" className="min-h-11 w-full rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 active:scale-[0.99] transition" onClick={openStandalone}>Buka Kasir dengan Lisensi Toko</button><button type="button" className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 transition" onClick={()=>void initialize()}>Coba Hubungkan Lagi</button></>:<><button type="button" className="min-h-11 w-full rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 active:scale-[0.99] transition" onClick={()=>void initialize()}>Coba Lagi</button><button type="button" className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 transition" onClick={openStandalone}>Buka Kasir Standalone</button></>}<a href="/hubungkan-perangkat" className="flex min-h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-600 hover:bg-slate-100 transition">Hubungkan Ulang Perangkat</a></div></div>:<LoadingState label="Memuat data kasir"/>}</main>;
   if(runtime?.employees&&!runtime.scope)return <main className="flex min-h-dvh items-center justify-center p-4"><EmployeeLogin sessions={runtime.employees} onSuccess={async session=>{const next=await enterEmployee(session);setRuntime({...next});}}/></main>;
   if(runtime?.scope?.claims.role==='cashier'&&typeof location!=='undefined'&&location.pathname!=='/pos'){location.replace('/pos');return null;}
   const cashierPage=typeof location!=='undefined'&&location.pathname==='/pos';
