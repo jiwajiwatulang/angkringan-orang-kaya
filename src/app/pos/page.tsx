@@ -38,6 +38,9 @@ import MobileOrdersScreen from '@/components/mobile/MobileOrdersScreen';
 import MobileBottomNav, { MobileTab } from '@/components/mobile/MobileBottomNav';
 import MobileFloatingCartBar from '@/components/mobile/MobileFloatingCartBar';
 import { checkCashierAccess, CashierAccessStatus } from '@/lib/licenseGuard';
+import PosKitchenModal from '@/components/pos/PosKitchenModal';
+import { useKitchenSummary } from '@/lib/useKitchenSummary';
+import { OperationIcon } from '@/components/operations/Shared';
 import { activateLicenseServer } from '@/lib/ordersClient';
 import { setupHardwareBarcodeScanner, playScannerBeep } from '@/lib/barcodeScanner';
 import BarcodeCameraModal from '@/components/BarcodeCameraModal';
@@ -475,6 +478,9 @@ export default function POSPage() {
   const [orderType, setOrderType] = useState("Dine-in");
   const [selectedTable, setSelectedTable] = useState<string>("");
   const [posZoneFilter, setPosZoneFilter] = useState<string>("Semua");
+  const [isKitchenModalOpen, setIsKitchenModalOpen] = useState(false);
+  const [kitchenFilterTableId, setKitchenFilterTableId] = useState<number | null>(null);
+  const kitchenSummary = useKitchenSummary(storeSettings?.businessType);
 
   const [receiptData, setReceiptData] = useState<any>(null);
   const [printMode, setPrintMode] = useState<'all' | 'food' | 'drink'>('all');
@@ -3473,6 +3479,33 @@ export default function POSPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
+                      {kitchenSummary.isSupported && (
+                        <div className="flex items-center gap-2 mr-1">
+                          {kitchenSummary.takeawayReadyCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => { setKitchenFilterTableId(null); setIsKitchenModalOpen(true); }}
+                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 text-xs font-bold transition-all shadow-xs"
+                            >
+                              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                              <span>Take Away: {kitchenSummary.takeawayReadyCount} Siap Diambil</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => { setKitchenFilterTableId(null); setIsKitchenModalOpen(true); }}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 active:scale-95"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                            </svg>
+                            <span>Pesanan Dapur</span>
+                            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${kitchenSummary.totalReady > 0 ? 'bg-white text-emerald-800 animate-pulse' : 'bg-emerald-800 text-emerald-100'}`}>
+                              {kitchenSummary.totalReady > 0 ? `${kitchenSummary.totalReady} Siap Saji` : '0 Siap'}
+                            </span>
+                          </button>
+                        </div>
+                      )}
                       <span className="px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[10px]">
                         Tersedia: {tableData.filter(t => getTableStatus(t) === 'kosong').length}
                       </span>
@@ -3534,7 +3567,12 @@ export default function POSPage() {
                     const activeTableOrder = openOrder || paidOrder;
                     const name = activeTableOrder?.customerName;
                     const isSelected = selectedTable === (table.id != null ? table.id.toString() : '');
-                    const style = tStatus === 'open' 
+                    const isTableKitchenReady = kitchenSummary.isSupported && kitchenSummary.readyTableIds.has(Number(table.id));
+                    const isTableKitchenPreparing = kitchenSummary.isSupported && kitchenSummary.preparingTableIds.has(Number(table.id));
+
+                    const style = isTableKitchenReady
+                      ? { card: 'border-emerald-500 bg-emerald-500/10 shadow-emerald-500/15', badge: 'bg-emerald-600 text-white font-black animate-pulse', label: 'Siap Antar!', labelCls: 'bg-emerald-600 text-white font-black animate-pulse' }
+                      : tStatus === 'open' 
                       ? { card: 'border-rose-500 bg-card shadow-rose-500/10', badge: 'bg-rose-600 text-white', label: 'Terisi (Open)', labelCls: 'bg-rose-500/15 text-rose-600 dark:text-rose-700 font-bold' }
                       : tStatus === 'lunas' 
                       ? { card: 'border-accent bg-card shadow-accent/10', badge: 'bg-accent text-white', label: 'Lunas', labelCls: 'bg-accent/15 text-accent-text font-bold' }
@@ -3566,6 +3604,16 @@ export default function POSPage() {
                             <span className={`mt-1 max-lg:landscape:mt-0.5 text-xs max-lg:landscape:text-[10px] font-bold truncate max-w-full ${tStatus === 'lunas' ? 'text-accent-text' : 'text-fg'}`}><LineIcon name="info" />{name}
                             </span>
                           )}
+                          {isTableKitchenReady && (
+                            <span className="mt-0.5 text-[10px] font-black text-emerald-700 dark:text-emerald-400">
+                              Dapur: Sudah Siap Saji
+                            </span>
+                          )}
+                          {!isTableKitchenReady && isTableKitchenPreparing && (
+                            <span className="mt-0.5 text-[10px] font-semibold text-blue-600 dark:text-blue-400">
+                              Dapur: Dimasak
+                            </span>
+                          )}
                           {openOrder && (
                             <span className="text-[11px] max-lg:landscape:text-[10px] font-extrabold text-rose-700 mt-0.5">
                               Rp {(openOrder.total ?? 0).toLocaleString('id-ID')}
@@ -3578,7 +3626,20 @@ export default function POSPage() {
                           )}
                         </div>
 
-                        {tStatus === 'lunas' ? (
+                        {isTableKitchenReady ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setKitchenFilterTableId(table.id);
+                              setIsKitchenModalOpen(true);
+                            }}
+                            className="w-full py-1.5 max-lg:landscape:py-1 text-[11px] max-lg:landscape:text-[10px] font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-transform active:scale-95 shadow-sm flex items-center justify-center gap-1"
+                          >
+                            <OperationIcon name="food" className="h-3.5 w-3.5" />
+                            <span>Lihat Dapur</span>
+                          </button>
+                        ) : tStatus === 'lunas' ? (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -3962,6 +4023,11 @@ export default function POSPage() {
               onClearTable={async (tableId) => {
                 await clearTable(tableId);
                 await loadData();
+              }}
+              businessType={storeSettings?.businessType}
+              onOpenKitchen={(tableId) => {
+                setKitchenFilterTableId(tableId || null);
+                setIsKitchenModalOpen(true);
               }}
             />
           )}
@@ -5236,6 +5302,17 @@ export default function POSPage() {
       />
 
       {isRetailAddOpen && storeSettings.businessType === 'retail' && <RetailAddProduct onClose={() => { setIsRetailAddOpen(false); setRetailBarcode(undefined); }} onAdd={addRetailToCart} initialBarcode={retailBarcode} />}
+
+      {/* Kitchen Orders Modal */}
+      <PosKitchenModal
+        isOpen={isKitchenModalOpen}
+        onClose={() => {
+          setIsKitchenModalOpen(false);
+          setKitchenFilterTableId(null);
+        }}
+        businessType={storeSettings?.businessType}
+        initialFilterTableId={kitchenFilterTableId}
+      />
 
       {/* Barcode Camera Scanner Modal */}
       <BarcodeCameraModal

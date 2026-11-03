@@ -21,7 +21,11 @@ export async function operationEmployees(){
 export async function saveOperation(input:Omit<OperationRecord,'id'|'at'>, photoInput?: { photoId: string; blob: Blob | string; checksum: string }){
   await requireCashierWriteAccess();
   const scope=getPosScope();
-  if(!input.kind.startsWith('attendance.')||scope?.claims.role!=='cashier')await requireMerchantAdmin();
+  if(input.kind==='kitchen'){
+    if(db.name.startsWith('SakuNotaPOS-')&&scope?.claims.role!=='owner')throw new Error('Tindakan ini memerlukan akses pemilik.');
+  }else if(!input.kind.startsWith('attendance.')||scope?.claims.role!=='cashier'){
+    await requireMerchantAdmin();
+  }
   if(scope?.claims.role==='cashier'&&input.employeeId!==scope.claims.employeeId)throw new Error('Pilih akun kasir Anda');
   const row:OperationRecord={...input,at:new Date().toISOString(),sessionId:input.sessionId||crypto.randomUUID()};
   validateOperation(row);
