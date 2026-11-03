@@ -1161,22 +1161,7 @@ export default function POSPage() {
       setIsCloseShiftModalOpen(false);
       setBlindCloseResult(closed);
 
-      // Otomatis cetak struk Z-Report terisolasi
-      try {
-        const escposText = generateZReportReceipt(closed, storeSettings);
-        const htmlContent = generateZReportHtml(closed, storeSettings);
-        await executePrintDocument({
-          title: 'Z_Report_Tutup_Shift',
-          escposText,
-          htmlContent,
-          settings: storeSettings
-        });
-      } catch (printErr) {
-        console.warn("Print Z-report fallback:", printErr);
-      }
-
       await refreshShiftData();
-      alert("Shift berhasil DITUTUP. Rekapitulasi kas tercatat permanen.");
     } catch (err: any) {
       alert("Gagal menutup shift: " + err.message);
     }
@@ -4732,7 +4717,11 @@ export default function POSPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setBlindCloseResult(null)}
+                  onClick={() => {
+                    setBlindCloseResult(null);
+                    setCurrentShiftStats(null);
+                    if (typeof window !== 'undefined') window.focus();
+                  }}
                   className="flex-1 py-3 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-black shadow-lg shadow-accent/20 transition-all active:scale-95"
                 >
                   Selesai & Tutup

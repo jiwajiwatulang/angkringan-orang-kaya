@@ -40,7 +40,16 @@ export default function PosKitchenModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    const timer = setInterval(() => setNow(Date.now()), 15000);
+    const wake = () => {
+      setNow(Date.now());
+      try {
+        const { currentPosRuntime } = require('@/lib/multidevice/posRuntime');
+        const rt = currentPosRuntime();
+        if (rt?.synchronizer) void rt.synchronizer.synchronize();
+      } catch {}
+    };
+    wake();
+    const timer = setInterval(wake, 3000);
     return () => clearInterval(timer);
   }, [isOpen]);
 
@@ -77,7 +86,7 @@ export default function PosKitchenModal({
   const advanceStage = async (order: any, item: any, nextStage: KitchenStage) => {
     const scope = getPosScope();
     const previous = data?.records.filter((r) => r.kind === 'kitchen' && r.orderItemId === item.id).at(-1);
-    const employeeId = scope?.claims.deviceId || scope?.claims.employeeId || 'local:cashier';
+    const employeeId = (scope?.claims.role === 'cashier' ? scope.claims.employeeId : scope?.claims.deviceId) || 'local:cashier';
     const employeeName = scope?.operatorName || 'Kasir';
 
     try {

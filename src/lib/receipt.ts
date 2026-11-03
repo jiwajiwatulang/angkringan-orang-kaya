@@ -1338,6 +1338,7 @@ export async function executePrintDocument(options: PrintExecutionOptions): Prom
         if (printFrame.contentWindow) {
           printFrame.contentWindow.focus();
           printFrame.contentWindow.print();
+          if (typeof window !== 'undefined') window.focus();
           return {
             success: true,
             platform: 'web_iframe',

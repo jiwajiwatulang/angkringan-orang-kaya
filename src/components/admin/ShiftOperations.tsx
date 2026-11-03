@@ -1159,7 +1159,12 @@ export default function ShiftOperations({activeTab}:{activeTab:"shifts"|"movemen
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsCloseModalOpen(false)}
+                    onClick={() => {
+                      setIsCloseModalOpen(false);
+                      setClosedSuccessResult(null);
+                      setClosingShiftTarget(null);
+                      if (typeof window !== 'undefined') window.focus();
+                    }}
                     className="flex-1 py-2.5 bg-accent hover:bg-accent/90 text-white rounded-xl text-xs font-bold transition-all shadow-md"
                   >
                     Selesai

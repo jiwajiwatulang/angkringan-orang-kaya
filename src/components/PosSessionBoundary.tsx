@@ -59,7 +59,7 @@ export default function PosSessionBoundary({children}:{children:React.ReactNode}
         throw e;
       }finally{if(!stopped)setBusy(false);}
     };
-    const loop=new SyncScheduler({sync:update,online:()=>navigator.onLine,visible:()=>document.visibilityState==='visible',mode:()=>location.pathname==='/admin/dapur'?'kitchen':runtime.scope?.claims.role==='owner'?'owner':'cashier'});
+    const loop=new SyncScheduler({sync:update,online:()=>navigator.onLine,visible:()=>document.visibilityState==='visible',mode:()=>location.pathname==='/admin/dapur'||location.pathname==='/pos'?'kitchen':runtime.scope?.claims.role==='owner'?'owner':'cashier'});
     scheduler.current=loop;retry.current=async()=>{loop.wake();};
     const subscription=watchPosCommits(db,(pending,changed)=>{hasPending=pending;if(changed)loop.localChange();});
     const connectivity=()=>{setOnline(navigator.onLine);if(navigator.onLine&&hasPending)loop.localChange();else loop.wake();};

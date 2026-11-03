@@ -12,7 +12,19 @@ import LoadingState,{BusyLabel} from '@/components/LoadingState';
 export default function Kitchen(){
   const {storeSettings}=useAdmin();
   const [station,setStation]=useState('all'),[showServed,setShowServed]=useState(false),[busy,setBusy]=useState<number|null>(null),[error,setError]=useState(''),[now,setNow]=useState(Date.now());
-  useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),15000);return()=>clearInterval(timer);},[]);
+  useEffect(()=>{
+    const wake=()=>{
+      setNow(Date.now());
+      try{
+        const {currentPosRuntime}=require('@/lib/multidevice/posRuntime');
+        const rt=currentPosRuntime();
+        if(rt?.synchronizer)void rt.synchronizer.synchronize();
+      }catch{}
+    };
+    wake();
+    const timer=setInterval(wake,3000);
+    return()=>clearInterval(timer);
+  },[]);
   const data=useLiveQuery(async()=>{
     const [orders,items,records,tables]=await Promise.all(['orders','orderItems','operations','tables'].map(t=>db.table(t).toArray()));
     const midnight=new Date();midnight.setHours(0,0,0,0);

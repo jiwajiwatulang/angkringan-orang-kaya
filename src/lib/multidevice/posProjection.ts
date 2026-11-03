@@ -349,7 +349,6 @@ export function visiblePosEntity(entity:Entity,claims:AccessClaims):Entity|undef
   if(claims.role==='owner')return entity;
   if(['pos_index','pos_catalogVersion','pos_reservation'].includes(entity.kind))return undefined;
   if(entity.kind==='pos_operations'&&entity.value.kind==='kitchen'){
-    if(entity.value.mdTargetDeviceId!==claims.deviceId||entity.value.mdTargetOperatorId!==claims.employeeId)return undefined;
     const fields=['kind','employeeId','employeeName','at','orderId','orderItemId','stage','sessionId','previousId','lineSignature','mdId','mdVersion','mdStoreId','mdDeviceId','mdOperatorId','mdTargetDeviceId','mdTargetOperatorId'];
     return {...entity,value:Object.fromEntries(fields.filter(key=>key in entity.value).map(key=>[key,entity.value[key]]))};
   }
