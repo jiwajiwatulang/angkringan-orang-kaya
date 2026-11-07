@@ -1,0 +1,52 @@
+{
+  "name": "sakunota-live-recovery",
+  "main": "runtime/worker.js",
+  "no_bundle": true,
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": false,
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./public",
+    "not_found_handling": "404-page",
+    "run_worker_first": false
+  },
+  "vars": {
+    "SAKUNOTA_MULTI_DEVICE": "enabled"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sakunota-recovery-local",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "remote": false
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS_BUCKET",
+      "bucket_name": "sakunota-recovery-local",
+      "remote": false
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "MULTI_DEVICE_RATE_LIMITER",
+      "namespace_id": "2026102304",
+      "simple": {
+        "limit": 120,
+        "period": 60
+      }
+    },
+    {
+      "name": "PUBLIC_RATE_LIMITER",
+      "namespace_id": "2026101901",
+      "simple": {
+        "limit": 30,
+        "period": 60
+      }
+    }
+  ]
+}

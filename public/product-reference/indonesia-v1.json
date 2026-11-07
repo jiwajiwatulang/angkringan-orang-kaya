@@ -1,0 +1,918 @@
+{
+  "version": 1,
+  "title": "Referensi awal produk pangan kemasan",
+  "source": "Open Food Facts contributors",
+  "sourceUrl": "https://world.openfoodfacts.org",
+  "retrievedAt": "2026-10-21T15:34:59.122Z",
+  "license": "ODbL-1.0",
+  "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+  "contentsLicenseUrl": "https://opendatacommons.org/licenses/dbcl/1-0/",
+  "queries": [
+    "https://world.openfoodfacts.org/api/v2/search?countries_tags=en%3Aindonesia&fields=code,product_name,product_name_id,brands,quantity&page_size=100&page=1",
+    "https://world.openfoodfacts.org/api/v2/search?countries_tags=en%3Aindonesia&fields=code,product_name,product_name_id,brands,quantity&page_size=100&page=2"
+  ],
+  "scope": "200 source rows tagged Indonesia; filtered for usable names, brands, valid GTIN and consistent size. Not a complete or verified national catalog. No prices or images.",
+  "skipped": 50,
+  "products": [
+    {
+      "code": "0089686010015",
+      "name": "Rasa Ayam Bawang",
+      "brand": "indomie",
+      "quantity": "69g"
+    },
+    {
+      "code": "0089686010947",
+      "name": "Indomie Mi Goreng Original",
+      "brand": "Indofood, indomie",
+      "quantity": "85 g"
+    },
+    {
+      "code": "0089686040227",
+      "name": "Indomie K-rose goreng",
+      "brand": "indomie",
+      "quantity": ""
+    },
+    {
+      "code": "0089686041705",
+      "name": "Indomie - Mi Goreng Jumbo",
+      "brand": "indomie, Indofood",
+      "quantity": "129g"
+    },
+    {
+      "code": "0089686041767",
+      "name": "Indomie Goreng Jumbo Ayam Panggang",
+      "brand": "indomie",
+      "quantity": "127 g"
+    },
+    {
+      "code": "0089686043433",
+      "name": "Indomie Hype Abis Mi Instan Goreng Ayam Geprek 85 g",
+      "brand": "indomie",
+      "quantity": "85g"
+    },
+    {
+      "code": "0089686401721",
+      "name": "Saus Tomat",
+      "brand": "Indofood",
+      "quantity": "135ml"
+    },
+    {
+      "code": "0089686605037",
+      "name": "makanan",
+      "brand": "Jets coklat",
+      "quantity": ""
+    },
+    {
+      "code": "0089686945003",
+      "name": "Indomie Pop Spageti - Spicy Bolognese",
+      "brand": "indomie",
+      "quantity": "84g"
+    },
+    {
+      "code": "0711844115057",
+      "name": "ABC Kecap Asin Botol 131 ml",
+      "brand": "ABC",
+      "quantity": "131ml"
+    },
+    {
+      "code": "0711844130128",
+      "name": "ABC Saus Tomat 275ml",
+      "brand": "ABC",
+      "quantity": ""
+    },
+    {
+      "code": "0711844162419",
+      "name": "Abc sari kacang hijau",
+      "brand": "Abc",
+      "quantity": "1"
+    },
+    {
+      "code": "0896867700326",
+      "name": "Club Air Mineral",
+      "brand": "Club Air Mineral",
+      "quantity": "600"
+    },
+    {
+      "code": "0996646000019",
+      "name": "Teh botol sosro original",
+      "brand": "Sosro",
+      "quantity": "300 ml"
+    },
+    {
+      "code": "4002309037219",
+      "name": "Selai Coklat dengan Kacang Hazel",
+      "brand": "Ceres",
+      "quantity": "180g"
+    },
+    {
+      "code": "4545593011447",
+      "name": "SOP SUBARASHI",
+      "brand": "AFC",
+      "quantity": ""
+    },
+    {
+      "code": "8886001012080",
+      "name": "Biskuit Roma Kelapa",
+      "brand": "Mayora",
+      "quantity": "450g"
+    },
+    {
+      "code": "8886007811113",
+      "name": "Teh Cap Poci",
+      "brand": "PT Gunung Slamat",
+      "quantity": "50g"
+    },
+    {
+      "code": "8886007811410",
+      "name": "Teh poci celup wangi teh asli 25's",
+      "brand": "Poci",
+      "quantity": "25 teabags"
+    },
+    {
+      "code": "8886008101053",
+      "name": "Aqua btl",
+      "brand": "Danone",
+      "quantity": "600 ml"
+    },
+    {
+      "code": "8886008101091",
+      "name": "AQUA",
+      "brand": "Danone",
+      "quantity": "1.5l"
+    },
+    {
+      "code": "8886008101336",
+      "name": "aqua botol kecil",
+      "brand": "Danone",
+      "quantity": "330 ml"
+    },
+    {
+      "code": "8888166343825",
+      "name": "Pola Snack - Balado",
+      "brand": "Monde",
+      "quantity": "17g"
+    },
+    {
+      "code": "8888166603431",
+      "name": "Superco (Malkist dengan Krim Rasa Cokelat)",
+      "brand": "Khong Guan",
+      "quantity": "22g"
+    },
+    {
+      "code": "8888166606395",
+      "name": "Salcheese combo",
+      "brand": "KHONG GUAN",
+      "quantity": ""
+    },
+    {
+      "code": "8888166994393",
+      "name": "Monde Snack Gold",
+      "brand": "Nissin",
+      "quantity": "27g"
+    },
+    {
+      "code": "8888900415009",
+      "name": "LaFonte Spaghetti -10 pasta",
+      "brand": "La Fonte",
+      "quantity": "225g"
+    },
+    {
+      "code": "8991001503664",
+      "name": "Chic Choc Mini",
+      "brand": "Delfi",
+      "quantity": "20g"
+    },
+    {
+      "code": "8991002103436",
+      "name": "Good Day - Coolin'",
+      "brand": "Kapal Api Group",
+      "quantity": "10 x 20g"
+    },
+    {
+      "code": "8991002133327",
+      "name": "Good Day Duet Moca Caramel",
+      "brand": "Good Day",
+      "quantity": "22g"
+    },
+    {
+      "code": "8991002135376",
+      "name": "Kapal Api Spesial Mix",
+      "brand": "PT. Santosa Jaya Abadi",
+      "quantity": "25 g"
+    },
+    {
+      "code": "8991102222006",
+      "name": "Teh Gelas Cup",
+      "brand": "OT ( Orang Tua)",
+      "quantity": "160ml"
+    },
+    {
+      "code": "8991102374309",
+      "name": "Tango Wafer Cokelat",
+      "brand": "Tango",
+      "quantity": "240 g"
+    },
+    {
+      "code": "8991818030070",
+      "name": "Uleg - Sambal Pedas Serbaguna",
+      "brand": "Uleg",
+      "quantity": "190g"
+    },
+    {
+      "code": "8991976103142",
+      "name": "Kecap Manis",
+      "brand": "Nasional",
+      "quantity": "16 g"
+    },
+    {
+      "code": "8992696404441",
+      "name": "Bear Brand milk susu steril",
+      "brand": "Nestlé",
+      "quantity": "189ml"
+    },
+    {
+      "code": "8992696521797",
+      "name": "Milo Sachet 22gr",
+      "brand": "Nestlé",
+      "quantity": "22g"
+    },
+    {
+      "code": "8992696525054",
+      "name": "Dancow Fortigro Susu Bubuk Instan Putih 26g",
+      "brand": "Dancow Nestle",
+      "quantity": "26g"
+    },
+    {
+      "code": "8992718853868",
+      "name": "Gekikara Ramen Pas - Hot Carbo",
+      "brand": "Nissin",
+      "quantity": "81g"
+    },
+    {
+      "code": "8992752112013",
+      "name": "mizone activ lychee lemon",
+      "brand": "mizone",
+      "quantity": "500 ml"
+    },
+    {
+      "code": "8992752112518",
+      "name": "Mizone",
+      "brand": "Mood Up",
+      "quantity": "500 ml"
+    },
+    {
+      "code": "8992753004010",
+      "name": "FRISIAN FLAG Kental Manis Putih 535 g",
+      "brand": "Frisian Flag",
+      "quantity": "535 g"
+    },
+    {
+      "code": "8992753721597",
+      "name": "FF SKM POUCH 280",
+      "brand": "Frisian Flag",
+      "quantity": "280 g"
+    },
+    {
+      "code": "8992760221028",
+      "name": "17000725 Oreo Original (Vanilla)",
+      "brand": "BABYMONSTER OREO",
+      "quantity": "123g g"
+    },
+    {
+      "code": "8992761002015",
+      "name": "Coca-cola 390ml",
+      "brand": "Coca-cola",
+      "quantity": "390ml"
+    },
+    {
+      "code": "8992761002039",
+      "name": "Fanta Strawberry 390ml",
+      "brand": "Fanta",
+      "quantity": ""
+    },
+    {
+      "code": "8992761131012",
+      "name": "Coca Cola Zero",
+      "brand": "Coca cola",
+      "quantity": "1l"
+    },
+    {
+      "code": "8992761136161",
+      "name": "Coca cola 1Lt",
+      "brand": "Coca-Cola",
+      "quantity": ""
+    },
+    {
+      "code": "8992770094117",
+      "name": "SAORI Saus Tiram 23ml",
+      "brand": "Ajinomoto",
+      "quantity": "23ml"
+    },
+    {
+      "code": "8992770096128",
+      "name": "SAORI Saus Oriental Saus Tiram 133 ml",
+      "brand": "Ajinomoto",
+      "quantity": "133 ml"
+    },
+    {
+      "code": "8992775001608",
+      "name": "Chocolatos Cheese Flavor",
+      "brand": "Chocolatos",
+      "quantity": "14g"
+    },
+    {
+      "code": "8992775204054",
+      "name": "garuda kacang atom",
+      "brand": "garuda",
+      "quantity": "33g"
+    },
+    {
+      "code": "8992775211465",
+      "name": "Garuda Pilus - Abon Sapi",
+      "brand": "Garuda Food",
+      "quantity": "10 x 7g"
+    },
+    {
+      "code": "8992775305034",
+      "name": "saluut Malkist Sweet Cheese",
+      "brand": "Gery",
+      "quantity": ""
+    },
+    {
+      "code": "8992775311615",
+      "name": "Chocolatos 24Pcs",
+      "brand": "Garudafood",
+      "quantity": "24 x 6.5g"
+    },
+    {
+      "code": "8992775311981",
+      "name": "Chocolatos",
+      "brand": "Garuda",
+      "quantity": ""
+    },
+    {
+      "code": "8992858527308",
+      "name": "Hydro Coco - Original 250ml",
+      "brand": "Kalbe",
+      "quantity": "250ml"
+    },
+    {
+      "code": "8992907952136",
+      "name": "SARI ROTI TAWAR KUPAS",
+      "brand": "Sari Roti",
+      "quantity": ""
+    },
+    {
+      "code": "8992907952327",
+      "name": "Sandwich Cokelat",
+      "brand": "Sari Roti",
+      "quantity": "42g"
+    },
+    {
+      "code": "8992982206001",
+      "name": "Npl 600 ml",
+      "brand": "Nestlé",
+      "quantity": ""
+    },
+    {
+      "code": "8993007000239",
+      "name": "Indomilk Kids Chocolate UHT Milk",
+      "brand": "Indomilk",
+      "quantity": "115ml"
+    },
+    {
+      "code": "8993007000680",
+      "name": "Indomilk Uht Full Cream 1LT",
+      "brand": "Indofood Nutrition",
+      "quantity": "1L"
+    },
+    {
+      "code": "8993007003902",
+      "name": "INDOMILK Creamy Original",
+      "brand": "Indomilk",
+      "quantity": "545 g"
+    },
+    {
+      "code": "8993083932141",
+      "name": "Biskuit Stik Rasa Sayuran dan Keju",
+      "brand": "Biskitop",
+      "quantity": "50g"
+    },
+    {
+      "code": "8993175535885",
+      "name": "Nabati Wafer Cokelat",
+      "brand": "Richoco",
+      "quantity": "37 g"
+    },
+    {
+      "code": "8993175537285",
+      "name": "Nabati Wafer",
+      "brand": "Richeese",
+      "quantity": "110g"
+    },
+    {
+      "code": "8993175538572",
+      "name": "Nabati Bites: Rasa keju",
+      "brand": "Pt. Kaldu Sari Nabati Indonesia",
+      "quantity": "112 gram"
+    },
+    {
+      "code": "8993351120416",
+      "name": "Strawberry Yogurt Drink",
+      "brand": "Greenfields",
+      "quantity": ""
+    },
+    {
+      "code": "8993351121307",
+      "name": "GreenFields Full Cream Milk",
+      "brand": "Greenfields",
+      "quantity": "950ml"
+    },
+    {
+      "code": "8993407105008",
+      "name": "Favourite Keju Cheddar Olahan",
+      "brand": "Cheesy",
+      "quantity": "480g"
+    },
+    {
+      "code": "8993492102395",
+      "name": "Peanut Butter",
+      "brand": "Noccio",
+      "quantity": ""
+    },
+    {
+      "code": "8993838990044",
+      "name": "YOA LADA HTM BBK 35 GR 1C12P",
+      "brand": "yoa food",
+      "quantity": "35gr"
+    },
+    {
+      "code": "8994075240657",
+      "name": "Makanan Ringan Ekstrudat Rasa Rumput Laut",
+      "brand": "Momogi",
+      "quantity": ""
+    },
+    {
+      "code": "8994171101289",
+      "name": "Luwak White Koffie Original",
+      "brand": "luwak",
+      "quantity": "20 g"
+    },
+    {
+      "code": "8994588342114",
+      "name": "Air Mineral",
+      "brand": "cheers",
+      "quantity": "600ml"
+    },
+    {
+      "code": "8994834000218",
+      "name": "Deo Goriorio vanilla",
+      "brand": "Siantar top",
+      "quantity": "10g"
+    },
+    {
+      "code": "8994907001302",
+      "name": "Sambal Terasi",
+      "brand": "ABC",
+      "quantity": ""
+    },
+    {
+      "code": "8995102703091",
+      "name": "Bumbu Kuah Bakso",
+      "brand": "Mama Suka",
+      "quantity": "8 g"
+    },
+    {
+      "code": "8995102708591",
+      "name": "Gimbori rumput laut kering tabur",
+      "brand": "Mamasuka",
+      "quantity": "30g"
+    },
+    {
+      "code": "8995227500261",
+      "name": "Larutan Penyegar",
+      "brand": "Cap Kaki Tiga",
+      "quantity": "500ml"
+    },
+    {
+      "code": "8995899215159",
+      "name": "BonCabe level 50 Max End",
+      "brand": "Boncabe, Kobe",
+      "quantity": "30 gram"
+    },
+    {
+      "code": "8995952001224",
+      "name": "Kaya Spread",
+      "brand": "Morin",
+      "quantity": "170g"
+    },
+    {
+      "code": "8996001301562",
+      "name": "Malkist cokelat kelapa",
+      "brand": "Roma",
+      "quantity": "19g"
+    },
+    {
+      "code": "8996001302620",
+      "name": "Malkist",
+      "brand": "Mayora",
+      "quantity": ""
+    },
+    {
+      "code": "8996001305119",
+      "name": "Arden tender bite cookies choco Splendid",
+      "brand": "Roma",
+      "quantity": "30gr"
+    },
+    {
+      "code": "8996001308059",
+      "name": "Sari Gandum",
+      "brand": "Roma",
+      "quantity": "38,5 g"
+    },
+    {
+      "code": "8996001354124",
+      "name": "beng-beng extra chocolate&caramel",
+      "brand": "beng-beng",
+      "quantity": "25 g"
+    },
+    {
+      "code": "8996001440049",
+      "name": "ENERGEN COKLAT 34g",
+      "brand": "Energen",
+      "quantity": "34g"
+    },
+    {
+      "code": "8996001526231",
+      "name": "WOW Spaghetti - Bolognese",
+      "brand": "Mayora",
+      "quantity": "84gr"
+    },
+    {
+      "code": "8996001600146",
+      "name": "Teh Pucuk Harum Jasmine 350 ml",
+      "brand": "Mayora",
+      "quantity": "350 ml"
+    },
+    {
+      "code": "8996001600269",
+      "name": "Air Mineral Pegunungan",
+      "brand": "Le Minerale",
+      "quantity": "600ml"
+    },
+    {
+      "code": "8996001600399",
+      "name": "Le Minerale 1,5 L",
+      "brand": "Le Minerale",
+      "quantity": "1.5 L"
+    },
+    {
+      "code": "8996001600849",
+      "name": "Nipis Madu",
+      "brand": "Mayora",
+      "quantity": "330ml"
+    },
+    {
+      "code": "8996006000019",
+      "name": "Sosro Tea Original 300Ml",
+      "brand": "Sosro",
+      "quantity": "300ml"
+    },
+    {
+      "code": "8996006858016",
+      "name": "Tehbotol Sosro btl",
+      "brand": "teh botol sosro",
+      "quantity": "350 ml"
+    },
+    {
+      "code": "8996129803504",
+      "name": "Cleo",
+      "brand": "Cleo",
+      "quantity": ""
+    },
+    {
+      "code": "8996129809131",
+      "name": "Cleo",
+      "brand": "Cleo",
+      "quantity": "220"
+    },
+    {
+      "code": "8997009510017",
+      "name": "12001004 You C1000 Vitamin Lemon",
+      "brand": "You C1000",
+      "quantity": "140 ml"
+    },
+    {
+      "code": "8997009510123",
+      "name": "orange water you.c1000",
+      "brand": "You C1000",
+      "quantity": "500ml"
+    },
+    {
+      "code": "8997009781110",
+      "name": "Hydro Coco ori 500ml",
+      "brand": "Kalbe",
+      "quantity": "500ml"
+    },
+    {
+      "code": "8997014021867",
+      "name": "CHIMI KERIPIK UBI",
+      "brand": "Lemonilo",
+      "quantity": "41"
+    },
+    {
+      "code": "8997014450421",
+      "name": "Gold slices",
+      "brand": "Prochiz",
+      "quantity": ""
+    },
+    {
+      "code": "8997020180961",
+      "name": "3 In 1 Oats Vanilla",
+      "brand": "Quacker",
+      "quantity": ""
+    },
+    {
+      "code": "8997035120020",
+      "name": "Pocari Sweat Sachet",
+      "brand": "Pocari Sweat",
+      "quantity": "5x13g"
+    },
+    {
+      "code": "8997035563414",
+      "name": "POCARI SWEAT 500 ml",
+      "brand": "otsuka",
+      "quantity": "500ml"
+    },
+    {
+      "code": "8997035563544",
+      "name": "POCARI SWEAT 350ml",
+      "brand": "Otsuka",
+      "quantity": "350 ml"
+    },
+    {
+      "code": "8997035600546",
+      "name": "Ion Supply Drink 900ml",
+      "brand": "Pocari",
+      "quantity": "900 ml"
+    },
+    {
+      "code": "8997035601222",
+      "name": "Oranamin C Drink",
+      "brand": "Oronamin, Otsuka",
+      "quantity": "120 ml"
+    },
+    {
+      "code": "8997225200051",
+      "name": "Greensand lime apple",
+      "brand": "green sands",
+      "quantity": "1"
+    },
+    {
+      "code": "8997225840134",
+      "name": "aoka susu",
+      "brand": "aoka",
+      "quantity": "65g"
+    },
+    {
+      "code": "8997226414020",
+      "name": "Emina Mozza Cheese Slice",
+      "brand": "Emina",
+      "quantity": "75gr ,5 lembar"
+    },
+    {
+      "code": "8997240600010",
+      "name": "Oat Milk",
+      "brand": "Oatside",
+      "quantity": ""
+    },
+    {
+      "code": "8997240600393",
+      "name": "Oatside Oat Milk Barista Blend",
+      "brand": "Oatside",
+      "quantity": ""
+    },
+    {
+      "code": "8997240600935",
+      "name": "Oatside choco malt 200ml",
+      "brand": "Oatside",
+      "quantity": ""
+    },
+    {
+      "code": "8997240601154",
+      "name": "Caramel Macchiato Oat Milk",
+      "brand": "Oatside",
+      "quantity": ""
+    },
+    {
+      "code": "8997240602854",
+      "name": "Creamy Classic Oat M*lk",
+      "brand": "Nobo",
+      "quantity": "200ml"
+    },
+    {
+      "code": "8998009010224",
+      "name": "Ultra milk full cream",
+      "brand": "Ultrajaya, ultra milk",
+      "quantity": "250 ml"
+    },
+    {
+      "code": "8998009010231",
+      "name": "UHT Rasa Cokelat",
+      "brand": "Ultra jaya",
+      "quantity": "250ml"
+    },
+    {
+      "code": "8998009010248",
+      "name": "Ultra Milk Stroberi 250 ml E-1B",
+      "brand": "Ultra Jaya",
+      "quantity": "4"
+    },
+    {
+      "code": "8998009010552",
+      "name": "Ultra Milk Full Cream",
+      "brand": "Ultrajaya",
+      "quantity": "200mL"
+    },
+    {
+      "code": "8998009010590",
+      "name": "ULTRA MILK MINI CHOCO",
+      "brand": "ULTRAJAYA",
+      "quantity": "125"
+    },
+    {
+      "code": "8998009010613",
+      "name": "Ultra Milk Full Ceam",
+      "brand": "Ultra Jaya",
+      "quantity": "1 l"
+    },
+    {
+      "code": "8998009010637",
+      "name": "Ultra Milk Low Fat",
+      "brand": "Ultra",
+      "quantity": ""
+    },
+    {
+      "code": "8998009020186",
+      "name": "Buavita Juice Jambu 245ml",
+      "brand": "Uniliver",
+      "quantity": "RH. 30"
+    },
+    {
+      "code": "8998009040023",
+      "name": "teh kotak",
+      "brand": "ultrajaya",
+      "quantity": "300ml"
+    },
+    {
+      "code": "8998866200301",
+      "name": "Mi Sedaap",
+      "brand": "Mi Sedaap",
+      "quantity": "90g"
+    },
+    {
+      "code": "8998866201841",
+      "name": "golda coffee latte",
+      "brand": "wings food",
+      "quantity": "200ml"
+    },
+    {
+      "code": "8998866202244",
+      "name": "Mi Instan",
+      "brand": "EkoMie, Rasa Kaldu ayam",
+      "quantity": "55 g"
+    },
+    {
+      "code": "8998866202626",
+      "name": "Kopi Top Gula Aren",
+      "brand": "Top Coffee",
+      "quantity": "22g"
+    },
+    {
+      "code": "8998866202732",
+      "name": "milku stroberi 200ml",
+      "brand": "wings food",
+      "quantity": "200ml"
+    },
+    {
+      "code": "8998866202893",
+      "name": "Golda Coffee cappuchino",
+      "brand": "Wingsfood",
+      "quantity": "coffe"
+    },
+    {
+      "code": "8998866203531",
+      "name": "Isoplus Coco 350ml",
+      "brand": "Wings Food",
+      "quantity": "350ml"
+    },
+    {
+      "code": "8998866203920",
+      "name": "Milku",
+      "brand": "Wings Food",
+      "quantity": "200 ml"
+    },
+    {
+      "code": "8998866500708",
+      "name": "Floridina Orange 350ML",
+      "brand": "wings food",
+      "quantity": "350ml"
+    },
+    {
+      "code": "8998866610377",
+      "name": "Iso plus 350 ml",
+      "brand": "Wingsfood",
+      "quantity": "1"
+    },
+    {
+      "code": "8998866632287",
+      "name": "Air Mineral Murni Alami",
+      "brand": "Aquviva",
+      "quantity": "700ml"
+    },
+    {
+      "code": "8998888710147",
+      "name": "Del Monte",
+      "brand": "Del Monte",
+      "quantity": "270ml"
+    },
+    {
+      "code": "8998888712295",
+      "name": "Del Monte BBQ",
+      "brand": "Del Monte",
+      "quantity": "250g"
+    },
+    {
+      "code": "8999898962533",
+      "name": "Diamond UHT Full Cream 1 L",
+      "brand": "Diamond",
+      "quantity": "1"
+    },
+    {
+      "code": "8999898962694",
+      "name": "Biokul set Yog plain",
+      "brand": "Biokul",
+      "quantity": "500ml"
+    },
+    {
+      "code": "8999898971221",
+      "name": "GREEK",
+      "brand": "Bio Kul",
+      "quantity": "473g"
+    },
+    {
+      "code": "8999999002503",
+      "name": "Kecap Manis",
+      "brand": "Bango",
+      "quantity": "275 ml"
+    },
+    {
+      "code": "8999999195649",
+      "name": "Sari Wangi 100% Teh Asli",
+      "brand": "Sari Wangi, Unilever",
+      "quantity": "25 pockets"
+    },
+    {
+      "code": "8999999601331",
+      "name": "Royco Ayam 8g",
+      "brand": "Royko",
+      "quantity": "8g"
+    },
+    {
+      "code": "9199406858030",
+      "name": "Teh Botol Sosro Less Sugar",
+      "brand": "Sosro",
+      "quantity": "350"
+    },
+    {
+      "code": "9323795000187",
+      "name": "Monster Tropical Muesli",
+      "brand": "Monster Health Food Co.",
+      "quantity": "700 g"
+    },
+    {
+      "code": "9556001288547",
+      "name": "Nescafe cappucino 220ml",
+      "brand": "Nescafe",
+      "quantity": "220ml"
+    },
+    {
+      "code": "9556001295248",
+      "name": "Nescafee ice black 220ml",
+      "brand": "Nescafé",
+      "quantity": "1"
+    },
+    {
+      "code": "9556174802212",
+      "name": "Quaker Instant Oatmeal 800g",
+      "brand": "Quaker",
+      "quantity": "1"
+    },
+    {
+      "code": "9556174802236",
+      "name": "Queker oat 200g",
+      "brand": "Quaker",
+      "quantity": "1"
+    }
+  ]
+}

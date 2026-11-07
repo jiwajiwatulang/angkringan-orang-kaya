@@ -1,0 +1,96 @@
+import type {DeviceProof} from '../licenseProtocol';
+import {AccessError,requireOwner,type StoreEvent} from '../multidevice/protocol';
+import {enrollOwner,requestPairing,authorize,createPairing,approvePairing,revokeDevice,saveEmployee,employeeLogin,listAccess,renewCashierDevice,signingKey,type MultiDeviceEnv} from './multideviceAccess';
+import {pullEntities,submitEvent,recoverEvent} from './multideviceSync';
+import {pushPhotoToRelayR2,pullPhotoFromRelayR2,ackPhotoFromRelayR2,requestPhotoReuploadR2,checkPhotoReuploadR2,listPendingReuploadRequestsR2,setOwnerE2eeKeyR2,getOwnerE2eeKeyR2,type RelayR2Bucket} from './photoRelayR2';
+
+type RequestLimiter={limit(options:{key:string}):Promise<{success:boolean}>};
+export interface MultiDeviceHttpEnv extends MultiDeviceEnv {PUBLIC_RATE_LIMITER?:RequestLimiter;MULTI_DEVICE_RATE_LIMITER?:RequestLimiter;PHOTOS_BUCKET?:RelayR2Bucket}
+function response(body:unknown,status=200){return Response.json(body,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'}});}
+async function boundedBody(request:Request){
+  if(!request.headers.get('Content-Type')?.startsWith('application/json')) throw new AccessError('Permintaan tidak sesuai.',415);
+  const reader=request.body?.getReader();if(!reader) throw new AccessError('Lengkapi data.',400);
+  const chunks:Uint8Array[]=[],limit=8*1024*1024+16384;let total=0;
+  try {
+    for(;;){const {done,value}=await reader.read();if(done)break;total+=value.byteLength;if(total>limit){await reader.cancel();throw new AccessError('Data terlalu besar.',413);}chunks.push(value);}
+  } finally{reader.releaseLock();}
+  const bytes=new Uint8Array(total);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
+  try{return JSON.parse(new TextDecoder().decode(bytes));}catch{throw new AccessError('Permintaan tidak sesuai.',400);}
+}
+export async function handleMultiDevice(request:Request,env:MultiDeviceHttpEnv):Promise<Response>{
+  try{
+    signingKey(env);
+    if(request.method!=='POST') return response({error:'Permintaan tidak sesuai.'},405);
+    const ingress=env.MULTI_DEVICE_RATE_LIMITER||env.PUBLIC_RATE_LIMITER;
+    if(ingress){const limit=await ingress.limit({key:`multi:${request.headers.get('CF-Connecting-IP')||'local'}`});if(!limit.success)return response({error:'Terlalu banyak percobaan. Coba lagi nanti.',code:'rate_limited',retryAt:Date.now()+60000},429);}
+    const body=await boundedBody(request);
+    if(!body||typeof body!=='object'||typeof body.action!=='string'||!body.data||typeof body.data!=='object'||Array.isArray(body.data)||!body.proof)throw new AccessError('Permintaan tidak sesuai.',400);
+    const action=body.action as string,data=body.data as Record<string,unknown>,proof=body.proof as DeviceProof;
+    if(env.MULTI_DEVICE_RATE_LIMITER&&env.PUBLIC_RATE_LIMITER&&!['send','pull','recover'].includes(action)){
+      const limit=await env.PUBLIC_RATE_LIMITER.limit({key:`multi-auth:${request.headers.get('CF-Connecting-IP')||'local'}`});if(!limit.success)return response({error:'Terlalu banyak percobaan. Coba lagi nanti.',code:'rate_limited',retryAt:Date.now()+60000},429);
+    }
+    if(action==='enroll')return response(await enrollOwner(env,{activation:String(data.activation||''),deviceName:String(data.deviceName||''),proof}));
+    if(action==='pair.request')return response(await requestPairing(env,{code:String(data.code||''),deviceId:String(data.deviceId||''),deviceName:String(data.deviceName||''),proof}));
+    if(typeof body.access!=='string')throw new AccessError('Silakan masuk lagi.',401);
+    const claims=await authorize(env,body.access,action,data,proof);
+    if(action==='list')return response(await listAccess(env,claims));
+    if(action==='refresh')return response(await renewCashierDevice(env,claims));
+    if(action==='employee.login')return response(await employeeLogin(env,claims,{id:String(data.id||''),pin:String(data.pin||'')}));
+    if(action==='pull')return response(await pullEntities(env.DB,claims,Number(data.cursor)));
+    if(action==='photo.relay.push'){
+      if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
+      return response(await pushPhotoToRelayR2(env.PHOTOS_BUCKET,claims,data.packet as any));
+    }
+    if(action==='photo.relay.pull'){
+      if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
+      return response(await pullPhotoFromRelayR2(env.PHOTOS_BUCKET,claims,String(data.photoId||'')));
+    }
+    if(action==='photo.relay.ack'){
+      if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
+      return response(await ackPhotoFromRelayR2(env.PHOTOS_BUCKET,claims,{
+        photoId:String(data.photoId||''),
+        checksum:String(data.checksum||''),
+        transferToken:data.transferToken?String(data.transferToken):undefined,
+        envelopeHash:data.envelopeHash?String(data.envelopeHash):undefined,
+        operationId:data.operationId?String(data.operationId):undefined,
+        employeeId:data.employeeId?String(data.employeeId):undefined,
+      }));
+    }
+    if(action==='photo.relay.reupload'){
+      if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
+      return response(await requestPhotoReuploadR2(env.PHOTOS_BUCKET,claims,{photoId:String(data.photoId||''),employeeId:String(data.employeeId||''),operationId:String(data.operationId||''),reason:data.reason?String(data.reason):undefined,ownerPublicKeyJwk:data.ownerPublicKeyJwk as any}));
+    }
+    if(action==='photo.relay.reupload_check'){
+      if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
+      return response(await checkPhotoReuploadR2(env.PHOTOS_BUCKET,claims,String(data.photoId||'')));
+    }
+    if(action==='photo.relay.reupload_pending'){
+      if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
+      return response(await listPendingReuploadRequestsR2(env.PHOTOS_BUCKET,claims));
+    }
+    if(action==='photo.relay.owner_key.set'){
+      if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
+      return response(await setOwnerE2eeKeyR2(env.PHOTOS_BUCKET,claims,{
+        publicKeyJwk:data.publicKeyJwk as any,
+        keyEpoch:typeof data.keyEpoch==='number'?data.keyEpoch:undefined,
+        expectedCurrentEpoch:typeof data.expectedCurrentEpoch==='number'?data.expectedCurrentEpoch:undefined,
+      }));
+    }
+    if(action==='photo.relay.owner_key.get'){
+      if(!env.PHOTOS_BUCKET) throw new AccessError('Layanan relay foto belum diaktifkan.',503);
+      return response(await getOwnerE2eeKeyR2(env.PHOTOS_BUCKET,claims));
+    }
+    if(action==='send')return response(await submitEvent(env.DB,claims,data.event as StoreEvent));
+    requireOwner(claims);
+    if(action==='recover')return response(await recoverEvent(env.DB,claims,data.event as StoreEvent));
+    if(action==='pair.create')return response(await createPairing(env,claims));
+    if(action==='pair.approve')return response(await approvePairing(env,claims,String(data.id||'')));
+    if(action==='device.revoke')return response(await revokeDevice(env,claims,String(data.id||'')));
+    if(action==='employee.save')return response(await saveEmployee(env,claims,{id:String(data.id||''),name:String(data.name||''),pin:data.pin===undefined?undefined:String(data.pin),active:data.active as boolean}));
+    return response({error:'Halaman tidak tersedia.'},404);
+  }catch(error){
+    if(error instanceof AccessError)return response({error:error.message,...(error.code?{code:error.code}:{}),...(error.retryAt?{retryAt:error.retryAt}:{})},error.status);
+    // Never expose SQL, submitted PINs, key material or error stacks.
+    return response({error:'Data belum dapat diproses. Coba lagi.'},503);
+  }
+}

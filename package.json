@@ -1,0 +1,14 @@
+{
+  "name": "sakunota-live-recovery",
+  "version": "2.8.1-recovery.329",
+  "private": true,
+  "description": "Captured live release, not a complete editable Next.js source repository",
+  "scripts": {
+    "verify": "node scripts/verify-snapshot.cjs",
+    "dev": "wrangler dev --local --ip 127.0.0.1",
+    "check": "npm run verify && wrangler deploy --dry-run --outdir .dry-run"
+  },
+  "devDependencies": {
+    "wrangler": "4.155.0"
+  }
+}

@@ -1,0 +1,2 @@
+export const MAX_DELIVERY_BYTES=8*1024*1024;
+export const PAYLOAD_CHUNK_CHARS=128*1024;

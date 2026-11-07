@@ -1,0 +1,2090 @@
+{
+  "checkedAt": "2026-11-07T13:41:19.157Z",
+  "requests": 347,
+  "matches": 347,
+  "failures": [],
+  "results": [
+    {
+      "url": "/",
+      "status": 200,
+      "bytes": 56621,
+      "matchesLive": true
+    },
+    {
+      "url": "/__next.__PAGE__.txt",
+      "status": 200,
+      "bytes": 5187,
+      "matchesLive": true
+    },
+    {
+      "url": "/__next._full.txt",
+      "status": 200,
+      "bytes": 11697,
+      "matchesLive": true
+    },
+    {
+      "url": "/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/__next._tree.txt",
+      "status": 200,
+      "bytes": 332,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/2cspJXwFbY54ghvbJWSpi/_buildManifest.js",
+      "status": 200,
+      "bytes": 219,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/2cspJXwFbY54ghvbJWSpi/_clientMiddlewareManifest.js",
+      "status": 200,
+      "bytes": 96,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/2cspJXwFbY54ghvbJWSpi/_ssgManifest.js",
+      "status": 200,
+      "bytes": 80,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0_8gnitrq7a_c.js",
+      "status": 200,
+      "bytes": 45332,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0-4unm_-ghxxp.js",
+      "status": 200,
+      "bytes": 1832,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/036d9abruusq3.js",
+      "status": 200,
+      "bytes": 104335,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/05otfs34qb252.js",
+      "status": 200,
+      "bytes": 868,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/05zlr-3ietrxx.js",
+      "status": 200,
+      "bytes": 10958,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/074d7g1g12ev4.js",
+      "status": 200,
+      "bytes": 10391,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/08o_k-4cvafb7.js",
+      "status": 200,
+      "bytes": 22672,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/090x6i0xs-bcg.js",
+      "status": 200,
+      "bytes": 3936,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0cz1d0mv5g_q7.js",
+      "status": 200,
+      "bytes": 112594,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0dfrd6z8cpmec.js",
+      "status": 200,
+      "bytes": 428,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0ic3_l59cvcyb.js",
+      "status": 200,
+      "bytes": 43480,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0jd8-z7wd9tpc.js",
+      "status": 200,
+      "bytes": 96239,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0jq_h7rckzxzx.js",
+      "status": 200,
+      "bytes": 428,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0kf6leu0vmy3l.js",
+      "status": 200,
+      "bytes": 956,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0rf60ieujoaz4.js",
+      "status": 200,
+      "bytes": 11352,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0rhz_lp1w_v66.js",
+      "status": 200,
+      "bytes": 16334,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0rjqmzg1oj5qc.js",
+      "status": 200,
+      "bytes": 69322,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0umf92h1sb77c.js",
+      "status": 200,
+      "bytes": 13822,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0uq_k8ko15oeo.js",
+      "status": 200,
+      "bytes": 80554,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0v3--g6c3c28_.js",
+      "status": 200,
+      "bytes": 57288,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0v3pviprjqkji.js",
+      "status": 200,
+      "bytes": 8255,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/0w_60jki17wzf.js",
+      "status": 200,
+      "bytes": 41717,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/1_4t_mg8my_uy.js",
+      "status": 200,
+      "bytes": 15706,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/1_plubobvy_50.js",
+      "status": 200,
+      "bytes": 11293,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/124-oclrp5b_o.js",
+      "status": 200,
+      "bytes": 15918,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/127p9_e-b2uyl.js",
+      "status": 200,
+      "bytes": 10566,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/13380on6oq9mi.js",
+      "status": 200,
+      "bytes": 34043,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/13c65dn43qhmy.js",
+      "status": 200,
+      "bytes": 14070,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/15i6l6w52s4gj.js",
+      "status": 200,
+      "bytes": 226,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/18pwb--lz7p7d.js",
+      "status": 200,
+      "bytes": 19994,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/1b--9bqak_-_-.js",
+      "status": 200,
+      "bytes": 473,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/1be2n_fvg_2j6.js",
+      "status": 200,
+      "bytes": 8891,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/1ckvzn7sfprko.js",
+      "status": 200,
+      "bytes": 5584,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/1gnt0a-1fpbf9.js",
+      "status": 200,
+      "bytes": 163518,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/1ideu8qzf8zrs.js",
+      "status": 200,
+      "bytes": 480390,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/1jkdhn3pp75c5.js",
+      "status": 200,
+      "bytes": 15114,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/1po90a8sjr3jc.js",
+      "status": 200,
+      "bytes": 271,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/1t6f-x-dle9i0.css",
+      "status": 200,
+      "bytes": 2063,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/1tfvl1dpvcx00.js",
+      "status": 200,
+      "bytes": 71418,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/1tgjw9vgzy4b1.js",
+      "status": 200,
+      "bytes": 11557,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/1wcgazfbgnf1g.js",
+      "status": 200,
+      "bytes": 25511,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/1ym1-hvtak8if.js",
+      "status": 200,
+      "bytes": 270,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/2_ctz7z1mq5h0.js",
+      "status": 200,
+      "bytes": 456143,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/2_p4bq9q27wke.js",
+      "status": 200,
+      "bytes": 316,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/216iyidhmrh3u.js",
+      "status": 200,
+      "bytes": 229597,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/22qh4dxtv08vf.js",
+      "status": 200,
+      "bytes": 11098,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/25czsj3m_yml7.js",
+      "status": 200,
+      "bytes": 25597,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/26f7apuntl3_-.js",
+      "status": 200,
+      "bytes": 280395,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/26ylbof33vo7k.css",
+      "status": 200,
+      "bytes": 149307,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/2amo_93ph5nua.js",
+      "status": 200,
+      "bytes": 34195,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/2dr_dp4497buf.js",
+      "status": 200,
+      "bytes": 1190,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/2m_ikq3o2cd0u.js",
+      "status": 200,
+      "bytes": 131723,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/2n8f9aepd_od-.js",
+      "status": 200,
+      "bytes": 60248,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/2oz-oq0k619rw.js",
+      "status": 200,
+      "bytes": 75776,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/2r0lm3pxou3rs.js",
+      "status": 200,
+      "bytes": 32805,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/2wg_23brv4b4f.js",
+      "status": 200,
+      "bytes": 29286,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/2zubge9lh2vor.js",
+      "status": 200,
+      "bytes": 65879,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/34xysp9p8iz7u.js",
+      "status": 200,
+      "bytes": 25496,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/36h3tel-0-e1e.js",
+      "status": 200,
+      "bytes": 2043,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/386b4g0dxwktm.js",
+      "status": 200,
+      "bytes": 38816,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/3a5hntz40wweq.js",
+      "status": 200,
+      "bytes": 115481,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/3b5d9npep-x0y.js",
+      "status": 200,
+      "bytes": 14112,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/3bk-jph2uof3a.js",
+      "status": 200,
+      "bytes": 42133,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/3bs0hycd6hcg9.js",
+      "status": 200,
+      "bytes": 40648,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/3fqk2-yvzudef.js",
+      "status": 200,
+      "bytes": 44275,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/3i16mqc55m_sy.js",
+      "status": 200,
+      "bytes": 16551,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/3kcipoo6e0rce.css",
+      "status": 200,
+      "bytes": 5889,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/3lgz6gzul_xy9.js",
+      "status": 200,
+      "bytes": 36154,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/3lvwn_0-giaad.js",
+      "status": 200,
+      "bytes": 6055,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/3p72a05qqmpoo.js",
+      "status": 200,
+      "bytes": 2802,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/3rcldfukoukqy.js",
+      "status": 200,
+      "bytes": 664,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/3tuhq_7zji-mr.js",
+      "status": 200,
+      "bytes": 52499,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/3yd2wxksrrp9j.js",
+      "status": 200,
+      "bytes": 886,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/3zhn-4cxy2u_3.js",
+      "status": 200,
+      "bytes": 63916,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/42--ssu5nl6oh.js",
+      "status": 200,
+      "bytes": 17019,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/42gzk45nhj62q.js",
+      "status": 200,
+      "bytes": 27879,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/chunks/turbopack-3-ry682tkyiqk.js",
+      "status": 200,
+      "bytes": 10030,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/media/07c7676b89ed2778-s.p.2bn3s6zvc0dyp.woff2",
+      "status": 200,
+      "bytes": 48432,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/media/2fb76073e23fd9e4-s.3lvt2whj97whp.woff2",
+      "status": 200,
+      "bytes": 11272,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/media/45462fd7b7c12654-s.0k62hbripvv8p.woff2",
+      "status": 200,
+      "bytes": 10280,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/media/46a9e2f250689b4a-s.0-dom-5bn10r2.woff2",
+      "status": 200,
+      "bytes": 25844,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/media/6131cbbf5549afa2-s.2uwcyprjm3xu3.woff2",
+      "status": 200,
+      "bytes": 19044,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/media/76b70a1dbe058eb5-s.1y4-pdgsjb-pw.woff2",
+      "status": 200,
+      "bytes": 18744,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/media/ba63f6a0e436df8e-s.3-6t-g6q0vh0a.woff2",
+      "status": 200,
+      "bytes": 85272,
+      "matchesLive": true
+    },
+    {
+      "url": "/_next/static/media/favicon.1lga9_j5r3_6a.ico",
+      "status": 200,
+      "bytes": 2623,
+      "matchesLive": true
+    },
+    {
+      "url": "/_not-found.html",
+      "status": 200,
+      "bytes": 22191,
+      "matchesLive": true
+    },
+    {
+      "url": "/_not-found.txt",
+      "status": 200,
+      "bytes": 12257,
+      "matchesLive": true
+    },
+    {
+      "url": "/_not-found/__next._full.txt",
+      "status": 200,
+      "bytes": 12257,
+      "matchesLive": true
+    },
+    {
+      "url": "/_not-found/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/_not-found/__next._not-found/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6083,
+      "matchesLive": true
+    },
+    {
+      "url": "/_not-found/__next._tree.txt",
+      "status": 200,
+      "bytes": 272,
+      "matchesLive": true
+    },
+    {
+      "url": "/404.html",
+      "status": 200,
+      "bytes": 22191,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin",
+      "status": 200,
+      "bytes": 23444,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin.html",
+      "status": 200,
+      "bytes": 23444,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin.txt",
+      "status": 200,
+      "bytes": 13585,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/__next._full.txt",
+      "status": 200,
+      "bytes": 13585,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/__next._tree.txt",
+      "status": 200,
+      "bytes": 434,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/__next.admin/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6828,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/dapur",
+      "status": 200,
+      "bytes": 22847,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/dapur.html",
+      "status": 200,
+      "bytes": 22847,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/dapur.txt",
+      "status": 200,
+      "bytes": 13159,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/dapur/__next._full.txt",
+      "status": 200,
+      "bytes": 13159,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/dapur/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/dapur/__next._tree.txt",
+      "status": 200,
+      "bytes": 482,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/dapur/__next.admin/dapur/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6246,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/karyawan",
+      "status": 200,
+      "bytes": 24487,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/karyawan.html",
+      "status": 200,
+      "bytes": 24487,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/karyawan.txt",
+      "status": 200,
+      "bytes": 14362,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/karyawan/__next._full.txt",
+      "status": 200,
+      "bytes": 14362,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/karyawan/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/karyawan/__next._tree.txt",
+      "status": 200,
+      "bytes": 485,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/karyawan/__next.admin/karyawan/__PAGE__.txt",
+      "status": 200,
+      "bytes": 7354,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/laporan",
+      "status": 200,
+      "bytes": 23966,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/laporan.html",
+      "status": 200,
+      "bytes": 23966,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/laporan.txt",
+      "status": 200,
+      "bytes": 14023,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/laporan/__next._full.txt",
+      "status": 200,
+      "bytes": 14023,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/laporan/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/laporan/__next._tree.txt",
+      "status": 200,
+      "bytes": 484,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/laporan/__next.admin/laporan/__PAGE__.txt",
+      "status": 200,
+      "bytes": 7058,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/meja",
+      "status": 200,
+      "bytes": 23024,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/meja.html",
+      "status": 200,
+      "bytes": 23024,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/meja.txt",
+      "status": 200,
+      "bytes": 13263,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/meja/__next._full.txt",
+      "status": 200,
+      "bytes": 13263,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/meja/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/meja/__next._tree.txt",
+      "status": 200,
+      "bytes": 427,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/meja/__next.admin/meja/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6357,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/menu",
+      "status": 200,
+      "bytes": 23520,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/menu.html",
+      "status": 200,
+      "bytes": 23520,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/menu.txt",
+      "status": 200,
+      "bytes": 13577,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/menu/__next._full.txt",
+      "status": 200,
+      "bytes": 13577,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/menu/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/menu/__next._tree.txt",
+      "status": 200,
+      "bytes": 427,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/menu/__next.admin/menu/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6629,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pelayan",
+      "status": 200,
+      "bytes": 22782,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pelayan.html",
+      "status": 200,
+      "bytes": 22782,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pelayan.txt",
+      "status": 200,
+      "bytes": 13112,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pelayan/__next._full.txt",
+      "status": 200,
+      "bytes": 13112,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pelayan/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pelayan/__next._tree.txt",
+      "status": 200,
+      "bytes": 430,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pelayan/__next.admin/pelayan/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6224,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan",
+      "status": 200,
+      "bytes": 22927,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan.html",
+      "status": 200,
+      "bytes": 22927,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan.txt",
+      "status": 200,
+      "bytes": 13230,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/__next._full.txt",
+      "status": 200,
+      "bytes": 13230,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/__next._tree.txt",
+      "status": 200,
+      "bytes": 433,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/__next.admin/pengaturan/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6336,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/data",
+      "status": 200,
+      "bytes": 23944,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/data.html",
+      "status": 200,
+      "bytes": 23944,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/data.txt",
+      "status": 200,
+      "bytes": 13981,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/data/__next._full.txt",
+      "status": 200,
+      "bytes": 13981,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/data/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/data/__next._tree.txt",
+      "status": 200,
+      "bytes": 480,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/data/__next.admin/pengaturan/data/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6840,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/keamanan",
+      "status": 200,
+      "bytes": 23456,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/keamanan.html",
+      "status": 200,
+      "bytes": 23456,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/keamanan.txt",
+      "status": 200,
+      "bytes": 13675,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/keamanan/__next._full.txt",
+      "status": 200,
+      "bytes": 13675,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/keamanan/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/keamanan/__next._tree.txt",
+      "status": 200,
+      "bytes": 484,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/keamanan/__next.admin/pengaturan/keamanan/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6572,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/pajak",
+      "status": 200,
+      "bytes": 23463,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/pajak.html",
+      "status": 200,
+      "bytes": 23463,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/pajak.txt",
+      "status": 200,
+      "bytes": 13679,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/pajak/__next._full.txt",
+      "status": 200,
+      "bytes": 13679,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/pajak/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/pajak/__next._tree.txt",
+      "status": 200,
+      "bytes": 481,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/pajak/__next.admin/pengaturan/pajak/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6569,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/perangkat",
+      "status": 200,
+      "bytes": 23452,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/perangkat.html",
+      "status": 200,
+      "bytes": 23452,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/perangkat.txt",
+      "status": 200,
+      "bytes": 13613,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/perangkat/__next._full.txt",
+      "status": 200,
+      "bytes": 13613,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/perangkat/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/perangkat/__next._tree.txt",
+      "status": 200,
+      "bytes": 485,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/perangkat/__next.admin/pengaturan/perangkat/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6480,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/printer",
+      "status": 200,
+      "bytes": 23702,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/printer.html",
+      "status": 200,
+      "bytes": 23702,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/printer.txt",
+      "status": 200,
+      "bytes": 13830,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/printer/__next._full.txt",
+      "status": 200,
+      "bytes": 13830,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/printer/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/printer/__next._tree.txt",
+      "status": 200,
+      "bytes": 483,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/printer/__next.admin/pengaturan/printer/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6707,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/profil",
+      "status": 200,
+      "bytes": 23451,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/profil.html",
+      "status": 200,
+      "bytes": 23451,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/profil.txt",
+      "status": 200,
+      "bytes": 13670,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/profil/__next._full.txt",
+      "status": 200,
+      "bytes": 13670,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/profil/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/profil/__next._tree.txt",
+      "status": 200,
+      "bytes": 482,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/profil/__next.admin/pengaturan/profil/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6569,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/tentang",
+      "status": 200,
+      "bytes": 23454,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/tentang.html",
+      "status": 200,
+      "bytes": 23454,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/tentang.txt",
+      "status": 200,
+      "bytes": 13673,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/tentang/__next._full.txt",
+      "status": 200,
+      "bytes": 13673,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/tentang/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/tentang/__next._tree.txt",
+      "status": 200,
+      "bytes": 483,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/pengaturan/tentang/__next.admin/pengaturan/tentang/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6571,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/shift",
+      "status": 200,
+      "bytes": 24478,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/shift.html",
+      "status": 200,
+      "bytes": 24478,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/shift.txt",
+      "status": 200,
+      "bytes": 14353,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/shift/__next._full.txt",
+      "status": 200,
+      "bytes": 14353,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/shift/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/shift/__next._tree.txt",
+      "status": 200,
+      "bytes": 482,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/shift/__next.admin/shift/__PAGE__.txt",
+      "status": 200,
+      "bytes": 7348,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/stok",
+      "status": 200,
+      "bytes": 22527,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/stok.html",
+      "status": 200,
+      "bytes": 22527,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/stok.txt",
+      "status": 200,
+      "bytes": 12948,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/stok/__next._full.txt",
+      "status": 200,
+      "bytes": 12948,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/stok/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/stok/__next._tree.txt",
+      "status": 200,
+      "bytes": 427,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/stok/__next.admin/stok/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6084,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/transaksi",
+      "status": 200,
+      "bytes": 23530,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/transaksi.html",
+      "status": 200,
+      "bytes": 23530,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/transaksi.txt",
+      "status": 200,
+      "bytes": 13587,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/transaksi/__next._full.txt",
+      "status": 200,
+      "bytes": 13587,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/transaksi/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/transaksi/__next._tree.txt",
+      "status": 200,
+      "bytes": 432,
+      "matchesLive": true
+    },
+    {
+      "url": "/admin/transaksi/__next.admin/transaksi/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6634,
+      "matchesLive": true
+    },
+    {
+      "url": "/apple-touch-icon.png",
+      "status": 200,
+      "bytes": 23099,
+      "matchesLive": true
+    },
+    {
+      "url": "/checkout",
+      "status": 200,
+      "bytes": 21414,
+      "matchesLive": true
+    },
+    {
+      "url": "/checkout.html",
+      "status": 200,
+      "bytes": 21414,
+      "matchesLive": true
+    },
+    {
+      "url": "/checkout.txt",
+      "status": 200,
+      "bytes": 11847,
+      "matchesLive": true
+    },
+    {
+      "url": "/checkout/__next._full.txt",
+      "status": 200,
+      "bytes": 11847,
+      "matchesLive": true
+    },
+    {
+      "url": "/checkout/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/checkout/__next._tree.txt",
+      "status": 200,
+      "bytes": 383,
+      "matchesLive": true
+    },
+    {
+      "url": "/checkout/__next.checkout/__PAGE__.txt",
+      "status": 200,
+      "bytes": 5249,
+      "matchesLive": true
+    },
+    {
+      "url": "/favicon.ico",
+      "status": 200,
+      "bytes": 2623,
+      "matchesLive": true
+    },
+    {
+      "url": "/file.svg",
+      "status": 200,
+      "bytes": 391,
+      "matchesLive": true
+    },
+    {
+      "url": "/globe.svg",
+      "status": 200,
+      "bytes": 1035,
+      "matchesLive": true
+    },
+    {
+      "url": "/hubungkan-perangkat",
+      "status": 200,
+      "bytes": 23127,
+      "matchesLive": true
+    },
+    {
+      "url": "/hubungkan-perangkat.html",
+      "status": 200,
+      "bytes": 23127,
+      "matchesLive": true
+    },
+    {
+      "url": "/hubungkan-perangkat.txt",
+      "status": 200,
+      "bytes": 12212,
+      "matchesLive": true
+    },
+    {
+      "url": "/hubungkan-perangkat/__next._full.txt",
+      "status": 200,
+      "bytes": 12212,
+      "matchesLive": true
+    },
+    {
+      "url": "/hubungkan-perangkat/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/hubungkan-perangkat/__next._tree.txt",
+      "status": 200,
+      "bytes": 448,
+      "matchesLive": true
+    },
+    {
+      "url": "/hubungkan-perangkat/__next.hubungkan-perangkat/__PAGE__.txt",
+      "status": 200,
+      "bytes": 5554,
+      "matchesLive": true
+    },
+    {
+      "url": "/icon-192.png",
+      "status": 200,
+      "bytes": 25872,
+      "matchesLive": true
+    },
+    {
+      "url": "/icon-512.png",
+      "status": 200,
+      "bytes": 156882,
+      "matchesLive": true
+    },
+    {
+      "url": "/icon-maskable-512.png",
+      "status": 200,
+      "bytes": 110560,
+      "matchesLive": true
+    },
+    {
+      "url": "/icon.png",
+      "status": 200,
+      "bytes": 156882,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-card.png",
+      "status": 200,
+      "bytes": 11307,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-cart.png",
+      "status": 200,
+      "bytes": 8164,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-cash.png",
+      "status": 200,
+      "bytes": 15099,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-chart.png",
+      "status": 200,
+      "bytes": 13515,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-cloud.png",
+      "status": 200,
+      "bytes": 8723,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-dashboard.png",
+      "status": 200,
+      "bytes": 14318,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-help.png",
+      "status": 200,
+      "bytes": 10675,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-home.png",
+      "status": 200,
+      "bytes": 8298,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-kasir.png",
+      "status": 200,
+      "bytes": 13250,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-katalog.png",
+      "status": 200,
+      "bytes": 13568,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-lock-35.webp",
+      "status": 200,
+      "bytes": 2010,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-mark.png",
+      "status": 200,
+      "bytes": 34775,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-meja.png",
+      "status": 200,
+      "bytes": 10124,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-panduan.png",
+      "status": 200,
+      "bytes": 10880,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-pengaturan.png",
+      "status": 200,
+      "bytes": 11107,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-sandbox.png",
+      "status": 200,
+      "bytes": 9149,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-security.png",
+      "status": 200,
+      "bytes": 9974,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-shift.png",
+      "status": 200,
+      "bytes": 9540,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-tag.png",
+      "status": 200,
+      "bytes": 11276,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-terminal.png",
+      "status": 200,
+      "bytes": 9699,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-toko.png",
+      "status": 200,
+      "bytes": 16395,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-transaksi.png",
+      "status": 200,
+      "bytes": 9719,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/icon-user.png",
+      "status": 200,
+      "bytes": 8459,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/jasa-servis.png",
+      "status": 200,
+      "bytes": 200530,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/kasir-cepat.png",
+      "status": 200,
+      "bytes": 187290,
+      "matchesLive": true
+    },
+    {
+      "url": "/icons/sakunota-icons.svg",
+      "status": 200,
+      "bytes": 12958,
+      "matchesLive": true
+    },
+    {
+      "url": "/index.html",
+      "status": 200,
+      "bytes": 56621,
+      "matchesLive": true
+    },
+    {
+      "url": "/index.txt",
+      "status": 200,
+      "bytes": 11697,
+      "matchesLive": true
+    },
+    {
+      "url": "/logo-sakunota.png",
+      "status": 200,
+      "bytes": 53027,
+      "matchesLive": true
+    },
+    {
+      "url": "/logo.jpg",
+      "status": 200,
+      "bytes": 13661,
+      "matchesLive": true
+    },
+    {
+      "url": "/manifest.json",
+      "status": 200,
+      "bytes": 798,
+      "matchesLive": true
+    },
+    {
+      "url": "/next.svg",
+      "status": 200,
+      "bytes": 1375,
+      "matchesLive": true
+    },
+    {
+      "url": "/offline-manifest.json",
+      "status": 200,
+      "bytes": 13837,
+      "matchesLive": true
+    },
+    {
+      "url": "/owner",
+      "status": 200,
+      "bytes": 22893,
+      "matchesLive": true
+    },
+    {
+      "url": "/owner.html",
+      "status": 200,
+      "bytes": 22893,
+      "matchesLive": true
+    },
+    {
+      "url": "/owner.txt",
+      "status": 200,
+      "bytes": 12006,
+      "matchesLive": true
+    },
+    {
+      "url": "/owner/__next._full.txt",
+      "status": 200,
+      "bytes": 12006,
+      "matchesLive": true
+    },
+    {
+      "url": "/owner/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/owner/__next._tree.txt",
+      "status": 200,
+      "bytes": 380,
+      "matchesLive": true
+    },
+    {
+      "url": "/owner/__next.owner/__PAGE__.txt",
+      "status": 200,
+      "bytes": 5390,
+      "matchesLive": true
+    },
+    {
+      "url": "/panduan",
+      "status": 200,
+      "bytes": 82428,
+      "matchesLive": true
+    },
+    {
+      "url": "/panduan.html",
+      "status": 200,
+      "bytes": 82428,
+      "matchesLive": true
+    },
+    {
+      "url": "/panduan.txt",
+      "status": 200,
+      "bytes": 12416,
+      "matchesLive": true
+    },
+    {
+      "url": "/panduan/__next._full.txt",
+      "status": 200,
+      "bytes": 12416,
+      "matchesLive": true
+    },
+    {
+      "url": "/panduan/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/panduan/__next._tree.txt",
+      "status": 200,
+      "bytes": 382,
+      "matchesLive": true
+    },
+    {
+      "url": "/panduan/__next.panduan/__PAGE__.txt",
+      "status": 200,
+      "bytes": 5798,
+      "matchesLive": true
+    },
+    {
+      "url": "/pos",
+      "status": 200,
+      "bytes": 22993,
+      "matchesLive": true
+    },
+    {
+      "url": "/pos.html",
+      "status": 200,
+      "bytes": 22993,
+      "matchesLive": true
+    },
+    {
+      "url": "/pos.txt",
+      "status": 200,
+      "bytes": 13119,
+      "matchesLive": true
+    },
+    {
+      "url": "/pos/__next._full.txt",
+      "status": 200,
+      "bytes": 13119,
+      "matchesLive": true
+    },
+    {
+      "url": "/pos/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/pos/__next._tree.txt",
+      "status": 200,
+      "bytes": 432,
+      "matchesLive": true
+    },
+    {
+      "url": "/pos/__next.pos/__PAGE__.txt",
+      "status": 200,
+      "bytes": 6427,
+      "matchesLive": true
+    },
+    {
+      "url": "/privacy",
+      "status": 200,
+      "bytes": 28843,
+      "matchesLive": true
+    },
+    {
+      "url": "/privacy.html",
+      "status": 200,
+      "bytes": 28843,
+      "matchesLive": true
+    },
+    {
+      "url": "/privacy.txt",
+      "status": 200,
+      "bytes": 12317,
+      "matchesLive": true
+    },
+    {
+      "url": "/privacy/__next._full.txt",
+      "status": 200,
+      "bytes": 12317,
+      "matchesLive": true
+    },
+    {
+      "url": "/privacy/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/privacy/__next._tree.txt",
+      "status": 200,
+      "bytes": 382,
+      "matchesLive": true
+    },
+    {
+      "url": "/privacy/__next.privacy/__PAGE__.txt",
+      "status": 200,
+      "bytes": 5720,
+      "matchesLive": true
+    },
+    {
+      "url": "/product-reference/indonesia-v1.json",
+      "status": 200,
+      "bytes": 22075,
+      "matchesLive": true
+    },
+    {
+      "url": "/product-reference/NOTICE.txt",
+      "status": 200,
+      "bytes": 718,
+      "matchesLive": true
+    },
+    {
+      "url": "/pulihkan-kasir",
+      "status": 200,
+      "bytes": 23785,
+      "matchesLive": true
+    },
+    {
+      "url": "/pulihkan-kasir.html",
+      "status": 200,
+      "bytes": 23785,
+      "matchesLive": true
+    },
+    {
+      "url": "/pulihkan-kasir.txt",
+      "status": 200,
+      "bytes": 11993,
+      "matchesLive": true
+    },
+    {
+      "url": "/pulihkan-kasir/__next._full.txt",
+      "status": 200,
+      "bytes": 11993,
+      "matchesLive": true
+    },
+    {
+      "url": "/pulihkan-kasir/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/pulihkan-kasir/__next._tree.txt",
+      "status": 200,
+      "bytes": 389,
+      "matchesLive": true
+    },
+    {
+      "url": "/pulihkan-kasir/__next.pulihkan-kasir/__PAGE__.txt",
+      "status": 200,
+      "bytes": 5388,
+      "matchesLive": true
+    },
+    {
+      "url": "/retail-photo/v1/THIRD_PARTY_LICENSES.txt",
+      "status": 200,
+      "bytes": 23397,
+      "matchesLive": true
+    },
+    {
+      "url": "/reza-rengga.jpg",
+      "status": 200,
+      "bytes": 268761,
+      "matchesLive": true
+    },
+    {
+      "url": "/robots.txt",
+      "status": 200,
+      "bytes": 165,
+      "matchesLive": true
+    },
+    {
+      "url": "/sitemap.xml",
+      "status": 200,
+      "bytes": 946,
+      "matchesLive": true
+    },
+    {
+      "url": "/spreadsheet-import-worker.js",
+      "status": 200,
+      "bytes": 374489,
+      "matchesLive": true
+    },
+    {
+      "url": "/sw.js",
+      "status": 200,
+      "bytes": 3137,
+      "matchesLive": true
+    },
+    {
+      "url": "/tentang",
+      "status": 200,
+      "bytes": 36245,
+      "matchesLive": true
+    },
+    {
+      "url": "/tentang.html",
+      "status": 200,
+      "bytes": 36245,
+      "matchesLive": true
+    },
+    {
+      "url": "/tentang.txt",
+      "status": 200,
+      "bytes": 12292,
+      "matchesLive": true
+    },
+    {
+      "url": "/tentang/__next._full.txt",
+      "status": 200,
+      "bytes": 12292,
+      "matchesLive": true
+    },
+    {
+      "url": "/tentang/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/tentang/__next._tree.txt",
+      "status": 200,
+      "bytes": 382,
+      "matchesLive": true
+    },
+    {
+      "url": "/tentang/__next.tentang/__PAGE__.txt",
+      "status": 200,
+      "bytes": 5695,
+      "matchesLive": true
+    },
+    {
+      "url": "/terms",
+      "status": 200,
+      "bytes": 29451,
+      "matchesLive": true
+    },
+    {
+      "url": "/terms.html",
+      "status": 200,
+      "bytes": 29451,
+      "matchesLive": true
+    },
+    {
+      "url": "/terms.txt",
+      "status": 200,
+      "bytes": 12390,
+      "matchesLive": true
+    },
+    {
+      "url": "/terms/__next._full.txt",
+      "status": 200,
+      "bytes": 12390,
+      "matchesLive": true
+    },
+    {
+      "url": "/terms/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/terms/__next._tree.txt",
+      "status": 200,
+      "bytes": 380,
+      "matchesLive": true
+    },
+    {
+      "url": "/terms/__next.terms/__PAGE__.txt",
+      "status": 200,
+      "bytes": 5795,
+      "matchesLive": true
+    },
+    {
+      "url": "/vercel.svg",
+      "status": 200,
+      "bytes": 128,
+      "matchesLive": true
+    },
+    {
+      "url": "/waiter",
+      "status": 200,
+      "bytes": 21251,
+      "matchesLive": true
+    },
+    {
+      "url": "/waiter.html",
+      "status": 200,
+      "bytes": 21251,
+      "matchesLive": true
+    },
+    {
+      "url": "/waiter.txt",
+      "status": 200,
+      "bytes": 11997,
+      "matchesLive": true
+    },
+    {
+      "url": "/waiter/__next._full.txt",
+      "status": 200,
+      "bytes": 11997,
+      "matchesLive": true
+    },
+    {
+      "url": "/waiter/__next._index.txt",
+      "status": 200,
+      "bytes": 5853,
+      "matchesLive": true
+    },
+    {
+      "url": "/waiter/__next._tree.txt",
+      "status": 200,
+      "bytes": 381,
+      "matchesLive": true
+    },
+    {
+      "url": "/waiter/__next.waiter/__PAGE__.txt",
+      "status": 200,
+      "bytes": 5380,
+      "matchesLive": true
+    },
+    {
+      "url": "/window.svg",
+      "status": 200,
+      "bytes": 385,
+      "matchesLive": true
+    }
+  ]
+}

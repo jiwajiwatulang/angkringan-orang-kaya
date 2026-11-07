@@ -1,0 +1,16 @@
+{
+  "productionVersion": "ce14b39c-d2ac-4248-8c1a-b3c5f56c7acf",
+  "originalWorkerPreserved": true,
+  "recoveredOriginalSourceFiles": 52,
+  "recoveredWorkerSourceImportsCompile": true,
+  "wranglerVersionUsed": "4.155.0",
+  "wranglerDryRunPassed": true,
+  "localPublicResponsesMatchingLive": 347,
+  "anonymousBrowserPagesMatchingLive": 7,
+  "anonymousBrowserJavaScriptErrors": 0,
+  "anonymousBrowserResourceFailures": 0,
+  "authenticatedBusinessFlowsTested": false,
+  "frontendReactSourceRecovered": false,
+  "productionDataWrites": 0,
+  "productionDeploymentsPerformed": 0
+}

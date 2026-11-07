@@ -1,0 +1,2 @@
+# Preserve every captured byte, including original CRLF in source-map content.
+* -text
